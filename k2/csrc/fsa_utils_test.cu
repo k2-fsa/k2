@@ -1170,8 +1170,6 @@ TEST_F(StatesBatchSuiteTest, TestBackpropForwardScores) {
     // algorithm should work for non-connected fsa as well.
     FsaVec connected;
     Connect(random_fsas, &connected);
-   // bool status = Connect(random_fsas, &connected);
-   // ASSERT_TRUE(status);
     TestBackpropGetForwardScores<float>(connected);
     TestBackpropGetForwardScores<double>(connected);
   }
@@ -1312,8 +1310,6 @@ TEST_F(StatesBatchSuiteTest, TestBackpropBackwardScores) {
     // algorithm should work for non-connected fsa as well.
     FsaVec connected;
     Connect(random_fsas, &connected);
-    //bool status = Connect(random_fsas, &connected);
-    //ASSERT_TRUE(status);
     TestBackpropGetBackwardScores<float>(connected);
     TestBackpropGetBackwardScores<double>(connected);
   }
@@ -1464,8 +1460,6 @@ TEST_F(StatesBatchSuiteTest, TestRandomPaths) {
     // algorithm should work for non-connected fsa as well.
     FsaVec connected;
     Connect(random_fsas, &connected);
-    //bool status = Connect(random_fsas, &connected);
-    //ASSERT_TRUE(status);
     TestRandomPaths<float>(connected);
     TestRandomPaths<double>(connected);
   }

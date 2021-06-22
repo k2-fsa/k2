@@ -41,14 +41,21 @@ TEST(Connect, SingleFsa) {
       6
     )";
     auto fsa = FsaFromString(s).To(c);
+    int32_t gt = kFsaPropertiesMaybeAccessible |
+                 kFsaPropertiesMaybeCoaccessible;
+    int32_t p = GetFsaBasicProperties(fsa);
+    EXPECT_NE(p & gt, gt);
+
     Fsa connected;
     Array1<int32_t> arc_map;
     Connect(fsa, &connected, &arc_map);
-    Fsa ref = Fsa("[ [ 0 2 1 1 0 3 3 3 ] [ 1 6 -1 0 ] "
-                  "  [ 2 1 2 2 ] [ 3 1 4 4 ] [ ] [ ] [ ] ]").To(c);
+    Fsa ref = Fsa("[ [ 0 2 1 1 0 3 3 3 ] [ 1 4 -1 0 ] "
+                  "  [ 2 1 2 2 ] [ 3 1 4 4 ] [ ] ]").To(c);
     Array1<int32_t> arc_map_ref(c, "[ 0 1 3 4 5 ]");
     K2_CHECK(Equal(connected, ref));
     K2_CHECK(Equal(arc_map, arc_map_ref));
+    p = GetFsaBasicProperties(connected);
+    EXPECT_EQ(p & gt, gt);
   }
 }
 
@@ -65,14 +72,44 @@ TEST(Connect, CycleFsa) {
       6
     )";
     auto fsa = FsaFromString(s).To(c);
+
+    int32_t gt = kFsaPropertiesMaybeAccessible |
+                 kFsaPropertiesMaybeCoaccessible;
+    int32_t p = GetFsaBasicProperties(fsa);
+    EXPECT_NE(p & gt, gt);
+
     Fsa connected;
     Array1<int32_t> arc_map;
     Connect(fsa, &connected, &arc_map);
     Fsa ref = Fsa("[ [ 0 1 1 1 0 2 2 2 ] [ 1 2 3 3 ] [ 2 3 4 4] "
-                  "  [ 3 1 6 6 3 6 -1 0 ] [ ] [ ] [ ] ]").To(c);
+                  "  [ 3 1 6 6 3 4 -1 0 ] [ ] ]").To(c);
     Array1<int32_t> arc_map_ref(c, "[ 0 1 2 3 5 6 ]");
     K2_CHECK(Equal(connected, ref));
     K2_CHECK(Equal(arc_map, arc_map_ref));
+    p = GetFsaBasicProperties(connected);
+    EXPECT_EQ(p & gt, gt);
+  }
+}
+
+TEST(Connect, RandomSingleFsa) {
+  ContextPtr cpu = GetCpuContext();
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    Fsa fsa = GetRandFsa().To(c);
+    int32_t gt = kFsaPropertiesMaybeAccessible |
+                 kFsaPropertiesMaybeCoaccessible;
+
+    Fsa connected;
+    Array1<int32_t> arc_map;
+    Connect(fsa, &connected, &arc_map);
+    int32_t p = GetFsaBasicProperties(connected);
+    EXPECT_EQ(p & gt, gt);
+
+    Array1<Arc> arcs = connected.values.To(cpu);
+    arc_map = arc_map.To(cpu);
+    int32_t num_arcs = arcs.Dim();
+    for (int32_t i = 0; i != num_arcs; ++i) {
+      EXPECT_EQ(arcs[i].score, arc_map[i]);
+    }
   }
 }
 
@@ -102,15 +139,89 @@ TEST(Connect, FsaVec) {
 
     Fsa *fsa_array[] = {&fsa1, &fsa2, &fsa3};
     FsaVec fsa_vec = CreateFsaVec(3, &fsa_array[0]).To(c);
+
+    int32_t gt = kFsaPropertiesMaybeAccessible |
+                 kFsaPropertiesMaybeCoaccessible;
+    Array1<int32_t> properties;
+    int32_t p;
+    GetFsaVecBasicProperties(fsa_vec, &properties, &p);
+
+    EXPECT_NE(p & gt, gt);
+    EXPECT_NE(properties[0] & gt, gt);
+    EXPECT_NE(properties[1] & gt, gt);
+    EXPECT_NE(properties[2] & gt, gt);
+
     FsaVec connected;
     Array1<int32_t> arc_map;
     Connect(fsa_vec, &connected, &arc_map);
-    FsaVec ref = FsaVec("[ [ [ 0 1 1 1 ] [ 1 3 -1 0 ] [ ] [ ] ] "
-                        "  [ [ 0 1 1 1 ] [ 1 3 -1 0 ] [ ] [ ] ] "
-                        "  [ [ 0 1 1 1 ] [ 1 4 -1 0 ] [ ] [ ] [ ] ] ]").To(c);
+    FsaVec ref = FsaVec("[ [ [ 0 1 1 1 ] [ 1 2 -1 0 ] [ ] ] "
+                        "  [ [ 0 1 1 1 ] [ 1 2 -1 0 ] [ ] ] "
+                        "  [ [ 0 1 1 1 ] [ 1 2 -1 0 ] [ ] ] ]").To(c);
     Array1<int32_t> arc_map_ref(c, "[ 0 2 3 4 6 7 ]");
     K2_CHECK(Equal(connected, ref));
     K2_CHECK(Equal(arc_map, arc_map_ref));
+
+    GetFsaVecBasicProperties(connected, &properties, &p);
+    EXPECT_EQ(p & gt, gt);
+    EXPECT_EQ(properties[0] & gt, gt);
+    EXPECT_EQ(properties[1] & gt, gt);
+    EXPECT_EQ(properties[2] & gt, gt);
+  }
+}
+
+TEST(Connect, RandomFsaVec) {
+  int num_fsas = 1 + RandInt(0, 100);
+  ContextPtr cpu = GetCpuContext();
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    std::vector<Fsa> fsas(num_fsas);
+    for (int32_t i = 0; i != num_fsas; ++i) {
+      fsas[i] = GetRandFsa();
+    }
+
+    int32_t offset = fsas[0].TotSize(1);
+    for (int32_t i = 1; i != num_fsas; ++i) {
+      Array1<Arc> &arcs = fsas[i].values;
+      Arc *arcs_data = arcs.Data();
+      int32_t num_arcs = arcs.Dim();
+      EXPECT_GT(num_arcs, 1);
+      for (int32_t k = 0; k != num_arcs; ++k) {
+        arcs_data[k].score += offset;
+      }
+      offset += num_arcs;
+    }
+
+    std::vector<Fsa *> fsa_array(num_fsas);
+    for (int32_t i = 0; i != num_fsas; ++i) {
+      fsa_array[i] = &fsas[i];
+    }
+
+    FsaVec fsa_vec = CreateFsaVec(num_fsas, &fsa_array[0]);
+    fsa_vec = fsa_vec.To(c);
+
+    int32_t gt = kFsaPropertiesMaybeAccessible |
+                 kFsaPropertiesMaybeCoaccessible;
+    Array1<int32_t> properties;
+    int32_t p;
+
+    FsaVec connected;
+    Array1<int32_t> arc_map;
+    TopSort(fsa_vec, &connected, &arc_map);
+
+    GetFsaVecBasicProperties(connected, &properties, &p);
+
+    EXPECT_EQ(p & gt, gt);
+    properties = properties.To(cpu);
+    for (int32_t i = 0; i != num_fsas; ++i) {
+      EXPECT_EQ(properties[i] & gt, gt);
+    }
+
+    Array1<Arc> arcs = connected.values.To(cpu);
+    arc_map = arc_map.To(cpu);
+
+    int32_t num_arcs = connected.TotSize(2);
+    for (int32_t i = 0; i != num_arcs; ++i) {
+      EXPECT_EQ(arcs[i].score, arc_map[i]);
+    }
   }
 }
 

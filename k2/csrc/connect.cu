@@ -355,21 +355,41 @@ class Connecter {
     std::unique_ptr<Ragged<int32_t>> iter = GetStartBatch();
     while (iter != nullptr)
       iter = GetNextBatch(*iter);
-    
+
     // Mard coaccessible states
     std::unique_ptr<Ragged<int32_t>> riter = GetFinalBatch();
     while (riter != nullptr)
       riter = GetNextBatchBackward(*riter);
 
-    // Get remaining arcs
+    // Get remaining states and construct row_ids1/row_splits1
     int32_t num_states = fsas_.shape.TotSize(1);
     const char *accessible_data = accessible_.Data(),
                *coaccessible_data = coaccessible_.Data();
+    Renumbering states_renumbering(c_, num_states);
+    char* states_renumbering_data = states_renumbering.Keep().Data();
+    K2_EVAL(
+        c_, num_states, lambda_set_states_renumbering,
+        (int32_t state_idx01)->void {
+          if (accessible_data[state_idx01] && coaccessible_data[state_idx01])
+            states_renumbering_data[state_idx01] = 1;
+          else
+            states_renumbering_data[state_idx01] = 0;
+        });
+    Array1<int32_t> new2old_map_states = states_renumbering.New2Old();
+    Array1<int32_t> old2new_map_states = states_renumbering.Old2New();
+    Array1<int32_t> new_row_ids1 = fsas_.RowIds(1)[new2old_map_states];
+    Array1<int32_t> new_row_splits1(c_, NumFsas() + 1);
+    RowIdsToRowSplits(new_row_ids1, &new_row_splits1);
+
+    // Get remaining arcs
     int32_t num_arcs = fsas_.NumElements();
     Renumbering arcs_renumbering(c_, num_arcs);
     char* arcs_renumbering_data = arcs_renumbering.Keep().Data();
     const Arc *fsas_data = fsas_.values.Data();
-    const int32_t* fsas_row_ids2_data = fsas_.RowIds(2).Data();
+    const int32_t *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
+                  *fsas_row_ids2_data = fsas_.RowIds(2).Data(),
+                  *fsas_row_splits1_data = fsas_.RowSplits(1).Data(),
+                  *fsas_row_splits2_data = fsas_.RowSplits(2).Data();
     K2_EVAL(
         c_, num_arcs, lambda_set_arcs_renumbering,
         (int32_t arc_idx012)->void {
@@ -387,26 +407,57 @@ class Connecter {
             arcs_renumbering_data[arc_idx012] = 0;
         });
     Array1<int32_t> new2old_map_arcs = arcs_renumbering.New2Old();
-    Array1<Arc> remaining_arcs = fsas_.values[new2old_map_arcs];
+    int32_t remaining_arcs_num = new2old_map_arcs.Dim();
 
-    // Construct result FsaVec
-    int32_t remaining_arcs_num = remaining_arcs.Dim();
+    // Construct row_ids2/row_splits2
     Array1<int32_t> new_row_ids2(c_, remaining_arcs_num);
     int32_t *new_row_ids2_data = new_row_ids2.Data();
-    const int32_t *new2old_map_arcs_data = new2old_map_arcs.Data();
+    const int32_t *new2old_map_arcs_data = new2old_map_arcs.Data(),
+                  *old2new_map_states_data = old2new_map_states.Data();
     K2_EVAL(
         c_, remaining_arcs_num, lambda_set_new_row_ids2,
         (int32_t arc_idx012)->void {
           int32_t fsas_idx012 = new2old_map_arcs_data[arc_idx012],
-                  new_row_ids2 = fsas_row_ids2_data[fsas_idx012];
-          new_row_ids2_data[arc_idx012] = new_row_ids2;
+                  fsas_idx01 = fsas_row_ids2_data[fsas_idx012];
+          new_row_ids2_data[arc_idx012] = old2new_map_states_data[fsas_idx01];
         });
 
-    Array1<int32_t> new_row_splits2(c_, num_states + 1);
+    Array1<int32_t> new_row_splits2(c_, new2old_map_states.Dim() + 1);
     RowIdsToRowSplits(new_row_ids2, &new_row_splits2);
 
-    Array1<int32_t> new_row_ids1 = fsas_.RowIds(1);
-    Array1<int32_t> new_row_splits1 = fsas_.RowSplits(1);
+    // Update arcs to the renumbered states
+    const int32_t *new_row_ids1_data = new_row_ids1.Data(),
+                  *new_row_splits1_data = new_row_splits1.Data();
+    Array1<Arc> remaining_arcs(c_, remaining_arcs_num);
+    Arc *remaining_arcs_data = remaining_arcs.Data();
+    K2_EVAL(
+        c_, remaining_arcs_num, lambda_set_arcs,
+        (int32_t arc_idx012)->void {
+          int32_t fsas_idx012 = new2old_map_arcs_data[arc_idx012],
+                  fsas_idx01 = fsas_row_ids2_data[fsas_idx012],
+                  fsas_idx0 = fsas_row_ids1_data[fsas_idx01],
+                  fsas_idx0x = fsas_row_splits1_data[fsas_idx0];
+          Arc arc = fsas_data[fsas_idx012];
+          int32_t src_old_idx1 = arc.src_state,
+                  src_old_idx01 = fsas_idx0x + src_old_idx1,
+                  src_idx01 = old2new_map_states_data[src_old_idx01],
+                  src_idx0 = new_row_ids1_data[src_idx01],
+                  src_idx0x = new_row_splits1_data[src_idx0],
+                  src_idx1 = src_idx01 - src_idx0x,
+                  dest_old_idx1 = arc.dest_state,
+                  dest_old_idx01 = fsas_idx0x + dest_old_idx1,
+                  dest_idx01 = old2new_map_states_data[dest_old_idx01],
+                  dest_idx0 = new_row_ids1_data[dest_idx01],
+                  dest_idx0x = new_row_splits1_data[dest_idx0],
+                  dest_idx1 = dest_idx01 - dest_idx0x;
+          Arc new_arc;
+          new_arc.src_state = src_idx1;
+          new_arc.dest_state = dest_idx1;
+          new_arc.score = arc.score;
+          new_arc.label = arc.label;
+          remaining_arcs_data[arc_idx012] = new_arc;
+        });
+
     if (arc_map != nullptr)
       *arc_map = new2old_map_arcs.Clone();
 
@@ -423,7 +474,7 @@ class Connecter {
   Ragged<int32_t> dest_states_;
   Ragged<int32_t> incoming_arcs_;
   Array1<char> accessible_;
-  Array1<char> coaccessible_; 
+  Array1<char> coaccessible_;
 };
 
 void Connect(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map) {
