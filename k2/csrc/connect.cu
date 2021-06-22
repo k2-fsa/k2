@@ -472,8 +472,14 @@ class Connecter {
   // For each arc in fsas_ (with same structure as fsas_), dest-state
   // of that arc as an idx01.
   Ragged<int32_t> dest_states_;
+  // For each state in fsas_ (with same structure as fsas_), incoming-arc
+  // of that state as an idx012.
   Ragged<int32_t> incoming_arcs_;
+  // With the Dim() the same as num-states, to mark the state (as an idx01) to
+  // be accessible or not
   Array1<char> accessible_;
+  // With the Dim() the same as num-states, to mark the state (as an idx01) to
+  // be coaccessible or not
   Array1<char> coaccessible_;
 };
 

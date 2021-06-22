@@ -1,5 +1,5 @@
 /**
- * Copyright      2021  Mobvoi Inc.        (authors: Wei Kang)
+ * Copyright      2021  Xiaomi Corporation (authors: Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
