@@ -59,7 +59,7 @@ TEST(Connect, SingleFsa) {
   }
 }
 
-TEST(Connect, CycleFsa) {
+TEST(Connect, CyclicFsa) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     std::string s = R"(0 1 1 1
       0 2 2 2
