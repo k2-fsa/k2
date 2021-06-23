@@ -69,7 +69,7 @@ class Connecter {
                              fsas_row_splits2_data[fsas_idx01];
           num_arcs_per_state_data[states_idx01] = num_arcs;
           // Accessible
-          accessible_data[states_data[states_idx01]] = 1;
+          accessible_data[fsas_idx01]] = 1;
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
@@ -82,7 +82,7 @@ class Connecter {
     // idx01 into fsas_).  Other elements will be undefined.
     Array1<int32_t> next_iter_states(c_, arcs_shape.NumElements());
 
-    // We'll be figuring out which of these arcs leads to a state that are not
+    // We'll be figuring out which of these arcs lead to a state that is not
     // accessible yet.
     Renumbering arc_renumbering(c_, arcs_shape.NumElements());
 
@@ -143,10 +143,10 @@ class Connecter {
     RowIdsToRowSplits(new_states_row_ids, &new_states_row_splits);
 
     std::unique_ptr<Ragged<int32_t>> ans = std::make_unique<Ragged<int32_t>>(
-        RaggedShape2(&new_states_row_splits, &new_states_row_ids, -1),
+        RaggedShape2(&new_states_row_splits, &new_states_row_ids, new_states.Dim()),
         new_states);
     // The following will ensure the answer has deterministic numbering
-    SortSublists(ans.get(), nullptr);
+    SortSublists(ans.get());
     return ans;
   }
 
