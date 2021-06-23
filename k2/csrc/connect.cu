@@ -142,7 +142,7 @@ class Connecter {
     Array1<int32_t> new_states_row_splits(c_, num_fsas + 1);
     RowIdsToRowSplits(new_states_row_ids, &new_states_row_splits);
 
-    std::unique_ptr<Ragged<int32_t>> ans = std::make_unique<Ragged<int32_t>>(
+    auto ans = std::make_unique<Ragged<int32_t>>(
         RaggedShape2(&new_states_row_splits, &new_states_row_ids, new_states.Dim()),
         new_states);
     // The following will ensure the answer has deterministic numbering
@@ -162,7 +162,7 @@ class Connecter {
     // Process arcs entering all states in `cur`
 
     // First figure out how many arcs enter each state.
-    // And set accessible for each state
+    // And set coaccessible for each state
     Array1<int32_t> num_arcs_per_state(c_, cur_states.NumElements() + 1);
     int32_t *num_arcs_per_state_data = num_arcs_per_state.Data();
     const int32_t *incoming_arcs_row_splits2_data =
@@ -170,13 +170,13 @@ class Connecter {
                   *states_data = cur_states.values.Data();
     char *coaccessible_data = coaccessible_.Data();
     K2_EVAL(
-        c_, cur_states.NumElements(), lambda_set_arcs_and_accessible_per_state,
+        c_, cur_states.NumElements(), lambda_set_arcs_and_coaccessible_per_state,
         (int32_t states_idx01)->void {
           int32_t fsas_idx01 = states_data[states_idx01],
                   num_arcs = incoming_arcs_row_splits2_data[fsas_idx01 + 1] -
                              incoming_arcs_row_splits2_data[fsas_idx01];
           num_arcs_per_state_data[states_idx01] = num_arcs;
-          // Accessible
+          // Coaccessible
           coaccessible_data[states_data[states_idx01]] = 1;
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
@@ -260,10 +260,10 @@ class Connecter {
     RowIdsToRowSplits(new_states_row_ids, &new_states_row_splits);
 
     std::unique_ptr<Ragged<int32_t>> ans = std::make_unique<Ragged<int32_t>>(
-        RaggedShape2(&new_states_row_splits, &new_states_row_ids, -1),
+        RaggedShape2(&new_states_row_splits, &new_states_row_ids, new_states.Dim()),
         new_states);
     // The following will ensure the answer has deterministic numbering
-    SortSublists(ans.get(), nullptr);
+    SortSublists(ans.get());
     return ans;
   }
 
@@ -356,7 +356,7 @@ class Connecter {
     while (iter != nullptr)
       iter = GetNextBatch(*iter);
 
-    // Mard coaccessible states
+    // Mark coaccessible states
     std::unique_ptr<Ragged<int32_t>> riter = GetFinalBatch();
     while (riter != nullptr)
       riter = GetNextBatchBackward(*riter);
