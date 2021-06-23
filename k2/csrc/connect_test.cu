@@ -205,7 +205,7 @@ TEST(Connect, RandomFsaVec) {
 
     FsaVec connected;
     Array1<int32_t> arc_map;
-    TopSort(fsa_vec, &connected, &arc_map);
+    Connect(fsa_vec, &connected, &arc_map);
 
     GetFsaVecBasicProperties(connected, &properties, &p);
 

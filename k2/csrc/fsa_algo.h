@@ -36,7 +36,7 @@ namespace k2 {
     @param [out,optional] arc_map   For each arc in `dest`, gives the index of
                          the corresponding arc in `src` that it corresponds to.
  */
-void Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
+void Connect(FsaOrVec &src, FsaOrVec *dest, Array1<int32_t> *arc_map = nullptr);
 
 /*
   This version of Connect() is just a wrapper of `Connection` in host/connect.h

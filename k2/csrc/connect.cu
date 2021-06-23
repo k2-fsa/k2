@@ -21,15 +21,17 @@
 
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/context.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/thread_pool.h"
 
 namespace k2 {
 
 class Connecter {
  public:
   /**
-     Connecter object.  You should call Connect() after
+     Connector object.  You should call Connect() after
      constructing it.  Please see Connect() declaration in header for
      high-level overview of the algorithm.
 
@@ -87,7 +89,6 @@ class Connecter {
     const int32_t *arcs_row_ids1_data = arcs_shape.RowIds(1).Data(),
                   *arcs_row_ids2_data = arcs_shape.RowIds(2).Data(),
                   *arcs_row_splits2_data = arcs_shape.RowSplits(2).Data(),
-                  *fsas_row_splits1_data = fsas_.RowSplits(1).Data(),
                   *dest_states_data = dest_states_.values.Data();
     char *keep_arc_data = arc_renumbering.Keep().Data();
     int32_t *next_iter_states_data = next_iter_states.Data();
@@ -140,10 +141,8 @@ class Connecter {
     RowIdsToRowSplits(new_states_row_ids, &new_states_row_splits);
 
     auto ans = std::make_unique<Ragged<int32_t>>(
-        RaggedShape2(&new_states_row_splits, &new_states_row_ids, new_states.Dim()),
-        new_states);
-    // The following will ensure the answer has deterministic numbering
-    SortSublists(ans.get());
+        RaggedShape2(&new_states_row_splits, &new_states_row_ids,
+                     new_states.Dim()), new_states);
     return ans;
   }
 
@@ -167,14 +166,15 @@ class Connecter {
                   *states_data = cur_states.values.Data();
     char *coaccessible_data = coaccessible_.Data();
     K2_EVAL(
-        c_, cur_states.NumElements(), lambda_set_arcs_and_coaccessible_per_state,
+        c_, cur_states.NumElements(),
+        lambda_set_arcs_and_coaccessible_per_state,
         (int32_t states_idx01)->void {
           int32_t fsas_idx01 = states_data[states_idx01],
                   num_arcs = incoming_arcs_row_splits2_data[fsas_idx01 + 1] -
                              incoming_arcs_row_splits2_data[fsas_idx01];
           num_arcs_per_state_data[states_idx01] = num_arcs;
           // Coaccessible
-          coaccessible_data[states_data[states_idx01]] = 1;
+          coaccessible_data[fsas_idx01] = 1;
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
@@ -195,7 +195,6 @@ class Connecter {
                   *arcs_row_ids2_data = arcs_shape.RowIds(2).Data(),
                   *arcs_row_splits2_data = arcs_shape.RowSplits(2).Data(),
                   *fsas_row_splits1_data = fsas_.RowSplits(1).Data(),
-                  *fsas_row_splits2_data = fsas_.RowSplits(2).Data(),
                   *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
                   *incoming_arcs_data = incoming_arcs_.values.Data();
     const Arc *fsas_data = fsas_.values.Data();
@@ -254,11 +253,9 @@ class Connecter {
     Array1<int32_t> new_states_row_splits(c_, num_fsas + 1);
     RowIdsToRowSplits(new_states_row_ids, &new_states_row_splits);
 
-    std::unique_ptr<Ragged<int32_t>> ans = std::make_unique<Ragged<int32_t>>(
+    auto ans = std::make_unique<Ragged<int32_t>>(
         RaggedShape2(&new_states_row_splits, &new_states_row_ids,
         new_states.Dim()), new_states);
-    // The following will ensure the answer has deterministic numbering
-    SortSublists(ans.get());
     return ans;
   }
 
@@ -281,7 +278,7 @@ class Connecter {
     ExclusiveSum(has_start_state, &has_start_state);
 
     int32_t n = has_start_state[num_fsas];
-    std::unique_ptr<Ragged<int32_t>> ans = std::make_unique<Ragged<int32_t>>(
+    auto ans = std::make_unique<Ragged<int32_t>>(
         RaggedShape2(&has_start_state, nullptr, n), Array1<int32_t>(c_, n));
     int32_t *ans_data = ans->values.Data();
     const int32_t *ans_row_ids1_data = ans->RowIds(1).Data();
@@ -335,6 +332,33 @@ class Connecter {
     return ans;
   }
 
+  /*
+    Traverse the fsa from start states to mark the accessible states.
+   */
+  static void ForwardPassStatic(Connecter* c) {
+    // WARNING(fangjun): this is run in a separate thread, so we have
+    // to reset its default device. Otherwise, it will throw later
+    // if the main thread is using a different device.
+    DeviceGuard guard(c->c_);
+    auto iter = c->GetStartBatch();
+    while (iter != nullptr)
+      iter = c->GetNextBatch(*iter);
+  }
+
+  /*
+    Traverse the fsa in reverse order (from final states) to mark the
+    coaccessible states.
+   */
+  static void BackwardPassStatic(Connecter* c) {
+    // WARNING(fangjun): this is run in a separate thread, so we have
+    // to reset its default device. Otherwise, it will throw later
+    // if the main thread is using a different device.
+    DeviceGuard guard(c->c_);
+    auto riter = c->GetFinalBatch();
+    while (riter != nullptr)
+      riter = c->GetNextBatchBackward(*riter);
+  }
+
   /* Does the main work of connecting and returns the resulting FSAs.
         @param [out] arc_map  if non-NULL, the map from (arcs in output)
                      to (corresponding arcs in input) is written to here.
@@ -346,15 +370,12 @@ class Connecter {
     dest_states_ = Ragged<int32_t>(fsas_.shape, dest_states_idx01);
     incoming_arcs_ = GetIncomingArcs(fsas_, dest_states_idx01);
 
+    ThreadPool* pool = GetThreadPool();
     // Mark accessible states
-    std::unique_ptr<Ragged<int32_t>> iter = GetStartBatch();
-    while (iter != nullptr)
-      iter = GetNextBatch(*iter);
-
+    pool->SubmitTask([this]() { ForwardPassStatic(this); });
     // Mark coaccessible states
-    std::unique_ptr<Ragged<int32_t>> riter = GetFinalBatch();
-    while (riter != nullptr)
-      riter = GetNextBatchBackward(*riter);
+    pool->SubmitTask([this]() { BackwardPassStatic(this); });
+    pool->WaitAllTasksFinished();
 
     // Get remaining states and construct row_ids1/row_splits1
     int32_t num_states = fsas_.shape.TotSize(1);
@@ -453,11 +474,12 @@ class Connecter {
         });
 
     if (arc_map != nullptr)
-      *arc_map = new2old_map_arcs.Clone();
+      *arc_map = std::move(new2old_map_arcs);
 
-    return Ragged<Arc>(RaggedShape3(&new_row_splits1, &new_row_ids1, -1,
-                                    &new_row_splits2, &new_row_ids2, -1),
-                       remaining_arcs);
+    return Ragged<Arc>(
+        RaggedShape3(&new_row_splits1, &new_row_ids1, new2old_map_states.Dim(),
+                     &new_row_splits2, &new_row_ids2, remaining_arcs_num),
+                     remaining_arcs);
   }
 
   ContextPtr c_;
@@ -477,14 +499,14 @@ class Connecter {
   Array1<char> coaccessible_;
 };
 
-void Connect(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map) {
+void Connect(FsaOrVec &src, FsaOrVec *dest,
+             Array1<int32_t> *arc_map /* = nullptr */) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(src.NumAxes(), 2);
   K2_CHECK_LE(src.NumAxes(), 3);
   if (src.NumAxes() == 2) {
     // Turn single Fsa into FsaVec.
-    Fsa *srcs = &src;
-    FsaVec src_vec = CreateFsaVec(1, &srcs), dest_vec;
+    FsaVec src_vec = FsaToFsaVec(src), dest_vec;
     // Recurse..
     Connect(src_vec, &dest_vec, arc_map);
     *dest = GetFsaVecElement(dest_vec, 0);
