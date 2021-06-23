@@ -42,8 +42,6 @@ class Connecter {
     coaccessible_ = Array1<char>(c_, num_states, 0);
   }
 
-  int32_t NumFsas() const { return fsas_.Dim0(); }
-
   /*
     Computes the next batch of states
          @param [in] cur_states  Ragged array with 2 axes, containing
@@ -88,7 +86,6 @@ class Connecter {
 
     const int32_t *arcs_row_ids1_data = arcs_shape.RowIds(1).Data(),
                   *arcs_row_ids2_data = arcs_shape.RowIds(2).Data(),
-                  *arcs_row_splits1_data = arcs_shape.RowSplits(1).Data(),
                   *arcs_row_splits2_data = arcs_shape.RowSplits(2).Data(),
                   *fsas_row_splits1_data = fsas_.RowSplits(1).Data(),
                   *dest_states_data = dest_states_.values.Data();
@@ -106,8 +103,8 @@ class Connecter {
                   fsas_idx01x = fsas_row_splits2_data[fsas_idx01],
                   fsas_idx012 = fsas_idx01x + arcs_idx2,
                   fsas_dest_state_idx01 = dest_states_data[fsas_idx012];
-          // if this arc is a self-loop, just ignore this arc as we have
-          // processed the dest_state (==src_state)
+          // if this arc is a self-loop, just ignore this arc as we won't
+          // processe the dest_state (current state) again
           if (fsas_dest_state_idx01 == fsas_idx01 ||
               accessible_data[fsas_dest_state_idx01]) {
             keep_arc_data[arcs_idx012] = 0;
@@ -196,12 +193,10 @@ class Connecter {
 
     const int32_t *arcs_row_ids1_data = arcs_shape.RowIds(1).Data(),
                   *arcs_row_ids2_data = arcs_shape.RowIds(2).Data(),
-                  *arcs_row_splits1_data = arcs_shape.RowSplits(1).Data(),
                   *arcs_row_splits2_data = arcs_shape.RowSplits(2).Data(),
                   *fsas_row_splits1_data = fsas_.RowSplits(1).Data(),
                   *fsas_row_splits2_data = fsas_.RowSplits(2).Data(),
                   *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
-                  *dest_states_data = dest_states_.values.Data(),
                   *incoming_arcs_data = incoming_arcs_.values.Data();
     const Arc *fsas_data = fsas_.values.Data();
     char *keep_arc_data = arc_renumbering.Keep().Data();
@@ -223,8 +218,8 @@ class Connecter {
                   fsas_src_state_idx0x = fsas_row_splits1_data[fsas_idx0],
                   fsas_src_state_idx01 =
                     fsas_src_state_idx0x + fsas_src_state_idx1;
-          // if this arc is a self-loop, just ignore this arc as we have
-          // processed the dest_state (==src_state)
+          // if this arc is a self-loop, just ignore this arc as we won't
+          // processe the src_state (current state) again.
           if (fsas_src_state_idx01 == fsas_idx01 ||
               coaccessible_data[fsas_src_state_idx01]) {
             keep_arc_data[arcs_idx012] = 0;
@@ -260,8 +255,8 @@ class Connecter {
     RowIdsToRowSplits(new_states_row_ids, &new_states_row_splits);
 
     std::unique_ptr<Ragged<int32_t>> ans = std::make_unique<Ragged<int32_t>>(
-        RaggedShape2(&new_states_row_splits, &new_states_row_ids, new_states.Dim()),
-        new_states);
+        RaggedShape2(&new_states_row_splits, &new_states_row_ids,
+        new_states.Dim()), new_states);
     // The following will ensure the answer has deterministic numbering
     SortSublists(ans.get());
     return ans;
@@ -273,7 +268,7 @@ class Connecter {
    */
   std::unique_ptr<Ragged<int32_t>> GetStartBatch() {
     NVTX_RANGE(K2_FUNC);
-    int32_t num_fsas = NumFsas();
+    int32_t num_fsas = fsas_.Dim0();
     const int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
     Array1<int32_t> has_start_state(c_, num_fsas + 1);
     int32_t *has_start_state_data = has_start_state.Data();
@@ -310,7 +305,7 @@ class Connecter {
    */
   std::unique_ptr<Ragged<int32_t>> GetFinalBatch() {
     NVTX_RANGE(K2_FUNC);
-    int32_t num_fsas = NumFsas();
+    int32_t num_fsas = fsas_.Dim0();
     const int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
     Array1<int32_t> has_final_state(c_, num_fsas + 1);
     int32_t *has_final_state_data = has_final_state.Data();
@@ -378,7 +373,7 @@ class Connecter {
     Array1<int32_t> new2old_map_states = states_renumbering.New2Old();
     Array1<int32_t> old2new_map_states = states_renumbering.Old2New();
     Array1<int32_t> new_row_ids1 = fsas_.RowIds(1)[new2old_map_states];
-    Array1<int32_t> new_row_splits1(c_, NumFsas() + 1);
+    Array1<int32_t> new_row_splits1(c_, fsas_.Dim0() + 1);
     RowIdsToRowSplits(new_row_ids1, &new_row_splits1);
 
     // Get remaining arcs
@@ -388,8 +383,7 @@ class Connecter {
     const Arc *fsas_data = fsas_.values.Data();
     const int32_t *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
                   *fsas_row_ids2_data = fsas_.RowIds(2).Data(),
-                  *fsas_row_splits1_data = fsas_.RowSplits(1).Data(),
-                  *fsas_row_splits2_data = fsas_.RowSplits(2).Data();
+                  *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
     K2_EVAL(
         c_, num_arcs, lambda_set_arcs_renumbering,
         (int32_t arc_idx012)->void {
