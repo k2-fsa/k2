@@ -67,7 +67,7 @@ class Connecter {
                              fsas_row_splits2_data[fsas_idx01];
           num_arcs_per_state_data[states_idx01] = num_arcs;
           // Accessible
-          accessible_data[fsas_idx01]] = 1;
+          accessible_data[fsas_idx01] = 1;
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
