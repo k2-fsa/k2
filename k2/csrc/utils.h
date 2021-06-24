@@ -172,7 +172,7 @@ namespace k2 {
      and its rules.
 
   Note: We also have a naming convention according to the index naming scheme
-        above. For a Ragged array with index `[fsa][state][arc]`(say, a FsaVec),
+        above. For a Ragged array with index `[fsa][state][arc]` (say, an FsaVec),
         we usually call `idx0` as `fsa_idx0`, `idx01` as `state_idx01`, `idx012`
         as `arc_idx012`, that is, `theThingWeIndex_idx0[123]`.
 */

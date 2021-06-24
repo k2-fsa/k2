@@ -48,7 +48,7 @@ class Connector {
   /*
     Computes the next batch of states
          @param [in] cur_states  Ragged array with 2 axes, with the shape
-    `[fsa][state]` containing state-indexes (idx01) into fsas_.
+    `[fsa][state]`, containing state-indexes (idx01) into fsas_.
          @return   Returns the states which, after processing.
    */
   std::unique_ptr<Ragged<int32_t>> GetNextBatch(Ragged<int32_t> &cur_states) {
@@ -74,7 +74,7 @@ class Connector {
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
-    // arcs_shape `[fsa][state][arc]
+    // arcs_shape `[fsa][state][arc]`
     RaggedShape arcs_shape = ComposeRaggedShapes(
         cur_states.shape, RaggedShape2(&num_arcs_per_state, nullptr, -1));
 
@@ -192,7 +192,7 @@ class Connector {
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
-    // arcs_shape `[fsa][state][arc]
+    // arcs_shape `[fsa][state][arc]`
     RaggedShape arcs_shape = ComposeRaggedShapes(
         cur_states.shape, RaggedShape2(&num_arcs_per_state, nullptr, -1));
 
