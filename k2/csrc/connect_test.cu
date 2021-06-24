@@ -49,6 +49,7 @@ TEST(Connect, SingleFsa) {
     Fsa connected;
     Array1<int32_t> arc_map;
     Connect(fsa, &connected, &arc_map);
+
     Fsa ref = Fsa("[ [ 0 2 1 1 0 3 3 3 ] [ 1 4 -1 0 ] "
                   "  [ 2 1 2 2 ] [ 3 1 4 4 ] [ ] ]").To(c);
     Array1<int32_t> arc_map_ref(c, "[ 0 1 3 4 5 ]");
