@@ -785,8 +785,6 @@ TEST(FsaAlgo, TestExpandArcsRandom) {
       // note: by default, IsRandEquivalent() does treat epsilons specially,
       // which is what we want.
       K2_CHECK(IsRandEquivalent(fsas, fsas_expanded, false));
-      // K2_LOG(INFO) << "fsa_arc_map = " << fsa_arc_map
-      ///                   << ", labels_arc_map = " << labels_arc_map;
     }
   }
 }
@@ -1043,6 +1041,7 @@ TEST(FsaAlgo, TestRemoveEplsionSelfRandomFsas) {
 }
 
 TEST(FsaAlgo, TestReplaceFsaA) {
+  // Test when index fsa is empty
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     FsaVec src = FsaVec(" [ [ [ 0 1 1 1.0 0 2 2 2.0 ] [ 1 3 -1 0.0 ] "
                           "     [ 2 3 -1 0 ] [ ] ] ]").To(c);
@@ -1056,6 +1055,7 @@ TEST(FsaAlgo, TestReplaceFsaA) {
 }
 
 TEST(FsaAlgo, TestReplaceFsaB) {
+  // Test when src FsaVes is empty
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     FsaVec src = FsaVec("[ [ [ ] [ ] ] ]").To(c);
     FsaVec index = FsaVec(" [ [ [ 0 1 1 1.0 0 2 2 2.0 ] [ 1 3 -1 0.0 ] "
@@ -1102,6 +1102,95 @@ TEST(FsaAlgo, TestReplaceFsaC) {
     K2_CHECK(Equal(replaced_fsa, replaced_fsa_ref));
     K2_CHECK(Equal(arc_src_map, arc_src_map_ref));
     K2_CHECK(Equal(arc_index_map, arc_index_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestReplaceFsaD) {
+  // Test symbol_range_begin with nonzero value
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec src = FsaVec("[ [ [ 0 1 11 11.0 ] [ 1 2 12 12.0 ] "
+                        "    [ 2 3 -1 0.0] [ ] ] "
+                        "  [ [ 0 1 21 21.0 0 2 22 22.0 ] "
+                        "    [ 1 3 -1 0.0 ] [2 3 -1 0.0] [ ] ] "
+                        "  [ [ 0 1 31 31.0 0 2 33 33.0 ] "
+                        "    [ 1 2 32 32.0 ] [ 2 3 -1 0.0 ] [ ] ] ]").To(c);
+    FsaVec index = FsaVec(" [ [ [ 0 1 1 1.0 0 2 2 2.0 ] [ 1 3 3 3.0 ] "
+                          "     [ 2 4 4 4.0 2 5 -1 0.0 ] [ 3 5 -1 0.0 ] "
+                          "     [ 4 5 -1 0 ] [ ] ] ]").To(c);
+    Array1<int32_t> arc_src_map, arc_index_map;
+    FsaVec replaced_fsa =
+        ReplaceFsa(src, index, 2, &arc_src_map, &arc_index_map);
+
+    Array1<int32_t> arc_src_map_ref(c,
+        "[ -1 -1 0 1 2 -1 3 4 5 6 -1 -1 7 8 9 10 -1 -1 ]"),
+                    arc_index_map_ref(c,
+        "[ 0 1 -1 -1 -1 2 -1 -1 -1 -1 3 4 -1 -1 -1 -1 5 6 ]");
+
+    FsaVec replaced_fsa_ref = FsaVec("[ [ [ 0 4 1 1 0 1 0 2 ] "
+        "    [ 1 2 11 11 ] [ 2 3 12 12 ] [ 3 8 0 0 ] "
+        "    [ 4 5 0 3 ] [ 5 6 21 21 5 7 22 22] [ 6 12 0 0 ] [ 7 12 0 0 ] "
+        "    [ 8 9 0 4 8 14 -1 0 ] [ 9 10 31 31 9 11 33 33 ] [ 10 11 32 32 ] "
+        "    [ 11 13 0 0 ] [ 12 14 -1 0 ] [ 13 14 -1 0 ] [ ] ] ]").To(c);
+
+    K2_CHECK(Equal(replaced_fsa, replaced_fsa_ref));
+    K2_CHECK(Equal(arc_src_map, arc_src_map_ref));
+    K2_CHECK(Equal(arc_index_map, arc_index_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestReplaceRandom) {
+  int32_t min_num_fsas = 1;
+  int32_t max_num_fsas = 50;
+  int32_t max_symbol = 100;
+  int32_t min_num_arcs = max_num_fsas * 2;
+  int32_t max_num_arcs = 1000;
+  ContextPtr cpu = GetCpuContext();
+  Array1<int32_t> symbol_range_begin =
+    RandUniformArray1(cpu, 5, 0, max_symbol);
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i < 5; i++) {
+      bool acyclic = RandInt(0, 1);
+      FsaVec index = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
+                                  max_symbol, min_num_arcs, max_num_arcs)
+                                 .To(context);
+
+      acyclic = RandInt(0, 1);
+      FsaVec src = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
+                                max_symbol, min_num_arcs, max_num_arcs)
+                                .To(context);
+      Array1<int32_t> arc_src_map, arc_index_map;
+      FsaVec replaced_fsa =
+        ReplaceFsa(src, index, symbol_range_begin[i],
+                   &arc_src_map, &arc_index_map);
+      replaced_fsa = replaced_fsa.To(cpu);
+      index = index.To(cpu);
+      src = src.To(cpu);
+      const Arc *replaced_values_data = replaced_fsa.values.Data(),
+                *index_values_data = index.values.Data(),
+                *src_values_data = src.values.Data();
+      for (int32_t k = 0; k < replaced_fsa.NumElements(); ++k) {
+        if (arc_src_map[k] == -1) {
+          EXPECT_NE(arc_index_map[k], -1);
+          EXPECT_EQ(replaced_values_data[k].score,
+                    index_values_data[arc_index_map[k]].score);
+          int32_t label = index_values_data[arc_index_map[k]].label;
+          if (label >= symbol_range_begin[i] &&
+              label < src.Dim0() + symbol_range_begin[i])
+            EXPECT_EQ(replaced_values_data[k].label, 0);
+          else
+            EXPECT_EQ(replaced_values_data[k].label, label);
+        } else {
+          EXPECT_NE(arc_src_map[k], -1);
+          EXPECT_EQ(replaced_values_data[k].score,
+                    src_values_data[arc_src_map[k]].score);
+          int32_t label = src_values_data[arc_src_map[k]].label;
+          if (label == -1)
+            EXPECT_EQ(replaced_values_data[k].label, 0);
+          else
+            EXPECT_EQ(replaced_values_data[k].label, label);
+        }
+      }
+    }
   }
 }
 

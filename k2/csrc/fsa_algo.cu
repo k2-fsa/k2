@@ -1277,7 +1277,9 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
   // state itself"), then `num_ostates_for[idx01] = 1`, meaning "keep the
   // original state".  Otherwise, idx1 - 1 represents an arc_idx2 [into `index`]
   // and we set `num_ostates_for[idx01] = max(0, state_num-1)`, where state_num
-  // is the states count of the fsa in `src` that would repalce into this arc.
+  // is the states number of the fsa in `src` that would repalce into this arc,
+  // the final state of this fsa will identify with the dest-state of this arc,
+  // so we minus 1.
   Array1<int32_t> num_ostates_for(c, foo_size + 1);
   int32_t *num_ostates_for_data = num_ostates_for.Data();
   const Arc *index_arcs_data = index.values.Data();
@@ -1362,19 +1364,22 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
           num_arcs = orig_num_arcs;
         } else {
           // All inserted states have the same num of arcs as in the src.
+          // note: the prefix `index_` means it is an idxXXX w.r.t. `index`.
+          // the prefix `src_` means the variable is an idxXXX w.r.t. `src`.
           int32_t index_arc_idx2 = idx2 - 1,
                   index_arc_idx01x = index_row_splits2_data[idx01],
                   index_arc_idx012 = index_arc_idx01x + index_arc_idx2,
                   index_label = index_arcs_data[index_arc_idx012].label,
-                  src_idx0 = index_label - symbol_range_begin;
-          K2_CHECK_GE(src_idx0, 0);
-          K2_CHECK_LT(src_idx0, num_src_fsas);
-          int32_t src_idx1 = idx3,
-                  src_idx0x = src_row_splits1_data[src_idx0],
-                  src_idx01 = src_idx0x + src_idx1,
-                  src_idx01x = src_row_splits2_data[src_idx01],
-                  src_idx01x_next = src_row_splits2_data[src_idx01 + 1],
-                  src_num_arcs = src_idx01x_next - src_idx01x;
+                  src_fsa_idx0 = index_label - symbol_range_begin;
+          K2_CHECK_GE(src_fsa_idx0, 0);
+          K2_CHECK_LT(src_fsa_idx0, num_src_fsas);
+          int32_t src_state_idx1 = idx3,
+                  src_state_idx0x = src_row_splits1_data[src_fsa_idx0],
+                  src_state_idx01 = src_state_idx0x + src_state_idx1,
+                  src_arc_idx01x = src_row_splits2_data[src_state_idx01],
+                  src_arc_idx01x_next =
+                    src_row_splits2_data[src_state_idx01 + 1],
+                  src_num_arcs = src_arc_idx01x_next - src_arc_idx01x;
           num_arcs = src_num_arcs;
         }
         num_oarcs_data[idx0123] = num_arcs;
@@ -1388,7 +1393,7 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
   RaggedShape full_shape =
       ComposeRaggedShapes(to_ostates_shape, ostate_to_oarcs);
 
-  // for the lower-order row-splits and row-ids, use tot_row_{splits,idx}n_data
+  // for the lower-order row-splits and row-ids, use tot_row_{splits,ids}n_data
   const int32_t *full_row_splits4_data = full_shape.RowSplits(4).Data(),
                 *full_row_ids4_data = full_shape.RowIds(4).Data();
   int32_t tot_oarcs = full_shape.NumElements();
@@ -1411,37 +1416,41 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
       c, tot_oarcs, lambda_set_arcs, (int32_t idx01234)->void {
         // All these indexes are into `full_shape`, indexed
         // `[fsa][state][foo][ostate][oarc].`
+        // The prefix `index_` means it is an idxXXX w.r.t. `index`.
+        // the prefix `src_` means the variable is an idxXXX w.r.t. `src`.
         int32_t idx0123 = full_row_ids4_data[idx01234],
                 idx0123x = full_row_splits4_data[idx0123],
-                idx4 = idx01234 - idx0123x, idx012 = tos_row_ids3_data[idx0123],
+                idx4 = idx01234 - idx0123x,
+                idx012 = tos_row_ids3_data[idx0123],
                 idx012x = tos_row_splits3_data[idx012],
-                idx3 = idx0123 - idx012x, idx01 = tos_row_ids2_data[idx012],
-                idx01x = tos_row_splits2_data[idx01], idx2 = idx012 - idx01x,
+                idx3 = idx0123 - idx012x,
+                idx01 = tos_row_ids2_data[idx012],
+                idx01x = tos_row_splits2_data[idx01],
+                idx2 = idx012 - idx01x,
                 idx0 = tos_row_ids1_data[idx01],
                 idx0x = tos_row_splits1_data[idx0],
                 idx0xxx = tos_row_splits3_data[tos_row_splits2_data[idx0x]];
 
-        int32_t index_idx2;  // the idx2 (arc-index) into `index`
+        int32_t index_arc_idx2;  // the idx2 (arc-index) into `index`
         if (idx2 == 0) {
           K2_CHECK_EQ(idx3, 0);
-          index_idx2 = idx4;  // corresponds to foo=0, so idx3 will be 0;
-                              // the idx4 enumerates the arcs leaving it..
+          index_arc_idx2 = idx4;  // corresponds to foo=0, so idx3 will be 0;
+                                  // the idx4 enumerates the arcs leaving it..
         } else {
           // this is one of the extra `foo` indexes, it's conrespoding index
           // into `index` is `foo` index minus 1
-          index_idx2 = idx2 - 1;
+          index_arc_idx2 = idx2 - 1;
         }
 
-        int32_t index_idx01x = index_row_splits2_data[idx01];
-        int32_t index_idx012 = index_idx01x + index_idx2; // index of the arc in
-                                                          // source FSA FSA that
-                                                          // we're replaceing..
+        int32_t index_arc_idx01x = index_row_splits2_data[idx01];
+        // index of the arc in source FSA, FSA that we're replaceing..
+        int32_t index_arc_idx012 = index_arc_idx01x + index_arc_idx2;
 
-        Arc index_arc = index_arcs_data[index_idx012];
-        int32_t dest_idx01 = idx0x + index_arc.dest_state,  // original destination
-                                                            // state-index
-            orig_dest_idx0123 =
-                tos_row_splits3_data[tos_row_splits2_data[dest_idx01]];
+        Arc index_arc = index_arcs_data[index_arc_idx012];
+        // original destination state-index
+        int32_t dest_state_idx01 = idx0x + index_arc.dest_state,
+                orig_dest_state_idx0123 =
+                  tos_row_splits3_data[tos_row_splits2_data[dest_state_idx01]];
 
         Arc src_arc;
         Arc oarc;
@@ -1449,27 +1458,27 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
         // initialize mapping index
         int32_t arc_src_map_idx = -1,
                 arc_index_map_idx = -1;
-        int32_t src_idx0 = index_arc.label - symbol_range_begin;
+        int32_t src_fsa_idx0 = index_arc.label - symbol_range_begin;
         // will not replace for this arc
         // dest state is the dest state of index arc
-        if (src_idx0 < 0 || src_idx0 >= num_src_fsas) {
+        if (src_fsa_idx0 < 0 || src_fsa_idx0 >= num_src_fsas) {
           K2_CHECK_EQ(idx2, 0);
-          oarc.dest_state = orig_dest_idx0123;
+          oarc.dest_state = orig_dest_state_idx0123;
           oarc.label = index_arc.label;
           oarc.score = index_arc.score;
-          arc_index_map_idx = index_idx012;
+          arc_index_map_idx = index_arc_idx012;
         } else {
-          int32_t src_idx0x = src_row_splits1_data[src_idx0],
-                  src_idx1 = idx3,
-                  src_idx01 = src_idx0x + src_idx1,
-                  src_idx01x = src_row_splits2_data[src_idx01],
-                  src_idx2 = idx4,
-                  src_idx012 = src_idx01x + src_idx2;
-          src_arc = src_arcs_data[src_idx012];
+          int32_t src_state_idx0x = src_row_splits1_data[src_fsa_idx0],
+                  src_state_idx1 = idx3,
+                  src_state_idx01 = src_state_idx0x + src_state_idx1,
+                  src_arc_idx01x = src_row_splits2_data[src_state_idx01],
+                  src_arc_idx2 = idx4,
+                  src_arc_idx012 = src_arc_idx01x + src_arc_idx2;
+          src_arc = src_arcs_data[src_arc_idx012];
           // the arc point to the final state of the fsa in src would point to
           // the dest state of the arc we're replaceing
           if (src_arc.label == -1) {
-            oarc.dest_state = orig_dest_idx0123;
+            oarc.dest_state = orig_dest_state_idx0123;
           } else {
             // this arc would point to the initial state of the fsa in src,
             // the state id bias is the count of all the ostates coresponding to
@@ -1489,15 +1498,16 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
             }
           }
           if (idx2 == 0) {
-            // add epsion arc before fsa in src
+            // set the label of the arc we are replacing to be 0(epsilon)
             oarc.label = 0;
             oarc.score = index_arc.score;
-            arc_index_map_idx = index_idx012;
+            arc_index_map_idx = index_arc_idx012;
           } else {
-            // replace -1 with epsion
+            // arcs in src fsas that point to final state would set to epsilon
+            // arc (label from -1 to 0)
             oarc.label = src_arc.label == -1 ? 0 : src_arc.label;
             oarc.score = src_arc.score;
-            arc_src_map_idx = src_idx012;
+            arc_src_map_idx = src_arc_idx012;
           }
         }
         if (arc_map_src_data)

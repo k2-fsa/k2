@@ -11,6 +11,7 @@ import torch
 
 from .fsa import Fsa
 from .ops import index
+from .ops import index_ragged
 from .ops import index_select
 from .symbol_table import SymbolTable
 import k2
@@ -504,7 +505,7 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
     return dest
 
 
-def fsa_from_bimary_function_tensor(
+def fsa_from_binary_function_tensor(
         a_fsa: Fsa,
         b_fsa: Fsa,
         dest_arcs: _k2.RaggedArc,
@@ -514,7 +515,7 @@ def fsa_from_bimary_function_tensor(
     '''Create an Fsa object, including autograd logic and propagating
     properties from the source FSAs.
 
-    This is intended to be called from bimary functions on FSAs where the
+    This is intended to be called from binary functions on FSAs where the
     arc_map is a Tensor of int32 (i.e. not ragged).
 
     Caution: Only the attributes with dtype `torch.float32` will be merged,
@@ -522,11 +523,11 @@ def fsa_from_bimary_function_tensor(
 
     Args:
       a_fsa:
-        The source Fsa, i.e. the arg to the bimary function.
+        The source Fsa, i.e. the arg to the binary function.
       b_fsa:
         The other source Fsa.
       dest_arcs:
-        The raw output of the bimary function, as output by whatever C++
+        The raw output of the binary function, as output by whatever C++
         algorithm we used.
       a_arc_map:
         A map from arcs in `dest_arcs` to the corresponding arc-index in `a_fsa`,

@@ -189,7 +189,7 @@ def intersect_device(
         a_fsas.arcs, a_fsas.properties, b_fsas.arcs, b_fsas.properties,
         b_to_a_map, need_arc_map, sorted_match_a)
 
-    out_fsas = k2.utils.fsa_from_bimary_function_tensor(a_fsas, b_fsas,
+    out_fsas = k2.utils.fsa_from_binary_function_tensor(a_fsas, b_fsas,
                                                         ragged_arc,
                                                         a_arc_map, b_arc_map)
     if ret_arc_maps:
@@ -272,7 +272,7 @@ def intersect(a_fsa: Fsa,
         a_fsa.arcs, a_fsa.properties, b_fsa.arcs, b_fsa.properties,
         treat_epsilons_specially, need_arc_map)
 
-    out_fsa = k2.utils.fsa_from_bimary_function_tensor(a_fsa, b_fsa, ragged_arc,
+    out_fsa = k2.utils.fsa_from_binary_function_tensor(a_fsa, b_fsa, ragged_arc,
                                                        a_arc_map, b_arc_map)
     if ret_arc_maps:
         return out_fsa, a_arc_map, b_arc_map
@@ -898,13 +898,24 @@ def replace_fsa(
         symbol_begin_range: int = 1,
         ret_arc_map: bool = False
 ) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:
-    '''Replace arcs in FSA with the corresponding fsas in a vector of FSAs.
+
+    '''
+    Replace arcs in index FSA with the corresponding fsas in a vector of
+    FSAs(src). For arcs in `index` with label
+    `symbol_range_begin <= label < symbol_range_begin + src.Dim0()` will be
+    replaced with fsa indexed `label - symbol_begin_range` in `src`.
+    The destination state of the arc in `index` is identified with the
+    `final-state` of the corresponding FSA in `src`, and the arc in `index`
+    will become an epsilon arc leading to a new state in the output that is
+    a copy of the start-state of the corresponding FSA in `src`. Arcs with
+    labels outside this range are just copied. Labels on final-arcs in `src`
+    (Which will be -1) would be set to 0(epsilon) in the result fsa.
 
     Caution: Attributes of the result inherits from `index` and `src` via
              `arc_map_index` and `arc_map_src`, But if there are attributes
              with same name, only the attributes with dtype `torch.float32`
              are supported, the other kinds of attributes are discarded.
-             See docs in `fsa_from_bimary_function_tensor` for details.
+             See docs in `fsa_from_binary_function_tensor` for details.
 
     Args:
       src:
@@ -922,8 +933,8 @@ def replace_fsa(
     (dest_arc, arc_map_src, arc_map_index) = _k2.replace_fsa(
         src.arcs, index.arcs, symbol_begin_range)
 
-    dest = k2.utils.fsa_from_bimary_function_tensor(src, index, dest_arc,
-                                                   arc_map_src, arc_map_index)
+    dest = k2.utils.fsa_from_binary_function_tensor(src, index, dest_arc,
+                                                    arc_map_src, arc_map_index)
     if ret_arc_map:
         return dest, arc_map_index, arc_map_src
     else:
