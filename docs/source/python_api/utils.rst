@@ -8,6 +8,11 @@ to_str
 
 .. autofunction:: to_str
 
+to_str_simple
+-------------
+
+.. autofunction:: to_str_simple
+
 to_tensor
 ---------
 

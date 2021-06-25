@@ -4,6 +4,18 @@
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * See LICENSE for clarification regarding multiple authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #ifndef K2_CSRC_FSA_ALGO_H_
@@ -365,7 +377,8 @@ void RemoveEpsilonHost(FsaOrVec &src, FsaOrVec *dest,
     @param [in] properties  Properties of `src`.  The only property that matters
                      is kFsaPropertiesTopSortedAndAcyclic (to
                      determine whether we can use RemoveEpsilonHost()).
-    @param [out] dest   The epsilon-removed FSA will be written to here
+    @param [out] dest   The epsilon-removed FSA will be written to here;
+                     it will be equivalent to `src` in the tropical semiring.
     @param [out] arc_derivs  If not nullptr, a ragged tensor with 2
                      axes will be written to here, with
                      `arc_derivs->Dim() == dest->NumElements()`.

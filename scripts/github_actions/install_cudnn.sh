@@ -1,6 +1,18 @@
 #!/bin/bash
 #
-# Copyright (c)  2020  Mobvoi Inc. (authors: Fangjun Kuang)
+# Copyright      2020  Mobvoi Inc. (authors: Fangjun Kuang)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 case $cuda in
   10.0)
@@ -33,9 +45,13 @@ function retry() {
   $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
 }
 
-retry wget https://raw.githubusercontent.com/Juvenal-Yescas/mediafire-dl/master/mediafire-dl.py
-sed -i 's/quiet=False/quiet=True/' mediafire-dl.py
-retry python3 mediafire-dl.py "$url"
+# It is forked from https://github.com/Juvenal-Yescas/mediafire-dl
+# https://github.com/Juvenal-Yescas/mediafire-dl/pull/2 changes the filename and breaks the CI.
+# We use a separate fork to keep the link fixed.
+retry wget https://raw.githubusercontent.com/csukuangfj/mediafire-dl/master/mediafire_dl.py
+
+sed -i 's/quiet=False/quiet=True/' mediafire_dl.py
+retry python3 mediafire_dl.py "$url"
 sudo tar xf ./$filename -C /usr/local
 rm -v ./$filename
 
