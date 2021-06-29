@@ -425,7 +425,7 @@ class Connector {
     // Get remaining arcs
     int32_t num_arcs = fsas_.NumElements();
     Renumbering arcs_renumbering(c_, num_arcs);
-    char* arcs_renumbering_data = arcs_renumbering.Keep().Data();
+    char *arcs_renumbering_data = arcs_renumbering.Keep().Data();
     const Arc *fsas_data = fsas_.values.Data();
     const int32_t *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
                   *fsas_row_ids2_data = fsas_.RowIds(2).Data(),
