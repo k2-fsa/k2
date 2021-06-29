@@ -47,7 +47,8 @@ class TestIndexAndSum(unittest.TestCase):
             ans = k2.index_and_sum(src, indexes)
             expected = torch.tensor([1 + 2, 0 + 3, 0 + 2 + 3 + 1 + 3,
                                      0]).to(src)
-            assert torch.all(torch.eq(ans, expected))
+            assert torch.all(torch.eq(ans, expected)), \
+                    f'ans: {ans}, expected: {expected}'
 
             # now for autograd
             scale = torch.tensor([10, 20, 30, 40]).to(device)
