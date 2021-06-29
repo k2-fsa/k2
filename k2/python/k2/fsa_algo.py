@@ -941,10 +941,11 @@ def replace_fsa(
           FSAs.
       symbol_range_begin:
           Beginning of the range of symbols that are to be replaced with Fsas.
-      ret_arc_map:  if true, will return a tuple (new_fsas, arc_map_index, arc_map_src)
-           with `arc_map_index` and `arc_map_src` a tensor of int32 that maps
-           from arcs in the result to arcs in `index` and `src`, with -1's for
-           the arcs not mapped. If false, just returns new_fsas.
+      ret_arc_map:  if true, will return a tuple
+           (new_fsas, arc_map_index, arc_map_src) with `arc_map_index` and
+           `arc_map_src` tensors of int32 that maps from arcs in the result to
+           arcs in `index` and `src` , with -1's for the arcs not mapped.
+           If false, just returns new_fsas.
     '''
     (dest_arc, arc_map_src, arc_map_index) = _k2.replace_fsa(
         src.arcs, index.arcs, symbol_begin_range)

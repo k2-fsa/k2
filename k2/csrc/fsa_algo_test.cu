@@ -1174,6 +1174,7 @@ TEST(FsaAlgo, TestReplaceRandom) {
       FsaVec replaced_fsa =
         ReplaceFsa(src, index, symbol_range_begin[i],
                    &arc_src_map, &arc_index_map);
+
       replaced_fsa = replaced_fsa.To(cpu);
       index = index.To(cpu);
       src = src.To(cpu);
@@ -1181,6 +1182,7 @@ TEST(FsaAlgo, TestReplaceRandom) {
                 *index_values_data = index.values.Data(),
                 *src_values_data = src.values.Data();
       for (int32_t k = 0; k < replaced_fsa.NumElements(); ++k) {
+        // This arc is from `index`
         if (arc_src_map[k] == -1) {
           EXPECT_NE(arc_index_map[k], -1);
           EXPECT_EQ(replaced_values_data[k].score,
@@ -1188,15 +1190,17 @@ TEST(FsaAlgo, TestReplaceRandom) {
           int32_t label = index_values_data[arc_index_map[k]].label;
           if (label >= symbol_range_begin[i] &&
               label < src.Dim0() + symbol_range_begin[i])
+            // label in range will change into epsilon arc
             EXPECT_EQ(replaced_values_data[k].label, 0);
           else
+            // label out-of-range just copied
             EXPECT_EQ(replaced_values_data[k].label, label);
-        } else {
+        } else { // This arc is from `src`
           EXPECT_NE(arc_src_map[k], -1);
           EXPECT_EQ(replaced_values_data[k].score,
                     src_values_data[arc_src_map[k]].score);
           int32_t label = src_values_data[arc_src_map[k]].label;
-          if (label == -1)
+          if (label == -1) // arc lead to final state
             EXPECT_EQ(replaced_values_data[k].label, 0);
           else
             EXPECT_EQ(replaced_values_data[k].label, label);
