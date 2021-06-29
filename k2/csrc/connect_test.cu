@@ -95,7 +95,8 @@ TEST(Connect, CyclicFsa) {
 TEST(Connect, RandomSingleFsa) {
   ContextPtr cpu = GetCpuContext();
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
-    Fsa fsa = GetRandFsa().To(c);
+    bool acyclic = RandInt(0, 1);
+    Fsa fsa = RandomFsa(acyclic).To(c);
     int32_t gt = kFsaPropertiesMaybeAccessible |
                  kFsaPropertiesMaybeCoaccessible;
 
@@ -105,11 +106,12 @@ TEST(Connect, RandomSingleFsa) {
     int32_t p = GetFsaBasicProperties(connected);
     EXPECT_EQ(p & gt, gt);
 
-    Array1<Arc> arcs = connected.values.To(cpu);
+    Array1<Arc> arcs = connected.values.To(cpu),
+                fsa_arcs = fsa.values.To(cpu);
     arc_map = arc_map.To(cpu);
     int32_t num_arcs = arcs.Dim();
     for (int32_t i = 0; i != num_arcs; ++i) {
-      EXPECT_EQ(arcs[i].score, arc_map[i]);
+      EXPECT_EQ(arcs[i].score, fsa_arcs[arc_map[i]].score);
     }
   }
 }
@@ -171,32 +173,11 @@ TEST(Connect, FsaVec) {
 }
 
 TEST(Connect, RandomFsaVec) {
-  int num_fsas = 1 + RandInt(0, 100);
   ContextPtr cpu = GetCpuContext();
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    std::vector<Fsa> fsas(num_fsas);
-    for (int32_t i = 0; i != num_fsas; ++i) {
-      fsas[i] = GetRandFsa();
-    }
+    bool acyclic = RandInt(0, 1);
 
-    int32_t offset = fsas[0].TotSize(1);
-    for (int32_t i = 1; i != num_fsas; ++i) {
-      Array1<Arc> &arcs = fsas[i].values;
-      Arc *arcs_data = arcs.Data();
-      int32_t num_arcs = arcs.Dim();
-      EXPECT_GT(num_arcs, 1);
-      for (int32_t k = 0; k != num_arcs; ++k) {
-        arcs_data[k].score += offset;
-      }
-      offset += num_arcs;
-    }
-
-    std::vector<Fsa *> fsa_array(num_fsas);
-    for (int32_t i = 0; i != num_fsas; ++i) {
-      fsa_array[i] = &fsas[i];
-    }
-
-    FsaVec fsa_vec = CreateFsaVec(num_fsas, &fsa_array[0]);
+    FsaVec fsa_vec = RandomFsaVec(1, 100, acyclic);
     fsa_vec = fsa_vec.To(c);
 
     int32_t gt = kFsaPropertiesMaybeAccessible |
@@ -212,16 +193,18 @@ TEST(Connect, RandomFsaVec) {
 
     EXPECT_EQ(p & gt, gt);
     properties = properties.To(cpu);
+    int32_t num_fsas = fsa_vec.Dim0();
     for (int32_t i = 0; i != num_fsas; ++i) {
       EXPECT_EQ(properties[i] & gt, gt);
     }
 
-    Array1<Arc> arcs = connected.values.To(cpu);
+    Array1<Arc> arcs = connected.values.To(cpu),
+                fsa_arcs = fsa_vec.values.To(cpu);
     arc_map = arc_map.To(cpu);
 
     int32_t num_arcs = connected.TotSize(2);
     for (int32_t i = 0; i != num_arcs; ++i) {
-      EXPECT_EQ(arcs[i].score, arc_map[i]);
+      EXPECT_EQ(arcs[i].score, fsa_arcs[arc_map[i]].score);
     }
   }
 }
