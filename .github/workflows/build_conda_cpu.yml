@@ -44,25 +44,25 @@ jobs:
       matrix:
         os: [ubuntu-16.04, macos-10.15]
         # anaconda does not support 3.9 as of 2021.05.08
-        python-version: [3.6, 3.7, 3.8, 3.9]
-        # python-version: [3.6, 3.7, 3.8]
+        # python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.6, 3.7, 3.8]
         # from https://download.pytorch.org/whl/torch_stable.html
         #
-        # PyTorch 1.8.x and 1.7.1 support 3.6, 3.7, 3.8, 3.9
+        # PyTorch 1.9.0, 1.8.x, and 1.7.1 support 3.6, 3.7, 3.8, 3.9
         # PyTorch 1.7.0, 1.6.0, and 1.5.x support 3.6, 3.7, 3.8
         #
         # Other PyTorch versions are not tested
         #
-        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"]
-        exclude:
-          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
-            torch: "1.5.0"
-          - python-version: 3.9
-            torch: "1.5.1"
-          - python-version: 3.9
-            torch: "1.6.0"
-          - python-version: 3.9
-            torch: "1.7.0"
+        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0"]
+        # exclude:
+        #   - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
+        #     torch: "1.5.0"
+        #   - python-version: 3.9
+        #     torch: "1.5.1"
+        #   - python-version: 3.9
+        #     torch: "1.6.0"
+        #   - python-version: 3.9
+        #     torch: "1.7.0"
 
     steps:
       # refer to https://github.com/actions/checkout

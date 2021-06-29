@@ -143,8 +143,8 @@ static void PybindFsaUtil(py::module &m) {
       py::arg("s"), py::arg("num_extra_labels") = 0,
       py::arg("num_ragged_labels"), py::arg("openfst") = false,
       "It returns a 3-tuple (fsa, extra_labels, ragged_labels).  "
-      "`fsa` is the Fsa with 2 axes; `extra_labels` is None if num_extra_labels "
-      "is 0, else a 2-D tensor of dtype torch.int32 and shape "
+      "`fsa` is the Fsa with 2 axes; `extra_labels` is None if num_extra_labels"
+      " is 0, else a 2-D tensor of dtype torch.int32 and shape "
       "(num_extra_labels, num_arcs) if num_extra_labels > 0; otherwise None; "
       "`ragged_labels` is a list of Ragged<int32_t> of length "
       "`num_ragged_labels`");
