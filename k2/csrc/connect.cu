@@ -40,9 +40,10 @@ class Connector {
   explicit Connector(FsaVec &fsas) : c_(fsas.Context()), fsas_(fsas) {
     K2_CHECK_EQ(fsas_.NumAxes(), 3);
     int32_t num_states = fsas_.shape.TotSize(1);
-    Array1<char> temp(c_, 2 * num_states, 0);
-    accessible_ = temp.Arange(0, num_states);
-    coaccessible_ = temp.Arange(num_states, 2 * num_states);
+    accessible_ = Array1<char>(c_, num_states, 0);
+    coaccessible_ = Array1<char>(c_, num_states, 0);
+    visited_ = Array1<int32_t>(c_, num_states, 0);
+    visited_backward_ = Array1<int32_t>(c_, num_states, 0);
   }
 
   /*
@@ -98,6 +99,7 @@ class Connector {
                   *dest_states_data = dest_states_.values.Data(),
                   *fsas_row_ids1_data = fsas_.RowIds(1).Data();
     char *keep_arc_data = arc_renumbering.Keep().Data();
+    int32_t *visited_data = visited_.Data();
     int32_t *next_iter_states_data = next_iter_states.Data(),
             *new_states_row_ids_data = new_states_row_ids.Data();
     K2_EVAL(
@@ -113,10 +115,14 @@ class Connector {
                   fsas_idx01x = fsas_row_splits2_data[fsas_idx01],
                   fsas_idx012 = fsas_idx01x + arcs_idx2,
                   fsas_dest_state_idx01 = dest_states_data[fsas_idx012];
-          // if this arc is a self-loop, just ignore this arc as we won't
-          // processe the dest_state (current state) again
+          // 1. If this arc is a self-loop, just ignore this arc as we won't
+          // processe the dest_state (current state) again.
+          // 2. If the state this arc pointing to is accessible, skip it.
+          // 3. If more than one arc leads to the same state, we select only
+          // one arc arbitrarily.
           if (fsas_dest_state_idx01 == fsas_idx01 ||
-              accessible_data[fsas_dest_state_idx01]) {
+              accessible_data[fsas_dest_state_idx01] ||
+              AtomicAdd(visited_data + fsas_dest_state_idx01, 1)) {
             keep_arc_data[arcs_idx012] = 0;
             return;
           }
@@ -218,6 +224,7 @@ class Connector {
                   *incoming_arcs_data = incoming_arcs_.values.Data();
     const Arc *fsas_data = fsas_.values.Data();
     char *keep_arc_data = arc_renumbering.Keep().Data();
+    int32_t *visited_backward_data = visited_backward_.Data();
     int32_t *next_iter_states_data = next_iter_states.Data(),
             *new_state_row_ids_data = new_state_row_ids.Data();
     K2_EVAL(
@@ -238,10 +245,14 @@ class Connector {
                   fsas_src_state_idx0x = fsas_row_splits1_data[fsas_idx0],
                   fsas_src_state_idx01 =
                     fsas_src_state_idx0x + fsas_src_state_idx1;
-          // if this arc is a self-loop, just ignore this arc as we won't
+          // 1. If this arc is a self-loop, just ignore this arc as we won't
           // processe the src_state (current state) again.
+          // 2. If the src state entering this arc is coaccessible, skip it.
+          // 3. If more than one arc comes from the same state, we select only
+          // one arc arbitrarily.
           if (fsas_src_state_idx01 == fsas_idx01 ||
-              coaccessible_data[fsas_src_state_idx01]) {
+              coaccessible_data[fsas_src_state_idx01] ||
+              AtomicAdd(visited_backward_data + fsas_src_state_idx01, 1)) {
             keep_arc_data[arcs_idx012] = 0;
             return;
           }
@@ -528,6 +539,10 @@ class Connector {
   // With the Dim() the same as num-states, to mark the state (as an idx01) to
   // be coaccessible or not
   Array1<char> coaccessible_;
+  // With the Dim() the same as num-states, to mark wheather the state
+  // (as an idx01) is added to the next batch or not
+  Array1<int32_t> visited_;
+  Array1<int32_t> visited_backward_;
 };
 
 void Connect(FsaOrVec &src, FsaOrVec *dest,
