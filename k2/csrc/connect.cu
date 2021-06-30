@@ -99,9 +99,9 @@ class Connector {
                   *dest_states_data = dest_states_.values.Data(),
                   *fsas_row_ids1_data = fsas_.RowIds(1).Data();
     char *keep_arc_data = arc_renumbering.Keep().Data();
-    int32_t *visited_data = visited_.Data();
     int32_t *next_iter_states_data = next_iter_states.Data(),
-            *new_states_row_ids_data = new_states_row_ids.Data();
+            *new_states_row_ids_data = new_states_row_ids.Data(),
+            *visited_data = visited_.Data();
     K2_EVAL(
         c_, num_arcs, lambda_set_arc_renumbering,
         (int32_t arcs_idx012)->void {
@@ -224,9 +224,9 @@ class Connector {
                   *incoming_arcs_data = incoming_arcs_.values.Data();
     const Arc *fsas_data = fsas_.values.Data();
     char *keep_arc_data = arc_renumbering.Keep().Data();
-    int32_t *visited_backward_data = visited_backward_.Data();
     int32_t *next_iter_states_data = next_iter_states.Data(),
-            *new_state_row_ids_data = new_state_row_ids.Data();
+            *new_state_row_ids_data = new_state_row_ids.Data(),
+            *visited_backward_data = visited_backward_.Data();
     K2_EVAL(
         c_, num_arcs, lambda_set_arc_renumbering,
         (int32_t arcs_idx012)->void {
@@ -436,7 +436,7 @@ class Connector {
     // Get remaining arcs
     int32_t num_arcs = fsas_.NumElements();
     Renumbering arcs_renumbering(c_, num_arcs);
-    char *arcs_renumbering_data = arcs_renumbering.Keep().Data();
+    char* arcs_renumbering_data = arcs_renumbering.Keep().Data();
     const Arc *fsas_data = fsas_.values.Data();
     const int32_t *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
                   *fsas_row_ids2_data = fsas_.RowIds(2).Data(),
