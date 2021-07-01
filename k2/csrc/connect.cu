@@ -42,8 +42,8 @@ class Connector {
     int32_t num_states = fsas_.shape.TotSize(1);
     accessible_ = Array1<char>(c_, num_states, 0);
     coaccessible_ = Array1<char>(c_, num_states, 0);
-    visited_ = Array1<int32_t>(c_, num_states, 0);
-    visited_backward_ = Array1<int32_t>(c_, num_states, 0);
+    visited_ = Array1<uint16_t>(c_, num_states, 0);
+    visited_backward_ = Array1<uint16_t>(c_, num_states, 0);
   }
 
   /*
@@ -100,8 +100,8 @@ class Connector {
                   *fsas_row_ids1_data = fsas_.RowIds(1).Data();
     char *keep_arc_data = arc_renumbering.Keep().Data();
     int32_t *next_iter_states_data = next_iter_states.Data(),
-            *new_states_row_ids_data = new_states_row_ids.Data(),
-            *visited_data = visited_.Data();
+            *new_states_row_ids_data = new_states_row_ids.Data();
+    uint16_t *visited_data = visited_.Data();
     K2_EVAL(
         c_, num_arcs, lambda_set_arc_renumbering,
         (int32_t arcs_idx012)->void {
@@ -122,7 +122,8 @@ class Connector {
           // one arc arbitrarily.
           if (fsas_dest_state_idx01 == fsas_idx01 ||
               accessible_data[fsas_dest_state_idx01] ||
-              AtomicAdd(visited_data + fsas_dest_state_idx01, 1)) {
+              AtomicCAS(visited_data + fsas_dest_state_idx01,
+                (uint16_t)0, (uint16_t)1)) {
             keep_arc_data[arcs_idx012] = 0;
             return;
           }
@@ -225,8 +226,8 @@ class Connector {
     const Arc *fsas_data = fsas_.values.Data();
     char *keep_arc_data = arc_renumbering.Keep().Data();
     int32_t *next_iter_states_data = next_iter_states.Data(),
-            *new_state_row_ids_data = new_state_row_ids.Data(),
-            *visited_backward_data = visited_backward_.Data();
+            *new_state_row_ids_data = new_state_row_ids.Data();
+    uint16_t *visited_backward_data = visited_backward_.Data();
     K2_EVAL(
         c_, num_arcs, lambda_set_arc_renumbering,
         (int32_t arcs_idx012)->void {
@@ -252,7 +253,8 @@ class Connector {
           // one arc arbitrarily.
           if (fsas_src_state_idx01 == fsas_idx01 ||
               coaccessible_data[fsas_src_state_idx01] ||
-              AtomicAdd(visited_backward_data + fsas_src_state_idx01, 1)) {
+              AtomicCAS(visited_backward_data + fsas_src_state_idx01,
+                (uint16_t)0, (uint16_t)1)) {
             keep_arc_data[arcs_idx012] = 0;
             return;
           }
@@ -541,8 +543,11 @@ class Connector {
   Array1<char> coaccessible_;
   // With the Dim() the same as num-states, to mark wheather the state
   // (as an idx01) is added to the next batch or not
-  Array1<int32_t> visited_;
-  Array1<int32_t> visited_backward_;
+  // NOTE: visited_ and accessible_ could share a uint16_t with bitwise
+  // operation to save 1 Byte memory for each state, but at this point I don't
+  // want to optimize too heavily.
+  Array1<uint16_t> visited_;
+  Array1<uint16_t> visited_backward_;
 };
 
 void Connect(FsaOrVec &src, FsaOrVec *dest,

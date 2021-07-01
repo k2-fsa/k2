@@ -359,17 +359,14 @@ __host__ __device__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
 
    @param  [inout]  address  The memory address.
    @param  [in]      value    The value to be added.
-   @return    The value before added.
  */
 template <typename T>
-__host__ __device__ __forceinline__ T AtomicAdd(T *address, T value) {
+__host__ __device__ __forceinline__ void AtomicAdd(T *address, T value) {
 #ifdef __CUDA_ARCH__
-  return atomicAdd(address, value);
+  atomicAdd(address, value);
 #else
   // For host code, we assume single-threaded for now).
-  T res = *address;
   *address += value;
-  return res;
 #endif
 }
 
@@ -377,12 +374,11 @@ __host__ __device__ __forceinline__ T AtomicAdd(T *address, T value) {
 // devices with compute capability lower than 6.0.
 // The following implementation is copied from
 // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomic-functions
-__host__ __device__ __forceinline__ double AtomicAdd(double *address,
+__host__ __device__ __forceinline__ void AtomicAdd(double *address,
                                                      double value) {
 #if __CUDA_ARCH__ >= 600
-  return atomicAdd(address, value);
+  atomicAdd(address, value);
 #elif defined(__CUDA_ARCH__)
-  double res = *address;
   // clang-format off
   unsigned long long int *address_as_ull = reinterpret_cast<unsigned long long int *>(address);  // NOLINT
   unsigned long long int old = *address_as_ull;  // NOLINT
@@ -396,11 +392,32 @@ __host__ __device__ __forceinline__ double AtomicAdd(double *address,
     // Note: uses integer comparison to avoid hang in case of NaN
     // (since NaN != NaN)
   } while (assumed != old);
-  return res;
 #else
   // For host code, we assume single-threaded for now.
-  double res = *address;
   *address += value;
+#endif
+}
+
+/* Compare and swap value to a memory address atomically.
+
+   It implements `(*address == compare ? value : *address)`.
+
+   CAUTION: For host code, we assume single-threaded for now.
+
+   @param  [inout]  address  The memory address.
+   @param  [in]     compare  The value to compare.
+   @param  [in]     value    The value to be swapped.
+   @return    The value before swap.
+ */
+template <typename T>
+__host__ __device__ __forceinline__ T AtomicCAS(
+    T *address, T compare, T value) {
+#ifdef __CUDA_ARCH__
+  return atomicCAS(address, compare, value);
+#else
+  // For host code, we assume single-threaded for now).
+  T res = *address;
+  *address = *address == compare ? value : *address;
   return res;
 #endif
 }
