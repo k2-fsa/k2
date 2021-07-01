@@ -41,9 +41,6 @@ class Connector {
     K2_CHECK_EQ(fsas_.NumAxes(), 3);
     int32_t num_states = fsas_.shape.TotSize(1);
     accessible_ = Array1<char>(c_, num_states, 0);
-    coaccessible_ = Array1<char>(c_, num_states, 0);
-    visited_ = Array1<uint16_t>(c_, num_states, 0);
-    visited_backward_ = Array1<uint16_t>(c_, num_states, 0);
   }
 
   /*
@@ -71,7 +68,7 @@ class Connector {
                              fsas_row_splits2_data[idx01];
           num_arcs_per_state_data[states_idx01] = num_arcs;
           // Set accessibility
-          accessible_data[idx01] = 1;
+          accessible_data[idx01] |= 1;
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
@@ -79,36 +76,21 @@ class Connector {
     RaggedShape arcs_shape = ComposeRaggedShapes(
         cur_states.shape, RaggedShape2(&num_arcs_per_state, nullptr, -1));
 
-    // Each arc that generates a new state (i.e. for which
-    // arc_renumbering.Keep[i] == true) will write the state-id to here (as an
-    // idx01 into fsas_).  Other elements will be undefined.
-    // We will also write the row-id (which fsa the state belongs) for each
-    // new state.
-    int32_t num_arcs = arcs_shape.NumElements();
-    Array1<int32_t> temp(c_, 2 * num_arcs);
-    Array1<int32_t> next_iter_states = temp.Arange(0, num_arcs);
-    Array1<int32_t> new_states_row_ids = temp.Arange(num_arcs, 2 * num_arcs);
+    // We'll be figuring out the states that these arcs leading to is not
+    // accessible yet (i.e. for which state_renumbering.Keep[i] == true).
+    int32_t total_states = fsas_.shape.TotSize(1);
+    Renumbering state_renumbering(c_, total_states, true);
 
-    // We'll be figuring out which of these arcs lead to a state that is not
-    // accessible yet.
-    Renumbering arc_renumbering(c_, num_arcs);
-
-    const int32_t *arcs_row_ids1_data = arcs_shape.RowIds(1).Data(),
-                  *arcs_row_ids2_data = arcs_shape.RowIds(2).Data(),
+    const int32_t *arcs_row_ids2_data = arcs_shape.RowIds(2).Data(),
                   *arcs_row_splits2_data = arcs_shape.RowSplits(2).Data(),
-                  *dest_states_data = dest_states_.values.Data(),
-                  *fsas_row_ids1_data = fsas_.RowIds(1).Data();
-    char *keep_arc_data = arc_renumbering.Keep().Data();
-    int32_t *next_iter_states_data = next_iter_states.Data(),
-            *new_states_row_ids_data = new_states_row_ids.Data();
-    uint16_t *visited_data = visited_.Data();
+                  *dest_states_data = dest_states_.values.Data();
+    char *keep_state_data = state_renumbering.Keep().Data();
     K2_EVAL(
-        c_, num_arcs, lambda_set_arc_renumbering,
+        c_, arcs_shape.NumElements(), lambda_set_state_renumbering,
         (int32_t arcs_idx012)->void {
           // note: the prefix `arcs_` means it is an idxXXX w.r.t. `arcs_shape`.
           // the prefix `fsas_` means the variable is an idxXXX w.r.t. `fsas_`.
           int32_t arcs_idx01 = arcs_row_ids2_data[arcs_idx012],
-                  arcs_idx0 = arcs_row_ids1_data[arcs_idx01],
                   arcs_idx01x = arcs_row_splits2_data[arcs_idx01],
                   arcs_idx2 = arcs_idx012 - arcs_idx01x,
                   fsas_idx01 = states_data[arcs_idx01],  // a state index
@@ -118,43 +100,36 @@ class Connector {
           // 1. If this arc is a self-loop, just ignore this arc as we won't
           // processe the dest_state (current state) again.
           // 2. If the state this arc pointing to is accessible, skip it.
-          // 3. If more than one arc leads to the same state, we select only
-          // one arc arbitrarily.
           if (fsas_dest_state_idx01 == fsas_idx01 ||
-              accessible_data[fsas_dest_state_idx01] ||
-              AtomicCAS(visited_data + fsas_dest_state_idx01,
-                (uint16_t)0, (uint16_t)1)) {
-            keep_arc_data[arcs_idx012] = 0;
+              (accessible_data[fsas_dest_state_idx01] & 1)) {
             return;
           }
-          keep_arc_data[arcs_idx012] = 1;
-          next_iter_states_data[arcs_idx012] = fsas_dest_state_idx01;
-          new_states_row_ids_data[arcs_idx012] = arcs_idx0;
+          keep_state_data[fsas_dest_state_idx01] = 1;
         });
 
-    Array1<int32_t> new2old_map = arc_renumbering.New2Old();
+    Array1<int32_t> new2old_map = state_renumbering.New2Old();
     if (new2old_map.Dim() == 0) {
-      // There are no new states.  This means we terminated.  We'll check from
-      // calling code that we processed all arcs.
+      // There are no new states.  This means we terminated.
       return nullptr;
     }
     int32_t num_states = new2old_map.Dim();
-    Array1<int32_t> temp2(c_, 2 * num_states);
+    Array1<int32_t> temp(c_, 2 * num_states);
     // `new_states` will contain state-ids which are idx01's into `fsas_`.
-    Array1<int32_t> new_states = temp2.Arange(0, num_states);
+    Array1<int32_t> new_states = temp.Arange(0, num_states);
     // `ans_row_ids` will map to FSA index
-    Array1<int32_t> ans_row_ids = temp2.Arange(num_states, 2 * num_states);
+    Array1<int32_t> ans_row_ids = temp.Arange(num_states, 2 * num_states);
 
-    const int32_t *new2old_map_data = new2old_map.Data();
+    const int32_t *new2old_map_data = new2old_map.Data(),
+                  *fsas_row_ids1_data = fsas_.RowIds(1).Data();
     int32_t *ans_row_ids_data = ans_row_ids.Data(),
             *new_states_data = new_states.Data();
     K2_EVAL(
         c_, num_states, lambda_set_new_states_and_row_ids,
         (int32_t state_idx)->void {
-          int32_t arcs_idx012 = new2old_map_data[state_idx];
-          new_states_data[state_idx] = next_iter_states_data[arcs_idx012];
-          ans_row_ids_data[state_idx] =
-            new_states_row_ids_data[arcs_idx012];
+          int32_t state_idx01 = new2old_map_data[state_idx],
+                  fsa_idx0 = fsas_row_ids1_data[state_idx01];
+          new_states_data[state_idx] = state_idx01;
+          ans_row_ids_data[state_idx] = fsa_idx0;
         });
 
     int32_t num_fsas = fsas_.Dim0();
@@ -185,7 +160,7 @@ class Connector {
     const int32_t *incoming_arcs_row_splits2_data =
                     incoming_arcs_.RowSplits(2).Data(),
                   *states_data = cur_states.values.Data();
-    char *coaccessible_data = coaccessible_.Data();
+    char *accessible_data = accessible_.Data();
     K2_EVAL(
         c_, cur_states.NumElements(),
         lambda_set_arcs_and_coaccessible_per_state,
@@ -194,8 +169,8 @@ class Connector {
                   num_arcs = incoming_arcs_row_splits2_data[idx01 + 1] -
                              incoming_arcs_row_splits2_data[idx01];
           num_arcs_per_state_data[states_idx01] = num_arcs;
-          // Set coaccessiblility
-          coaccessible_data[idx01] = 1;
+          // Set coaccessiblility (mark second bit)
+          accessible_data[idx01] |= (1 << 1);
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
@@ -203,38 +178,24 @@ class Connector {
     RaggedShape arcs_shape = ComposeRaggedShapes(
         cur_states.shape, RaggedShape2(&num_arcs_per_state, nullptr, -1));
 
-    // Each arc that generates a new state (i.e. for which
-    // arc_renumbering.Keep[i] == true) will write the state-id to here (as an
-    // idx01 into fsas_).  Other elements will be undefined.
-    // We will also write the row-id (which fsa the state belongs) for each
-    // new state.
-    int32_t num_arcs = arcs_shape.NumElements();
-    Array1<int32_t> temp(c_, 2 * num_arcs);
-    Array1<int32_t> next_iter_states = temp.Arange(0, num_arcs);
-    Array1<int32_t> new_state_row_ids = temp.Arange(num_arcs, 2 * num_arcs);
+    // We'll be figuring out the states that these arcs coming from is not
+    // coaccessible yet (i.e. for which state_renumbering.Keep[i] == true).
+    int32_t total_states = fsas_.shape.TotSize(1);
+    Renumbering state_renumbering(c_, total_states, true);
 
-    // We'll be figuring out which of these arcs comes from a state that are
-    // not coaccessible yet.
-    Renumbering arc_renumbering(c_, num_arcs);
-
-    const int32_t *arcs_row_ids1_data = arcs_shape.RowIds(1).Data(),
-                  *arcs_row_ids2_data = arcs_shape.RowIds(2).Data(),
+    const int32_t *arcs_row_ids2_data = arcs_shape.RowIds(2).Data(),
                   *arcs_row_splits2_data = arcs_shape.RowSplits(2).Data(),
                   *fsas_row_splits1_data = fsas_.RowSplits(1).Data(),
                   *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
                   *incoming_arcs_data = incoming_arcs_.values.Data();
     const Arc *fsas_data = fsas_.values.Data();
-    char *keep_arc_data = arc_renumbering.Keep().Data();
-    int32_t *next_iter_states_data = next_iter_states.Data(),
-            *new_state_row_ids_data = new_state_row_ids.Data();
-    uint16_t *visited_backward_data = visited_backward_.Data();
+    char *keep_state_data = state_renumbering.Keep().Data();
     K2_EVAL(
-        c_, num_arcs, lambda_set_arc_renumbering,
+        c_, arcs_shape.NumElements(), lambda_set_arc_renumbering,
         (int32_t arcs_idx012)->void {
           // note: the prefix `arcs_` means it is an idxXXX w.r.t. `arcs_shape`.
           // the prefix `fsas_` means the variable is an idxXXX w.r.t. `fsas_`.
           int32_t arcs_idx01 = arcs_row_ids2_data[arcs_idx012],
-                  arcs_idx0 = arcs_row_ids1_data[arcs_idx01],
                   arcs_idx01x = arcs_row_splits2_data[arcs_idx01],
                   arcs_idx2 = arcs_idx012 - arcs_idx01x,
                   fsas_idx01 = states_data[arcs_idx01],  // a state index
@@ -252,29 +213,24 @@ class Connector {
           // 3. If more than one arc comes from the same state, we select only
           // one arc arbitrarily.
           if (fsas_src_state_idx01 == fsas_idx01 ||
-              coaccessible_data[fsas_src_state_idx01] ||
-              AtomicCAS(visited_backward_data + fsas_src_state_idx01,
-                (uint16_t)0, (uint16_t)1)) {
-            keep_arc_data[arcs_idx012] = 0;
+              (accessible_data[fsas_src_state_idx01] & (1 << 1))) {
+            keep_state_data[fsas_src_state_idx01] = 0;
             return;
           }
-          keep_arc_data[arcs_idx012] = 1;
-          next_iter_states_data[arcs_idx012] = fsas_src_state_idx01;
-          new_state_row_ids_data[arcs_idx012] = arcs_idx0;
+          keep_state_data[fsas_src_state_idx01] = 1;
         });
 
-    Array1<int32_t> new2old_map = arc_renumbering.New2Old();
+    Array1<int32_t> new2old_map = state_renumbering.New2Old();
     if (new2old_map.Dim() == 0) {
-      // There are no new states.  This means we terminated.  We'll check from
-      // calling code that we processed all arcs.
+      // There are no new states.  This means we terminated.
       return nullptr;
     }
     int32_t num_states = new2old_map.Dim();
-    Array1<int32_t> temp2(c_, 2 * num_states);
+    Array1<int32_t> temp(c_, 2 * num_states);
     // `new_states` will contain state-ids which are idx01's into `fsas_`.
-    Array1<int32_t> new_states = temp2.Arange(0, num_states);
+    Array1<int32_t> new_states = temp.Arange(0, num_states);
     // `ans_row_ids` will map to FSA index
-    Array1<int32_t> ans_row_ids = temp2.Arange(num_states, 2 * num_states);
+    Array1<int32_t> ans_row_ids = temp.Arange(num_states, 2 * num_states);
 
     const int32_t *new2old_map_data = new2old_map.Data();
     int32_t *ans_row_ids_data = ans_row_ids.Data(),
@@ -282,9 +238,10 @@ class Connector {
     K2_EVAL(
         c_, num_states, lambda_set_new_states_and_row_ids,
         (int32_t state_idx)->void {
-          int32_t arcs_idx012 = new2old_map_data[state_idx];
-          ans_row_ids_data[state_idx] = new_state_row_ids_data[arcs_idx012];
-          new_states_data[state_idx] = next_iter_states_data[arcs_idx012];
+          int32_t state_idx01 = new2old_map_data[state_idx],
+                  fsa_idx0 = fsas_row_ids1_data[state_idx01];
+          ans_row_ids_data[state_idx] = fsa_idx0;
+          new_states_data[state_idx] = state_idx01;
         });
 
     int32_t num_fsas = fsas_.Dim0();
@@ -417,14 +374,13 @@ class Connector {
 
     // Get remaining states and construct row_ids1/row_splits1
     int32_t num_states = fsas_.shape.TotSize(1);
-    const char *accessible_data = accessible_.Data(),
-               *coaccessible_data = coaccessible_.Data();
+    const char *accessible_data = accessible_.Data();
     Renumbering states_renumbering(c_, num_states);
     char* states_renumbering_data = states_renumbering.Keep().Data();
     K2_EVAL(
         c_, num_states, lambda_set_states_renumbering,
         (int32_t state_idx01)->void {
-          if (accessible_data[state_idx01] && coaccessible_data[state_idx01])
+          if (accessible_data[state_idx01] == 3)  // 3 in hex is 0x0000 0011
             states_renumbering_data[state_idx01] = 1;
           else
             states_renumbering_data[state_idx01] = 0;
@@ -450,10 +406,9 @@ class Connector {
           int32_t src_state_idx01 = fsas_row_ids2_data[arc_idx012],
                   dest_state_idx01 =
                     arc.dest_state - arc.src_state + src_state_idx01;
-          if (accessible_data[src_state_idx01] &&
-              coaccessible_data[src_state_idx01] &&
-              accessible_data[dest_state_idx01] &&
-              coaccessible_data[dest_state_idx01])
+          // 3 in hex is 0x0000 0011
+          if (accessible_data[src_state_idx01] == 3 &&
+              accessible_data[dest_state_idx01] == 3)
             arcs_renumbering_data[arc_idx012] = 1;
           else
             arcs_renumbering_data[arc_idx012] = 0;
@@ -536,18 +491,9 @@ class Connector {
   // of that state as an idx012.
   Ragged<int32_t> incoming_arcs_;
   // With the Dim() the same as num-states, to mark the state (as an idx01) to
-  // be accessible or not
+  // be accessible/coaccessible or not. For each element in this array the first
+  // bit uses to mark accessible and the second bit to mark coaccessible.
   Array1<char> accessible_;
-  // With the Dim() the same as num-states, to mark the state (as an idx01) to
-  // be coaccessible or not
-  Array1<char> coaccessible_;
-  // With the Dim() the same as num-states, to mark wheather the state
-  // (as an idx01) is added to the next batch or not
-  // NOTE: visited_ and accessible_ could share a uint16_t with bitwise
-  // operation to save 1 Byte memory for each state, but at this point I don't
-  // want to optimize too heavily.
-  Array1<uint16_t> visited_;
-  Array1<uint16_t> visited_backward_;
 };
 
 void Connect(FsaOrVec &src, FsaOrVec *dest,

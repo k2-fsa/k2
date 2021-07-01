@@ -398,30 +398,6 @@ __host__ __device__ __forceinline__ void AtomicAdd(double *address,
 #endif
 }
 
-/* Compare and swap value to a memory address atomically.
-
-   It implements `(*address == compare ? value : *address)`.
-
-   CAUTION: For host code, we assume single-threaded for now.
-
-   @param  [inout]  address  The memory address.
-   @param  [in]     compare  The value to compare.
-   @param  [in]     value    The value to be swapped.
-   @return    The value before swap.
- */
-template <typename T>
-__host__ __device__ __forceinline__ T AtomicCAS(
-    T *address, T compare, T value) {
-#ifdef __CUDA_ARCH__
-  return atomicCAS(address, compare, value);
-#else
-  // For host code, we assume single-threaded for now).
-  T res = *address;
-  *address = *address == compare ? value : *address;
-  return res;
-#endif
-}
-
 /*
  1:1 Conversion float <---> sortable int32_t We convert floats to sortable ints
  in order to use native atomics operation, which are way faster than looping
