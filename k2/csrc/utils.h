@@ -107,9 +107,9 @@ namespace k2 {
   In a ragged tensor t with n axes (say, 3) the actual elements will be written
   in a linear array we'll have various levels of indexes that allow us to
   look up an element given the hierarchical indexes and vice versa.  A 3-d
-  ragged tensor will have t.RowIds(1), t.RowSplits(1), t.RowIds(2), t.RowSplits(2),
-  and the actual elements.  We have a naming scheme that expresses what
-  information is packed into a single integer.
+  ragged tensor will have t.RowIds(1), t.RowSplits(1), t.RowIds(2),
+  t.RowSplits(2), and the actual elements.  We have a naming scheme that
+  expresses what information is packed into a single integer.
 
   Some entry-level facts about the naming scheme are:
 
@@ -170,6 +170,11 @@ namespace k2 {
      is intuitively obvious and any mismatches will tend to be obvious in
      an individual line of code once you have understood the naming scheme
      and its rules.
+
+  Note: We also have a naming convention according to the index naming scheme
+        above. For a Ragged array with index `[fsa][state][arc]` (say, an FsaVec),
+        we usually call `idx0` as `fsa_idx0`, `idx01` as `state_idx01`, `idx012`
+        as `arc_idx012`, that is, `theThingWeIndex_idx0[123]`.
 */
 
 /**
@@ -353,7 +358,7 @@ __host__ __device__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
    CAUTION: For host code, we assume single-threaded for now.
 
    @param  [inout]  address  The memory address.
-   @param  in]      value    The value to be added.
+   @param  [in]      value    The value to be added.
  */
 template <typename T>
 __host__ __device__ __forceinline__ void AtomicAdd(T *address, T value) {
@@ -370,7 +375,7 @@ __host__ __device__ __forceinline__ void AtomicAdd(T *address, T value) {
 // The following implementation is copied from
 // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomic-functions
 __host__ __device__ __forceinline__ void AtomicAdd(double *address,
-                                                   double value) {
+                                                     double value) {
 #if __CUDA_ARCH__ >= 600
   atomicAdd(address, value);
 #elif defined(__CUDA_ARCH__)

@@ -69,13 +69,13 @@ bool RecursionWrapper(bool (*f)(Fsa &, Fsa *, Array1<int32_t> *), Fsa &src,
   return true;
 }
 
-bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
+bool ConnectHost(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
   } else if (num_axes == 3) {
-    return RecursionWrapper(Connect, src, dest, arc_map);
+    return RecursionWrapper(ConnectHost, src, dest, arc_map);
   }
 
   k2host::Fsa host_fsa = FsaToHostFsa(src);

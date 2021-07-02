@@ -2773,6 +2773,93 @@ void FixFinalLabels(FsaOrVec &fsas,
   }
 }
 
+FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
+                      Array1<int32_t> *arc_map) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  ContextPtr &c = fsas.Context();
+  K2_CHECK_LE(order.Dim(), fsas.TotSize(1));
+  Array1<int32_t> old2new_map(c, fsas.TotSize(1));
+  if (order.Dim() != fsas.TotSize(1)) {
+    old2new_map = -1;
+  }
+  int32_t new_num_states = order.Dim(), num_fsas = fsas.Dim0();
+  Array1<int32_t> num_arcs(c, new_num_states + 1);
+  const int32_t *order_data = order.Data(),
+                *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
+                *fsas_row_splits2_data = fsas.RowSplits(2).Data();
+  int32_t *old2new_data = old2new_map.Data(), *num_arcs_data = num_arcs.Data();
+  K2_EVAL(
+      c, new_num_states, lambda_set_old2new_and_num_arcs,
+      (int32_t new_state_idx01)->void {
+        int32_t old_state_idx01 = order_data[new_state_idx01];
+        old2new_data[old_state_idx01] = new_state_idx01;
+        int32_t num_arcs = fsas_row_splits2_data[old_state_idx01 + 1] -
+                           fsas_row_splits2_data[old_state_idx01];
+        num_arcs_data[new_state_idx01] = num_arcs;
+      });
 
+  Array1<int32_t> new_row_splits1, new_row_ids1;
+  if (order.Dim() == fsas.TotSize(1)) {
+    new_row_splits1 = fsas.RowSplits(1);
+    new_row_ids1 = fsas.RowIds(1);
+  } else {
+    new_row_ids1 = fsas.RowIds(1)[order];
+    new_row_splits1 = Array1<int32_t>(c, num_fsas + 1);
+    RowIdsToRowSplits(new_row_ids1, &new_row_splits1);
+  }
+
+  ExclusiveSum(num_arcs, &num_arcs);
+  RaggedShape ans_shape =
+      RaggedShape3(&new_row_splits1, &new_row_ids1, -1, &num_arcs, nullptr, -1);
+  const int32_t *ans_row_ids2_data = ans_shape.RowIds(2).Data(),
+                *ans_row_ids1_data = ans_shape.RowIds(1).Data(),
+                *ans_row_splits1_data = ans_shape.RowSplits(1).Data(),
+                *ans_row_splits2_data = ans_shape.RowSplits(2).Data();
+  int32_t ans_num_arcs = ans_shape.NumElements();
+  Array1<Arc> ans_arcs(c, ans_num_arcs);
+  int32_t *arc_map_data;
+  if (arc_map != nullptr) {
+    *arc_map = Array1<int32_t>(c, ans_num_arcs);
+    arc_map_data = arc_map->Data();
+  } else {
+    arc_map_data = nullptr;
+  }
+
+  const Arc *fsas_arcs = fsas.values.Data();
+  Arc *ans_arcs_data = ans_arcs.Data();
+  // if the dest state of any arc from any src kept state is not kept, the
+  // program will abort with an error.
+  Array1<int32_t> all_dest_states_kept(c, 1, 1);
+  int32_t *all_dest_states_kept_data = all_dest_states_kept.Data();
+  K2_EVAL(
+      c, ans_num_arcs, lambda_set_arcs, (int32_t ans_idx012)->void {
+        int32_t ans_idx01 = ans_row_ids2_data[ans_idx012],  // state index
+            ans_idx01x = ans_row_splits2_data[ans_idx01],
+                ans_idx0 = ans_row_ids1_data[ans_idx01],  // FSA index
+            ans_idx0x = ans_row_splits1_data[ans_idx0],
+                ans_idx1 = ans_idx01 - ans_idx0x,
+                ans_idx2 = ans_idx012 - ans_idx01x,
+                fsas_idx01 = order_data[ans_idx01],
+                fsas_idx01x = fsas_row_splits2_data[fsas_idx01],
+                fsas_idx012 = fsas_idx01x + ans_idx2;
+        Arc arc = fsas_arcs[fsas_idx012];
+        int32_t fsas_src_idx1 = arc.src_state, fsas_dest_idx1 = arc.dest_state,
+                fsas_idx0x = fsas_row_splits1_data[ans_idx0],
+                fsas_src_idx01 = fsas_idx0x + fsas_src_idx1,
+                fsas_dest_idx01 = fsas_idx0x + fsas_dest_idx1;
+        K2_CHECK_EQ(old2new_data[fsas_src_idx01], ans_idx01);
+        int32_t ans_dest_idx01 = old2new_data[fsas_dest_idx01];
+        int32_t ans_dest_idx1 = ans_dest_idx01 - ans_idx0x;
+        arc.src_state = ans_idx1;
+        arc.dest_state = ans_dest_idx1;
+        ans_arcs_data[ans_idx012] = arc;
+        if (arc_map_data != nullptr) arc_map_data[ans_idx012] = fsas_idx012;
+        if (ans_dest_idx01 == -1) all_dest_states_kept_data[0] = 0;
+      });
+  K2_CHECK_EQ(all_dest_states_kept[0], 1)
+      << "The dest_state of an arc from a kept state is not present in `order`";
+  return FsaVec(ans_shape, ans_arcs);
+}
 
 }  // namespace k2

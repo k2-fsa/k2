@@ -46,6 +46,7 @@ add_subdirectory(host)
 set(context_srcs
   algorithms.cu
   array_ops.cu
+  connect.cu
   context.cu
   dtype.cu
   fsa.cu
@@ -136,6 +137,7 @@ set(cuda_test_srcs
   algorithms_test.cu
   array_ops_test.cu
   array_test.cu
+  connect_test.cu
   dtype_test.cu
   fsa_algo_test.cu
   fsa_test.cu
