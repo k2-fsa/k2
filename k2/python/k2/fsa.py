@@ -253,6 +253,11 @@ class Fsa(object):
                 if pattern.search(key):
                     to_remove.append(key)
 
+            if 'entering_arcs' in self.__dict__['_cache']:
+                # We also need to remove "entering_arcs"
+                # since it may be set in get_forward_scores()
+                to_remove.append('entering_arcs')
+
             for key in to_remove:
                 del self.__dict__['_cache'][key]
 
