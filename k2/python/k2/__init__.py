@@ -56,4 +56,6 @@ from .utils import to_str
 from .utils import to_str_simple
 from .utils import to_tensor
 from .utils import create_sparse
+from .utils import random_fsa
+from .utils import random_fsa_vec
 from _k2.version import with_cuda

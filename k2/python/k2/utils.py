@@ -602,3 +602,56 @@ def fsa_from_binary_function_tensor(
             setattr(out_fsa, name, b_value)
 
     return out_fsa
+
+
+def random_fsa(acyclic: bool = True,
+               max_symbol: int = 50,
+               min_num_arcs: int = 0,
+               max_num_arcs: int = 1000) -> Fsa:
+
+    '''Generate a random Fsa.
+    Args:
+      acyclic:
+        If true, generated Fsa will be acyclic.
+      max_symbol:
+        Maximum symbol on arcs. Generated arcs' symbols will be in range
+        [-1,max_symbol], note -1 is kFinalSymbol; must be at least 0;
+     min_num_arcs:
+       Minimum number of arcs; must be at least 0.
+     max_num_arcs:
+       Maximum number of arcs; must be >= min_num_arcs.
+    '''
+
+    random_arcs = _k2.random_fsa(acyclic, max_symbol, min_num_arcs, max_num_arcs)
+    return Fsa(random_arcs)
+
+
+def random_fsa_vec(min_num_fsas: int = 1,
+                   max_num_fsas: int = 1000,
+                   acyclic: bool = True,
+                   max_symbol: int = 50,
+                   min_num_arcs: int = 0,
+                   max_num_arcs: int = 1000) -> Fsa:
+
+    '''Generate a random FsaVec.
+    Args:
+      min_num_fsas:
+        Minimum number of fsas we'll generated in the returned FsaVec;
+        must be at least 1.
+      max_num_fsas:
+        Maximum number of fsas we'll generated in the returned FsaVec;
+        must be >= min_num_fsas.
+      acyclic:
+        If true, generated Fsas will be acyclic.
+      max_symbol:
+        Maximum symbol on arcs. Generated arcs' symbols will be in range
+        [-1,max_symbol], note -1 is kFinalSymbol; must be at least 0;
+      min_num_arcs:
+        Minimum number of arcs in each Fsa; must be at least 0.
+      max_num_arcs:
+        Maximum number of arcs in each Fsa; must be >= min_num_arcs.
+    '''
+
+    random_arcs = _k2.random_fsa_vec(min_num_fsas, max_num_fsas, acyclic,
+                                     max_symbol, min_num_arcs, max_num_arcs)
+    return Fsa(random_arcs)
