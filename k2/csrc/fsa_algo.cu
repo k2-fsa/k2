@@ -1475,27 +1475,31 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
         // dest state is the dest state of index arc
         if (src_fsa_idx0 < 0 || src_fsa_idx0 >= num_src_fsas) {
           K2_CHECK_EQ(idx2, 0);
-          oarc.dest_state = orig_dest_state_idx0123;
+          oarc.dest_state = orig_dest_state_idx0123 - idx0xxx;
           oarc.label = index_arc.label;
           oarc.score = index_arc.score;
           arc_index_map_idx = index_arc_idx012;
         } else {
           int32_t src_state_idx0x = src_row_splits1_data[src_fsa_idx0],
+                  src_state_idx0x_next = src_row_splits1_data[src_fsa_idx0 + 1],
+                  num_states = src_state_idx0x_next - src_state_idx0x,
                   src_state_idx1 = idx3,
                   src_state_idx01 = src_state_idx0x + src_state_idx1,
                   src_arc_idx01x = src_row_splits2_data[src_state_idx01],
                   src_arc_idx2 = idx4,
                   src_arc_idx012 = src_arc_idx01x + src_arc_idx2;
           src_arc = src_arcs_data[src_arc_idx012];
-          // the arc point to the final state of the fsa in src would point to
-          // the dest state of the arc we're replaceing
-          if (src_arc.label == -1) {
-            oarc.dest_state = orig_dest_state_idx0123;
-          } else {
-            // this arc would point to the initial state of the fsa in src,
-            // the state id bias is the count of all the ostates coresponding to
-            // the original state util now, the idx4 enumerates foo index
-            if (idx2 == 0) {
+          // handle the arcs belongs to index
+          if (idx2 == 0) {
+            // if the fsa to be replaced in is empty, this arc would point to its
+            // original dest-state
+            if (0 == num_states) {
+              oarc.dest_state = orig_dest_state_idx0123 - idx0xxx;
+            } else {
+              // this arc would point to the initial state of the fsa in src,
+              // the state id bias to current state(the src-state) is the count
+              // of all the ostates coresponding to the original state util now,
+              // the idx4 enumerates foo index
               int32_t idx012_t = idx01x + 0,
                       idx2_t = idx4,
                       idx012x_t = tos_row_splits3_data[idx012_t],
@@ -1503,18 +1507,22 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
                         tos_row_splits3_data[idx012_t + idx2_t + 1],
                       bias = idx012x_next_t - idx012x_t;
               oarc.dest_state = idx0123 + bias - idx0xxx;
-            } else {
-              // this is the inner arc of the fsa in src, the bias of state id
-              // is `src_arc.dest_state - idx3`
-              oarc.dest_state = idx0123 + src_arc.dest_state - idx3 - idx0xxx;
             }
-          }
-          if (idx2 == 0) {
             // set the label of the arc we are replacing to be 0(epsilon)
             oarc.label = 0;
             oarc.score = index_arc.score;
             arc_index_map_idx = index_arc_idx012;
-          } else {
+          } else {   // handle the arcs belongs to src
+            // the arc point to the final state of the fsa in src would point to
+            // the dest state of the arc we're replaceing
+            if (src_arc.label == -1) {
+              oarc.dest_state = orig_dest_state_idx0123 - idx0xxx;
+            } else {
+              // this is the inner arc of the fsa in src
+              int32_t dest_state_idx012x = idx0123 - idx3,
+                  dest_state_idx0123 = dest_state_idx012x + src_arc.dest_state;
+              oarc.dest_state = dest_state_idx0123 - idx0xxx;
+            }
             // arcs in src fsas that point to final state would set to epsilon
             // arc (label from -1 to 0)
             oarc.label = src_arc.label == -1 ? 0 : src_arc.label;
