@@ -719,6 +719,21 @@ def intersect_dense_pruned(a_fsas: Fsa,
     Returns:
       The result of the intersection.
     '''
+    # Possible values for _k2.build_type are [Release, Debug]
+    if _k2.version.build_type == 'Debug':
+        # This check is to guarantee that all labels are in a valid range.
+        # If not, unpredictable errors will occur.
+        #
+        # One such situation is that someone imports a graph from Kaldi,
+        # whose labels are transition IDs. When the neural network output
+        # units are pdf IDs, this additional check will detect the mismatch.
+        #
+        assert a_fsas.labels.min() >= -1
+        # The first column of b_fsas.scores is -inf,
+        # so we use b_fsas.scores.shape[1] - 1 here
+        # (-1 is to exclude the column with -inf)
+        assert a_fsas.labels.max() < b_fsas.scores.shape[1] - 1
+
     out_fsa = [0]
 
     # the following return value is discarded since it is already contained
@@ -773,6 +788,21 @@ def intersect_dense(a_fsas: Fsa,
       The result of the intersection (pruned to `output_beam`; this pruning
       is exact, it uses forward and backward scores.
     '''
+    # Possible values for _k2.build_type are [Release, Debug]
+    if _k2.version.build_type == 'Debug':
+        # This check is to guarantee that all labels are in a valid range.
+        # If not, unpredictable errors will occur.
+        #
+        # One such situation is that someone imports a graph from Kaldi,
+        # whose labels are transition IDs. When the neural network output
+        # units are pdf IDs, this additional check will detect the mismatch.
+        #
+        assert a_fsas.labels.min() >= -1
+        # The first column of b_fsas.scores is -inf,
+        # so we use b_fsas.scores.shape[1] - 1 here
+        # (-1 is to exclude the column with -inf)
+        assert a_fsas.labels.max() < b_fsas.scores.shape[1] - 1
+
     out_fsa = [0]
 
     # the following return value is discarded since it is already contained

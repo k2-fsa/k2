@@ -352,7 +352,7 @@ template <typename Real>
 void TestDiscountedCumSum() {
   for (int32_t i = 0; i < 4; i++) {
     int32_t M = RandInt(0, 1000),
-        T = RandInt(0, 2000);  // TODO: increase.
+        T = RandInt(1, 2000);  // TODO: increase.
     while (M * T > 10000) {  // don't want test to take too long.
       M /= 2;
       T /= 2;
