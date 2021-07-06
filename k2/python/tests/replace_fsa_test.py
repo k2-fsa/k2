@@ -14,6 +14,55 @@ import k2
 import torch
 import _k2
 
+# See comments here: https://github.com/k2-fsa/k2/pull/759#discussion_r662006539
+def _construct_f(fsa_vec: k2.Fsa) -> k2.Fsa:
+    num_fsa = fsa_vec.shape[0]
+    union = k2.union(fsa_vec)
+    union.aux_labels = torch.zeros(union.num_arcs)
+    union.aux_labels[0: num_fsa] = torch.tensor(list(range(1, 1 + num_fsa)),
+                                                dtype=torch.int32)
+    union_str = k2.to_str_simple(union)
+    states_num = union.shape[0]
+
+    new_str_array = []
+    new_str_array.append("0 {} -1 0 0".format(states_num - 1))
+    for line in union_str.strip().split("\n"):
+        tokens = line.strip().split(" ")
+        if len(tokens) == 5:
+            tokens[1] = '0' if int(tokens[1]) == states_num - 1 else tokens[1]
+            tokens[2] = '0' if int(tokens[2]) == -1 else tokens[2]
+        new_str_array.append(" ".join(tokens))
+    new_str = "\n".join(new_str_array)
+
+    new_fsa = k2.Fsa.from_str(new_str, num_aux_labels=1)
+    new_fsa_invert = k2.invert(new_fsa)
+    return new_fsa_invert
+
+
+# gennerate random FsaVec that connect and contains no empty fsa
+def _generate_fsa_vec(min_num_fsas: int = 20,
+                      max_num_fsas: int = 21,
+                      acyclic: bool = True,
+                      max_symbol: int = 20,
+                      min_num_arcs: int = 10,
+                      max_num_arcs: int = 100 ) -> k2.Fsa:
+    fsa = k2.random_fsa_vec(min_num_fsas, max_num_fsas, acyclic, min_num_arcs,
+                            max_num_arcs)
+    fsa = k2.connect(fsa)
+    while True:
+        success = True
+        for i in range(fsa.shape[0]):
+            if fsa[i].shape[0] == 0:
+                success = False
+                break
+        if success:
+            break
+        else:
+            fsa = k2.random_fsa_vec(min_num_fsas, max_num_fsas, acyclic,
+                                    min_num_arcs, max_num_arcs)
+            fsa = k2.connect(fsa)
+    return fsa
+
 
 class TestReplaceFsa(unittest.TestCase):
 
@@ -103,6 +152,30 @@ class TestReplaceFsa(unittest.TestCase):
                                                 -1, -1, -1, -1, -1, -1, -1, -1])
                                   .to(src.grad))
 
+
+    def test_composition_equivalence(self):
+        index = _generate_fsa_vec()
+        index = k2.arc_sort(index)
+
+        src = _generate_fsa_vec()
+
+        replace = k2.replace_fsa(src, index, 1)
+        replace = k2.top_sort(replace)
+
+        f_fsa = _construct_f(src)
+        f_fsa = k2.arc_sort(f_fsa)
+        intersect = k2.intersect(index, f_fsa, treat_epsilons_specially=True)
+        intersect = k2.invert(intersect)
+        intersect = k2.top_sort(intersect)
+        delattr(intersect, 'aux_labels')
+
+        replace_score = replace.get_tot_scores(log_semiring=True,
+                                               use_double_scores=False))
+        intersect_score = intersect.get_tot_scores(log_semiring=True,
+                                                   use_double_scores=False))
+
+        print (replace_score, intersect_score)
+        assert torch.allclose(replace_score, intersect_score)
 
 if __name__ == '__main__':
     unittest.main()

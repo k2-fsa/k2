@@ -622,7 +622,8 @@ def random_fsa(acyclic: bool = True,
        Maximum number of arcs; must be >= min_num_arcs.
     '''
 
-    random_arcs = _k2.random_fsa(acyclic, max_symbol, min_num_arcs, max_num_arcs)
+    random_arcs = _k2.random_fsa(acyclic, max_symbol, min_num_arcs,
+                                 max_num_arcs)
     return Fsa(random_arcs)
 
 
