@@ -203,17 +203,13 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
     int32_t this_num_arcs = creator.GetArcOffsetFor(i + 1) - arc_offset;
     if (arc_map_a) {
       int32_t arc_offset_a = a_fsas_row_splits12_data[i * stride_a];
-      for (int32_t i = 0; i < this_num_arcs; i++) {
-        this_arc_map_a[i] = this_arc_map_a[i] == -1 ? this_arc_map_a[i] :
-                            this_arc_map_a[i] + arc_offset_a;
-      }
+      for (int32_t i = 0; i < this_num_arcs; i++)
+        if (this_arc_map_a[i] != -1) this_arc_map_a[i] += arc_offset_a;
     }
     if (arc_map_b) {
       int32_t arc_offset_b = b_fsas_row_splits12_data[i * stride_b];
-      for (int32_t i = 0; i < this_num_arcs; i++) {
-        this_arc_map_b[i] = this_arc_map_b[i] == -1 ? this_arc_map_b[i] :
-                            this_arc_map_b[i] + arc_offset_b;
-      }
+      for (int32_t i = 0; i < this_num_arcs; i++)
+        if (this_arc_map_b[i] != -1) this_arc_map_b[i] += arc_offset_b;
     }
   }
   *out = creator.GetFsaVec();
