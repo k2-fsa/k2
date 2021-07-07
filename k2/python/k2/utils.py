@@ -542,10 +542,10 @@ def fsa_from_binary_function_tensor(
         The raw output of the binary function, as output by whatever C++
         algorithm we used.
       a_arc_map:
-        A map from arcs in `dest_arcs` to the corresponding arc-index in `a_fsa`,
+        A map from arcs in `dest_arcs` to the corresponding arc-index in `a_fsa`
         or -1 if the arc had no source arc (e.g. added epsilon self-loops).
       a_arc_map:
-        A map from arcs in `dest_arcs` to the corresponding arc-index in `b_fsa`,
+        A map from arcs in `dest_arcs` to the corresponding arc-index in `b_fsa`
         or -1 if the arc had no source arc (e.g. added epsilon self-loops).
     Returns:
       Returns the resulting Fsa, with properties propagated appropriately, and

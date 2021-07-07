@@ -14,6 +14,7 @@ import k2
 import torch
 import _k2
 
+
 # See comments here: https://github.com/k2-fsa/k2/pull/759#discussion_r662006539
 def _construct_f(fsa_vec: k2.Fsa) -> k2.Fsa:
     num_fsa = fsa_vec.shape[0]
@@ -172,6 +173,7 @@ class TestReplaceFsa(unittest.TestCase):
 
         assert k2.is_rand_equivalent(replace, intersect, log_semiring=True,
                                      delta=1e-3)
+
 
 if __name__ == '__main__':
     unittest.main()
