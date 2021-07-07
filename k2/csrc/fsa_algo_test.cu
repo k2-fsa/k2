@@ -271,6 +271,37 @@ TEST(FsaAlgo, IntersectFsaVec) {
   CheckArrayData(arc_map, std::vector<int32_t>{0, 2, 3});
 }
 
+// Intersect an FsaVec with Fsa should be equivalent with intersect with these
+// fsa alone one by one
+TEST(FsaAlgo, IntersectFsaVecRandom) {
+  FsaVec fsa_vec = RandomFsaVec();
+  ArcSort(&fsa_vec);
+  Fsa fsa = RandomFsa();
+  ArcSort(&fsa);
+
+  FsaVec fsa_vec_out;
+  Array1<int32_t> arc_map_a;
+  Array1<int32_t> arc_map_b;
+  Intersect(fsa_vec, -1, fsa, -1, true, &fsa_vec_out, &arc_map_a,
+            &arc_map_b);
+  std::ostringstream oss_vec;
+  oss_vec << fsa_vec_out;
+
+  std::ostringstream oss;
+  oss << "[ ";
+  for (int32_t i = 0; i < fsa_vec.Dim0(); ++i) {
+    FsaVec out_tmp;
+    Array1<int32_t> arc_map_a_t;
+    Array1<int32_t> arc_map_b_t;
+    Fsa fsa_element = GetFsaVecElement(fsa_vec, i);
+    Intersect(fsa_element, -1, fsa, -1, true, &out_tmp,
+              &arc_map_a_t, &arc_map_b_t);
+    oss << GetFsaVecElement(out_tmp, 0) << " ";
+  }
+  oss << "]";
+  EXPECT_EQ(oss.str(), oss_vec.str());
+}
+
 TEST(FsaAlgo, AddEpsilonSelfLoopsFsa) {
   std::string s1 = R"(0 1 1 0.1
     0 2 1 0.2
