@@ -45,7 +45,7 @@ def _generate_fsa_vec(min_num_fsas: int = 20,
                       acyclic: bool = True,
                       max_symbol: int = 20,
                       min_num_arcs: int = 10,
-                      max_num_arcs: int = 100 ) -> k2.Fsa:
+                      max_num_arcs: int = 15) -> k2.Fsa:
     fsa = k2.random_fsa_vec(min_num_fsas, max_num_fsas, acyclic, min_num_arcs,
                             max_num_arcs)
     fsa = k2.connect(fsa)
@@ -152,10 +152,11 @@ class TestReplaceFsa(unittest.TestCase):
                                                 -1, -1, -1, -1, -1, -1, -1, -1])
                                   .to(src.grad))
 
-
+    # see the discussion here:
+    # https://github.com/k2-fsa/k2/pull/759#discussion_r655052289
     def test_composition_equivalence(self):
         index = _generate_fsa_vec()
-        index = k2.arc_sort(index)
+        index = k2.arc_sort(k2.connect(k2.remove_epsilon(index)))
 
         src = _generate_fsa_vec()
 
@@ -169,13 +170,8 @@ class TestReplaceFsa(unittest.TestCase):
         intersect = k2.top_sort(intersect)
         delattr(intersect, 'aux_labels')
 
-        replace_score = replace.get_tot_scores(log_semiring=True,
-                                               use_double_scores=False))
-        intersect_score = intersect.get_tot_scores(log_semiring=True,
-                                                   use_double_scores=False))
-
-        print (replace_score, intersect_score)
-        assert torch.allclose(replace_score, intersect_score)
+        assert k2.is_rand_equivalent(replace, intersect, log_semiring=True,
+                                     delta=1e-3)
 
 if __name__ == '__main__':
     unittest.main()
