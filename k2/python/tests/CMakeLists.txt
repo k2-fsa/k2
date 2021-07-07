@@ -26,6 +26,7 @@ set(py_test_files
   connect_test.py
   create_sparse_test.py
   ctc_gradients_test.py
+  ctc_graph_test.py
   dense_fsa_vec_test.py
   determinize_test.py
   expand_ragged_attributes_test.py

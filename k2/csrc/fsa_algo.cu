@@ -441,12 +441,16 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
   Array1<int32_t> num_states_for(c, num_fsas + 1);
   int32_t *num_states_for_data = num_states_for.Data();
   const int32_t *symbol_row_split1_data = symbols.RowSplits(1).Data();
+  // symbols indexed with [fsa][symbol]
+  // for each fsa we need `symbol_num * 2 + 1 + 1` states, `symbol_num * 2 + 1`
+  // means that we need a blank state on each side of a symbol state, `+ 1` is
+  // for final state in k2
   K2_EVAL(
       c, num_fsas, lambda_set_num_states, (int32_t fsa_idx0)->void {
-        int32_t state_idx0x = symbol_row_split1_data[fsa_idx0],
-                state_idx0x_next = symbol_row_split1_data[fsa_idx0 + 1],
-                state_num = state_idx0x_next - state_idx0x;
-        num_states_for_data[fsa_idx0] = state_num * 2 + 2;
+        int32_t symbol_idx0x = symbol_row_split1_data[fsa_idx0],
+                symbol_idx0x_next = symbol_row_split1_data[fsa_idx0 + 1],
+                symbol_num = symbol_idx0x_next - symbol_idx0x;
+        num_states_for_data[fsa_idx0] = symbol_num * 2 + 2;
       });
 
   ExclusiveSum(num_states_for, &num_states_for);
@@ -460,20 +464,30 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
   const int32_t *fts_row_splits1_data = fsa_to_states.RowSplits(1).Data(),
                 *fts_row_ids1_data = fsa_to_states.RowIds(1).Data(),
                 *symbol_data = symbols.values.Data();
+  // set the arcs number for each state
   K2_EVAL(
       c, num_states, lambda_set_num_arcs, (int32_t state_idx01)->void {
         int32_t fsa_idx0 = fts_row_ids1_data[state_idx01],
+                // we minus fsa_idx0 here, because we adding one more state, the
+                // final state for each fsa
                 sym_state_idx01 = state_idx01 / 2 - fsa_idx0,
                 remainder = state_idx01 % 2,
-                current_num_arcs = 2;
-        if (remainder) {
+                current_num_arcs = 2;  // normally there are two arcs, self-loop
+                                       // and arc points to the next state
+                                       // blank state always has two arcs
+        if (remainder) {  // symbol state
           int32_t sym_final_state =
                     symbol_row_split1_data[fsa_idx0 + 1];
+          // There is no arcs for final states
           if (sym_state_idx01 == sym_final_state) {
             current_num_arcs = 0;
           } else {
             int32_t current_symbol = symbol_data[sym_state_idx01],
                     next_symbol = symbol_data[sym_state_idx01 + 1];
+            // if current_symbol equals next_symbol, we need a blank state
+            // between them, so there are two arcs for this state
+            // otherwise, this state will point to blank state and next symbol
+            // state, so we need three arcs here.
             if (current_symbol != next_symbol)
               current_num_arcs = 3;
           }
@@ -486,6 +500,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
   RaggedShape states_to_arcs =
       RaggedShape2(&states_to_arcs_row_splits, nullptr, -1);
 
+  // ctc_shape with a index of [fsa][state][arc]
   RaggedShape ctc_shape = ComposeRaggedShapes(fsa_to_states, states_to_arcs);
   int32_t num_arcs = ctc_shape.NumElements();
   Array1<Arc> arcs(c, num_arcs);
@@ -528,15 +543,15 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
             arc.dest_state = arc_idx2 == 0 ? state_idx1 + 1 : state_idx1;
           } else {
             switch (arc_idx2) {
-              case 0:
+              case 0:   // the arc points to blank state
                 arc.label = 0;
                 arc.dest_state = state_idx1 + 1;
                 break;
-              case 1:
+              case 1:   // the self loop arc
                 arc.label = current_symbol;
                 arc.dest_state = state_idx1;
                 break;
-              case 2:
+              case 2:  // the arc points to next symbol state
                 arc.label = next_symbol;
                 arc_map_value = sym_state_idx01 + 1 == sym_final_state ?
                     -1 : sym_state_idx01 + 1;

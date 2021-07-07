@@ -481,8 +481,9 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols);
 
     @param [in] symbols  Input symbol sequences (must not contain
                 kFinalSymbol == -1). Its num_axes is 2.
-    @param [out] It map the olabel of the arc to the symbols(idx01), -1 for
-                 epsilon olabel.
+    @param [out] It maps the arcs of output fsa to the symbols(idx01), the
+                 olabel of the `arc[i]` would be `symbols[arc_map[i]]`,
+                 and -1 for epsilon olabel.
 
     @return     Returns an FsaVec with `ans.Dim0() == symbols.Dim0()`.
  */
