@@ -962,3 +962,53 @@ def expand_ragged_attributes(
         return dest, arc_map
     else:
         return dest
+
+
+def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
+              device: Optional[Union[torch.device, str]] = None) -> Fsa:
+    '''Construct ctc graphs from symbols.
+
+    Note:
+      The scores of arcs in the returned FSA are all 0.
+
+    Args:
+      symbols:
+        It can be one of the following types:
+
+            - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
+            - An instance of :class:`k2.RaggedInt`. Must have `num_axes() == 2`.
+      device:
+        Optional. It can be either a string (e.g., 'cpu',
+        'cuda:0') or a torch.device.
+        If it is None, then the returned FSA is on CPU. It has to be None
+        if `symbols` is an instance of :class:`k2.RaggedInt`.
+
+    Returns:
+
+      - If `symbols` is a list of list-of-integers, return an FsaVec
+      - If `symbols` is an instance of :class:`k2.RaggedInt`, return an FsaVec
+    '''
+    symbol_values = None
+    if isinstance(symbols, k2.RaggedInt):
+        assert device is None
+        assert symbols.num_axes() == 2
+        symbol_values = symbols.values()
+    else:
+        symbol_values = [it for symbol in symbols for it in symbol]
+
+    if device is not None:
+        device = torch.device(device)
+        if device.type == 'cpu':
+            gpu_id = -1
+        else:
+            assert device.type == 'cuda'
+            gpu_id = getattr(device, 'index', 0)
+    else:
+        gpu_id = -1
+    need_arc_map = True
+    ragged_arc, arc_map = _k2.ctc_graph(symbols, need_arc_map, gpu_id)
+    fsa = Fsa(ragged_arc)
+    fsa.aux_labels = torch.tensor([symbol_values[arc_map[i]] \
+        if arc_map[i] != -1 else 0 for i in range(len(arc_map))],\
+        dtype=torch.int32)
+    return fsa

@@ -35,6 +35,7 @@ from .fsa_algo import remove_epsilon_and_add_self_loops
 from .fsa_algo import remove_epsilon_self_loops
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
+from .fsa_algo import ctc_graph
 from .fsa_properties import to_str as properties_to_str
 from .ops import cat
 from .ops import compose_arc_maps
