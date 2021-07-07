@@ -483,7 +483,12 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
             current_num_arcs = 0;
           } else {
             int32_t current_symbol = symbol_data[sym_state_idx01],
-                    next_symbol = symbol_data[sym_state_idx01 + 1];
+                    // we set the next symbol of the last symbol to -1, so
+                    // the following if clause will always be true
+                    next_symbol = (sym_state_idx01 + 1) == sym_final_state ?
+                                  -1 : symbol_data[sym_state_idx01 + 1];
+            // symbols must be not equal to -1, which is specially used in k2
+            K2_CHECK_NE(current_symbol, -1);
             // if current_symbol equals next_symbol, we need a blank state
             // between them, so there are two arcs for this state
             // otherwise, this state will point to blank state and next symbol
