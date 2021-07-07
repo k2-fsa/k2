@@ -468,8 +468,8 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
   K2_EVAL(
       c, num_states, lambda_set_num_arcs, (int32_t state_idx01)->void {
         int32_t fsa_idx0 = fts_row_ids1_data[state_idx01],
-                // we minus fsa_idx0 here, because we adding one more state, the
-                // final state for each fsa
+                // we minus fsa_idx0 here, because we are adding one more state,
+                // the final state for each fsa
                 sym_state_idx01 = state_idx01 / 2 - fsa_idx0,
                 remainder = state_idx01 % 2,
                 current_num_arcs = 2;  // normally there are two arcs, self-loop

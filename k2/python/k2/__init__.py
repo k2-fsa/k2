@@ -21,6 +21,7 @@ from .fsa_algo import arc_sort
 from .fsa_algo import closure
 from .fsa_algo import compose
 from .fsa_algo import connect
+from .fsa_algo import ctc_graph
 from .fsa_algo import determinize
 from .fsa_algo import expand_ragged_attributes
 from .fsa_algo import intersect
@@ -35,7 +36,6 @@ from .fsa_algo import remove_epsilon_and_add_self_loops
 from .fsa_algo import remove_epsilon_self_loops
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
-from .fsa_algo import ctc_graph
 from .fsa_properties import to_str as properties_to_str
 from .ops import cat
 from .ops import compose_arc_maps

@@ -981,21 +981,13 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
         Optional. It can be either a string (e.g., 'cpu',
         'cuda:0') or a torch.device.
         If it is None, then the returned FSA is on CPU. It has to be None
-        if `symbols` is an instance of :class:`k2.RaggedInt`.
+        if `symbols` is an instance of :class:`k2.RaggedInt`, the returned
+        FSA will on the same device as `k2.RaggedInt`.
 
     Returns:
-
-      - If `symbols` is a list of list-of-integers, return an FsaVec
-      - If `symbols` is an instance of :class:`k2.RaggedInt`, return an FsaVec
+        An FsaVec contains the returned ctc graphs, with `Dim0()` the same as
+        `len(symbols)`(List[List[int]]) or `Dim0()`(k2.RaggedInt)
     '''
-    symbol_values = None
-    if isinstance(symbols, k2.RaggedInt):
-        assert device is None
-        assert symbols.num_axes() == 2
-        symbol_values = symbols.values()
-    else:
-        symbol_values = [it for symbol in symbols for it in symbol]
-
     if device is not None:
         device = torch.device(device)
         if device.type == 'cpu':
@@ -1005,10 +997,19 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
             gpu_id = getattr(device, 'index', 0)
     else:
         gpu_id = -1
+
+    symbol_values = None
+    if isinstance(symbols, k2.RaggedInt):
+        assert device is None
+        assert symbols.num_axes() == 2
+        symbol_values = symbols.values()
+    else:
+        symbol_values = torch.tensor(
+            [it for symbol in symbols for it in symbol], dtype=torch.int32,
+            device=device)
+
     need_arc_map = True
     ragged_arc, arc_map = _k2.ctc_graph(symbols, need_arc_map, gpu_id)
-    fsa = Fsa(ragged_arc)
-    fsa.aux_labels = torch.tensor([symbol_values[arc_map[i]] \
-        if arc_map[i] != -1 else 0 for i in range(len(arc_map))],\
-        dtype=torch.int32)
+    aux_labels = k2.index(symbol_values, arc_map)
+    fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
