@@ -424,9 +424,6 @@ void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
                                   FsaOrVec *dest,
                                   Ragged<int32_t> *arc_derivs = nullptr);
 
-
-
-
 /*
     Determinize the input Fsas, it works for both Fsa and FsaVec.
     @param [in] src   Source Fsa or FsaVec.
@@ -477,6 +474,24 @@ Fsa LinearFsa(const Array1<int32_t> &symbols);
                 will have n+1 arcs (including the final-arc) and n+2 states.
  */
 FsaVec LinearFsas(const Ragged<int32_t> &symbols);
+
+/*
+  Create an FsaVec containing ctc graph FSAs, given a list of sequences of
+  symbols
+
+    @param [in] symbols  Input symbol sequences (must not contain
+                kFinalSymbol == -1). Its num_axes is 2.
+    @param [in] standard Option to specify the type of CTC topology: "standard"
+                         or "simplified", where the "standard" one makes the
+                         blank mandatory between a pair of identical symbols.
+    @param [out] It maps the arcs of output fsa to the symbols(idx01), the
+                 olabel of the `arc[i]` would be `symbols[arc_map[i]]`,
+                 and -1 for epsilon olabel.
+
+    @return     Returns an FsaVec with `ans.Dim0() == symbols.Dim0()`.
+ */
+FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard = true,
+                 Array1<int32_t> *arc_map = nullptr);
 
 /* Compute the forward shortest path in the tropical semiring.
 
