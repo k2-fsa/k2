@@ -481,6 +481,8 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
           // There are no arcs for final states
           if (sym_state_idx01 == sym_final_state) {
             current_num_arcs = 0;
+          } else if (!standard) {
+            current_num_arcs = 3;
           } else {
             int32_t current_symbol = symbol_data[sym_state_idx01],
                     // we set the next symbol of the last symbol to -1, so
@@ -496,7 +498,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
             // state, so we need three arcs here.
             // Note: for the simpilfied topology (standard equals false), there
             // are always 3 arcs leaving symbol states.
-            if (current_symbol != next_symbol || !standard)
+            if (current_symbol != next_symbol)
               current_num_arcs = 3;
           }
         }
