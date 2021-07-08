@@ -1491,8 +1491,8 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
           src_arc = src_arcs_data[src_arc_idx012];
           // handle the arcs belongs to index
           if (idx2 == 0) {
-            // if the fsa to be replaced in is empty, this arc would point to its
-            // original dest-state
+            // if the fsa to be replaced in is empty, this arc would point to
+            // its original dest-state
             if (0 == num_states) {
               oarc.dest_state = orig_dest_state_idx0123 - idx0xxx;
             } else {
