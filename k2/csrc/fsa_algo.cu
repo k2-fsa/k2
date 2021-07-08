@@ -478,7 +478,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
         if (remainder) {  // symbol state
           int32_t sym_final_state =
                     symbol_row_split1_data[fsa_idx0 + 1];
-          // There is no arcs for final states
+          // There are no arcs for final states
           if (sym_state_idx01 == sym_final_state) {
             current_num_arcs = 0;
           } else {
@@ -553,7 +553,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
             arc.dest_state = arc_idx2 == 0 ? state_idx1 + 1 : state_idx1;
           } else {
             switch (arc_idx2) {
-              case 0:   // the arc points to blank state
+              case 0:   // the arc pointing to blank state
                 arc.label = 0;
                 arc.dest_state = state_idx1 + 1;
                 break;
@@ -561,7 +561,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
                 arc.label = current_symbol;
                 arc.dest_state = state_idx1;
                 break;
-              case 2:  // the arc points to next symbol state
+              case 2:  // the arc pointing to the next symbol state
                 arc.label = next_symbol;
                 arc_map_value = sym_state_idx01 + 1 == sym_final_state ?
                     -1 : sym_state_idx01 + 1;

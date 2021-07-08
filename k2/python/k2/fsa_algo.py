@@ -990,7 +990,7 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
         FSA will on the same device as `k2.RaggedInt`.
 
     Returns:
-        An FsaVec contains the returned ctc graphs, with `Dim0()` the same as
+        An FsaVec containing the returned ctc graphs, with `Dim0()` the same as
         `len(symbols)`(List[List[int]]) or `Dim0()`(k2.RaggedInt)
     '''
     if device is not None:
