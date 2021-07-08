@@ -431,7 +431,7 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols) {
 }
 
 
-FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
+FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
                  Array1<int32_t> *arc_map /*= nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(symbols.NumAxes(), 2);
@@ -473,7 +473,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
                 sym_state_idx01 = state_idx01 / 2 - fsa_idx0,
                 remainder = state_idx01 % 2,
                 current_num_arcs = 2;  // normally there are two arcs, self-loop
-                                       // and arc points to the next state
+                                       // and arc pointing to the next state
                                        // blank state always has two arcs
         if (remainder) {  // symbol state
           int32_t sym_final_state =
@@ -484,7 +484,8 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
           } else {
             int32_t current_symbol = symbol_data[sym_state_idx01],
                     // we set the next symbol of the last symbol to -1, so
-                    // the following if clause will always be true
+                    // the following if clause will always be true, which means
+                    // we will have 3 arcs for last symbol state
                     next_symbol = (sym_state_idx01 + 1) == sym_final_state ?
                                   -1 : symbol_data[sym_state_idx01 + 1];
             // symbols must be not equal to -1, which is specially used in k2
@@ -493,7 +494,9 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
             // between them, so there are two arcs for this state
             // otherwise, this state will point to blank state and next symbol
             // state, so we need three arcs here.
-            if (current_symbol != next_symbol)
+            // Note: for the simpilfied topology (standard equals false), there
+            // are always 3 arcs leaving symbol states.
+            if (current_symbol != next_symbol || !standard)
               current_num_arcs = 3;
           }
         }
@@ -542,7 +545,9 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols,
           if (final_state) return;
           int32_t next_symbol = (sym_state_idx01 + 1) == sym_final_state ?
               -1 : symbol_data[sym_state_idx01 + 1];
-          if (current_symbol == next_symbol) {
+          // for standard topology, the symbol state can not point to next
+          // symbol state if the next symbol is identical to current symbol.
+          if (current_symbol == next_symbol && standard) {
             K2_CHECK_LT(arc_idx2, 2);
             arc.label = arc_idx2 == 0 ? 0 : current_symbol;
             arc.dest_state = arc_idx2 == 0 ? state_idx1 + 1 : state_idx1;

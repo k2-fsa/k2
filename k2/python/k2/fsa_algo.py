@@ -965,6 +965,7 @@ def expand_ragged_attributes(
 
 
 def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
+              standard: bool = True,
               device: Optional[Union[torch.device, str]] = None) -> Fsa:
     '''Construct ctc graphs from symbols.
 
@@ -977,6 +978,10 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
 
             - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
             - An instance of :class:`k2.RaggedInt`. Must have `num_axes() == 2`.
+      standard:
+        Option to specify the type of CTC topology: "standard" or "simplified",
+        where the "standard" one makes the blank mandatory between a pair of
+        identical symbols. Default True.
       device:
         Optional. It can be either a string (e.g., 'cpu',
         'cuda:0') or a torch.device.
@@ -1009,7 +1014,8 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
             device=device)
 
     need_arc_map = True
-    ragged_arc, arc_map = _k2.ctc_graph(symbols, need_arc_map, gpu_id)
+    ragged_arc, arc_map = _k2.ctc_graph(symbols, gpu_id,
+                                        standard, need_arc_map)
     aux_labels = k2.index(symbol_values, arc_map)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
