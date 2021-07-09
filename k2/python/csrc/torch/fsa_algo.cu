@@ -672,10 +672,53 @@ static void PybindReplaceFsa(py::module &m) {
         index_map_tensor = ToTorch(arc_map_index);
         return std::make_tuple(out, src_map_tensor, index_map_tensor);
       },
-      py::arg("src"), py::arg("index"), py::arg("symbol_begin_range")
-     );
+      py::arg("src"), py::arg("index"), py::arg("symbol_begin_range"));
 }
 
+static void PybindCtcGraph(py::module &m) {
+  m.def(
+      "ctc_graph",
+      [](const std::vector<std::vector<int32_t>> &symbols,
+          int32_t gpu_id = -1, bool standard = true, bool need_arc_map = true)
+        -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+        ContextPtr context;
+        if (gpu_id < 0)
+          context = GetCpuContext();
+        else
+          context = GetCudaContext(gpu_id);
+
+        DeviceGuard guard(context);
+        Ragged<int32_t> ragged = CreateRagged2<int32_t>(symbols).To(context);
+        Array1<int32_t> arc_map;
+        FsaVec graph = CtcGraphs(ragged, standard,
+                                 need_arc_map ? &arc_map : nullptr);
+        torch::optional<torch::Tensor> tensor;
+        if (need_arc_map) tensor = ToTorch(arc_map);
+        return std::make_pair(graph, tensor);
+      },
+      py::arg("symbols"), py::arg("gpu_id") = -1, py::arg("standard") = true,
+      py::arg("need_arc_map") = true,
+      R"(
+  If gpu_id is -1, the returned FsaVec is on CPU.
+  If gpu_id >= 0, the returned FsaVec is on the specified GPU.
+      )");
+
+  m.def(
+      "ctc_graph",
+      [](const Ragged<int32_t> &symbols, int32_t gpu_id, /*unused_gpu_id*/
+         bool standard = true, bool need_arc_map = true)
+        -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(symbols.Context());
+        Array1<int32_t> arc_map;
+        FsaVec graph = CtcGraphs(symbols, standard,
+                                 need_arc_map ? &arc_map : nullptr);
+        torch::optional<torch::Tensor> tensor;
+        if (need_arc_map) tensor = ToTorch(arc_map);
+        return std::make_pair(graph, tensor);
+      },
+      py::arg("symbols"), py::arg("gpu_id"), py::arg("standard") = true,
+      py::arg("need_arc_map") = true);
+}
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -697,5 +740,9 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindRemoveEpsilonSelfLoops(m);
   k2::PybindExpandArcs(m);
   k2::PybindFixFinalLabels(m);
+<<<<<<< HEAD
   k2::PybindReplaceFsa(m);
+=======
+  k2::PybindCtcGraph(m);
+>>>>>>> master
 }

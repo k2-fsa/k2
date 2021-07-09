@@ -163,8 +163,6 @@ TEST(ArcSort, NonEmptyFsaVec) {
   }
 }
 
-
-
 TEST(FsaAlgo, LinearFsa) {
   for (auto &context : {GetCudaContext(), GetCpuContext()}) {
     Array1<int32_t> symbols(context, std::vector<int32_t>{10, 20, 30});
@@ -1226,12 +1224,12 @@ TEST(FsaAlgo, TestReplaceRandom) {
           else
             // label out-of-range just copied
             EXPECT_EQ(replaced_values_data[k].label, label);
-        } else { // This arc is from `src`
+        } else {  // arc coming from `src`
           EXPECT_NE(arc_src_map[k], -1);
           EXPECT_EQ(replaced_values_data[k].score,
                     src_values_data[arc_src_map[k]].score);
           int32_t label = src_values_data[arc_src_map[k]].label;
-          if (label == -1) // arc lead to final state
+          if (label == -1)  // arc leading to final state
             EXPECT_EQ(replaced_values_data[k].label, 0);
           else
             EXPECT_EQ(replaced_values_data[k].label, label);
@@ -1241,4 +1239,47 @@ TEST(FsaAlgo, TestReplaceRandom) {
   }
 }
 
+TEST(FsaAlgo, TestCtcGraph) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<int32_t> symbols(c, "[ [ 1 2 2 3 ] [ 1 2 3 ] ]");
+    Array1<int32_t> arc_map;
+    FsaVec graph = CtcGraphs(symbols, true, &arc_map);
+    FsaVec graph_ref(c, "[ [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
+                        "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 ] "
+                        "    [ 4 4 0 0 4 5 2 0 ] [ 5 6 0 0 5 5 2 0 5 7 3 0 ] "
+                        "    [ 6 6 0 0 6 7 3 0 ] [ 7 8 0 0 7 7 3 0 7 9 -1 0 ] "
+                        "    [ 8 8 0 0 8 9 -1 0 ] [ ] ] "
+                        "  [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
+                        "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 3 5 3 0 ] "
+                        "    [ 4 4 0 0 4 5 3 0 ] [ 5 6 0 0 5 5 3 0 5 7 -1 0 ] "
+                        "    [ 6 6 0 0 6 7 -1 0 ] [ ] ] ]");
+    Array1<int32_t> arc_map_ref(c, "[ -1 0 -1 -1 1 -1 1 -1 -1 -1 2 -1 -1 3 "
+                                   "  -1 3 -1 -1 -1 -1 -1 -1 4 -1 -1 5 -1 5 "
+                                   "  -1 -1 6 -1 6 -1 -1 -1 -1 -1 ]");
+    K2_CHECK(Equal(graph, graph_ref));
+    K2_CHECK(Equal(arc_map, arc_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestCtcGraphSimplified) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<int32_t> symbols(c, "[ [ 1 2 2 3 ] [ 1 2 3 ] ]");
+    Array1<int32_t> arc_map;
+    FsaVec graph = CtcGraphs(symbols, false, &arc_map);
+    FsaVec graph_ref(c, "[ [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
+                        "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 3 5 2 0] "
+                        "    [ 4 4 0 0 4 5 2 0 ] [ 5 6 0 0 5 5 2 0 5 7 3 0 ] "
+                        "    [ 6 6 0 0 6 7 3 0 ] [ 7 8 0 0 7 7 3 0 7 9 -1 0 ] "
+                        "    [ 8 8 0 0 8 9 -1 0 ] [ ] ] "
+                        "  [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
+                        "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 3 5 3 0 ] "
+                        "    [ 4 4 0 0 4 5 3 0 ] [ 5 6 0 0 5 5 3 0 5 7 -1 0 ] "
+                        "    [ 6 6 0 0 6 7 -1 0 ] [ ] ] ]");
+    Array1<int32_t> arc_map_ref(c, "[ -1 0 -1 -1 1 -1 1 -1 -1 2 -1 2 -1 "
+                                   "  -1 3 -1 3 -1 -1 -1 -1 -1 -1 4 -1 -1 5 "
+                                   "  -1 5 -1 -1 6 -1 6 -1 -1 -1 -1 -1 ]");
+    K2_CHECK(Equal(graph, graph_ref));
+    K2_CHECK(Equal(arc_map, arc_map_ref));
+  }
+}
 }  // namespace k2
