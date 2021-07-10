@@ -740,9 +740,6 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindRemoveEpsilonSelfLoops(m);
   k2::PybindExpandArcs(m);
   k2::PybindFixFinalLabels(m);
-<<<<<<< HEAD
   k2::PybindReplaceFsa(m);
-=======
   k2::PybindCtcGraph(m);
->>>>>>> master
 }
