@@ -34,6 +34,7 @@ from .fsa_algo import random_paths
 from .fsa_algo import remove_epsilon
 from .fsa_algo import remove_epsilon_and_add_self_loops
 from .fsa_algo import remove_epsilon_self_loops
+from .fsa_algo import replace_fsa
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str
@@ -56,4 +57,6 @@ from .utils import to_str
 from .utils import to_str_simple
 from .utils import to_tensor
 from .utils import create_sparse
+from .utils import random_fsa
+from .utils import random_fsa_vec
 from _k2.version import with_cuda

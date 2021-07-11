@@ -1,11 +1,7 @@
 /**
- * @brief python wrappers for fsa_algo.
+ * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                      Xiaomi Corporation (authors: Haowen Qiu, Wei Kang)
  *
- * @copyright
- * Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang)
- *                      Xiaomi Corporation (authors: Haowen Qiu)
- *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -661,6 +657,24 @@ static void PybindFixFinalLabels(py::module &m) {
      )");
 }
 
+static void PybindReplaceFsa(py::module &m) {
+  m.def(
+      "replace_fsa",
+      [](FsaVec &src, FsaOrVec &index, int32_t symbol_begin_range)
+          -> std::tuple<FsaOrVec, torch::optional<torch::Tensor>,
+                        torch::optional<torch::Tensor>> {
+        DeviceGuard guard(index.Context());
+        Array1<int32_t> arc_map_src, arc_map_index;
+        FsaOrVec out = ReplaceFsa(src, index, symbol_begin_range,
+                                  &arc_map_src, &arc_map_index);
+        torch::optional<torch::Tensor> src_map_tensor, index_map_tensor;
+        src_map_tensor = ToTorch(arc_map_src);
+        index_map_tensor = ToTorch(arc_map_index);
+        return std::make_tuple(out, src_map_tensor, index_map_tensor);
+      },
+      py::arg("src"), py::arg("index"), py::arg("symbol_begin_range"));
+}
+
 static void PybindCtcGraph(py::module &m) {
   m.def(
       "ctc_graph",
@@ -705,7 +719,6 @@ static void PybindCtcGraph(py::module &m) {
       py::arg("symbols"), py::arg("gpu_id"), py::arg("standard") = true,
       py::arg("need_arc_map") = true);
 }
-
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -727,5 +740,6 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindRemoveEpsilonSelfLoops(m);
   k2::PybindExpandArcs(m);
   k2::PybindFixFinalLabels(m);
+  k2::PybindReplaceFsa(m);
   k2::PybindCtcGraph(m);
 }

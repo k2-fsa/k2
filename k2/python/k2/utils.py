@@ -23,6 +23,7 @@ import torch
 
 from .fsa import Fsa
 from .ops import index
+from .ops import index_ragged
 from .ops import index_select
 from .symbol_table import SymbolTable
 import k2
@@ -514,3 +515,144 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
     k2.autograd_utils.phantom_index_and_sum_scores(dest, src.scores, arc_map)
 
     return dest
+
+
+def fsa_from_binary_function_tensor(
+        a_fsa: Fsa,
+        b_fsa: Fsa,
+        dest_arcs: _k2.RaggedArc,
+        a_arc_map: torch.Tensor,
+        b_arc_map: torch.Tensor) -> Fsa:
+
+    '''Create an Fsa object, including autograd logic and propagating
+    properties from the source FSAs.
+
+    This is intended to be called from binary functions on FSAs where the
+    arc_map is a Tensor of int32 (i.e. not ragged).
+
+    Caution: Only the attributes with dtype `torch.float32` will be merged,
+             other kinds of attributes with the same name are discarded.
+
+    Args:
+      a_fsa:
+        The source Fsa, i.e. the arg to the binary function.
+      b_fsa:
+        The other source Fsa.
+      dest_arcs:
+        The raw output of the binary function, as output by whatever C++
+        algorithm we used.
+      a_arc_map:
+        A map from arcs in `dest_arcs` to the corresponding arc-index in `a_fsa`
+        or -1 if the arc had no source arc (e.g. added epsilon self-loops).
+      a_arc_map:
+        A map from arcs in `dest_arcs` to the corresponding arc-index in `b_fsa`
+        or -1 if the arc had no source arc (e.g. added epsilon self-loops).
+    Returns:
+      Returns the resulting Fsa, with properties propagated appropriately, and
+      autograd handled.
+    '''
+
+    out_fsa = Fsa(dest_arcs)
+
+    for name, a_value in a_fsa.named_tensor_attr():
+        # we include 'scores' in the attributes; this enables the
+        # autograd to work.
+        filler = float(a_fsa.get_filler(name))
+        if hasattr(b_fsa, name):
+            # Both a_fsa and b_fsa have this attribute.
+            # We only support attributes with dtype `torch.float32`.
+            # Other kinds of attributes are discarded.
+            if a_value.dtype != torch.float32:
+                raise AttributeError("We don't support propagating two "
+                                     "attributes with the same name that are "
+                                     "not real-valued, in intersection: " +
+                                     name)
+            b_value = getattr(b_fsa, name)
+            assert b_value.dtype == torch.float32
+            # The following will actually overwrite `scores` with the same
+            # value it had before; but this enables the autograd to work since
+            # we do it using torch mechanisms.
+            value = index_select(a_value, a_arc_map, default_value=filler) \
+                    + index_select(b_value, b_arc_map, default_value=filler)
+            setattr(out_fsa, name, value)
+        else:
+            # only a_fsa has this attribute, copy it via arc_map
+            if isinstance(a_value, torch.Tensor):
+                value = index_select(a_value, a_arc_map, default_value=filler)
+            else:
+                assert isinstance(a_value, _k2.RaggedInt)
+                value = index_ragged(a_value, a_arc_map)
+            setattr(out_fsa, name, value)
+
+    for name, b_value in b_fsa.named_tensor_attr():
+        if not hasattr(out_fsa, name):
+            if isinstance(b_value, torch.Tensor):
+                filler = float(b_fsa.get_filler(name))
+                value = index_select(b_value, b_arc_map, default_value=filler)
+            else:
+                assert isinstance(b_value, _k2.RaggedInt)
+                value = index_ragged(b_value, b_arc_map)
+            setattr(out_fsa, name, value)
+
+    for name, a_value in a_fsa.named_non_tensor_attr():
+        setattr(out_fsa, name, a_value)
+
+    for name, b_value in b_fsa.named_non_tensor_attr():
+        if not hasattr(out_fsa, name):
+            setattr(out_fsa, name, b_value)
+
+    return out_fsa
+
+
+def random_fsa(acyclic: bool = True,
+               max_symbol: int = 50,
+               min_num_arcs: int = 0,
+               max_num_arcs: int = 1000) -> Fsa:
+
+    '''Generate a random Fsa.
+    Args:
+      acyclic:
+        If true, generated Fsa will be acyclic.
+      max_symbol:
+        Maximum symbol on arcs. Generated arcs' symbols will be in range
+        [-1,max_symbol], note -1 is kFinalSymbol; must be at least 0;
+     min_num_arcs:
+       Minimum number of arcs; must be at least 0.
+     max_num_arcs:
+       Maximum number of arcs; must be >= min_num_arcs.
+    '''
+
+    random_arcs = _k2.random_fsa(acyclic, max_symbol, min_num_arcs,
+                                 max_num_arcs)
+    return Fsa(random_arcs)
+
+
+def random_fsa_vec(min_num_fsas: int = 1,
+                   max_num_fsas: int = 1000,
+                   acyclic: bool = True,
+                   max_symbol: int = 50,
+                   min_num_arcs: int = 0,
+                   max_num_arcs: int = 1000) -> Fsa:
+
+    '''Generate a random FsaVec.
+    Args:
+      min_num_fsas:
+        Minimum number of fsas we'll generated in the returned FsaVec;
+        must be at least 1.
+      max_num_fsas:
+        Maximum number of fsas we'll generated in the returned FsaVec;
+        must be >= min_num_fsas.
+      acyclic:
+        If true, generated Fsas will be acyclic.
+      max_symbol:
+        Maximum symbol on arcs. Generated arcs' symbols will be in range
+        [-1,max_symbol], note -1 is kFinalSymbol; must be at least 0;
+      min_num_arcs:
+        Minimum number of arcs in each Fsa; must be at least 0.
+      max_num_arcs:
+        Maximum number of arcs in each Fsa; must be >= min_num_arcs.
+    '''
+
+    random_arcs = _k2.random_fsa_vec(min_num_fsas, max_num_fsas, acyclic,
+                                     max_symbol, min_num_arcs, max_num_arcs)
+    return Fsa(random_arcs)
