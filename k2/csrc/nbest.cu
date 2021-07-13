@@ -178,7 +178,6 @@ void CreateLcpIntervalArray(ContextPtr c,
                             T seq_len,
                             T *lcp_array,
                             Array1<LcpInterval<T> > *lcp_intervals,
-                            Array1<T> *lcp_intervals_order,
                             Array1<T> *leaf_parent_intervals) {
 
 
@@ -216,8 +215,6 @@ void CreateLcpIntervalArray(ContextPtr c,
   T last_interval = -1;  // Will store an index into `lcp_intervals`; this comes
                          // from Algorithm 2 mentioned above
   stack.push_back({0, 0, T(seq_len - 1), next++ });
-  lcp_intervals_data[0] = stack.back();
-  lcp_intervals_data[0].parent = -1;
   // We are using a numbering in which the terminating symbol $ is included
   // in the array length, which is why we do "i < seq_len" and not
   // "i <= seq_len" as in
@@ -231,50 +228,60 @@ void CreateLcpIntervalArray(ContextPtr c,
                                             // currently represents 'self',
                                             // i.e. the index of the
                                             // lcp-interval stack.back().
+      T last_interval_dfsorder = dfs_next++;
       lb = stack.back().lb;
       while (!leaf_stack.empty() && leaf_stack.back() >= lb) {
-        leaf_parent_data[leaf_stack.back()] = last_interval;
+        leaf_parent_data[leaf_stack.back()] = last_interval_dfsorder;
         leaf_stack.pop_back();
       }
-
       // process(last_interval):
-      lcp_intervals_data[last_interval] = stack.back();
+      lcp_intervals_data[last_interval_dfsorder] = stack.back();
       //  Previously tried doing:
       //   stack.back().rb = i - 1;
       // a bit further above, but hit some kind of compiler problem, the assignment
       // had no effect (back() is supposed to return a reference).
-      lcp_intervals_data[last_interval].rb = i - 1;
-      intervals_order_data[dfs_next++] = last_interval;
+      lcp_intervals_data[last_interval_dfsorder].rb = i - 1;
+      intervals_order_data[last_interval] = last_interval_dfsorder;
       stack.pop_back();
       if (lcp_array_i <= stack.back().lcp) {
-        // lcp_intervals_data[last_interval].parent represents the parent
+        // lcp_intervals_data[last_interval_dfsorder].parent represents the parent
         // of `last_interval`; `stack.back().parent` currently represents
         // the intended position of stack.back() itself, not of its parent.
-        lcp_intervals_data[last_interval].parent = stack.back().parent;
+        lcp_intervals_data[last_interval_dfsorder].parent = stack.back().parent;
         last_interval = -1;
       }
     }
     if (lcp_array_i > stack.back().lcp) {
       if (last_interval >= 0) {
-        lcp_intervals_data[last_interval].parent = next;
+        lcp_intervals_data[intervals_order_data[last_interval]].parent = next;
         last_interval = -1;
       }
       stack.push_back({lcp_array_i, lb, -1, next++});
     }
   }
   assert(stack.size() == 1);
-  intervals_order_data[dfs_next++] = 0;
+  T top_node_dfsorder = dfs_next++;
+  lcp_intervals_data[top_node_dfsorder] = stack.back();
+  lcp_intervals_data[top_node_dfsorder].parent = -1;
+  intervals_order_data[0] = top_node_dfsorder;
   leaf_stack.push_back(seq_len - 1);
   while (!leaf_stack.empty()) {
-    leaf_parent_data[leaf_stack.back()] = 0;
+    leaf_parent_data[leaf_stack.back()] = top_node_dfsorder;
     leaf_stack.pop_back();
   }
   assert(dfs_next == next);
-
+  for (T i = 0; i + 1 < next; i++) {
+    // for each lpc-interval, except the last (top) node which has -1 as its
+    // parent field..  Change from pushing order (order in which we pushed them
+    // onto the stack) to dfs post order (order in which they were popped).
+    lcp_intervals_data[i].parent = intervals_order_data[
+        lcp_intervals_data[i].parent];
+  }
 
   *lcp_intervals = lcp_intervals->Range(0, next);
-  if (lcp_intervals_order)
-    *lcp_intervals_order = intervals_order.Range(0, next);
+  for (T i = 0; i < next; i++)
+    intervals_order_data[i] = i;  // We output in dfs post order now.. will
+                                  // remove this output arg.
   if (leaf_parent_intervals)
     *leaf_parent_intervals = leaf_parent;
 
@@ -286,14 +293,12 @@ void CreateLcpIntervalArray(ContextPtr c,
                             int32_t seq_len,
                             int32_t *lcp_array,
                             Array1<LcpInterval<int32_t> > *lcp_intervals,
-                            Array1<int32_t> *lcp_intervals_order,
                             Array1<int32_t> *leaf_parent_intervals);
 template
 void CreateLcpIntervalArray(ContextPtr c,
                             int16_t seq_len,
                             int16_t *lcp_array,
                             Array1<LcpInterval<int16_t> > *lcp_intervals,
-                            Array1<int16_t> *lcp_intervals_order,
                             Array1<int16_t> *leaf_parent_intervals);
 
 

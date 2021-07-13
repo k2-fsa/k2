@@ -180,11 +180,8 @@ struct LcpInterval {
      @param [in] lcp_array  The LCP array, as computed by CreateLcpArray()
      @param [out] lcp_intervals    A *newly created* array of LcpInterval<T>
                    will be written to here, of length no greater than seq_len.
-     @param  [out] lcp_intervals_order  If this is non-NULL, a newly
-                   created array will be written to here, giving a bottom-up
-                   order of the lcp-intervals so that each child comes before
-                   its parent.  This is a permutation of the numbers
-                   [0,1,...lcp_intervals->Dim()-1].
+                   They will be in dfs post order.  Children precede their
+                   parents.
      @param [out] leaf_parent_intervals  If this is non-NULL, a newly
                    created array of size seq_len will be written to here,
                    saying, for each leaf in the suffix tree (corresponding to
@@ -198,7 +195,6 @@ void CreateLcpIntervalArray(ContextPtr c,
                             T seq_len,
                             T *lcp_array,
                             Array1<LcpInterval<T> > *lcp_intervals,
-                            Array1<T> *lcp_intervals_order,
                             Array1<T> *leaf_parent_intervals);
 
 
