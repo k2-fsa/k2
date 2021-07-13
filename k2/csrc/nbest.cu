@@ -61,6 +61,8 @@ static void RadixPass(const T* a, T* b, const T* r, T n, T K) {
 // https://algo2.iti.kit.edu/documents/jacm05-revised.pdf.
 template <typename T>
 void CreateSuffixArray(const T* text, T n, T K, T* SA) {
+  //assert(text[0] <= text[n-1]);  // spot check that termination symbol is larger
+                                 // than other symbols; <= in case n==1.
   if (n == 1) {  // The paper's code didn't seem to handle n == 1 correctly.
     SA[0] = 0;
     return;
@@ -223,7 +225,7 @@ void CreateLcpIntervalArray(ContextPtr c,
     leaf_stack.push_back(lb);
 
     while (lcp_array_i < stack.back().lcp) {
-      stack.back().last = i - 1;
+      stack.back().last = i;
       last_interval = stack.back().parent;  // actually, the .parent field
                                             // currently represents 'self',
                                             // i.e. the index of the

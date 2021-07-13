@@ -57,13 +57,16 @@ namespace k2 {
    Template args: T should be a signed integer type, we
    plan to instantiate this for int32_t and int16_t only.
 
-    @param [in] text_array  Pointer to the input array of symbols
-           (all pointers must be CPU pointers only, for now),
-            whose suffixes are to be sorted.  Logically this
-            has length `seq_len`, and symbols are required
-            to be in the range [1..max_symbol].  It is required
-            to be terminated by 3 zeros, i.e.
-            text_array[seq_len] == text_array[seq_len+1] == text_array[seq_len+2] == 0
+    @param [in] text_array  Pointer to the input array of symbols,
+           including the termination symbol ($) which must be larger
+           than the other symbols.
+           All pointers must be CPU pointers only, for now.
+           The suffixes of this array are to be sorted.  Logically this
+           array has length `seq_len`, and symbols are required
+           to be in the range [1..max_symbol].
+           text_array is additionally required to be terminated by 3 zeros,
+           for purposes of this algorithm, i.e.
+             text_array[seq_len] == text_array[seq_len+1] == text_array[seq_len+2] == 0
     @param [in] seq_len  Length of the symbol sequence (`text_array`
             must be longer than this by at least 3, for termination.)
             Require seq_len >= 0
@@ -74,12 +77,11 @@ namespace k2 {
              with the property that the sub-arrays of `text_array`
              starting at these positions are lexicographically sorted.
              For example, as a trivial case, if seq_len = 3
-             and text_array contains [ 3, 2, 1, 0, 0, 0 ], then
-             `suffix_array` would contain [ 2, 1, 0 ] at exit.
-             CAUTION: there is some literature on suffix arrays
-             that expects the suffix_array size tgo be n + 1, not n.
+             and text_array contains [ 3, 2, 1, 10, 0, 0, 0 ], then
+             `suffix_array` would contain [ 2, 1, 0, 3 ] at exit.
     @param [in] max_symbol  A number that must be >= the largest
-             number that might be in `text_array`.  The work done
+             number that might be in `text_array`, including the
+             termination symbol.  The work done
              is O(seq_len + max_symbol), so it is not advisable
              to let max_symbol be too large.
     Caution: this function allocates memory internally (although
