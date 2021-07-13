@@ -1386,12 +1386,13 @@ Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src,
                                 Array1<int32_t> *new2old_indexes = nullptr);
 
 /* Compute exclusive sum per sub-list.
- *
- * @param [in] src  The input ragged tensor. The exclusive sum is computed
- *                  for the last axis. CAUTION: The last entry of every sublist
- *                  does not contribute to the final sum.
- * @param [out] dst The dest array. It satisfies dst.Dim() == src.NumElements().
- *                  Supports `dst == &src.values`.
+
+    @param [in] src  The input ragged tensor. The exclusive sum is computed
+                     for the last axis. CAUTION: The last entry of every
+                     sublist does not contribute to the final sum.
+    @param [out] dst The dest array. It satisfies
+                     `dst.Dim() == src.NumElements().`
+                     Supports `dst == &src.values`.
  */
 template <typename T>
 void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst);
@@ -1405,6 +1406,16 @@ void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst);
 */
 template <typename T>
 Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs);
+
+/*
+  Pad a ragged array to be regular.
+    @param [in] src  The input ragged array.
+                     CAUTION: Only support `NumAxes() == 2`.
+    @param [in] padding_value  Value for padded elements.
+    @return  Returns the corresponding regular array (Array2).
+ */
+template <typename T>
+Array2<T> PadRagged(Ragged<T> &src, T padding_value);
 
 }  // namespace k2
 

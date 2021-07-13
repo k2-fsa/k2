@@ -1,5 +1,6 @@
 /**
- * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
+ * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu
+ *                                                   Wei Kang)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Yiming Wang
  *
@@ -2679,5 +2680,37 @@ TEST(RaggedFloatTest, TestCreateRagged2Float) {
   CheckArrayData(r.values, expected_values);
 }
 
+template <typename T>
+static void TestPadRagged() {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    {
+      Ragged<T> src(c, "[ [1 2] [3 4 3] [] [5 6 7 8] ]");
+      T padding_value = 0;
+      Array2<T> res = PadRagged(src, padding_value);
+      Array1<T> dst = res.Flatten();
+      std::vector<T> expected = {1, 2, 0, 0,
+                                 3, 4, 3, 0,
+                                 0, 0, 0, 0,
+                                 5, 6, 7, 8};
+      CheckArrayData(dst, expected);
+    }
+    {
+      Ragged<T> src(c, "[ [1 2] [3 4 3] [] [5 6 7 8] ]");
+      T padding_value = -1;
+      Array2<T> res = PadRagged(src, padding_value);
+      Array1<T> dst = res.Flatten();
+      std::vector<T> expected = {1, 2, -1, -1,
+                                 3, 4, 3, -1,
+                                 -1, -1, -1, -1,
+                                 5, 6, 7, 8};
+      CheckArrayData(dst, expected);
+    }
+  }
+}
+
+TEST(RaggedTest, TestPadRagged) {
+  TestPadRagged<int32_t>();
+  TestPadRagged<double>();
+}
 
 }  // namespace k2

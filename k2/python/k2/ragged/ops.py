@@ -1,6 +1,7 @@
 # Copyright      2020  Xiaomi Corporation (authors: Fangjun Kuang
 #                                                   Daniel Povey
-#                                                   Haowen Qiu)
+#                                                   Haowen Qiu
+#                                                   Wei Kang)
 #
 # See ../../../../LICENSE for clarification regarding multiple authors
 #
@@ -130,6 +131,28 @@ def to_list(src: _k2.RaggedInt) -> List:
        as `src`.
     '''
     return _k2.ragged_int_to_list(src)
+
+
+def pad_ragged(src: _k2.RaggedInt, padding_value: int = 0) -> torch.Tensor:
+    '''Pad a ragged tensor of ints to torch tensor.
+
+    For example, if `src` has the following values:
+
+        [ [1 2 3] [4] [5 6 7 8] ]
+
+    Then it returns a 2-D tensor as follows:
+        tensor([[1, 2, 3, 0],
+                [4, 0, 0, 0],
+                [5, 6, 7, 8]])
+
+    Args:
+      src:
+        The source ragged tensor, MUST have `num_axes() == 2`.
+      Returns:
+        A 2-D torch.Tensor with dtype torch.int32 and
+        on the same device as `src`.
+    '''
+    return _k2.pad_ragged_int_to_tensor(src, padding_value)
 
 
 def sum_per_sublist(src: _k2.RaggedFloat,

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
-# Copyright      2020  Xiaomi Corporation (authors: Fangjun Kuang)
+# Copyright      2020  Xiaomi Corporation (authors: Fangjun Kuang
+#                                                   Wei kang)
 #                2021  Mobvoi Inc. (authors: Yaguang Hu)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
@@ -79,6 +80,22 @@ class TestRaggedOps(unittest.TestCase):
             ans = k2.ragged.remove_axis(src, 0)
             self.assertEqual(k2.ragged.to_list(ans),
                              [[1, 2], [0], [3, 0], [2]])
+
+    def test_pad_ragged(self):
+        s = '''
+            [ [ 1 2 ] [ 3 ] [ ] [ 4 5 6 ] [ 7 8 9 10 ] ]
+        '''
+        for device in self.devices:
+            src = k2.RaggedInt(s).to(device)
+            ans = k2.ragged.pad_ragged(src, 0)
+            expected = torch.tensor([[1, 2, 0, 0],
+                                     [3, 0, 0, 0],
+                                     [0, 0, 0, 0],
+                                     [4, 5, 6, 0],
+                                     [7, 8, 9, 10]],
+                                    dtype=torch.int32,
+                                    device=device)
+            assert torch.all(torch.eq(ans, expected))
 
     def test_remove_values_leq(self):
         s = '''
