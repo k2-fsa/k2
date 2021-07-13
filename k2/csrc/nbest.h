@@ -129,11 +129,15 @@ void CreateLcpArray(const T *text_array,
      0 <= i < j < seq_len
      lcptab[i] < l
      lcptab[j+1] < l
-     l is the minimum of (lcptab[i], lcptab[i+1], ..., lcptab[j])
+     l is the minimum of (lcptab[i+1], lcptab[i+2], ..., lcptab[j])
   lcp-intervals correspond to the internal nodes of the suffix trie, so
   they always contain at least two children (where children can be
   leaves, corresponding indexes into the suffix array, or other
   lcp-intervals).
+
+  SPECIAL CASE: if seq_len is 1, which is a rather degenerate case, the above
+  definitions do not quite work; and we treat [0,0] as an lcp-interval with
+  lcp-value 0 although it does not meet the above definitions.
 
   Type LcpInterval is used to store information about the lcp interval,
   which we'll later use in algorithms that traverse the suffix tree.
@@ -145,9 +149,8 @@ struct LcpInterval {
   // Represents the lcp-interval [begin,last] with lcp-value `lcp`
   T lcp;    // The lcp-value of the lcp-interval, which is the length of the
             // longest prefix shared by all suffixes in this interval.
-  T begin;  // Index of the first element
-  T last;   // Index of the last element; we don't call this 'end' because that
-            // is generally used to mean one past the end.
+  T lb;     // Index of the first element (left boundary)
+  T rb;     // Index of the last elemen (right boundary)
   T parent; // The parent of this lcp-interval (-1 if this is the top interval),
             // in the order in which it appears in this array (of
             // lcp-intervals).  Note: this order is neither top-down or

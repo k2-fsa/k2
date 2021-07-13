@@ -215,22 +215,23 @@ void CreateLcpIntervalArray(ContextPtr c,
                    // that corresponds to depth-first search.
   T last_interval = -1;  // Will store an index into `lcp_intervals`; this comes
                          // from Algorithm 2 mentioned above
-  stack.push_back({0, 0, seq_len, next++ });
+  stack.push_back({0, 0, T(seq_len - 1), next++ });
   lcp_intervals_data[0] = stack.back();
-  // We are using zero-based indexing so the code is not quite the same as our reference.
-  // Also, http://www.mi.fu-berlin.de/wiki/pub/ABI/RnaSeqP4/enhanced-suffix-array.pdf
-  // seems to be expecting a suffix array of size seq_len + 1, not seq_len.
-  for (T i = 0; i < seq_len; ++i) {
-    T lb = i, lcp_array_i = lcp_array[i];
+  lcp_intervals_data[0].parent = -1;
+  // We are using a numbering in which the terminating symbol $ is included
+  // in the array length, which is why we do "i < seq_len" and not
+  // "i <= seq_len" as in
+  // http://www.mi.fu-berlin.de/wiki/pub/ABI/RnaSeqP4/enhanced-suffix-array.pdf
+  for (T i = 1; i < seq_len; ++i) {
+    T lb = i - 1, lcp_array_i = lcp_array[i];
     leaf_stack.push_back(lb);
 
     while (lcp_array_i < stack.back().lcp) {
-      stack.back().last = i;
       last_interval = stack.back().parent;  // actually, the .parent field
                                             // currently represents 'self',
                                             // i.e. the index of the
                                             // lcp-interval stack.back().
-      lb = stack.back().begin;
+      lb = stack.back().lb;
       while (!leaf_stack.empty() && leaf_stack.back() >= lb) {
         leaf_parent_data[leaf_stack.back()] = last_interval;
         leaf_stack.pop_back();
@@ -238,6 +239,11 @@ void CreateLcpIntervalArray(ContextPtr c,
 
       // process(last_interval):
       lcp_intervals_data[last_interval] = stack.back();
+      //  Previously tried doing:
+      //   stack.back().rb = i - 1;
+      // a bit further above, but hit some kind of compiler problem, the assignment
+      // had no effect (back() is supposed to return a reference).
+      lcp_intervals_data[last_interval].rb = i - 1;
       intervals_order_data[dfs_next++] = last_interval;
       stack.pop_back();
       if (lcp_array_i <= stack.back().lcp) {
@@ -258,6 +264,7 @@ void CreateLcpIntervalArray(ContextPtr c,
   }
   assert(stack.size() == 1);
   intervals_order_data[dfs_next++] = 0;
+  leaf_stack.push_back(seq_len - 1);
   while (!leaf_stack.empty()) {
     leaf_parent_data[leaf_stack.back()] = 0;
     leaf_stack.pop_back();
