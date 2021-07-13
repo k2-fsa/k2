@@ -675,7 +675,7 @@ Array2<T> PadRagged(Ragged<T> &src, T padding_value) {
   ContextPtr c = src.Context();
   int32_t row_num = src.Dim0(),
           col_num = src.shape.MaxSize(1);
-  Array2<T> res = Array2<T>(c, row_num, col_num, padding_value);
+  Array2<T> res(c, row_num, col_num, padding_value);
   T *res_data = res.Data();
   const T *src_values_data = src.values.Data();
   const int32_t *src_row_ids1_data = src.RowIds(1).Data(),
