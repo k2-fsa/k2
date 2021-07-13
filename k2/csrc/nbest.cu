@@ -179,7 +179,7 @@ void CreateLcpIntervalArray(ContextPtr c,
                             Array1<T> *lcp_intervals_order,
                             Array1<T> *leaf_parent_intervals) {
 
-  //
+
   *lcp_intervals = Array1<LcpInterval<T> >(c, seq_len);
   LcpInterval<T> *lcp_intervals_data = lcp_intervals->Data();
 
@@ -216,6 +216,8 @@ void CreateLcpIntervalArray(ContextPtr c,
   stack.push_back({0, 0, seq_len, next++ });
   lcp_intervals_data[0] = stack.back();
   // We are using zero-based indexing so the code is not quite the same as our reference.
+  // Also, http://www.mi.fu-berlin.de/wiki/pub/ABI/RnaSeqP4/enhanced-suffix-array.pdf
+  // seems to be expecting a suffix array of size seq_len + 1, not seq_len.
   for (T i = 0; i < seq_len; ++i) {
     T lb = i, lcp_array_i = lcp_array[i];
     leaf_stack.push_back(lb);
