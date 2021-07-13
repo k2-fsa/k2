@@ -71,7 +71,9 @@ set(context_srcs
   timer.cu
   top_sort.cu
   utils.cu
+  nbest.cu
 )
+
 
 if(K2_USE_PYTORCH)
   list(APPEND context_srcs pytorch_context.cu)
@@ -86,7 +88,7 @@ else()
 endif()
 
 # the target
-add_library(context ${context_srcs})
+add_library(context ${context_srcs} ${context_cc_srcs})
 target_compile_definitions(context PUBLIC K2_TORCH_VERSION_MAJOR=${K2_TORCH_VERSION_MAJOR})
 target_compile_definitions(context PUBLIC K2_TORCH_VERSION_MINOR=${K2_TORCH_VERSION_MINOR})
 
@@ -148,6 +150,7 @@ set(cuda_test_srcs
   log_test.cu
   macros_test.cu
   math_test.cu
+  nbest_test.cu
   nvtx_test.cu
   pinned_context_test.cu
   ragged_shape_test.cu
