@@ -133,14 +133,16 @@ def to_list(src: _k2.RaggedInt) -> List:
     return _k2.ragged_int_to_list(src)
 
 
-def pad_ragged(src: _k2.RaggedInt, padding_value: int = 0) -> torch.Tensor:
-    '''Pad a ragged tensor of ints to torch tensor.
+def pad_ragged(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
+               padding_value: Union[int, float] = 0) -> torch.Tensor:
+    '''Pad a ragged tensor to a torch tensor.
 
-    For example, if `src` has the following values:
+    For example, if `src` has the following values::
 
         [ [1 2 3] [4] [5 6 7 8] ]
 
-    Then it returns a 2-D tensor as follows:
+    Then it returns a 2-D tensor as follows if padding value is 0::
+
         tensor([[1, 2, 3, 0],
                 [4, 0, 0, 0],
                 [5, 6, 7, 8]])
@@ -148,11 +150,11 @@ def pad_ragged(src: _k2.RaggedInt, padding_value: int = 0) -> torch.Tensor:
     Args:
       src:
         The source ragged tensor, MUST have `num_axes() == 2`.
-      Returns:
-        A 2-D torch.Tensor with dtype torch.int32 and
-        on the same device as `src`.
+    Returns:
+      A 2-D torch.Tensor with dtype torch.int32 and
+      on the same device as `src`.
     '''
-    return _k2.pad_ragged_int_to_tensor(src, padding_value)
+    return _k2.pad_ragged(src, padding_value)
 
 
 def sum_per_sublist(src: _k2.RaggedFloat,

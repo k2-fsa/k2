@@ -118,9 +118,9 @@ static void PybindRaggedIntToList(py::module &m, const char *name) {
 }
 
 template <typename T>
-static void PybindPadRaggedToTensor(py::module &m, const char *name) {
+static void PybindPadRaggedToTensor(py::module &m) {
   m.def(
-    name,
+    "pad_ragged",
     [](Ragged<T> &src, T padding_value) -> torch::Tensor {
       DeviceGuard guard(src.Context());
       Array2<T> res = PadRagged(src, padding_value);
@@ -386,7 +386,8 @@ void PybindRaggedOps(py::module &m) {
   PybindNormalizePerSublist<float>(m, "normalize_per_sublist");
   PybindNormalizePerSublistBackward<float>(m, "normalize_per_sublist_backward");
   PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
-  PybindPadRaggedToTensor<int32_t>(m, "pad_ragged_int_to_tensor");
+  PybindPadRaggedToTensor<int32_t>(m);
+  PybindPadRaggedToTensor<float>(m);
   PybindRaggedArange<int32_t>(m, "ragged_int_arange");
   PybindRaggedIntToList(m, "ragged_int_to_list");
   PybindRaggedRemoveAxis<int32_t>(m);

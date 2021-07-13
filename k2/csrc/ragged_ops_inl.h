@@ -672,20 +672,24 @@ template <typename T>
 Array2<T> PadRagged(Ragged<T> &src, T padding_value) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 2);
-  ContextPtr c = src.Context();
+  ContextPtr &c = src.Context();
   int32_t row_num = src.Dim0(),
           col_num = src.shape.MaxSize(1);
-  Array2<T> res(c, row_num, col_num, padding_value);
+  Array2<T> res(c, row_num, col_num);
+  int32_t elem_stride0 = res.ElemStride0();
   T *res_data = res.Data();
   const T *src_values_data = src.values.Data();
   const int32_t *src_row_ids1_data = src.RowIds(1).Data(),
                 *src_row_splits1_data = src.RowSplits(1).Data();
-  K2_EVAL(
-      c, src.NumElements(), lambda, (int32_t idx01)->void {
-        int32_t idx0 = src_row_ids1_data[idx01],
-                idx0x = src_row_splits1_data[idx0],
-                idx1 = idx01 - idx0x;
-        res_data[idx0 * col_num + idx1] = src_values_data[idx01];
+  K2_EVAL2(
+      c, res.Dim0(), res.Dim1(), lambda, (int32_t i, int32_t j)->void {
+        int32_t idx0x = src_row_splits1_data[i],
+                idx0x_next = src_row_splits1_data[i + 1],
+                len = idx0x_next - idx0x;
+        if (j >= len)
+          res_data[i * elem_stride0 + j] = padding_value;
+        else
+          res_data[i * elem_stride0 + j] = src_values_data[idx0x + j];
       });
   return res;
 }

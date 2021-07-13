@@ -24,6 +24,7 @@
 
 import unittest
 
+import random
 import torch
 import _k2
 import k2
@@ -87,14 +88,44 @@ class TestRaggedOps(unittest.TestCase):
         '''
         for device in self.devices:
             src = k2.RaggedInt(s).to(device)
-            ans = k2.ragged.pad_ragged(src, 0)
-            expected = torch.tensor([[1, 2, 0, 0],
-                                     [3, 0, 0, 0],
-                                     [0, 0, 0, 0],
-                                     [4, 5, 6, 0],
-                                     [7, 8, 9, 10]],
-                                    dtype=torch.int32,
-                                    device=device)
+            padding_value = random.randint(0, 1000)
+            ans = k2.ragged.pad_ragged(src, padding_value)
+            expected = torch.ones((5, 4), dtype=torch.int32,
+                                  device=device) * padding_value
+            expected[0, 0] = 1
+            expected[0, 1] = 2
+            expected[1, 0] = 3
+            expected[3, 0] = 4
+            expected[3, 1] = 5
+            expected[3, 2] = 6
+            expected[4, 0] = 7
+            expected[4, 1] = 8
+            expected[4, 2] = 9
+            expected[4, 3] = 10
+
+            assert torch.all(torch.eq(ans, expected))
+
+    def test_pad_ragged_float(self):
+        s = '''
+            [ [ 1.0 2.0 ] [ 3.0 ] [ ] [ 4.0 5.0 6.0 ] [ 7.0 8.0 9.0 10.0 ] ]
+        '''
+        for device in self.devices:
+            src = k2.RaggedFloat(s).to(device)
+            padding_value = random.random() * 10
+            ans = k2.ragged.pad_ragged(src, padding_value)
+            expected = torch.ones((5, 4), dtype=torch.int32,
+                                  device=device) * padding_value
+            expected[0, 0] = 1.0
+            expected[0, 1] = 2.0
+            expected[1, 0] = 3.0
+            expected[3, 0] = 4.0
+            expected[3, 1] = 5.0
+            expected[3, 2] = 6.0
+            expected[4, 0] = 7.0
+            expected[4, 1] = 8.0
+            expected[4, 2] = 9.0
+            expected[4, 3] = 10.0
+
             assert torch.all(torch.eq(ans, expected))
 
     def test_remove_values_leq(self):
