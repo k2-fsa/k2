@@ -21,59 +21,59 @@
 namespace k2 {
 
 // Version of k2 in "major.minor.patch" format
-static constexpr const char *kVersion = "@K2_VERSION@";
+static constexpr const char *kVersion = R"k2(@K2_VERSION@)k2";
 
 // The commit used to build k2
-static constexpr const char *kGitSha1 = "@K2_GIT_SHA1@";
+static constexpr const char *kGitSha1 = R"k2(@K2_GIT_SHA1@)k2";
 
 // Date of the commit used to build k2
-static constexpr const char *kGitDate = "@K2_GIT_DATE@";
+static constexpr const char *kGitDate = R"k2(@K2_GIT_DATE@)k2";
 
 // Version of CUDA used to build k2.
 // Its format is "major.minor", e.g., 10.1
-static constexpr const char *kCudaVersion = "@CUDA_VERSION@";
+static constexpr const char *kCudaVersion = R"k2(@CUDA_VERSION@)k2";
 
 // cuDNN version, e.g., 8.0.2
-static constexpr const char *kCudnnVersion = "@CUDNN_VERSION@";
+static constexpr const char *kCudnnVersion = R"k2(@CUDNN_VERSION@)k2";
 
 // clang-format off
 // Version of Python used to build k2 Python bindings.
-static constexpr const char *kPythonVersion = "@PYTHON_VERSION_MAJOR@.@PYTHON_VERSION_MINOR@";
+static constexpr const char *kPythonVersion = R"k2(@PYTHON_VERSION_MAJOR@.@PYTHON_VERSION_MINOR@)k2";
 
 // clang-format on
 
 // CMake build type, e.g., Release or Debug.
-static constexpr const char *kBuildType = "@CMAKE_BUILD_TYPE@";
+static constexpr const char *kBuildType = R"k2(@CMAKE_BUILD_TYPE@)k2";
 
 // The operating system that is used to build k2, e.g., Ubuntu 16.04 LTS
-static constexpr const char *kOS = "@K2_OS@";
+static constexpr const char *kOS = R"k2(@K2_OS@)k2";
 
 // e.g., 3.18.0
-static constexpr const char *kCMakeVersion = "@CMAKE_VERSION@";
+static constexpr const char *kCMakeVersion = R"k2(@CMAKE_VERSION@)k2";
 
 // Version of the compiler, e.g., 5.4.0
-static constexpr const char *kGCCVersion = "@CMAKE_CXX_COMPILER_VERSION@";
+static constexpr const char *kGCCVersion = R"k2(@CMAKE_CXX_COMPILER_VERSION@)k2";
 
 // CUDA flags used to compile k2
-static constexpr const char *kCMakeCudaFlags = "@CMAKE_CUDA_FLAGS@";
+static constexpr const char *kCMakeCudaFlags = R"k2(@CMAKE_CUDA_FLAGS@)k2";
 
 // CXX flags used to compile k2
-static constexpr const char *kCMakeCxxFlags = "@CMAKE_CXX_FLAGS@";
+static constexpr const char *kCMakeCxxFlags = R"k2(@CMAKE_CXX_FLAGS@)k2";
 
 // Which PyTorch version k2 is using, e.g., 1.6.0+cu101
-static constexpr const char *kTorchVersion = "@TORCH_VERSION@";
+static constexpr const char *kTorchVersion = R"k2(@TORCH_VERSION@)k2";
 
 // Which CUDA version PyTorch is using, e.g., 10.1
-static constexpr const char *kTorchCudaVersion = "@TORCH_CUDA_VERSION@";
+static constexpr const char *kTorchCudaVersion = R"k2(@TORCH_CUDA_VERSION@)k2";
 
 #ifndef K2_WITH_CUDA
 #cmakedefine K2_WITH_CUDA
 #endif
 
 #ifdef K2_WITH_CUDA
-  static constexpr bool kWithCuda = true;
+static constexpr bool kWithCuda = true;
 #else
-  static constexpr bool kWithCuda = false;
+static constexpr bool kWithCuda = false;
 #endif
 
 // Indicate whether NVTX is enabled or not

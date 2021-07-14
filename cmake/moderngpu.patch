@@ -1,0 +1,49 @@
+diff --git a/src/moderngpu/meta.hxx b/src/moderngpu/meta.hxx
+index d386b6c..f7660eb 100644
+--- a/src/moderngpu/meta.hxx
++++ b/src/moderngpu/meta.hxx
+@@ -141,15 +141,6 @@ struct conditional_typedef_t {
+ ////////////////////////////////////////////////////////////////////////////////
+ // Code to treat __restrict__ as a CV qualifier.
+ 
+-template<typename arg_t>
+-struct is_restrict {
+-  enum { value = false };
+-};
+-template<typename arg_t>
+-struct is_restrict<arg_t __restrict__> {
+-  enum { value = true };
+-};
+-
+ // Add __restrict__ only to pointers.
+ template<typename arg_t>
+ struct add_restrict {
+@@ -160,15 +151,6 @@ struct add_restrict<arg_t*> {
+   typedef arg_t* __restrict__ type;
+ };
+ 
+-template<typename arg_t>
+-struct remove_restrict {
+-  typedef arg_t type;
+-};
+-template<typename arg_t>
+-struct remove_restrict<arg_t __restrict__> {
+-  typedef arg_t type;
+-};
+-
+ template<typename arg_t>
+ MGPU_HOST_DEVICE typename add_restrict<arg_t>::type make_restrict(arg_t x) {
+   typename add_restrict<arg_t>::type y = x;
+diff --git a/src/moderngpu/tuple.hxx b/src/moderngpu/tuple.hxx
+index 2e381f5..1111c3a 100644
+--- a/src/moderngpu/tuple.hxx
++++ b/src/moderngpu/tuple.hxx
+@@ -253,7 +253,7 @@ struct tuple : detail::tuple_impl<0, args_t...> {
+     >::type
+   > MGPU_HOST_DEVICE  
+   tuple(const args2_t&... args) : impl_t(args...) { }
+-} __attribute__((aligned));
++};
+ 
+ namespace detail {
+ 

@@ -19,11 +19,14 @@
 
 namespace k2 {
 
+// the static modifier causes an error on Windows for the enclosing lambda
+// since it has an internal linkage
 template <typename T>
-static void CopyTensorElements2d(ContextPtr c, int32_t dim0, int32_t dim1,
-                                 const T *src_data, int32_t src_stride0,
-                                 int32_t src_stride1, T *dest_data,
-                                 int32_t dest_stride0, int32_t dest_stride1) {
+/*static*/ void CopyTensorElements2d(ContextPtr c, int32_t dim0, int32_t dim1,
+                                     const T *src_data, int32_t src_stride0,
+                                     int32_t src_stride1, T *dest_data,
+                                     int32_t dest_stride0,
+                                     int32_t dest_stride1) {
   NVTX_RANGE(K2_FUNC);
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
@@ -131,11 +134,15 @@ Tensor Cast(Tensor src, Dtype new_dtype) {
 }
 
 // See the documentation of `Index`.
+//
+// the static modifier causes an error on Windows for the enclosing lambda
+// since it has an internal linkage
 template <typename T>
-static void Index1DImpl(ContextPtr context, const T *src_data,
-                        int32_t src_stride, int32_t src_dim,
-                        const int32_t *indexes_data, bool allow_minus_one,
-                        int32_t ans_dim, T *ans_data, double default_value) {
+/*static*/ void Index1DImpl(ContextPtr context, const T *src_data,
+                            int32_t src_stride, int32_t src_dim,
+                            const int32_t *indexes_data, bool allow_minus_one,
+                            int32_t ans_dim, T *ans_data,
+                            double default_value) {
   if (std::is_integral<T>::value) {
     K2_CHECK_EQ(static_cast<T>(default_value), default_value);
   }
@@ -165,11 +172,15 @@ static void Index1DImpl(ContextPtr context, const T *src_data,
 }
 
 // See the documentation of `Index`.
+//
+// the static modifier causes an error on Windows for the enclosing lambda
+// since it has an internal linkage
 template <typename T>
-static void Index2DImpl(ContextPtr context, const T *src_data,
-                        int32_t src_stride, int32_t src_dim0, int32_t src_dim1,
-                        const int32_t *indexes_data, bool allow_minus_one,
-                        int32_t ans_dim, int32_t ans_stride, T *ans_data) {
+/*static*/ void Index2DImpl(ContextPtr context, const T *src_data,
+                            int32_t src_stride, int32_t src_dim0,
+                            int32_t src_dim1, const int32_t *indexes_data,
+                            bool allow_minus_one, int32_t ans_dim,
+                            int32_t ans_stride, T *ans_data) {
   NVTX_RANGE(K2_FUNC);
   if (allow_minus_one) {
     if (context->GetDeviceType() == kCpu) {
@@ -298,8 +309,10 @@ Tensor Index(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
   }
 }
 
+// the static modifier causes an error on Windows for the enclosing lambda
+// since it has an internal linkage
 template <typename T>
-static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
+/*static*/ void IndexAdd1DImpl(ContextPtr context, const T *src_data,
                            int32_t src_dim, int32_t src_stride,
                            const int32_t *indexes_data, bool allow_minus_one,
                            int32_t dest_dim, int32_t dest_stride,
@@ -329,8 +342,10 @@ static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
       });
 }
 
+// the static modifier causes an error on Windows for the enclosing lambda
+// since it has an internal linkage
 template <typename T>
-static void IndexAdd2DImpl(ContextPtr context, const T *src_data,
+/*static*/ void IndexAdd2DImpl(ContextPtr context, const T *src_data,
                            int32_t src_dim0, int32_t src_dim1,
                            int32_t src_stride0, int32_t src_stride1,
                            const int32_t *indexes_data, bool allow_minus_one,
@@ -360,7 +375,9 @@ static void IndexAdd2DImpl(ContextPtr context, const T *src_data,
       });
 }
 
-static void IndexAdd1D(Tensor &src, Array1<int32_t> &indexes,
+// the static modifier causes an error on Windows for the enclosing lambda
+// since it has an internal linkage
+/*static*/ void IndexAdd1D(Tensor &src, Array1<int32_t> &indexes,
                        bool allow_minus_one, Tensor *dest) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 1);
@@ -436,8 +453,10 @@ void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
   }
 }
 
+// the static modifier causes an error on Windows for the enclosing lambda
+// since it has an internal linkage
 template <typename T>
-static void SimpleRaggedIndexSelect1DImpl(ContextPtr context, const T *src_data,
+/*static*/ void SimpleRaggedIndexSelect1DImpl(ContextPtr context, const T *src_data,
                                           int32_t src_stride, int32_t src_dim,
                                           Ragged<int32_t> &indexes,
                                           int32_t ans_dim, T *ans_data) {

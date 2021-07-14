@@ -39,6 +39,22 @@ target_include_directories(k2_nvtx INTERFACE ${CMAKE_SOURCE_DIR})
 if(K2_ENABLE_NVTX)
   target_compile_definitions(k2_nvtx INTERFACE K2_ENABLE_NVTX=1)
 endif()
+if(WIN32 AND K2_WITH_CUDA)
+  # On windows, it throws an error:
+  #   fatal error C1083: Cannot open include file: 'nvToolsExt.h'
+  message(STATUS "CUDA_TOOLKIT_ROOT_DIR: ${CUDA_TOOLKIT_ROOT_DIR}")
+  find_path(K2_NVTX_INCLUDE_DIR
+    NAMES nvToolsExt.h
+    PATHS ${CUDA_TOOLKIT_ROOT_DIR}/include
+    PATH_SUFFIXES nvtx nvtx2 nvtx3 nvtx4
+  )
+  if(NOT K2_NVTX_INCLUDE_DIR)
+    message(FATAL_ERROR "The include dir for nvToolsExt.h" cannot be found)
+  else()
+    message(STATUS "K2_NVTX_INCLUDE_DIR: ${K2_NVTX_INCLUDE_DIR}")
+    target_include_directories(k2_nvtx INTERFACE ${K2_NVTX_INCLUDE_DIR})
+  endif()
+endif()
 
 add_subdirectory(host)
 

@@ -149,7 +149,7 @@ execute_process(COMMAND
 )
 
 execute_process(COMMAND
-  "${GIT_EXECUTABLE}" log -1 --format=%ad --date=local
+  "${GIT_EXECUTABLE}" log -1 --format=%ad --date=format:"%F %T %z"
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
   OUTPUT_VARIABLE K2_GIT_DATE
   ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -203,7 +203,8 @@ if(K2_WITH_CUDA)
 # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
   message(WARNING "arch 62/72 are not supported for now")
 
-  set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
+  #set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
+  set(K2_COMPUTE_ARCH_CANDIDATES 70)
   set(K2_COMPUTE_ARCHS)
 
   foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
@@ -246,6 +247,14 @@ if(K2_USE_PYTORCH)
   include(torch)
 endif()
 
+if(WIN32)
+  add_definitions(-DK2_IS_WINDOWS)
+
+  # See http://www.suodenjoki.dk/us/archive/2010/min-max.htm
+  # for why we need to define `-DNOMINMAX`
+  add_definitions(-DNOMINMAX)
+endif()
+
 if(K2_WITH_CUDA)
   add_definitions(-DK2_WITH_CUDA)
 endif()
@@ -262,8 +271,13 @@ endif()
 include(googletest)
 
 if(K2_WITH_CUDA)
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -Wall --compiler-options -Wno-unknown-pragmas --compiler-options -Wno-strict-overflow")
-  message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
+  if(NOT WIN32)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -Wall --compiler-options -Wno-unknown-pragmas --compiler-options -Wno-strict-overflow")
+    message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
+  endif()
+  if(WIN32)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+  endif()
 endif()
 
 if(NOT K2_WITH_CUDA AND NOT WIN32)
@@ -291,9 +305,13 @@ if(WIN32)
   # 4005: macro redefinition
   # 4722: destructor never returns
   # 4018: signed/unsigned mismatch
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4996 /wd4224 /wd4099 /wd4267 /wd4305 /wd4244 /wd4624 /wd4551 /wd4067 /wd4819 /wd4005 /wd4722 /wd4018")
+
+  set(disable_warnings "/wd4068 /wd4996 /wd4224 /wd4099 /wd4267 /wd4305 /wd4244 /wd4624 /wd4551 /wd4067 /wd4819 /wd4005 /wd4722 /wd4018")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${disable_warnings}")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"${disable_warnings}\"")
 endif()
 
-message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
-
 add_subdirectory(k2)
+
+message(STATUS "CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS}")
+message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")

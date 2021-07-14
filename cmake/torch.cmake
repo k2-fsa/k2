@@ -58,18 +58,27 @@ if(K2_WITH_CUDA)
     )
   endif()
 
-# Solve the following error for NVCC:
-#   unknown option `-Wall`
-#
-# It contains only some -Wno-* flags, so it is OK
-# to set them to empty
-  set_property(TARGET torch_cuda
-    PROPERTY
-      INTERFACE_COMPILE_OPTIONS ""
-  )
-  set_property(TARGET torch_cpu
-    PROPERTY
-      INTERFACE_COMPILE_OPTIONS ""
-  )
-endif()
+  # See
+  #  - https://forums.developer.nvidia.com/t/invalid-command-option-for-nvcc-in-pytorch/145588
+  #  - https://github.com/pytorch/vision/issues/2677
+  #  - https://github.com/pytorch/vision/pull/2754/files
+  function(k2_cuda_convert_flags EXISTING_TARGET)
+    # This function is copied from
+    # https://github.com/pytorch/vision/pull/2754/files
+    get_property(old_flags TARGET ${EXISTING_TARGET} PROPERTY INTERFACE_COMPILE_OPTIONS)
+    if(NOT "${old_flags}" STREQUAL "")
+      string(REPLACE ";" "," CUDA_flags "${old_flags}")
+      set_property(TARGET ${EXISTING_TARGET} PROPERTY INTERFACE_COMPILE_OPTIONS
+        "$<$<BUILD_INTERFACE:$<COMPILE_LANGUAGE:CXX>>:${old_flags}>$<$<BUILD_INTERFACE:$<COMPILE_LANGUAGE:CUDA>>:-Xcompiler=${CUDA_flags}>"
+      )
+    endif()
+  endfunction()
 
+  k2_cuda_convert_flags(torch_cuda)
+  k2_cuda_convert_flags(torch_cpu)
+
+  if(WIN32)
+    k2_cuda_convert_flags(torch_cuda_cu)
+    k2_cuda_convert_flags(torch_cuda_cpp)
+  endif()
+endif()

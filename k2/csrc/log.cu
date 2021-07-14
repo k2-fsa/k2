@@ -38,6 +38,7 @@ namespace k2 {
 
 namespace internal {
 
+#ifdef K2_HAVE_CXXABI_H
 static bool LocateSymbolRange(const std::string &trace_name, std::size_t *begin,
                               std::size_t *end) {
   // Find the first '_' with leading ' ' or '('.
@@ -57,6 +58,7 @@ static bool LocateSymbolRange(const std::string &trace_name, std::size_t *begin,
   *end = trace_name.find_first_of(" +", *begin);
   return *end != std::string::npos;
 }
+#endif
 
 #ifdef K2_HAVE_EXECINFO_H
 static std::string Demangle(const std::string &trace_name) {
