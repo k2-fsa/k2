@@ -369,6 +369,40 @@ void GetBestMatchingStatsInternal(Ragged<int32_t> &tokens,
                                   Array1<float> *var,
                                   Array1<int32_t> *counts_out,
                                   Array1<int32_t> *ngram_order) {
+
+  // Outline:
+  //  First construct an array of type T which contains values as follows:
+  //    [ tokens.values[-1]+offset, ..., tokens.values[1]+offset, tokens.values[0]+offset, eos+offset, terminator, 0, 0 ]
+  // where offset is 1-min_token, and terminator is max_token+1+offset.
+  // The 3 terminating zeros are required by CreateSuffixArray().
+  //
+  //   Create the reordered counts array `counts_reordered`, in the same order as
+  //   the suffix array, then its exclusive sum, e.g. `counts_reordered_excsum`.
+  //   At this point we can also create similar reordered exclusive-sums of `scores`
+  //   and scores-squared; do these as double or roundoff will be a problem.
+  //
+  //  Call CreateSuffixArray (seq_len == tokens.Dim() + 2, we include the eos and terminator).
+  //  Call CreateLcpArray, CreateLcpIntervalArray, FindTightestNonemptyIntervals()
+
+  //  By this point we should have enough information to directly create the
+  //  outputs : mean, var, counts_out, ngram_order.  We need to be a bit careful
+  //  about ngram_order at positions when the suffix goes up to the next eos
+  //  (i.e. it goes to the beginning of the sentence) because the correct ngram order
+  //  to output here is `max_order`.  You will have to create an array containing
+  //  the distance from the beginning of the sentence (can be constructed from
+  //  the row_ids and row_splits of `tokens`), and index it with the suffix array
+  //  to get it in the right order.
+  //  Note: we only really care about the output at the query positions, but try
+  //  to make it so you don't need to treat keys as a special case.
+  //
+  //  Special cases/conditions to consider include:
+  //    - make sure the `count` in the position of the eos and terminator are zero
+  //    - various code may break if the total count over all these sentences is
+  //      zero, so you could just detect that and treat it as a special case.
+  //      If the total count is nonzero, it should be guaranteed that you never
+  //      have to process an interval with zero count;  FindTightestNonemptyIntervals()
+  //      should guarantee that.
+
 }
 
 
@@ -423,7 +457,6 @@ void GetBestMatchingStats(Ragged<int32_t> &tokens,
       Array1<int32_t> this_counts = counts.Arange(begin, end),
           this_counts_out = counts_out->Arange(begin, end),
           this_ngram_order = ngram_order->Arange(begin, end);
-
       GetBestMatchingStats(this_tokens, this_scores, this_counts, eos, min_token,
                            max_token, max_order,
                            &this_mean, &this_var,
