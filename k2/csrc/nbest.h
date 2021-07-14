@@ -304,7 +304,7 @@ void FindTightestNonemptyIntervals(T seq_len,
               entry.
      @param [out] var  Like `mean`, but contains the (centered) variance
               of the best matching positions.
-     @param [out] count  The number of key positions that contributed
+     @param [out] counts_out  The number of key positions that contributed
               to the `mean` and `var` statistics.  This should only
               be zero if `counts` was all zero.  Will be allocated
               if it did not have the correct size at entry.

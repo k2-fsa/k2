@@ -351,4 +351,101 @@ void FindTightestNonemptyIntervals(int16_t seq_len,
                                    Array1<int16_t> *counts_exclusive_sum,
                                    Array1<int16_t> *leaf_parent_intervals);
 
+
+
+// Internal implementation of GetBestMatchingStats(), that handles the case
+// where tokens.NumAxes() == 2 and tokens.NumElements() > 0.  It will
+// be instantiated with int16_t if the size of the problem permits, and
+// int32_t otherwise (this size is used for
+template <typename T>
+void GetBestMatchingStatsInternal(Ragged<int32_t> &tokens,
+                                  Array1<float> &scores,
+                                  Array1<int32_t> &counts,
+                                  int32_t eos,
+                                  int32_t min_token,
+                                  int32_t max_token,
+                                  int32_t max_order,
+                                  Array1<float> *mean,
+                                  Array1<float> *var,
+                                  Array1<int32_t> *counts_out,
+                                  Array1<int32_t> *ngram_order) {
+}
+
+
+void GetBestMatchingStats(Ragged<int32_t> &tokens,
+                          Array1<float> &scores,
+                          Array1<int32_t> &counts,
+                          int32_t eos,
+                          int32_t min_token,
+                          int32_t max_token,
+                          int32_t max_order,
+                          Array1<float> *mean,
+                          Array1<float> *var,
+                          Array1<int32_t> *counts_out,
+                          Array1<int32_t> *ngram_order) {
+  ContextPtr c = tokens.Context();
+  int32_t num_elements = tokens.NumElements();
+  if (mean->Dim() != num_elements) {
+    *mean = Array1<float>(c, num_elements);
+  } else {
+    K2_CHECK_EQ(mean->Dim(), 0);
+  }
+  if (var->Dim() != num_elements) {
+    *var = Array1<float>(c, num_elements);
+  } else {
+    K2_CHECK_EQ(var->Dim(), 0);
+  }
+  if (counts_out->Dim() != num_elements) {
+    *counts_out = Array1<int32_t>(c, num_elements);
+  } else {
+    K2_CHECK_EQ(counts_out->Dim(), 0);
+  }
+  if (ngram_order->Dim() != num_elements) {
+    *ngram_order = Array1<int32_t>(c, num_elements);
+  } else {
+    K2_CHECK_EQ(ngram_order->Dim(), 0);
+  }
+
+  K2_CHECK(eos >= min_token && eos <= max_token);
+  K2_CHECK_GE(max_order, 2);
+  K2_CHECK_EQ(num_elements, scores.Dim());
+  K2_CHECK_EQ(num_elements, counts.Dim());
+
+  if (tokens.NumAxes() == 3) {
+    int32_t num_collections = tokens.Dim0();
+    for (int32_t i = 0; i < num_collections; i++) {
+      Ragged<int32_t> this_tokens = tokens.Index(0, i);
+      int32_t begin = this_tokens.values.Data() - tokens.values.Data(),
+          end = begin + this_tokens.NumElements();
+      Array1<float> this_scores = scores.Arange(begin, end),
+          this_mean = mean->Arange(begin, end),
+          this_var = var->Arange(begin, end);
+      Array1<int32_t> this_counts = counts.Arange(begin, end),
+          this_counts_out = counts_out->Arange(begin, end),
+          this_ngram_order = ngram_order->Arange(begin, end);
+
+      GetBestMatchingStats(this_tokens, this_scores, this_counts, eos, min_token,
+                           max_token, max_order,
+                           &this_mean, &this_var,
+                           &this_counts_out, &this_ngram_order);
+    }
+    return;
+  }
+  K2_CHECK_EQ(tokens.NumAxes(), 2);  // Only 2 or 3 axes are allowed.
+
+  if (num_elements == 0) {
+    return;  // Nothing to do.
+  } else if (num_elements + 10 < (1 << 15) && (max_token - min_token + 10 < (1 << 15))) {
+    GetBestMatchingStatsInternal<int16_t>(tokens, scores, counts, eos, min_token, max_token,
+                                          max_order, mean, var, counts_out, ngram_order);
+  } else {
+    GetBestMatchingStatsInternal<int32_t>(tokens, scores, counts, eos, min_token, max_token,
+                                          max_order, mean, var, counts_out, ngram_order);
+  }
+}
+
+
+
+
+
 }  // namespace k2
