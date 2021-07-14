@@ -1271,6 +1271,16 @@ Ragged<T> Index(Array1<T> &src, Ragged<int32_t> &indexes) {
 }
 
 /*
+ * Similar to the above `Index` but also supports -1 in indexes.
+ * The given default value is used if an index is -1.
+ */
+template <typename T>
+Ragged<T> Index(Array1<T> &src, Ragged<int32_t> &indexes, T default_value) {
+  return Ragged<T>(indexes.shape,
+                   Index(src, indexes.values, true, default_value));
+}
+
+/*
    Index ragged tensor with ragged tensor.
        @param [in] src   Source tensor, to be indexed
        @param [in] indexes   Indexes into source array; the values must

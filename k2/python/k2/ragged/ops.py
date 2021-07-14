@@ -144,7 +144,7 @@ def pad(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
         [ [1 2 3] [4] [5 6 7 8] ]
 
     Then it returns a 2-D tensor as follows if value is 0 and
-    mode is constant::
+    mode is `constant`::
 
         tensor([[1, 2, 3, 0],
                 [4, 0, 0, 0],
@@ -155,7 +155,7 @@ def pad(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
         The source ragged tensor, MUST have `num_axes() == 2`.
       mode:
         Valid values are: `constant`, `replicate`. If it is `constant`, the
-        given `value` is used for filling. If it is "replicate",
+        given `value` is used for filling. If it is `replicate`,
         the last entry in a list is used for filling. If a list is empty,
         then the given `value` is also used for filling.
       value:
