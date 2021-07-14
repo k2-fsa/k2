@@ -2686,7 +2686,7 @@ static void TestPadRagged() {
     {
       Ragged<T> src(c, "[ [1 2] [3 4 3] [] [5 6 7 8] ]");
       T padding_value = 0;
-      Array2<T> res = PadRagged(src, padding_value);
+      Array2<T> res = PadRagged(src, "constant", padding_value);
       Array1<T> dst = res.Flatten();
       std::vector<T> expected = {1, 2, 0, 0,
                                  3, 4, 3, 0,
@@ -2697,7 +2697,7 @@ static void TestPadRagged() {
     {
       Ragged<T> src(c, "[ [1 2] [3 4 3] [] [5 6 7 8] ]");
       T padding_value = -1;
-      Array2<T> res = PadRagged(src, padding_value);
+      Array2<T> res = PadRagged(src, "constant", padding_value);
       Array1<T> dst = res.Flatten();
       std::vector<T> expected = {1, 2, -1, -1,
                                  3, 4, 3, -1,
@@ -2705,6 +2705,18 @@ static void TestPadRagged() {
                                  5, 6, 7, 8};
       CheckArrayData(dst, expected);
     }
+    {
+      Ragged<T> src(c, "[ [1 2] [3 4 3] [] [5 6 7 8] ]");
+      T padding_value = 100;
+      Array2<T> res = PadRagged(src, "replicate", padding_value);
+      Array1<T> dst = res.Flatten();
+      std::vector<T> expected = {1, 2, 2, 2,
+                                 3, 4, 3, 3,
+                                 100, 100, 100, 100,
+                                 5, 6, 7, 8};
+      CheckArrayData(dst, expected);
+    }
+
   }
 }
 

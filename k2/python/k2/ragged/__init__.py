@@ -6,7 +6,7 @@ from .ops import create_ragged2
 from .ops import get_layer
 from .ops import index
 from .ops import max_per_sublist
-from .ops import pad_ragged
+from .ops import pad
 from .ops import regular_ragged_shape
 from .ops import remove_axis
 from .ops import remove_values_eq

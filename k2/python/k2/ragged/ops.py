@@ -18,6 +18,7 @@
 # limitations under the License.
 
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -133,15 +134,17 @@ def to_list(src: _k2.RaggedInt) -> List:
     return _k2.ragged_int_to_list(src)
 
 
-def pad_ragged(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
-               padding_value: Union[int, float] = 0) -> torch.Tensor:
+def pad(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
+        mode: Literal['constant', 'replicate'] = 'constant',
+        value: Union[int, float] = 0) -> torch.Tensor:
     '''Pad a ragged tensor to a torch tensor.
 
     For example, if `src` has the following values::
 
         [ [1 2 3] [4] [5 6 7 8] ]
 
-    Then it returns a 2-D tensor as follows if padding value is 0::
+    Then it returns a 2-D tensor as follows if value is 0 and
+    mode is constant::
 
         tensor([[1, 2, 3, 0],
                 [4, 0, 0, 0],
@@ -150,12 +153,21 @@ def pad_ragged(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
     Args:
       src:
         The source ragged tensor, MUST have `num_axes() == 2`.
+      mode:
+        Valid values are: `constant`, `replicate`. If it is `constant`, the
+        given `value` is used for filling. If it is "replicate",
+        the last entry in a list is used for filling. If a list is empty,
+        then the given `value` is also used for filling.
+      value:
+        The filling value.
+
     Returns:
       A 2-D torch.Tensor whose dtype is torch.int32 if the input is
       _k2.RaggedInt tensor or torch.float32 if the input is _k2.RaggedFloat
       tensor. The tensor returned is on the same device as `src`.
     '''
-    return _k2.pad_ragged(src, padding_value)
+    assert mode in ['constant', 'replicate'], f'mode: {mode}'
+    return _k2.pad_ragged(src, mode, value)
 
 
 def sum_per_sublist(src: _k2.RaggedFloat,
