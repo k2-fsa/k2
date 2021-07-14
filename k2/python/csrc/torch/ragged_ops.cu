@@ -118,6 +118,18 @@ static void PybindRaggedIntToList(py::module &m, const char *name) {
 }
 
 template <typename T>
+static void PybindPadRaggedToTensor(py::module &m) {
+  m.def(
+    "pad_ragged",
+    [](Ragged<T> &src, T padding_value) -> torch::Tensor {
+      DeviceGuard guard(src.Context());
+      Array2<T> res = PadRagged(src, padding_value);
+      return ToTorch(res);
+    },
+    py::arg("src"), py::arg("padding_value"));
+}
+
+template <typename T>
 static void PybindNormalizePerSublist(py::module &m, const char *name) {
   m.def(
       name,
@@ -361,24 +373,26 @@ static void PybindMaxPerSublist(py::module &m) {
 
 void PybindRaggedOps(py::module &m) {
   using namespace k2;  // NOLINT
-  PybindRaggedRemoveAxis<int32_t>(m);
-  PybindRaggedArange<int32_t>(m, "ragged_int_arange");
-  PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
-  PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
-  PybindRaggedIntToList(m, "ragged_int_to_list");
-  PybindNormalizePerSublist<float>(m, "normalize_per_sublist");
-  PybindNormalizePerSublistBackward<float>(m, "normalize_per_sublist_backward");
-  PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
+  PybindArgMaxPerSublist<float>(m);
+  PybindArgMaxPerSublist<int32_t>(m);
   PybindCat<int32_t>(m);
   PybindCat<Arc>(m);
   PybindCreateRagged2<int32_t>(m);
   PybindCreateRagged2<float>(m);
   PybindGetLayer(m);
-  PybindUniqueSequences(m);
   PybindIndex(m);
-  PybindRegularRaggedShape(m);
-  PybindArgMaxPerSublist<float>(m);
-  PybindArgMaxPerSublist<int32_t>(m);
   PybindMaxPerSublist<float>(m);
   PybindMaxPerSublist<int32_t>(m);
+  PybindNormalizePerSublist<float>(m, "normalize_per_sublist");
+  PybindNormalizePerSublistBackward<float>(m, "normalize_per_sublist_backward");
+  PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
+  PybindPadRaggedToTensor<int32_t>(m);
+  PybindPadRaggedToTensor<float>(m);
+  PybindRaggedArange<int32_t>(m, "ragged_int_arange");
+  PybindRaggedIntToList(m, "ragged_int_to_list");
+  PybindRaggedRemoveAxis<int32_t>(m);
+  PybindRegularRaggedShape(m);
+  PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
+  PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
+  PybindUniqueSequences(m);
 }
