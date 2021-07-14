@@ -227,6 +227,8 @@ def intersect(a_fsa: Fsa,
         The first input FSA. It can be either a single FSA or an FsaVec.
       b_fsa:
         The second input FSA. it can be either a single FSA or an FsaVec.
+        If both a_fsa and b_fsa are FsaVec, they must contain the same
+        number of FSAs.
       treat_epsilons_specially:
         If True, epsilons will be treated as epsilon, meaning epsilon arcs can
         match with an implicit epsilon self-loop.
@@ -757,6 +759,7 @@ def random_paths(fsas: Fsa, use_double_scores: bool,
       start state and terminating in the final state. The values are arc_idx012,
       i.e. arc indexes.
     '''
+    assert num_paths > 0, f'num_paths: {num_paths}'
     log_semiring = True
     arc_cdf = fsas._get_arc_cdf(use_double_scores=use_double_scores,
                                 log_semiring=log_semiring)

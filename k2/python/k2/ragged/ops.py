@@ -345,3 +345,27 @@ def max_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
       Return a 1-D tensor with dtype torch.int32.
     '''
     return _k2.max_per_sublist(src, initial_value)
+
+
+def sort_sublist(in_out: Union[_k2.RaggedFloat, _k2.RaggedInt],
+                 descending: bool = False,
+                 need_new2old_indexes: bool = False) -> Optional[torch.Tensor]:
+    '''Sort a ragged tensor **in-place**.
+
+    Args:
+      in_out:
+        The ragged tensor to be sorted. The sort operation is applied to
+        the last axis. Caution: It is sorted **in-place**.
+      descending:
+        True to sort in descending order. False to sort in ascending order.
+      need_new2old_indexes:
+        If True, also returns a 1-D tensor, which contains the indexes mapping
+        from the sorted elements to the unsorted elements. We can use
+        `in_out.clone().values()[ans_tensor]` to get a sorted tensor.
+    Returns:
+      If `need_new2old_indexes` is False, returns None. Otherwise, returns
+      a 1-D tensor of dtype torch.int32.
+    '''
+    return _k2.sort_sublists(in_out=in_out,
+                             descending=descending,
+                             need_new2old_indexes=need_new2old_indexes)
