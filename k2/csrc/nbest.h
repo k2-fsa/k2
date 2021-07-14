@@ -97,8 +97,8 @@ void CreateSuffixArray(const T *text_array,
   Create the LCP array, which is the array of lengths of longest common prefixes
   (of successive pairs of suffixes).
 
-   Template args: T should be a signed integer type, we
-   plan to instantiate this for int32_t and int16_t only.
+   Template args: T should be a signed integer type, we plan to instantiate this
+   for int32_t and int16_t only.
 
      @param [in] text_array  The array of symbols, of length `seq_len` plus at least
                     one terminating zero.  The symbols should be positive
@@ -119,6 +119,8 @@ void CreateLcpArray(const T *text_array,
                     T *lcp_array);
 
 /*
+   Template args: T is a signed type, intended to be int16_t or int32_t
+
   lcp-intervals correspond to the nodes in the suffix trie; they are a concept
   used with suffix arrays, and are derived from the LCP table (see lcp_array
   output of CreateLcpArray).  Take care with the notation here: intervals are
@@ -173,6 +175,8 @@ struct LcpInterval {
   The motivation here is that we are likely limited more by time than memory,
   and we want a data structure that is relatively simple to use.
 
+   Template args: T is a signed type, intended to be int16_t or int32_t
+
      @param [in] c  Context pointer, used to create arrays.  Required to
                      be a CPU context pointer for now.
      @param [in] seq_len  The length of the text for which we have a suffix
@@ -197,9 +201,130 @@ void CreateLcpIntervalArray(ContextPtr c,
                             Array1<LcpInterval<T> > *lcp_intervals,
                             Array1<T> *leaf_parent_intervals);
 
+/*
+  Modifies `leaf_parent_intervals` to give us, for each position in the suffix
+  array (i.e. each suffix), the tightest enclosing lcp-interval that has
+  nonzero count.  This is used in finding the highest-order match of
+  a position in a text (i.e. the longest matching history).
+
+   Template args: T is a signed type, intended to be int16_t or int32_t
+
+     @param [in] seq_len  The length of the sequence, including the terminating $.
+     @param [in] lcp_intervals  The array of lcp intervals, as returned
+                     by CreateLcpIntervalArray
+     @param [in] counts_exclusive_sum  The exclusive-sum of counts of symbols in
+                   the original text array, in the order given by the suffix
+                   array, e.g. the original counts would have satisfied
+                   suffix_counts[i] = counts[suffix_array[i]], and then
+                   counts_exclusive_sum is the exclusive-sum of suffix_counts.
+                   Must satisfy counts_exclusive_sum->Dim() == seq_len + 1.
+                   The original counts would have been 1 for "keys" and 0 for
+                   "queries", so an interval with nonzero difference in
+                   counts_exclusive_sum is an interval containing at least
+                   one key.
+     @param [in,out] leaf_parent_intervals  At entry, this will contain,
+                   for each leaf of the suffix tree (i.e. each position
+                   in the suffix array) the index of the tightest enclosing
+                   lcp-interval, i.e. an index into `lcp_intervals`.
+                   At exit, it will contain the index of the tightest
+                   enclosing *nonempty* lcp-interval.
+ */
+template <typename T>
+void FindTightestNonemptyIntervals(T seq_len,
+                                   Array1<LcpInterval<T> > *lcp_intervals,
+                                   Array1<T> *counts_exclusive_sum,
+                                   Array1<T> *leaf_parent_intervals);
 
 
+/*
 
+
+    For "query" sentences, this function gets the mean and variance of scores
+    from the best matching words-in-context in a set of of provided "key"
+    sentences.  This matching process matches the word and the words preceding
+    it, looking for the highest-order match it can find (it's intended for
+    approximating the scores of models that see only left-context, like language
+    models).  It is an efficient implementation using suffix arrays (done on CPU
+    for now, since the implementation is not very trivial).  The intended
+    application is in estimating the scores of hypothesized transcripts, when we
+    have actually computed the scores for only a subset of the hypotheses.
+
+
+      @param [in] tokens  A ragged tensor of int32_t with 2 or 3 axes (this
+                  function recurses).  If 2 axes, this represents a collection of
+                  key and query sequences (keys have count==1, query count==0).
+                  If 3 axes, this represents a set of such collections
+                  and retrieval should be done independently.
+
+               2-axis example:
+                 [ [ the, cat, said, eos ], [ the, cat, fed, eos ] ]
+               3-axis example:
+               [ [ [ the, cat, said, eos ], [ the, cat, fed, eos ] ],
+                 [ [ hi, my, name, is, eos ], [ bye, my, name, is, eos ] ], ... ]
+
+                 .. where the words would actually be represented as integers,
+                 and the eos might be -1.  The eos symbol is required if this
+                 code is to work as intended (otherwise this code will not
+                 be able to recognize when we have reached the the beginnings
+                 of sentences when comparing histories).  bos symbols are
+                 allowed but not required.
+
+     @param [in] scores  An array with scores.Dim() == tokens.NumElements();
+                 this is the item for which we are requesting best-matching
+                 values (as means and variances in case there are multiple
+                 best matches).  In our anticipated use, these would represent
+                 scores of words in the sentences, but they could represent
+                 anything.
+     @param [in] counts  An array with counts.Dim() == tokens.NumElements(),
+                 containing 1 for words that are considered "keys" and 0 for
+                 words that are considered "queries".  Typically some entire
+                 sentences will be keys and others will be queries.
+     @param [in] eos The value of the eos (end of sentence) symbol; internally, this
+               is used as an extra padding value before the first sentence in each
+               collection, so that it can act like a "bos" symbol.
+     @param [in] min_token  The lowest possible token value, including the bos
+               symbol (e.g., might be -1).
+     @param [in] max_token  The maximum possible token value.  Be careful not to
+               set this too large the implementation contains a part which
+               takes time and space O(max_token - min_token).
+     @param [in] max_order  The maximum n-gram order to ever return in the
+              `ngram_order` output; the output will be the minimum of max_order
+              and the actual order matched; or max_order if we matched all the
+              way to the beginning of both sentences.  The main reason this is
+              needed is that we need a finite number to return at the
+              beginning of sentences.
+
+     @param [out] mean  For query positions, will contain the mean of the
+              scores at the best matching key positions, or zero if that is
+              undefined because there are no key positions at all.  For key positions,
+              you can treat the output as being undefined (actually they
+              are treated the same as queries, but won't match with only
+              themselves because we don't match at singleton intervals).  This array
+              will be allocated if it did not have the correct size at
+              entry.
+     @param [out] var  Like `mean`, but contains the (centered) variance
+              of the best matching positions.
+     @param [out] count  The number of key positions that contributed
+              to the `mean` and `var` statistics.  This should only
+              be zero if `counts` was all zero.  Will be allocated
+              if it did not have the correct size at entry.
+     @param [out] ngram_order  The n-gram order corresponding to the
+             best matching positions found at each query position, up
+             to a maximum of `max_order`; will be `max_order` if we matched all
+             the way to the beginning of a sentence.  Will be allocated if it
+             did not have the correct size at entry.
+*/
+void GetBestMatchingStats(Ragged<int32_t> &tokens,
+                          Array1<float> &scores,
+                          Array1<int32_t> &counts,
+                          int32_t eos,
+                          int32_t min_token,
+                          int32_t max_token,
+                          int32_t max_order,
+                          Array1<float> *mean,
+                          Array1<float> *var,
+                          Array1<int32_t> *count,
+                          Array1<int32_t> *ngram_order);
 
 
 

@@ -301,5 +301,54 @@ void CreateLcpIntervalArray(ContextPtr c,
                             Array1<LcpInterval<int16_t> > *lcp_intervals,
                             Array1<int16_t> *leaf_parent_intervals);
 
+template <typename T>
+void FindTightestNonemptyIntervals(T seq_len,
+                                   Array1<LcpInterval<T> > *lcp_intervals,
+                                   Array1<T> *counts_exclusive_sum,
+                                   Array1<T> *leaf_parent_intervals) {
+  ContextPtr c = lcp_intervals->Context();
+  K2_CHECK(counts_exclusive_sum->Dim() == seq_len + 1);
+  K2_CHECK(leaf_parent_intervals->Dim() == seq_len);
+
+  const LcpInterval<T> *lcp_intervals_data = lcp_intervals->Data();
+  const T *counts_exclusive_sum_data = counts_exclusive_sum->Data();
+  int32_t num_intervals = lcp_intervals->Dim();
+  // `tightest_nonempty_intervals` gives, for each interval 0 <= i < num_intervals,
+  // the index j >= i of the tightest enclosing interval that has a nonzero
+  // count.  As a special case, if all counts are zero, it will return the
+  // top (last) interval.
+  Array1<T> tightest_nonempty_interval(c, num_intervals);
+  T *tightest_nonempty_interval_data = tightest_nonempty_interval.Data();
+  for (T i = num_intervals - 1; i >= 0; --i) {
+    T j;
+    LcpInterval<T> cur_interval = lcp_intervals_data[i];
+    if (cur_interval.parent < 0 ||  // top node
+        counts_exclusive_sum_data[cur_interval.rb + 1] >
+        counts_exclusive_sum_data[cur_interval.lb]) {
+      j = i;
+    } else {
+      // j > i, we will have already set tightest_nonempty_interval_data at this
+      // location.
+      j = tightest_nonempty_interval_data[cur_interval.parent];
+    }
+    tightest_nonempty_interval_data[i] = j;
+  }
+  T *leaf_parent_intervals_data = leaf_parent_intervals->Data();
+  for (T i = 0; i < seq_len; ++i)
+    leaf_parent_intervals_data[i] = tightest_nonempty_interval_data[
+        leaf_parent_intervals_data[i]];
+}
+
+// Instantiate template
+template
+void FindTightestNonemptyIntervals(int32_t seq_len,
+                                   Array1<LcpInterval<int32_t> > *lcp_intervals,
+                                   Array1<int32_t> *counts_exclusive_sum,
+                                   Array1<int32_t> *leaf_parent_intervals);
+template
+void FindTightestNonemptyIntervals(int16_t seq_len,
+                                   Array1<LcpInterval<int16_t> > *lcp_intervals,
+                                   Array1<int16_t> *counts_exclusive_sum,
+                                   Array1<int16_t> *leaf_parent_intervals);
 
 }  // namespace k2
