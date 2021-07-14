@@ -369,6 +369,39 @@ static void PybindMaxPerSublist(py::module &m) {
       py::arg("src"), py::arg("initial_value"));
 }
 
+template <typename T>
+static void PybindSortSublists(py::module &m) {
+  // If need_new2old_indexes is true, returns an extra tensor.
+  // The returned tensor contains entries mapping from the sorted tensor
+  // to the unsorted tensor.
+  //
+  // in_unsorted[ans_tensor] is sorted
+  //
+  m.def(
+      "sort_sublists",
+      [](Ragged<T> &in_out, bool descending = false,
+         bool need_new2old_indexes = false) -> torch::optional<torch::Tensor> {
+        ContextPtr &c = in_out.Context();
+        DeviceGuard guard(c);
+        Array1<int32_t> new2old;
+        if (need_new2old_indexes)
+          new2old = Array1<int32_t>(c, in_out.NumElements());
+
+        if (descending) {
+          SortSublists<T, GreaterThan<T>>(
+              &in_out, need_new2old_indexes ? &new2old : nullptr);
+        } else {
+          SortSublists<T, LessThan<T>>(
+              &in_out, need_new2old_indexes ? &new2old : nullptr);
+        }
+        torch::optional<torch::Tensor> ans;
+        if (need_new2old_indexes) ans = ToTorch(new2old);
+        return ans;
+      },
+      py::arg("in_out"), py::arg("descending") = false,
+      py::arg("need_new2old_indexes") = false);
+}
+
 }  // namespace k2
 
 void PybindRaggedOps(py::module &m) {
@@ -394,5 +427,7 @@ void PybindRaggedOps(py::module &m) {
   PybindRegularRaggedShape(m);
   PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
   PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
+  PybindSortSublists<float>(m);
+  PybindSortSublists<int32_t>(m);
   PybindUniqueSequences(m);
 }
