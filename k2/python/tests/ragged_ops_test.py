@@ -126,7 +126,7 @@ class TestRaggedOps(unittest.TestCase):
             expected[4, 2] = 9.0
             expected[4, 3] = 10.0
 
-            assert torch.all(torch.eq(ans, expected))
+            assert torch.allclose(ans, expected)
 
     def test_remove_values_leq(self):
         s = '''

@@ -151,8 +151,9 @@ def pad_ragged(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
       src:
         The source ragged tensor, MUST have `num_axes() == 2`.
     Returns:
-      A 2-D torch.Tensor with dtype torch.int32 and
-      on the same device as `src`.
+      A 2-D torch.Tensor whose dtype is torch.int32 if the input is
+      _k2.RaggedInt tensor or torch.float32 if the input is _k2.RaggedFloat
+      tensor. The tensor returned is on the same device as `src`.
     '''
     return _k2.pad_ragged(src, padding_value)
 
