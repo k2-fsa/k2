@@ -18,7 +18,12 @@
 # limitations under the License.
 
 from typing import List
-from typing import Literal
+
+try:
+    from typing import Literal  # for Python >= 3.8
+except ImportError:
+    from typing_extensions import Literal  # for python < 3.8
+
 from typing import Optional
 from typing import Tuple
 from typing import Union
