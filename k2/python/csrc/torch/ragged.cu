@@ -237,7 +237,7 @@ static void PybindRaggedImpl(py::module &m) {
         DeviceGuard guard(GetContext(src));
         K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
         Array1<float> src_array = FromTorch<float>(src);
-        Ragged<float> ragged = Index(src_array, indexes, float(0));
+        Ragged<float> ragged = Index<float>(src_array, indexes, 0);
         Array1<float> ans_array(ragged.Context(), ragged.Dim0());
         SumPerSublist<float>(ragged, 0, &ans_array);
         return ToTorch(ans_array);

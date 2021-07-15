@@ -2716,7 +2716,6 @@ static void TestPadRagged() {
                                  5, 6, 7, 8};
       CheckArrayData(dst, expected);
     }
-
   }
 }
 

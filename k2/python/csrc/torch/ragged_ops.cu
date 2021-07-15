@@ -21,6 +21,7 @@
  * limitations under the License.
  */
 
+#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>

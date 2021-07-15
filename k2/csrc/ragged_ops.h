@@ -21,6 +21,7 @@
 #ifndef K2_CSRC_RAGGED_OPS_H_
 #define K2_CSRC_RAGGED_OPS_H_
 
+#include <string>
 #include <utility>
 #include <vector>
 
