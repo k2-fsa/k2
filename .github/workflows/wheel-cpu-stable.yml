@@ -38,7 +38,7 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip
-          python3 -m pip install -q wheel twine
+          python3 -m pip install -q wheel twine typing_extensions
           python3 -m pip install -qq torch==${{ matrix.torch }}
 
 

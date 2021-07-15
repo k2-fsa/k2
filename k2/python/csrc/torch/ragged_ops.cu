@@ -21,6 +21,7 @@
  * limitations under the License.
  */
 
+#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -120,13 +121,14 @@ static void PybindRaggedIntToList(py::module &m, const char *name) {
 template <typename T>
 static void PybindPadRaggedToTensor(py::module &m) {
   m.def(
-    "pad_ragged",
-    [](Ragged<T> &src, T padding_value) -> torch::Tensor {
-      DeviceGuard guard(src.Context());
-      Array2<T> res = PadRagged(src, padding_value);
-      return ToTorch(res);
-    },
-    py::arg("src"), py::arg("padding_value"));
+      "pad_ragged",
+      [](Ragged<T> &src, const std::string &mode,
+         T padding_value) -> torch::Tensor {
+        DeviceGuard guard(src.Context());
+        Array2<T> res = PadRagged(src, mode, padding_value);
+        return ToTorch(res);
+      },
+      py::arg("src"), py::arg("mode"), py::arg("padding_value"));
 }
 
 template <typename T>
