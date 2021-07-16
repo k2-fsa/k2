@@ -260,6 +260,7 @@ void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest) {
   if (dest_dim == src_dim + 1) {
     const RegionPtr &region = src.GetRegion();
     ssize_t byte_offset = static_cast<ssize_t>(src.ByteOffset());
+    // If this fails: you must allocate one extra element past the end of src!
     K2_CHECK_GE(region->num_bytes - byte_offset, dest_dim * src.ElementSize());
   }
   internal::PtrPtr<T> src_data = internal::PtrPtr<T>(src.Data());
@@ -285,6 +286,7 @@ void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis) {
   if (dest_major_dim == src_major_dim + 1) {
     const RegionPtr &region = src.GetRegion();
     ssize_t byte_offset = static_cast<ssize_t>(src.ByteOffset());
+    // If this fails: you must allocate one extra element past the end of src!
     K2_CHECK_GE(region->num_bytes - byte_offset,
                 (src_major_dim * src_minor_dim + 1) * src.ElementSize());
   }

@@ -83,7 +83,7 @@ void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
   ExclusiveSum(src.Context(), dest_dim, src.Data(), dest->Data());
 }
 
-/*  wrapper for the ExclusiveSum above.  Will satisfy
+/*  wrapper for the ExclusiveSum above (returns array with same dim as src).  Will satisfy
      ans[i] = sum_{j=0}^{i-1} src[j] for i > 0.
      ans[0] is always 0.
  */
