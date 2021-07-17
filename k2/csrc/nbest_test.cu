@@ -1,5 +1,6 @@
 /**
- * Copyright      2020  Xiaomi Corporation (authors: Haowen Qiu)
+ * Copyright      2021  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -27,6 +28,9 @@
 #include <vector>
 
 #include "k2/csrc/nbest.h"
+#include "k2/csrc/ragged.h"
+#include "k2/csrc/ragged_ops.h"
+
 
 namespace k2 {
 TEST(AlgorithmsTest, TestSuffixArray) {
@@ -47,14 +51,14 @@ TEST(AlgorithmsTest, TestSuffixArray) {
     for (int i = array_len; i < array_len + 3; i++)
       array_data[i] = 0;
 
-    // really array_len + 1, extra elem is to test that it doesn't write past
+    // really array_len, extra elem is to test that it doesn't write past
     // the end.
-    Array1<int32_t> suffix_array(cpu, array_len + 2);
+    Array1<int32_t> suffix_array(cpu, array_len + 1);
     int32_t *suffix_array_data = suffix_array.Data();
-    suffix_array_data[array_len + 1] = -10;  // should not be changed.
+    suffix_array_data[array_len] = -10;  // should not be changed.
     CreateSuffixArray(array_data, array_len,
                       max_symbol, suffix_array_data);
-    assert(suffix_array_data[array_len + 1] == -10);  // should be unchanged.
+    assert(suffix_array_data[array_len] == -10);  // should be unchanged.
     Array1<int32_t> seen_indexes(cpu, array_len, 0);
     int32_t *seen_indexes_data = seen_indexes.Data();
     for (int32_t i = 0; i < array_len; i++)
@@ -64,7 +68,7 @@ TEST(AlgorithmsTest, TestSuffixArray) {
       assert(seen_indexes_data[i] == 1);  // make sure all integers seen.
     for (int32_t i = 0; i + 1 < array_len; i++) {
       int32_t *suffix_a = array_data + suffix_array_data[i],
-          *suffix_b = array_data + suffix_array_data[i + 1];
+              *suffix_b = array_data + suffix_array_data[i + 1];
       // checking that each suffix is lexicographically less than the next one.
       // None are identical, because the terminating zero is always in different
       // positions.
@@ -72,7 +76,7 @@ TEST(AlgorithmsTest, TestSuffixArray) {
         if (*suffix_a < *suffix_b)
           break; // correct order
         assert(!(*suffix_a > *suffix_b));  // order is wrong!
-        assert(!(suffix_b > array_data + array_len ||
+        assert(!(suffix_a > array_data + array_len ||
                  suffix_b > array_data + array_len)); // past array end without correct comparison order.
         suffix_a++;
         suffix_b++;
@@ -80,7 +84,6 @@ TEST(AlgorithmsTest, TestSuffixArray) {
     }
   }
 }
-
 
 TEST(AlgorithmsTest, TestCreateLcpArray) {
   ContextPtr cpu = GetCpuContext();
@@ -118,7 +121,6 @@ TEST(AlgorithmsTest, TestCreateLcpArray) {
     }
   }
 }
-
 
 TEST(AlgorithmsTest, TestCreateLcpIntervalArray) {
   ContextPtr cpu = GetCpuContext();
@@ -203,8 +205,6 @@ TEST(AlgorithmsTest, TestCreateLcpIntervalArray) {
   }
 }
 
-
-
 TEST(AlgorithmsTest, TestFindTightestNonemptyIntervals) {
   ContextPtr cpu = GetCpuContext();
 
@@ -243,8 +243,6 @@ TEST(AlgorithmsTest, TestFindTightestNonemptyIntervals) {
                            array_len, lcp_data,
                            &lcp_intervals,
                            &leaf_parent_intervals);
-
-
     // we get one extra don't-care element at the end of `counts_reordered`,
     // which is required by ExclusiveSum().
     Array1<int32_t> counts_reordered = counts[suffix_array_plusone],
@@ -298,8 +296,33 @@ TEST(AlgorithmsTest, TestFindTightestNonemptyIntervals) {
   }
 }
 
-
-
-
+TEST(AlgorithmTest, TestGetBestMatchingStats) {
+  Ragged<int32_t> tokens(GetCpuContext(), "[ [ 4 6 7 1 8 ] [ 4 3 7 1 8 ] "
+                                          "  [ 4 3 2 1 8 ] [ 5 6 7 1 8 ] ]");
+  Array1<float> scores(GetCpuContext(), "[ 1 2 3 4 5 6 7 8 9 10 "
+                                        "  0 0 0 0 0 0 0 0 0 0 ]");
+  Array1<int32_t> counts(GetCpuContext(), "[ 1 1 1 1 1 1 1 1 1 1 "
+                                          "  0 0 0 0 0 0 0 0 0 0 ]");
+  Array1<float> mean, var;
+  Array1<int32_t> counts_out, ngram_order;
+  int32_t eos = 8,
+          min_token = 0,
+          max_token = 8,
+          max_order = 2;
+  GetBestMatchingStats(tokens, scores, counts, eos, min_token, max_token,
+                       max_order, &mean, &var, &counts_out, &ngram_order);
+  Array1<float> mean_ref(GetCpuContext(), "[ 3.5 2 3 4 5 3.5 7 5.5 6.5 7.5 "
+                                          "  3.5 7 5.5 6.5 7.5 5.5 2 3 4 5 ]");
+  Array1<float> var_ref(GetCpuContext(), "[ 6.25 0 0 0 0 6.25 0 6.25 6.25 6.25 "
+                                      "  6.25 0 8.25 6.25 6.25 8.25 0 0 0 0 ]");
+  Array1<int32_t> counts_out_ref(GetCpuContext(), "[ 2 1 1 1 1 2 1 2 2 2 "
+                                                  "  2 1 0 2 2 0 1 1 1 1 ]");
+  Array1<int32_t> ngram_order_ref(GetCpuContext(), "[ 2 1 2 2 2 1 2 1 2 2 "
+                                                   "  1 2 0 1 2 0 1 2 2 2 ]");
+  K2_CHECK(Equal(mean, mean_ref));
+  K2_CHECK(Equal(var, var_ref));
+  K2_CHECK(Equal(counts_out, counts_out_ref));
+  K2_CHECK(Equal(ngram_order, ngram_order_ref));
+}
 
 }  // namespace k2

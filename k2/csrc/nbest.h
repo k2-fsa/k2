@@ -159,6 +159,14 @@ struct LcpInterval {
             // bottom-up; you can treat it as arbitrary.
 };
 
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const LcpInterval<T> &interval) {
+  static constexpr char kSep = ' ';
+  os << interval.lcp << kSep << interval.lb << kSep << interval.rb << kSep
+    << interval.parent;
+  return os;
+}
+
 
 /*
   Create an array of struct LcpInterval which describes the Lcp intervals
@@ -235,12 +243,9 @@ void FindTightestNonemptyIntervals(T seq_len,
                                    Array1<T> *counts_exclusive_sum,
                                    Array1<T> *leaf_parent_intervals);
 
-
 /*
-
-
     For "query" sentences, this function gets the mean and variance of scores
-    from the best matching words-in-context in a set of of provided "key"
+    from the best matching words-in-context in a set of provided "key"
     sentences.  This matching process matches the word and the words preceding
     it, looking for the highest-order match it can find (it's intended for
     approximating the scores of models that see only left-context, like language
@@ -248,7 +253,6 @@ void FindTightestNonemptyIntervals(T seq_len,
     for now, since the implementation is not very trivial).  The intended
     application is in estimating the scores of hypothesized transcripts, when we
     have actually computed the scores for only a subset of the hypotheses.
-
 
       @param [in] tokens  A ragged tensor of int32_t with 2 or 3 axes (this
                   function recurses).  If 2 axes, this represents a collection of
@@ -265,7 +269,7 @@ void FindTightestNonemptyIntervals(T seq_len,
                  .. where the words would actually be represented as integers,
                  and the eos might be -1.  The eos symbol is required if this
                  code is to work as intended (otherwise this code will not
-                 be able to recognize when we have reached the the beginnings
+                 be able to recognize when we have reached the beginnings
                  of sentences when comparing histories).  bos symbols are
                  allowed but not required.
 
@@ -323,10 +327,7 @@ void GetBestMatchingStats(Ragged<int32_t> &tokens,
                           int32_t max_order,
                           Array1<float> *mean,
                           Array1<float> *var,
-                          Array1<int32_t> *count,
+                          Array1<int32_t> *counts_out,
                           Array1<int32_t> *ngram_order);
-
-
-
 }
 #endif  // K2_CSRC_NBEST_H_
