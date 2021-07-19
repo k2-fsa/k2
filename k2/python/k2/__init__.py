@@ -49,10 +49,12 @@ from .ragged import create_ragged2
 from .ragged import RaggedShape
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
+from .utils import create_sparse
 from .utils import is_rand_equivalent
+from .utils import get_best_matching_stats
 from .utils import to_dot
 from .utils import to_str
 from .utils import to_str_simple
 from .utils import to_tensor
-from .utils import create_sparse
+
 from _k2.version import with_cuda

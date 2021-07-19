@@ -297,6 +297,29 @@ TEST(AlgorithmsTest, TestFindTightestNonemptyIntervals) {
 }
 
 TEST(AlgorithmTest, TestGetBestMatchingStats) {
+  // There are 20 tokens, index with [0, 20)
+  // keys' positions are [0, 10), queries positions are [10, 20)
+  // The best matching positions(include the token itself) are as follows
+  // index 0  : (0, 5, 10) with lcp "48", we add eos(8)
+  // index 1  : (1, 16,) with lcp "6"
+  // index 2  : (2, 17,) with lcp "76"
+  // index 3  : (3, 18,) with lcp "671"
+  // index 4  : (4, 19,) with lcp "5718"
+  // index 5  : (5, 10,) with lcp "7184"
+  // index 6  : (6, 11,) with lcp "43"
+  // index 7  : (2, 7, 17,) with lcp "7"
+  // index 8  : (3, 8, 18,) with lcp "71"
+  // index 9  : (4, 9, 19,) with lcp "718"
+  // index 10 : (5, 10,) with lcp "7184"
+  // index 11 : (6, 11,) with lcp "43"
+  // index 12 : (12,) with no matching
+  // index 13 : (3, 8, 13, 18,) with lcp "1"
+  // index 14 : (4, 9, 14, 19,) with lcp "18"
+  // index 15 : (15,) with no matching
+  // index 16 : (1, 16,) with lcp "6"
+  // index 17 : (2, 17,) with lcp "67"
+  // index 18 : (3, 18,) with lcp "671"
+  // index 19 : (4, 19,) with lcp "6718"
   Ragged<int32_t> tokens(GetCpuContext(), "[ [ 4 6 7 1 8 ] [ 4 3 7 1 8 ] "
                                           "  [ 4 3 2 1 8 ] [ 5 6 7 1 8 ] ]");
   Array1<float> scores(GetCpuContext(), "[ 1 2 3 4 5 6 7 8 9 10 "
@@ -306,23 +329,32 @@ TEST(AlgorithmTest, TestGetBestMatchingStats) {
   Array1<float> mean, var;
   Array1<int32_t> counts_out, ngram_order;
   int32_t eos = 8,
-          min_token = 0,
+          min_token = 1,
           max_token = 8,
           max_order = 2;
   GetBestMatchingStats(tokens, scores, counts, eos, min_token, max_token,
                        max_order, &mean, &var, &counts_out, &ngram_order);
-  Array1<float> mean_ref(GetCpuContext(), "[ 3.5 2 3 4 5 3.5 7 5.5 6.5 7.5 "
-                                          "  3.5 7 5.5 6.5 7.5 5.5 2 3 4 5 ]");
-  Array1<float> var_ref(GetCpuContext(), "[ 6.25 0 0 0 0 6.25 0 6.25 6.25 6.25 "
-                                      "  6.25 0 8.25 6.25 6.25 8.25 0 0 0 0 ]");
-  Array1<int32_t> counts_out_ref(GetCpuContext(), "[ 2 1 1 1 1 2 1 2 2 2 "
-                                                  "  2 1 0 2 2 0 1 1 1 1 ]");
-  Array1<int32_t> ngram_order_ref(GetCpuContext(), "[ 2 1 2 2 2 1 2 1 2 2 "
-                                                   "  1 2 0 1 2 0 1 2 2 2 ]");
+  Array1<float> mean_ref(GetCpuContext(), "[ 3.5 2 3 4 5 6 7 5.5 6.5 7.5 "
+                                          "  6 7 5.5 6.5 7.5 5.5 2 3 4 5 ]");
+  Array1<float> var_ref(GetCpuContext(), "[ 6.25 0 0 0 0 0 0 6.25 6.25 6.25 "
+                                      "  0 0 8.25 6.25 6.25 8.25 0 0 0 0 ]");
+  Array1<int32_t> counts_out_ref(GetCpuContext(), "[ 2 1 1 1 1 1 1 2 2 2 "
+                                                  "  1 1 0 2 2 0 1 1 1 1 ]");
+  Array1<int32_t> ngram_order_ref(GetCpuContext(), "[ 2 1 2 2 2 2 2 1 2 2 "
+                                                   "  2 2 0 1 2 0 1 2 2 2 ]");
   K2_CHECK(Equal(mean, mean_ref));
   K2_CHECK(Equal(var, var_ref));
   K2_CHECK(Equal(counts_out, counts_out_ref));
   K2_CHECK(Equal(ngram_order, ngram_order_ref));
+
+  // max_order = 5
+  // index 0, 5, 6, 10, 11 match further than the BOS boundary
+  max_order = 5;
+  GetBestMatchingStats(tokens, scores, counts, eos, min_token, max_token,
+                       max_order, &mean, &var, &counts_out, &ngram_order);
+  Array1<int32_t> ngram_order3_ref(GetCpuContext(), "[ 5 1 2 3 4 5 5 1 2 3 "
+                                                    "  5 5 0 1 2 0 1 2 3 4 ]");
+  K2_CHECK(Equal(ngram_order, ngram_order3_ref));
 }
 
 }  // namespace k2

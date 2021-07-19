@@ -2,7 +2,7 @@
  * @brief wraps discounted_cum_sum code.
  *
  * @copyright
- * Copyright      2010  Xiaomi Corp.  (authors: Daniel Povey)
+ * Copyright      2021  Xiaomi Corp.  (authors: Daniel Povey)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors

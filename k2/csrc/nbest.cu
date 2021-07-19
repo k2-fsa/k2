@@ -19,8 +19,8 @@
 
 #include "k2/csrc/nbest.h"
 
-// This is not really a CUDA file but for build-system reasons I'm currently leaving it
-// with the .cu extension.
+// This is not really a CUDA file but for build-system reasons I'm currently
+// leaving it with the .cu extension.
 
 namespace k2 {
 
@@ -557,25 +557,25 @@ void GetBestMatchingStats(Ragged<int32_t> &tokens,
   if (mean->Dim() != num_elements) {
     *mean = Array1<float>(c, num_elements);
   } else {
-    K2_CHECK_EQ(mean->Dim(), 0);
+    K2_CHECK_EQ(mean->Dim(), num_elements);
   }
   K2_CHECK(var);
   if (var->Dim() != num_elements) {
     *var = Array1<float>(c, num_elements);
   } else {
-    K2_CHECK_EQ(var->Dim(), 0);
+    K2_CHECK_EQ(var->Dim(), num_elements);
   }
   K2_CHECK(counts_out);
   if (counts_out->Dim() != num_elements) {
     *counts_out = Array1<int32_t>(c, num_elements);
   } else {
-    K2_CHECK_EQ(counts_out->Dim(), 0);
+    K2_CHECK_EQ(counts_out->Dim(), num_elements);
   }
   K2_CHECK(ngram_order);
   if (ngram_order->Dim() != num_elements) {
     *ngram_order = Array1<int32_t>(c, num_elements);
   } else {
-    K2_CHECK_EQ(ngram_order->Dim(), 0);
+    K2_CHECK_EQ(ngram_order->Dim(), num_elements);
   }
 
   K2_CHECK(eos >= min_token && eos <= max_token);

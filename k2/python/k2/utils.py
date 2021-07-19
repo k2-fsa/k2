@@ -514,3 +514,14 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
     k2.autograd_utils.phantom_index_and_sum_scores(dest, src.scores, arc_map)
 
     return dest
+
+
+def get_best_matching_stats(tokens: _k2.RaggedInt, scores: torch.Tensor,
+                            counts: torch.Tensor, eos: int, min_token: int,
+                            max_token: int,max_order: int
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    '''
+
+    '''
+    return _k2.get_best_matching_stats(tokens, scores, counts, eos,
+                                       min_token, max_token, max_order)
