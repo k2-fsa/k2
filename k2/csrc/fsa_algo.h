@@ -1,5 +1,6 @@
 /**
- * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu,
+ *                                                   Wei Kang)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * See LICENSE for clarification regarding multiple authors
@@ -424,9 +425,6 @@ void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
                                   FsaOrVec *dest,
                                   Ragged<int32_t> *arc_derivs = nullptr);
 
-
-
-
 /*
     Determinize the input Fsas, it works for both Fsa and FsaVec.
     @param [in] src   Source Fsa or FsaVec.
@@ -477,6 +475,24 @@ Fsa LinearFsa(const Array1<int32_t> &symbols);
                 will have n+1 arcs (including the final-arc) and n+2 states.
  */
 FsaVec LinearFsas(const Ragged<int32_t> &symbols);
+
+/*
+  Create an FsaVec containing ctc graph FSAs, given a list of sequences of
+  symbols
+
+    @param [in] symbols  Input symbol sequences (must not contain
+                kFinalSymbol == -1). Its num_axes is 2.
+    @param [in] standard Option to specify the type of CTC topology: "standard"
+                         or "simplified", where the "standard" one makes the
+                         blank mandatory between a pair of identical symbols.
+    @param [out] It maps the arcs of output fsa to the symbols(idx01), the
+                 olabel of the `arc[i]` would be `symbols[arc_map[i]]`,
+                 and -1 for epsilon olabel.
+
+    @return     Returns an FsaVec with `ans.Dim0() == symbols.Dim0()`.
+ */
+FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard = true,
+                 Array1<int32_t> *arc_map = nullptr);
 
 /* Compute the forward shortest path in the tropical semiring.
 
@@ -671,6 +687,50 @@ void InvertHost(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
  */
 FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec &src,
                                 Array1<int32_t> *arc_map = nullptr);
+
+
+/*
+  Replace, in `index`, labels
+  `symbol_range_begin <= label < symbol_range_begin + src.Dim0()` with the Fsa
+  indexed `label - symbol_range_begin` in `src`. The destination state of the
+  arc in `index` is identified with the `final-state` of the corresponding FSA
+  in `src`, and the arc in `index` will become an epsilon arc leading to a new
+  state in the output that is a copy of the start-state of the corresponding FSA
+  in `src`. Arcs with labels outside this range are just copied. Labels on
+  final-arcs in `src` (Which will be -1) would be set to 0(epsilon) in the
+  result fsa.
+    @param [in] src    FsaVec containing individual Fsas that we'll be inserting
+                       into the result.
+
+    @param [in] index  Fsa or FsaVec that dictates the overall structure of the
+                       result (the result will have the same number of axes as
+                       `index`.
+
+    @param [in] symbol_range_begin  Beginning of the range (interval) of symbols
+                                    that are to be replaced with Fsas. Symbols
+                                    numbered symbol_range_begin <= i < src.Dim0()
+                                    + symbol_range_range will be replaced with
+                                    the fsa in `src[i - symbol_range_begin]`
+
+    @param [out, optional] arc_map_src  If not nullptr, will be set to a new
+                                        array that maps from arc-indexes in the
+                                        result to the corresponding arc in `src`,
+                                        of -1 if there was no such arc,
+                                        all of the arcs inherit from `index`
+                                        would be -1.
+
+    @param [out, optional] arc_map_index  If not nullptr, will be set to a new
+                                          array that maps from arc-indexes in
+                                          the result to the arc in `index` that
+                                          it originates from, and -1 otherwise.
+                                          result fsa would inherit all the arcs
+                                          of `index`, -1 means this arc is newly
+                                          inserted from fsa in `src`.
+ */
+
+FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
+                    Array1<int32_t> *arc_map_src = nullptr,
+                    Array1<int32_t> *arc_map_index = nullptr);
 
 }  // namespace k2
 

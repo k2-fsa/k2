@@ -1,6 +1,7 @@
 # Copyright      2020  Xiaomi Corporation (authors: Fangjun Kuang
 #                                                   Daniel Povey
-#                                                   Haowen Qiu)
+#                                                   Haowen Qiu
+#                                                   Wei Kang)
 #
 # See ../../../../LICENSE for clarification regarding multiple authors
 #
@@ -130,6 +131,31 @@ def to_list(src: _k2.RaggedInt) -> List:
        as `src`.
     '''
     return _k2.ragged_int_to_list(src)
+
+
+def pad_ragged(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
+               padding_value: Union[int, float] = 0) -> torch.Tensor:
+    '''Pad a ragged tensor to a torch tensor.
+
+    For example, if `src` has the following values::
+
+        [ [1 2 3] [4] [5 6 7 8] ]
+
+    Then it returns a 2-D tensor as follows if padding value is 0::
+
+        tensor([[1, 2, 3, 0],
+                [4, 0, 0, 0],
+                [5, 6, 7, 8]])
+
+    Args:
+      src:
+        The source ragged tensor, MUST have `num_axes() == 2`.
+    Returns:
+      A 2-D torch.Tensor whose dtype is torch.int32 if the input is
+      _k2.RaggedInt tensor or torch.float32 if the input is _k2.RaggedFloat
+      tensor. The tensor returned is on the same device as `src`.
+    '''
+    return _k2.pad_ragged(src, padding_value)
 
 
 def sum_per_sublist(src: _k2.RaggedFloat,
@@ -319,3 +345,27 @@ def max_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
       Return a 1-D tensor with dtype torch.int32.
     '''
     return _k2.max_per_sublist(src, initial_value)
+
+
+def sort_sublist(in_out: Union[_k2.RaggedFloat, _k2.RaggedInt],
+                 descending: bool = False,
+                 need_new2old_indexes: bool = False) -> Optional[torch.Tensor]:
+    '''Sort a ragged tensor **in-place**.
+
+    Args:
+      in_out:
+        The ragged tensor to be sorted. The sort operation is applied to
+        the last axis. Caution: It is sorted **in-place**.
+      descending:
+        True to sort in descending order. False to sort in ascending order.
+      need_new2old_indexes:
+        If True, also returns a 1-D tensor, which contains the indexes mapping
+        from the sorted elements to the unsorted elements. We can use
+        `in_out.clone().values()[ans_tensor]` to get a sorted tensor.
+    Returns:
+      If `need_new2old_indexes` is False, returns None. Otherwise, returns
+      a 1-D tensor of dtype torch.int32.
+    '''
+    return _k2.sort_sublists(in_out=in_out,
+                             descending=descending,
+                             need_new2old_indexes=need_new2old_indexes)

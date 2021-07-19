@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
-# Copyright      2020  Xiaomi Corporation (authors: Fangjun Kuang)
+# Copyright      2020  Xiaomi Corporation (authors: Fangjun Kuang
+#                                                   Wei kang)
 #                2021  Mobvoi Inc. (authors: Yaguang Hu)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
@@ -23,6 +24,7 @@
 
 import unittest
 
+import random
 import torch
 import _k2
 import k2
@@ -79,6 +81,52 @@ class TestRaggedOps(unittest.TestCase):
             ans = k2.ragged.remove_axis(src, 0)
             self.assertEqual(k2.ragged.to_list(ans),
                              [[1, 2], [0], [3, 0], [2]])
+
+    def test_pad_ragged(self):
+        s = '''
+            [ [ 1 2 ] [ 3 ] [ ] [ 4 5 6 ] [ 7 8 9 10 ] ]
+        '''
+        for device in self.devices:
+            src = k2.RaggedInt(s).to(device)
+            padding_value = random.randint(0, 1000)
+            ans = k2.ragged.pad_ragged(src, padding_value)
+            expected = torch.ones(
+                (5, 4), dtype=torch.int32, device=device) * padding_value
+            expected[0, 0] = 1
+            expected[0, 1] = 2
+            expected[1, 0] = 3
+            expected[3, 0] = 4
+            expected[3, 1] = 5
+            expected[3, 2] = 6
+            expected[4, 0] = 7
+            expected[4, 1] = 8
+            expected[4, 2] = 9
+            expected[4, 3] = 10
+
+            assert torch.all(torch.eq(ans, expected))
+
+    def test_pad_ragged_float(self):
+        s = '''
+            [ [ 1.0 2.0 ] [ 3.0 ] [ ] [ 4.0 5.0 6.0 ] [ 7.0 8.0 9.0 10.0 ] ]
+        '''
+        for device in self.devices:
+            src = k2.RaggedFloat(s).to(device)
+            padding_value = random.random() * 10
+            ans = k2.ragged.pad_ragged(src, padding_value)
+            expected = torch.ones(
+                (5, 4), dtype=torch.int32, device=device) * padding_value
+            expected[0, 0] = 1.0
+            expected[0, 1] = 2.0
+            expected[1, 0] = 3.0
+            expected[3, 0] = 4.0
+            expected[3, 1] = 5.0
+            expected[3, 2] = 6.0
+            expected[4, 0] = 7.0
+            expected[4, 1] = 8.0
+            expected[4, 2] = 9.0
+            expected[4, 3] = 10.0
+
+            assert torch.allclose(ans, expected)
 
     def test_remove_values_leq(self):
         s = '''
@@ -522,6 +570,42 @@ class TestRaggedOps(unittest.TestCase):
             # 0 for an empty sublist
             expected = torch.tensor([3, 0, 0, 5, 10], device=device)
             assert torch.all(torch.eq(indexes, expected))
+
+    def test_sort_sublist_ascending(self):
+        for device in self.devices:
+            src = k2.RaggedInt('[ [3 2] [] [1 5 2]]').to(device)
+            src_clone = src.clone()
+            new2old = k2.ragged.sort_sublist(src,
+                                             descending=False,
+                                             need_new2old_indexes=True)
+            expected_src = k2.RaggedInt('[[2 3] [] [1 2 5]]')
+            expected_new2old = torch.tensor([1, 0, 2, 4, 3],
+                                            device=device,
+                                            dtype=torch.int32)
+            assert str(src) == str(expected_src)
+            assert torch.all(torch.eq(new2old, expected_new2old))
+
+            expected_sorted = k2.index(src_clone.values(), new2old)
+            sorted = src.values()
+            assert torch.all(torch.eq(expected_sorted, sorted))
+
+    def test_sort_sublist_descending(self):
+        for device in self.devices:
+            src = k2.RaggedInt('[ [3 2] [] [1 5 2]]').to(device)
+            src_clone = src.clone()
+            new2old = k2.ragged.sort_sublist(src,
+                                             descending=True,
+                                             need_new2old_indexes=True)
+            sorted_src = k2.RaggedInt('[[3 2] [] [5 2 1]]')
+            expected_new2old = torch.tensor([0, 1, 3, 4, 2],
+                                            device=device,
+                                            dtype=torch.int32)
+            assert str(src) == str(sorted_src)
+            assert torch.all(torch.eq(new2old, expected_new2old))
+
+            expected_sorted = k2.index(src_clone.values(), new2old)
+            sorted = src.values()
+            assert torch.all(torch.eq(expected_sorted, sorted))
 
 
 if __name__ == '__main__':

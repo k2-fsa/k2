@@ -635,6 +635,28 @@ static void PybindPruneOnArcPost(py::module &m, const char *name) {
       py::arg("need_arc_map") = true);
 }
 
+static void PybindRandomFsa(py::module &m) {
+  m.def(
+      "random_fsa",
+      [](bool acyclic, int32_t max_symbol, int32_t min_num_arcs,
+         int32_t max_num_arcs) -> Fsa {
+        return RandomFsa(acyclic, max_symbol, min_num_arcs, max_num_arcs);
+      },
+      py::arg("acyclic"), py::arg("max_symbol"), py::arg("min_num_arcs"),
+      py::arg("max_num_arcs"));
+
+  m.def(
+      "random_fsa_vec",
+      [](int32_t min_num_fsas, int32_t max_num_fsas, bool acyclic,
+         int32_t max_symbol, int32_t min_num_arcs, int32_t max_num_arcs)
+      -> FsaVec {
+        return RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
+                            min_num_arcs, max_num_arcs);
+      },
+      py::arg("min_num_fsas"), py::arg("max_num_fsas"), py::arg("acyclic"),
+      py::arg("max_symbol"), py::arg("min_num_arcs"), py::arg("max_num_arcs"));
+}
+
 }  // namespace k2
 
 void PybindFsa(py::module &m) {
@@ -676,4 +698,5 @@ void PybindFsa(py::module &m) {
   k2::PybindRandomPaths<double>(m, "random_paths_double");
   k2::PybindPruneOnArcPost<float>(m, "prune_on_arc_post_float");
   k2::PybindPruneOnArcPost<double>(m, "prune_on_arc_post_double");
+  k2::PybindRandomFsa(m);
 }

@@ -26,6 +26,7 @@ set(py_test_files
   connect_test.py
   create_sparse_test.py
   ctc_gradients_test.py
+  ctc_graph_test.py
   dense_fsa_vec_test.py
   determinize_test.py
   expand_ragged_attributes_test.py
@@ -61,6 +62,7 @@ set(py_test_files
   symbol_table_test.py
   top_sort_test.py
   union_test.py
+  replace_fsa_test.py
 )
 
 foreach(source IN LISTS py_test_files)

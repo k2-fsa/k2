@@ -1,5 +1,6 @@
 /**
- * Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                2021  Xiaomi Corporation (authors: Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -162,8 +163,6 @@ TEST(ArcSort, NonEmptyFsaVec) {
   }
 }
 
-
-
 TEST(FsaAlgo, LinearFsa) {
   for (auto &context : {GetCudaContext(), GetCpuContext()}) {
     Array1<int32_t> symbols(context, std::vector<int32_t>{10, 20, 30});
@@ -268,6 +267,37 @@ TEST(FsaAlgo, IntersectFsaVec) {
     3
    */
   CheckArrayData(arc_map, std::vector<int32_t>{0, 2, 3});
+}
+
+// Intersect an FsaVec with Fsa should be equivalent with intersect with these
+// fsa alone one by one
+TEST(FsaAlgo, IntersectFsaVecRandom) {
+  FsaVec fsa_vec = RandomFsaVec();
+  ArcSort(&fsa_vec);
+  Fsa fsa = RandomFsa();
+  ArcSort(&fsa);
+
+  FsaVec fsa_vec_out;
+  Array1<int32_t> arc_map_a;
+  Array1<int32_t> arc_map_b;
+  Intersect(fsa_vec, -1, fsa, -1, true, &fsa_vec_out, &arc_map_a,
+            &arc_map_b);
+  std::ostringstream oss_vec;
+  oss_vec << fsa_vec_out;
+
+  std::ostringstream oss;
+  oss << "[ ";
+  for (int32_t i = 0; i < fsa_vec.Dim0(); ++i) {
+    FsaVec out_tmp;
+    Array1<int32_t> arc_map_a_t;
+    Array1<int32_t> arc_map_b_t;
+    Fsa fsa_element = GetFsaVecElement(fsa_vec, i);
+    Intersect(fsa_element, -1, fsa, -1, true, &out_tmp,
+              &arc_map_a_t, &arc_map_b_t);
+    oss << GetFsaVecElement(out_tmp, 0) << " ";
+  }
+  oss << "]";
+  EXPECT_EQ(oss.str(), oss_vec.str());
 }
 
 TEST(FsaAlgo, AddEpsilonSelfLoopsFsa) {
@@ -796,8 +826,6 @@ TEST(FsaAlgo, TestExpandArcsRandom) {
       // note: by default, IsRandEquivalent() does treat epsilons specially,
       // which is what we want.
       K2_CHECK(IsRandEquivalent(fsas, fsas_expanded, false));
-      // K2_LOG(INFO) << "fsa_arc_map = " << fsa_arc_map
-      ///                   << ", labels_arc_map = " << labels_arc_map;
     }
   }
 }
@@ -1053,4 +1081,205 @@ TEST(FsaAlgo, TestRemoveEplsionSelfRandomFsas) {
   }
 }
 
+TEST(FsaAlgo, TestReplaceFsaA) {
+  // Test when index fsa is empty
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec src = FsaVec(" [ [ [ 0 1 1 1.0 0 2 2 2.0 ] [ 1 3 -1 0.0 ] "
+                          "     [ 2 3 -1 0 ] [ ] ] ]").To(c);
+    FsaVec index = FsaVec("[ [ [ ] [ ] ] ]").To(c);
+    Array1<int32_t> arc_src_map, arc_index_map;
+    FsaVec replaced_fsa =
+        ReplaceFsa(src, index, 0, &arc_src_map, &arc_index_map);
+
+    K2_CHECK(Equal(replaced_fsa, index));
+  }
+}
+
+TEST(FsaAlgo, TestReplaceFsaB) {
+  // Test when src FsaVes is empty
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec src = FsaVec("[ [ [ ] [ ] ] ]").To(c);
+    FsaVec index = FsaVec(" [ [ [ 0 1 1 1.0 0 2 2 2.0 ] [ 1 3 -1 0.0 ] "
+                          "     [ 2 3 -1 0 ] [ ] ] ]").To(c);
+    Array1<int32_t> arc_src_map, arc_index_map;
+    FsaVec replaced_fsa =
+        ReplaceFsa(src, index, 0, &arc_src_map, &arc_index_map);
+
+    Array1<int32_t> arc_src_map_ref(c, "[ -1 -1 -1 -1 ]"),
+                    arc_index_map_ref(c, "[ 0 1 2 3 ]");
+
+    K2_CHECK(Equal(replaced_fsa, index));
+    K2_CHECK(Equal(arc_src_map, arc_src_map_ref));
+    K2_CHECK(Equal(arc_index_map, arc_index_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestReplaceFsaC) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec src = FsaVec("[ [ [ 0 1 11 11.0 ] [ 1 2 12 12.0 ] "
+                        "    [ 2 3 -1 0.0] [ ] ] "
+                        "  [ [ 0 1 21 21.0 0 2 22 22.0 ] "
+                        "    [ 1 3 -1 0.0 ] [2 3 -1 0.0] [ ] ] "
+                        "  [ [ 0 1 31 31.0 0 2 33 33.0 ] "
+                        "    [ 1 2 32 32.0 ] [ 2 3 -1 0.0 ] [ ] ] ]").To(c);
+    FsaVec index = FsaVec(" [ [ [ 0 1 1 1.0 0 2 2 2.0 ] [ 1 3 3 3.0 ] "
+                          "     [ 2 4 4 4.0 2 5 -1 0.0 ] [ 3 5 -1 0.0 ] "
+                          "     [ 4 5 -1 0 ] [ ] ] ]").To(c);
+    Array1<int32_t> arc_src_map, arc_index_map;
+    FsaVec replaced_fsa =
+        ReplaceFsa(src, index, 0, &arc_src_map, &arc_index_map);
+
+    Array1<int32_t> arc_src_map_ref(c,
+        "[ -1 -1 3 4 5 6 7 8 9 10 -1 -1 -1 -1 -1 ]"),
+                    arc_index_map_ref(c,
+        "[ 0 1 -1 -1 -1 -1 -1 -1 -1 -1 2 3 4 5 6 ]");
+
+    FsaVec replaced_fsa_ref = FsaVec("[ [ [ 0 1 0 1 0 4 0 2 ] "
+        "    [ 1 2 21 21 1 3 22 22 ] [ 2 7 0 0 ] [ 3 7 0 0 ] "
+        "    [ 4 5 31 31 4 6 33 33 ] [ 5 6 32 32 ] [ 6 8 0 0 ] "
+        "    [ 7 9 3 3 ] [ 8 10 4 4 8 11 -1 0 ] [ 9 11 -1 0 ] "
+        "    [ 10 11 -1 0 ] [ ] ] ]").To(c);
+
+    K2_CHECK(Equal(replaced_fsa, replaced_fsa_ref));
+    K2_CHECK(Equal(arc_src_map, arc_src_map_ref));
+    K2_CHECK(Equal(arc_index_map, arc_index_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestReplaceFsaD) {
+  // Test symbol_range_begin with nonzero value
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec src = FsaVec("[ [ [ 0 1 11 11.0 ] [ 1 2 12 12.0 ] "
+                        "    [ 2 3 -1 0.0] [ ] ] "
+                        "  [ [ 0 1 21 21.0 0 2 22 22.0 ] "
+                        "    [ 1 3 -1 0.0 ] [2 3 -1 0.0] [ ] ] "
+                        "  [ [ 0 1 31 31.0 0 2 33 33.0 ] "
+                        "    [ 1 2 32 32.0 ] [ 2 3 -1 0.0 ] [ ] ] ]").To(c);
+    FsaVec index = FsaVec(" [ [ [ 0 1 1 1.0 0 2 2 2.0 ] [ 1 3 3 3.0 ] "
+                          "     [ 2 4 4 4.0 2 5 -1 0.0 ] [ 3 5 -1 0.0 ] "
+                          "     [ 4 5 -1 0 ] [ ] ] ]").To(c);
+    Array1<int32_t> arc_src_map, arc_index_map;
+    FsaVec replaced_fsa =
+        ReplaceFsa(src, index, 2, &arc_src_map, &arc_index_map);
+
+    Array1<int32_t> arc_src_map_ref(c,
+        "[ -1 -1 0 1 2 -1 3 4 5 6 -1 -1 7 8 9 10 -1 -1 ]"),
+                    arc_index_map_ref(c,
+        "[ 0 1 -1 -1 -1 2 -1 -1 -1 -1 3 4 -1 -1 -1 -1 5 6 ]");
+
+    FsaVec replaced_fsa_ref = FsaVec("[ [ [ 0 4 1 1 0 1 0 2 ] "
+        "    [ 1 2 11 11 ] [ 2 3 12 12 ] [ 3 8 0 0 ] "
+        "    [ 4 5 0 3 ] [ 5 6 21 21 5 7 22 22] [ 6 12 0 0 ] [ 7 12 0 0 ] "
+        "    [ 8 9 0 4 8 14 -1 0 ] [ 9 10 31 31 9 11 33 33 ] [ 10 11 32 32 ] "
+        "    [ 11 13 0 0 ] [ 12 14 -1 0 ] [ 13 14 -1 0 ] [ ] ] ]").To(c);
+
+    K2_CHECK(Equal(replaced_fsa, replaced_fsa_ref));
+    K2_CHECK(Equal(arc_src_map, arc_src_map_ref));
+    K2_CHECK(Equal(arc_index_map, arc_index_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestReplaceRandom) {
+  int32_t min_num_fsas = 1;
+  int32_t max_num_fsas = 50;
+  int32_t max_symbol = 100;
+  int32_t min_num_arcs = max_num_fsas * 2;
+  int32_t max_num_arcs = 1000;
+  ContextPtr cpu = GetCpuContext();
+  Array1<int32_t> symbol_range_begin =
+    RandUniformArray1(cpu, 5, 0, max_symbol);
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i < 5; i++) {
+      bool acyclic = RandInt(0, 1);
+      FsaVec index = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
+                                  max_symbol, min_num_arcs, max_num_arcs)
+                                 .To(context);
+
+      acyclic = RandInt(0, 1);
+      FsaVec src = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
+                                max_symbol, min_num_arcs, max_num_arcs)
+                                .To(context);
+      Array1<int32_t> arc_src_map, arc_index_map;
+      FsaVec replaced_fsa =
+        ReplaceFsa(src, index, symbol_range_begin[i],
+                   &arc_src_map, &arc_index_map);
+
+      replaced_fsa = replaced_fsa.To(cpu);
+      index = index.To(cpu);
+      src = src.To(cpu);
+      const Arc *replaced_values_data = replaced_fsa.values.Data(),
+                *index_values_data = index.values.Data(),
+                *src_values_data = src.values.Data();
+      for (int32_t k = 0; k < replaced_fsa.NumElements(); ++k) {
+        // This arc is from `index`
+        if (arc_src_map[k] == -1) {
+          EXPECT_NE(arc_index_map[k], -1);
+          EXPECT_EQ(replaced_values_data[k].score,
+                    index_values_data[arc_index_map[k]].score);
+          int32_t label = index_values_data[arc_index_map[k]].label;
+          if (label >= symbol_range_begin[i] &&
+              label < src.Dim0() + symbol_range_begin[i])
+            // label in range will change into epsilon arc
+            EXPECT_EQ(replaced_values_data[k].label, 0);
+          else
+            // label out-of-range just copied
+            EXPECT_EQ(replaced_values_data[k].label, label);
+        } else {  // arc coming from `src`
+          EXPECT_NE(arc_src_map[k], -1);
+          EXPECT_EQ(replaced_values_data[k].score,
+                    src_values_data[arc_src_map[k]].score);
+          int32_t label = src_values_data[arc_src_map[k]].label;
+          if (label == -1)  // arc leading to final state
+            EXPECT_EQ(replaced_values_data[k].label, 0);
+          else
+            EXPECT_EQ(replaced_values_data[k].label, label);
+        }
+      }
+    }
+  }
+}
+
+TEST(FsaAlgo, TestCtcGraph) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<int32_t> symbols(c, "[ [ 1 2 2 3 ] [ 1 2 3 ] ]");
+    Array1<int32_t> arc_map;
+    FsaVec graph = CtcGraphs(symbols, true, &arc_map);
+    FsaVec graph_ref(c, "[ [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
+                        "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 ] "
+                        "    [ 4 4 0 0 4 5 2 0 ] [ 5 6 0 0 5 5 2 0 5 7 3 0 ] "
+                        "    [ 6 6 0 0 6 7 3 0 ] [ 7 8 0 0 7 7 3 0 7 9 -1 0 ] "
+                        "    [ 8 8 0 0 8 9 -1 0 ] [ ] ] "
+                        "  [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
+                        "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 3 5 3 0 ] "
+                        "    [ 4 4 0 0 4 5 3 0 ] [ 5 6 0 0 5 5 3 0 5 7 -1 0 ] "
+                        "    [ 6 6 0 0 6 7 -1 0 ] [ ] ] ]");
+    Array1<int32_t> arc_map_ref(c, "[ -1 0 -1 -1 1 -1 1 -1 -1 -1 2 -1 -1 3 "
+                                   "  -1 3 -1 -1 -1 -1 -1 -1 4 -1 -1 5 -1 5 "
+                                   "  -1 -1 6 -1 6 -1 -1 -1 -1 -1 ]");
+    K2_CHECK(Equal(graph, graph_ref));
+    K2_CHECK(Equal(arc_map, arc_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestCtcGraphSimplified) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<int32_t> symbols(c, "[ [ 1 2 2 3 ] [ 1 2 3 ] ]");
+    Array1<int32_t> arc_map;
+    FsaVec graph = CtcGraphs(symbols, false, &arc_map);
+    FsaVec graph_ref(c, "[ [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
+                        "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 3 5 2 0] "
+                        "    [ 4 4 0 0 4 5 2 0 ] [ 5 6 0 0 5 5 2 0 5 7 3 0 ] "
+                        "    [ 6 6 0 0 6 7 3 0 ] [ 7 8 0 0 7 7 3 0 7 9 -1 0 ] "
+                        "    [ 8 8 0 0 8 9 -1 0 ] [ ] ] "
+                        "  [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
+                        "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 3 5 3 0 ] "
+                        "    [ 4 4 0 0 4 5 3 0 ] [ 5 6 0 0 5 5 3 0 5 7 -1 0 ] "
+                        "    [ 6 6 0 0 6 7 -1 0 ] [ ] ] ]");
+    Array1<int32_t> arc_map_ref(c, "[ -1 0 -1 -1 1 -1 1 -1 -1 2 -1 2 -1 "
+                                   "  -1 3 -1 3 -1 -1 -1 -1 -1 -1 4 -1 -1 5 "
+                                   "  -1 5 -1 -1 6 -1 6 -1 -1 -1 -1 -1 ]");
+    K2_CHECK(Equal(graph, graph_ref));
+    K2_CHECK(Equal(arc_map, arc_map_ref));
+  }
+}
 }  // namespace k2

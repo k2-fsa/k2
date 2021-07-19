@@ -41,6 +41,7 @@ class Connector {
     K2_CHECK_EQ(fsas_.NumAxes(), 3);
     int32_t num_states = fsas_.shape.TotSize(1);
     accessible_ = Array1<char>(c_, num_states, 0);
+    coaccessible_ = Array1<char>(c_, num_states, 0);
   }
 
   /*
@@ -68,7 +69,7 @@ class Connector {
                              fsas_row_splits2_data[idx01];
           num_arcs_per_state_data[states_idx01] = num_arcs;
           // Set accessibility
-          accessible_data[idx01] |= 1;
+          accessible_data[idx01] = 1;
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
@@ -101,7 +102,7 @@ class Connector {
           // processe the dest_state (current state) again.
           // 2. If the state this arc pointing to is accessible, skip it.
           if (fsas_dest_state_idx01 == fsas_idx01 ||
-              (accessible_data[fsas_dest_state_idx01] & 1)) {
+              accessible_data[fsas_dest_state_idx01]) {
             return;
           }
           keep_state_data[fsas_dest_state_idx01] = 1;
@@ -160,7 +161,7 @@ class Connector {
     const int32_t *incoming_arcs_row_splits2_data =
                     incoming_arcs_.RowSplits(2).Data(),
                   *states_data = cur_states.values.Data();
-    char *accessible_data = accessible_.Data();
+    char *coaccessible_data = coaccessible_.Data();
     K2_EVAL(
         c_, cur_states.NumElements(),
         lambda_set_arcs_and_coaccessible_per_state,
@@ -169,8 +170,8 @@ class Connector {
                   num_arcs = incoming_arcs_row_splits2_data[idx01 + 1] -
                              incoming_arcs_row_splits2_data[idx01];
           num_arcs_per_state_data[states_idx01] = num_arcs;
-          // Set coaccessiblility (mark second bit)
-          accessible_data[idx01] |= (1 << 1);
+          // Set coaccessiblility
+          coaccessible_data[idx01] = 1;
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
@@ -210,10 +211,8 @@ class Connector {
           // 1. If this arc is a self-loop, just ignore this arc as we won't
           // processe the src_state (current state) again.
           // 2. If the src state entering this arc is coaccessible, skip it.
-          // 3. If more than one arc comes from the same state, we select only
-          // one arc arbitrarily.
           if (fsas_src_state_idx01 == fsas_idx01 ||
-              (accessible_data[fsas_src_state_idx01] & (1 << 1))) {
+              coaccessible_data[fsas_src_state_idx01]) {
             keep_state_data[fsas_src_state_idx01] = 0;
             return;
           }
@@ -374,13 +373,14 @@ class Connector {
 
     // Get remaining states and construct row_ids1/row_splits1
     int32_t num_states = fsas_.shape.TotSize(1);
-    const char *accessible_data = accessible_.Data();
+    const char *accessible_data = accessible_.Data(),
+               *coaccessible_data = coaccessible_.Data();
     Renumbering states_renumbering(c_, num_states);
     char* states_renumbering_data = states_renumbering.Keep().Data();
     K2_EVAL(
         c_, num_states, lambda_set_states_renumbering,
         (int32_t state_idx01)->void {
-          if (accessible_data[state_idx01] == 3)  // 3 in hex is 0x0000 0011
+          if (accessible_data[state_idx01] && coaccessible_data[state_idx01])
             states_renumbering_data[state_idx01] = 1;
           else
             states_renumbering_data[state_idx01] = 0;
@@ -406,9 +406,10 @@ class Connector {
           int32_t src_state_idx01 = fsas_row_ids2_data[arc_idx012],
                   dest_state_idx01 =
                     arc.dest_state - arc.src_state + src_state_idx01;
-          // 3 in hex is 0x0000 0011
-          if (accessible_data[src_state_idx01] == 3 &&
-              accessible_data[dest_state_idx01] == 3)
+          if (accessible_data[src_state_idx01] &&
+              coaccessible_data[src_state_idx01] &&
+              accessible_data[dest_state_idx01] &&
+              coaccessible_data[dest_state_idx01])
             arcs_renumbering_data[arc_idx012] = 1;
           else
             arcs_renumbering_data[arc_idx012] = 0;
@@ -491,9 +492,11 @@ class Connector {
   // of that state as an idx012.
   Ragged<int32_t> incoming_arcs_;
   // With the Dim() the same as num-states, to mark the state (as an idx01) to
-  // be accessible/coaccessible or not. For each element in this array the first
-  // bit uses to mark accessible and the second bit to mark coaccessible.
+  // be accessible or not.
   Array1<char> accessible_;
+  // With the Dim() the same as num-states, to mark the state (as an idx01) to
+  // be coaccessible or not.
+  Array1<char> coaccessible_;
 };
 
 void Connect(FsaOrVec &src, FsaOrVec *dest,

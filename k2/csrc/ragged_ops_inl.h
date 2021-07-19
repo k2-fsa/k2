@@ -1,6 +1,7 @@
 /**
  * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
+ *                                                   Haowen Qiu
+ *                                                   Wei Kang)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * See LICENSE for clarification regarding multiple authors
@@ -665,6 +666,30 @@ Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs) {
   RaggedShape shape = RaggedShape2(&row_splits_array, nullptr, values.size());
   Array1<T> values_array(context, values);
   return Ragged<T>(shape, values_array);
+}
+
+template <typename T>
+Array2<T> PadRagged(Ragged<T> &src, T padding_value) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(src.NumAxes(), 2);
+  ContextPtr &c = src.Context();
+  int32_t row_num = src.Dim0(),
+          col_num = src.shape.MaxSize(1);
+  Array2<T> res(c, row_num, col_num);
+  auto res_acc = res.Accessor();
+  const T *src_values_data = src.values.Data();
+  const int32_t *src_row_splits1_data = src.RowSplits(1).Data();
+  K2_EVAL2(
+      c, res.Dim0(), res.Dim1(), lambda, (int32_t i, int32_t j)->void {
+        int32_t idx0x = src_row_splits1_data[i],
+                idx0x_next = src_row_splits1_data[i + 1],
+                len = idx0x_next - idx0x;
+        if (j >= len)
+          res_acc(i, j) = padding_value;
+        else
+          res_acc(i, j) = src_values_data[idx0x + j];
+      });
+  return res;
 }
 
 }  // namespace k2

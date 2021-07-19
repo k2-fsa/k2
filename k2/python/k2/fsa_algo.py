@@ -1,5 +1,5 @@
-# Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang)
-#                      Xiaomi Corporation (authors: Haowen Qiu)
+# Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+#                      Xiaomi Corporation (authors: Haowen Qiu, Wei Kang)
 #                2021  Mobvoi Inc.        (authors: Yaguang Hu)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
@@ -132,61 +132,6 @@ def top_sort(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
-def _propagate_aux_labels_binary_function(
-        a_fsa: Fsa,
-        b_fsa: Fsa,
-        a_arc_map: Tensor,
-        b_arc_map: Tensor,
-        out_fsa: Fsa) -> None:
-
-    for name, a_value in a_fsa.named_tensor_attr():
-        # we include 'scores' in the attributes; this enables the
-        # autograd to work.
-        filler = float(a_fsa.get_filler(name))
-        if hasattr(b_fsa, name):
-            # Both a_fsa and b_fsa have this attribute.
-            # We only support attributes with dtype `torch.float32`.
-            # Other kinds of attributes are discarded.
-            if a_value.dtype != torch.float32:
-                raise AttributeError("We don't support propagating two "
-                                     "attributes with the same name that are "
-                                     "not real-valued, in intersection: " +
-                                     name)
-            b_value = getattr(b_fsa, name)
-            assert b_value.dtype == torch.float32
-            # The following will actually overwrite `scores` with the same
-            # value it had before; but this enables the autograd to work since
-            # we do it using torch mechanisms.
-            value = index_select(a_value, a_arc_map, default_value=filler) \
-                    + index_select(b_value, b_arc_map, default_value=filler)
-            setattr(out_fsa, name, value)
-        else:
-            # only a_fsa has this attribute, copy it via arc_map
-            if isinstance(a_value, torch.Tensor):
-                value = index_select(a_value, a_arc_map, default_value=filler)
-            else:
-                assert isinstance(a_value, _k2.RaggedInt)
-                value = index_ragged(a_value, a_arc_map)
-            setattr(out_fsa, name, value)
-
-    for name, b_value in b_fsa.named_tensor_attr():
-        if not hasattr(out_fsa, name):
-            if isinstance(b_value, torch.Tensor):
-                filler = float(b_fsa.get_filler(name))
-                value = index_select(b_value, b_arc_map, default_value=filler)
-            else:
-                assert isinstance(b_value, _k2.RaggedInt)
-                value = index_ragged(b_value, b_arc_map)
-            setattr(out_fsa, name, value)
-
-    for name, a_value in a_fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, a_value)
-
-    for name, b_value in b_fsa.named_non_tensor_attr():
-        if not hasattr(out_fsa, name):
-            setattr(out_fsa, name, b_value)
-
-
 def intersect_device(
         a_fsas: Fsa,
         b_fsas: Fsa,
@@ -255,12 +200,10 @@ def intersect_device(
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect_device(
         a_fsas.arcs, a_fsas.properties, b_fsas.arcs, b_fsas.properties,
         b_to_a_map, need_arc_map, sorted_match_a)
-    out_fsas = Fsa(ragged_arc)
 
-    _propagate_aux_labels_binary_function(a_fsas, b_fsas,
-                                          a_arc_map, b_arc_map,
-                                          out_fsas)
-
+    out_fsas = k2.utils.fsa_from_binary_function_tensor(a_fsas, b_fsas,
+                                                        ragged_arc,
+                                                        a_arc_map, b_arc_map)
     if ret_arc_maps:
         return out_fsas, a_arc_map, b_arc_map
     else:
@@ -284,6 +227,8 @@ def intersect(a_fsa: Fsa,
         The first input FSA. It can be either a single FSA or an FsaVec.
       b_fsa:
         The second input FSA. it can be either a single FSA or an FsaVec.
+        If both a_fsa and b_fsa are FsaVec, they must contain the same
+        number of FSAs.
       treat_epsilons_specially:
         If True, epsilons will be treated as epsilon, meaning epsilon arcs can
         match with an implicit epsilon self-loop.
@@ -341,12 +286,8 @@ def intersect(a_fsa: Fsa,
         a_fsa.arcs, a_fsa.properties, b_fsa.arcs, b_fsa.properties,
         treat_epsilons_specially, need_arc_map)
 
-    out_fsa = Fsa(ragged_arc)
-
-    _propagate_aux_labels_binary_function(a_fsa, b_fsa,
-                                          a_arc_map, b_arc_map,
-                                          out_fsa)
-
+    out_fsa = k2.utils.fsa_from_binary_function_tensor(a_fsa, b_fsa, ragged_arc,
+                                                       a_arc_map, b_arc_map)
     if ret_arc_maps:
         return out_fsa, a_arc_map, b_arc_map
     else:
@@ -818,6 +759,7 @@ def random_paths(fsas: Fsa, use_double_scores: bool,
       start state and terminating in the final state. The values are arc_idx012,
       i.e. arc indexes.
     '''
+    assert num_paths > 0, f'num_paths: {num_paths}'
     log_semiring = True
     arc_cdf = fsas._get_arc_cdf(use_double_scores=use_double_scores,
                                 log_semiring=log_semiring)
@@ -962,3 +904,110 @@ def expand_ragged_attributes(
         return dest, arc_map
     else:
         return dest
+
+
+def replace_fsa(
+        src: Fsa,
+        index: Fsa,
+        symbol_begin_range: int = 1,
+        ret_arc_map: bool = False
+) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:
+
+    '''
+    Replace arcs in index FSA with the corresponding fsas in a vector of
+    FSAs(src). For arcs in `index` with label
+    `symbol_range_begin <= label < symbol_range_begin + src.Dim0()` will be
+    replaced with fsa indexed `label - symbol_begin_range` in `src`.
+    The destination state of the arc in `index` is identified with the
+    `final-state` of the corresponding FSA in `src`, and the arc in `index`
+    will become an epsilon arc leading to a new state in the output that is
+    a copy of the start-state of the corresponding FSA in `src`. Arcs with
+    labels outside this range are just copied. Labels on final-arcs in `src`
+    (Which will be -1) would be set to 0(epsilon) in the result fsa.
+
+    Caution: Attributes of the result inherits from `index` and `src` via
+             `arc_map_index` and `arc_map_src`, But if there are attributes
+             with same name, only the attributes with dtype `torch.float32`
+             are supported, the other kinds of attributes are discarded.
+             See docs in `fsa_from_binary_function_tensor` for details.
+
+    Args:
+      src:
+          Fsa that we'll be inserting into the result, MUST have 3 axes.
+      index:
+          The Fsa that is to be replaced, It can be a single FSA or a vector of
+          FSAs.
+      symbol_range_begin:
+          Beginning of the range of symbols that are to be replaced with Fsas.
+      ret_arc_map:  if true, will return a tuple
+           (new_fsas, arc_map_index, arc_map_src) with `arc_map_index` and
+           `arc_map_src` tensors of int32 that maps from arcs in the result to
+           arcs in `index` and `src` , with -1's for the arcs not mapped.
+           If false, just returns new_fsas.
+    '''
+    (dest_arc, arc_map_src, arc_map_index) = _k2.replace_fsa(
+        src.arcs, index.arcs, symbol_begin_range)
+
+    dest = k2.utils.fsa_from_binary_function_tensor(src, index, dest_arc,
+                                                    arc_map_src, arc_map_index)
+    if ret_arc_map:
+        return dest, arc_map_index, arc_map_src
+    else:
+        return dest
+
+
+def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
+              standard: bool = True,
+              device: Optional[Union[torch.device, str]] = None) -> Fsa:
+    '''Construct ctc graphs from symbols.
+
+    Note:
+      The scores of arcs in the returned FSA are all 0.
+
+    Args:
+      symbols:
+        It can be one of the following types:
+
+            - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
+            - An instance of :class:`k2.RaggedInt`. Must have `num_axes() == 2`.
+      standard:
+        Option to specify the type of CTC topology: "standard" or "simplified",
+        where the "standard" one makes the blank mandatory between a pair of
+        identical symbols. Default True.
+      device:
+        Optional. It can be either a string (e.g., 'cpu',
+        'cuda:0') or a torch.device.
+        If it is None, then the returned FSA is on CPU. It has to be None
+        if `symbols` is an instance of :class:`k2.RaggedInt`, the returned
+        FSA will on the same device as `k2.RaggedInt`.
+
+    Returns:
+        An FsaVec containing the returned ctc graphs, with `Dim0()` the same as
+        `len(symbols)`(List[List[int]]) or `Dim0()`(k2.RaggedInt)
+    '''
+    if device is not None:
+        device = torch.device(device)
+        if device.type == 'cpu':
+            gpu_id = -1
+        else:
+            assert device.type == 'cuda'
+            gpu_id = getattr(device, 'index', 0)
+    else:
+        gpu_id = -1
+
+    symbol_values = None
+    if isinstance(symbols, k2.RaggedInt):
+        assert device is None
+        assert symbols.num_axes() == 2
+        symbol_values = symbols.values()
+    else:
+        symbol_values = torch.tensor(
+            [it for symbol in symbols for it in symbol], dtype=torch.int32,
+            device=device)
+
+    need_arc_map = True
+    ragged_arc, arc_map = _k2.ctc_graph(symbols, gpu_id,
+                                        standard, need_arc_map)
+    aux_labels = k2.index(symbol_values, arc_map)
+    fsa = Fsa(ragged_arc, aux_labels=aux_labels)
+    return fsa
