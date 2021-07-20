@@ -672,7 +672,7 @@ def get_best_matching_stats(tokens: _k2.RaggedInt, scores: torch.Tensor,
     only a subset of the hypotheses.
 
     CAUTION:
-      This function only runs on CPU for now.  
+      This function only runs on CPU for now.
 
     Args:
       tokens:
@@ -718,7 +718,7 @@ def get_best_matching_stats(tokens: _k2.RaggedInt, scores: torch.Tensor,
         The maximum n-gram order to ever return in the
         `ngram_order` output; the output will be the minimum of max_order
         and the actual order matched; or max_order if we matched all the
-        way to the beginning of both sentences.  The main reason this is
+        way to the beginning of both sentences. The main reason this is
         needed is that we need a finite number to return at the
         beginning of sentences.
 
