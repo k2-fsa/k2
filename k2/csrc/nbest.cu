@@ -453,7 +453,7 @@ void GetBestMatchingStatsInternal(Ragged<int32_t> &tokens,
   const T *suffix_array_data = suffix_array.Data();
   for (int32_t i = 0; i < suffix_array.Dim(); ++i) {
     // we reverse the sequence above, the order of counts and scores should be
-    // reversed accordingly, and make ensure that the counts and scores be zero
+    // reversed accordingly, and make sure that the counts and scores be zero
     // in the positions of eos and terminator.
     int32_t rindex = seq_len - 2 - suffix_array_data[i] - 1;
     reorder_counts_data[i] = rindex < 0 ? 0 : counts_data[rindex];
@@ -564,6 +564,8 @@ void GetBestMatchingStats(Ragged<int32_t> &tokens,
                           Array1<int32_t> *counts_out,
                           Array1<int32_t> *ngram_order) {
   ContextPtr &c = tokens.Context();
+  K2_CHECK_EQ(c->GetDeviceType(), kCpu);
+
   int32_t num_elements = tokens.NumElements();
   K2_CHECK(mean);
   if (mean->Dim() != num_elements) {

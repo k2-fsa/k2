@@ -371,6 +371,35 @@ TEST(AlgorithmTest, TestGetBestMatchingStatsSingle) {
   K2_CHECK(Equal(ngram_order, ngram_order_ref));
 }
 
+TEST(AlgorithmTest, TestGetBestMatchingStatsSpecial) {
+  Ragged<int32_t> tokens(GetCpuContext(), "[ [ 4 6 7 1 8 ] [ 4 3 7 1 8 ] "
+                                          "  [ 4 3 2 1 8 ] [ 5 6 7 1 8 ] ]");
+  Array1<float> scores(GetCpuContext(), "[ 0 0 0 0 0 0 0 0 0 0 "
+                                        "  0 0 0 0 0 0 0 0 0 0 ]");
+  Array1<int32_t> counts(GetCpuContext(), "[ 0 0 0 0 0 0 0 0 0 0 "
+                                          "  0 0 0 0 0 0 0 0 0 0 ]");
+  Array1<float> mean, var;
+  Array1<int32_t> counts_out, ngram_order;
+  int32_t eos = 8,
+          min_token = 1,
+          max_token = 8,
+          max_order = 2;
+  GetBestMatchingStats(tokens, scores, counts, eos, min_token, max_token,
+                       max_order, &mean, &var, &counts_out, &ngram_order);
+  Array1<float> mean_ref(GetCpuContext(), "[ 0 0 0 0 0 0 0 0 0 0 "
+                                          "  0 0 0 0 0 0 0 0 0 0 ]");
+  Array1<float> var_ref(GetCpuContext(), "[ 0 0 0 0 0 0 0 0 0 0 "
+                                      "  0 0 0 0 0 0 0 0 0 0 ]");
+  Array1<int32_t> counts_out_ref(GetCpuContext(), "[ 0 0 0 0 0 0 0 0 0 0 "
+                                                  "  0 0 0 0 0 0 0 0 0 0 ]");
+  Array1<int32_t> ngram_order_ref(GetCpuContext(), "[ 0 0 0 0 0 0 0 0 0 0 "
+                                                   "  0 0 0 0 0 0 0 0 0 0 ]");
+  K2_CHECK(Equal(mean, mean_ref));
+  K2_CHECK(Equal(var, var_ref));
+  K2_CHECK(Equal(counts_out, counts_out_ref));
+  K2_CHECK(Equal(ngram_order, ngram_order_ref));
+}
+
 TEST(AlgorithmTest, TestGetBestMatchingStatsSingleMulti) {
   Ragged<int32_t> tokens(GetCpuContext(), "[ [ [ 4 6 7 1 8 ] [ 4 3 7 1 8 ] "
                                           "    [ 4 3 2 1 8 ] [ 5 6 7 1 8 ] ] "
