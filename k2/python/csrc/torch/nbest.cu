@@ -20,7 +20,7 @@
  * limitations under the License.
  */
 
-#include "k2/python/csrc/torch/nbest.h"
+#include <tuple>
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/device_guard.h"
@@ -28,6 +28,7 @@
 #include "k2/csrc/nbest.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/tensor_ops.h"
+#include "k2/python/csrc/torch/nbest.h"
 #include "k2/python/csrc/torch/torch_util.h"
 
 namespace k2 {
@@ -37,8 +38,8 @@ static void PybindGetBestMatchingStats(py::module &m) {
       "get_best_matching_stats",
       [](Ragged<int32_t> &tokens, torch::Tensor scores, torch::Tensor counts,
          int32_t eos, int32_t min_token, int32_t max_token,
-         int32_t max_order) -> std::tuple<torch::Tensor, torch::Tensor,
-                                          torch::Tensor, torch::Tensor> {
+         int32_t max_order) -> tuple<torch::Tensor, torch::Tensor,
+                                     torch::Tensor, torch::Tensor> {
         DeviceGuard guard(tokens.Context());
         Array1<float> scores_array = FromTorch<float>(scores);
         Array1<int32_t> counts_array = FromTorch<int32_t>(counts);
