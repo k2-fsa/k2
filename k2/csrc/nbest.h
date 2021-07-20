@@ -33,20 +33,18 @@ namespace k2 {
 
 // This header contains certain utility functions that are used in rescoring
 // n-best lists: specifically, functions that help us select which among a set
-// of n-best candidates to select for rescoring.  The selection scheme is a little
-// complex.  It is intended to be used in a context where we do multiple successive
-// rounds of n-best list rescoring, and we use the results of the 1st round
-// to guide selection of candidates in the second round.  So for each word
-// in each n-best path that we are considering, we find the best-matching
-// positions among those that we evaluated in the first round and we use those
-// as inputs to a model that predicts the scores of words after n-best-list
-// rescoring.
+// of n-best candidates to select for rescoring.  The selection scheme is a
+// little complex. It is intended to be used in a context where we do multiple
+// successive rounds of n-best list rescoring, and we use the results of the
+// 1st round to guide selection of candidates in the second round.
+// So for each word in each n-best path that we are considering, we find the
+// best-matching positions among those that we evaluated in the first round and
+// we use those as inputs to a model that predicts the scores of words after
+// n-best-list rescoring.
 //
 // Some of these functions may seem a little unrelated to n-best lists, they
 // are algorithms involving suffix arrays, which we use internally in some
 // algorithms we use to process n-best lists.
-
-
 
 /*
   This function creates a suffix array; it is based on the
@@ -143,8 +141,6 @@ void CreateLcpArray(const T *text_array,
 
   Type LcpInterval is used to store information about the lcp interval,
   which we'll later use in algorithms that traverse the suffix tree.
-
-
  */
 template <typename T>
 struct LcpInterval {
@@ -153,10 +149,11 @@ struct LcpInterval {
             // longest prefix shared by all suffixes in this interval.
   T lb;     // Index of the first element (left boundary)
   T rb;     // Index of the last elemen (right boundary)
-  T parent; // The parent of this lcp-interval (-1 if this is the top interval),
-            // in the order in which it appears in this array (of
-            // lcp-intervals).  Note: this order is neither top-down or
-            // bottom-up; you can treat it as arbitrary.
+  T parent;  // The parent of this lcp-interval
+             // (-1 if this is the top interval),
+             // in the order in which it appears in this array (of
+             // lcp-intervals).  Note: this order is neither top-down or
+             // bottom-up; you can treat it as arbitrary.
 };
 
 template <typename T>
@@ -217,7 +214,8 @@ void CreateLcpIntervalArray(ContextPtr c,
 
    Template args: T is a signed type, intended to be int16_t or int32_t
 
-     @param [in] seq_len  The length of the sequence, including the terminating $.
+     @param [in] seq_len  The length of the sequence,
+                          including the terminating $.
      @param [in] lcp_intervals  The array of lcp intervals, as returned
                      by CreateLcpIntervalArray
      @param [in] counts_exclusive_sum  The exclusive-sum of counts of symbols in
@@ -329,5 +327,5 @@ void GetBestMatchingStats(Ragged<int32_t> &tokens,
                           Array1<float> *var,
                           Array1<int32_t> *counts_out,
                           Array1<int32_t> *ngram_order);
-}
+}  // namespace k2
 #endif  // K2_CSRC_NBEST_H_

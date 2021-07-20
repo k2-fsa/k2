@@ -17,6 +17,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include "k2/csrc/nbest.h"
 
 // This is not really a CUDA file but for build-system reasons I'm currently
@@ -60,7 +61,7 @@ static void RadixPass(const T* a, T* b, const T* r, T n, T K) {
 // https://algo2.iti.kit.edu/documents/jacm05-revised.pdf.
 template <typename T>
 void CreateSuffixArray(const T* text, T n, T K, T* SA) {
-  //assert(text[0] <= text[n-1]);  // spot check that termination symbol is
+  // assert(text[0] <= text[n-1]);    // spot check that termination symbol is
                                    // larger than other symbols;
                                    // <= in case n==1.
   if (n == 1) {  // The paper's code didn't seem to handle n == 1 correctly.
@@ -105,18 +106,19 @@ void CreateSuffixArray(const T* text, T n, T K, T* SA) {
     for (T i = 0; i < n02; i++) SA12[R[i] - 1] = i;
   //******* Step 2: Sort nonsample suffixes ********
   // stably sort the mod 0 suffixes from SA12 by their first character
-  for (T i = 0, j = 0; i < n02; i++) if (SA12[i] < n0) R0[j++] = 3 * SA12[i];
+  for (T i = 0, j = 0; i < n02; i++)
+    if (SA12[i] < n0) R0[j++] = 3 * SA12[i];
   RadixPass(R0, SA0, text, n0, K);
   //******* Step 3: Merge ********
   // merge sorted SA0 suffixes and sorted SA12 suffixes
   for (T p = 0, t = n0 - n1, k = 0; k < n; k++) {
     // i is pos of current offset 12 suffix
-    T i = (SA12[t] < n0 ? SA12[t] * 3 + 1 : (SA12[t] - n0) * 3 + 2) ;
+    T i = (SA12[t] < n0 ? SA12[t] * 3 + 1 : (SA12[t] - n0) * 3 + 2);
     T j = SA0[p];  // pos of current offset 0 suffix
     if (SA12[t] < n0 ?  // different compares for mod 1 and mod 2 suffixes
         Leq(text[i], R[SA12[t] + n0], text[j], R[j / 3]) :
         Leq(text[i], text[i + 1], R[SA12[t] - n0 + 1], text[j],
-            text[j + 1], R[j / 3 + n0])) { // suffix from SA12 is smaller
+            text[j + 1], R[j / 3 + n0])) {  // suffix from SA12 is smaller
       SA[k] = i; t++;
       if (t == n02)  // done --- only SA0 suffixes left
         for (k++; p < n0; p++, k++) SA[k] = SA0[p];
@@ -179,7 +181,6 @@ void CreateLcpIntervalArray(ContextPtr c,
                             T *lcp_array,
                             Array1<LcpInterval<T> > *lcp_intervals,
                             Array1<T> *leaf_parent_intervals) {
-
   *lcp_intervals = Array1<LcpInterval<T> >(c, seq_len);
   LcpInterval<T> *lcp_intervals_data = lcp_intervals->Data();
 
@@ -191,13 +192,13 @@ void CreateLcpIntervalArray(ContextPtr c,
 
   // This is the stack from Algorithm 1 and Algorithm 2 of
   // http://www.mi.fu-berlin.de/wiki/pub/ABI/RnaSeqP4/enhanced-suffix-array.pdf
-  // (you can refer to the papers mentioned in the documentation in nbest.h if this link goes
-  // dead).
+  // (you can refer to the papers mentioned in the documentation in nbest.h
+  //  if this link goes dead).
   //
-  // The 'begin', 'last' and 'lcp' members correspond to the 'lb', 'rb' and 'lcp'
-  // members mentioned there; the 'parent' member is used temporarily on the stack
-  // to refer to the index of this LcpInterval in `lcp_intervals_data`, i.e.
-  // it can be interpreted as a 'self' pointer.
+  // The 'begin', 'last' and 'lcp' members correspond to the 'lb', 'rb' and
+  // 'lcp' members mentioned there; the 'parent' member is used temporarily
+  // on the stack to refer to the index of this LcpInterval in
+  // `lcp_intervals_data`, i.e. it can be interpreted as a 'self' pointer.
   std::vector<LcpInterval<T> > stack;
 
   // A separate stack, of leaves of suffix tree; we maintain this so that
@@ -206,12 +207,14 @@ void CreateLcpIntervalArray(ContextPtr c,
 
   // lcp=0; begin=0; last=undefined; self=0  (interpreting the 'parent' member
   // as index-of-self
-  T next = 0;  // Will always store the next free index into `lcp_intervals_data`
-  T dfs_next = 0;  // Will always store the next free index into `intervals_order_data`;
-                   // this is an ordering of the indexes into `lcp_intervals_data`
-                   // that corresponds to depth-first search.
-  T last_interval = -1;  // Will store an index into `lcp_intervals`; this comes
-                         // from Algorithm 2 mentioned above
+  // Will always store the next free index into `lcp_intervals_data`
+  T next = 0;
+  // Will always store the next free index into `intervals_order_data`;
+  // this is an ordering of the indexes into `lcp_intervals_data` that
+  // corresponds to depth-first search.
+  T dfs_next = 0;
+  T last_interval = -1;  // Will store an index into `lcp_intervals`; this
+                         // comes from Algorithm 2 mentioned above
   stack.push_back({0, 0, T(seq_len - 1), next++ });
   // We are using a numbering in which the terminating symbol $ is included
   // in the array length, which is why we do "i < seq_len" and not
@@ -234,18 +237,21 @@ void CreateLcpIntervalArray(ContextPtr c,
       }
       // process(last_interval):
       lcp_intervals_data[last_interval_dfsorder] = stack.back();
-      //  Previously tried doing:
+      // Previously tried doing:
       //   stack.back().rb = i - 1;
-      // a bit further above, but hit some kind of compiler problem, the assignment
-      // had no effect (back() is supposed to return a reference).
+      // a bit further above, but hit some kind of compiler problem,
+      // the assignment had no effect (back() is supposed to return a
+      // reference).
       lcp_intervals_data[last_interval_dfsorder].rb = i - 1;
       intervals_order_data[last_interval] = last_interval_dfsorder;
       stack.pop_back();
       if (lcp_array_i <= stack.back().lcp) {
-        // lcp_intervals_data[last_interval_dfsorder].parent represents the parent
-        // of `last_interval`; `stack.back().parent` currently represents
-        // the intended position of stack.back() itself, not of its parent.
-        lcp_intervals_data[last_interval_dfsorder].parent = stack.back().parent;
+        // lcp_intervals_data[last_interval_dfsorder].parent represents
+        // the parent of `last_interval`; `stack.back().parent` currently
+        // represents the intended position of stack.back() itself,
+        // not of its parent.
+        lcp_intervals_data[last_interval_dfsorder].parent =
+            stack.back().parent;
         last_interval = -1;
       }
     }
@@ -310,10 +316,10 @@ void FindTightestNonemptyIntervals(T seq_len,
   const LcpInterval<T> *lcp_intervals_data = lcp_intervals->Data();
   const T *counts_exclusive_sum_data = counts_exclusive_sum->Data();
   int32_t num_intervals = lcp_intervals->Dim();
-  // `tightest_nonempty_intervals` gives, for each interval 0 <= i < num_intervals,
-  // the index j >= i of the tightest enclosing interval that has a nonzero
-  // count.  As a special case, if all counts are zero, it will return the
-  // top (last) interval.
+  // `tightest_nonempty_intervals` gives, for each interval
+  // 0 <= i < num_intervals, the index j >= i of the tightest enclosing
+  // interval that has a nonzero count.  As a special case, if all counts
+  // are zero, it will return the top (last) interval.
   Array1<T> tightest_nonempty_interval(c, num_intervals);
   T *tightest_nonempty_interval_data = tightest_nonempty_interval.Data();
   for (T i = num_intervals - 1; i >= 0; --i) {
@@ -324,8 +330,8 @@ void FindTightestNonemptyIntervals(T seq_len,
         counts_exclusive_sum_data[cur_interval.lb]) {
       j = i;
     } else {
-      // j > i, we will have already set tightest_nonempty_interval_data at this
-      // location.
+      // j > i, we will have already set tightest_nonempty_interval_data
+      // at this location.
       j = tightest_nonempty_interval_data[cur_interval.parent];
     }
     tightest_nonempty_interval_data[i] = j;
@@ -339,12 +345,12 @@ void FindTightestNonemptyIntervals(T seq_len,
 // Instantiate template
 template
 void FindTightestNonemptyIntervals(int32_t seq_len,
-                                   Array1<LcpInterval<int32_t> > *lcp_intervals,
+                                   Array1<LcpInterval<int32_t> > *lcp_intervals,  // NOLINT
                                    Array1<int32_t> *counts_exclusive_sum,
                                    Array1<int32_t> *leaf_parent_intervals);
 template
 void FindTightestNonemptyIntervals(int16_t seq_len,
-                                   Array1<LcpInterval<int16_t> > *lcp_intervals,
+                                   Array1<LcpInterval<int16_t> > *lcp_intervals,  // NOLINT
                                    Array1<int16_t> *counts_exclusive_sum,
                                    Array1<int16_t> *leaf_parent_intervals);
 
@@ -366,36 +372,42 @@ void GetBestMatchingStatsInternal(Ragged<int32_t> &tokens,
                                   Array1<int32_t> *ngram_order) {
   // Outline:
   //  First construct an array of type T which contains values as follows:
-  //    [ tokens.values[-1]+offset, ..., tokens.values[1]+offset, tokens.values[0]+offset, eos+offset, terminator, 0, 0, 0 ]
-  // where offset is 1-min_token, and terminator is max_token+1+offset.
-  // The 3 terminating zeros are required by CreateSuffixArray().
+  //    [ tokens.values[-1]+offset, ..., tokens.values[1]+offset,
+  //      tokens.values[0]+offset, eos+offset, terminator, 0, 0, 0 ]
+  //  where offset is 1-min_token, and terminator is max_token+1+offset.
+  //  The 3 terminating zeros are required by CreateSuffixArray().
   //
-  //   Create the reordered counts array `counts_reordered`, in the same order as
-  //   the suffix array, then its exclusive sum, e.g. `counts_reordered_excsum`.
-  //   At this point we can also create similar reordered exclusive-sums of `scores`
-  //   and scores-squared; do these as double or roundoff will be a problem.
+  //  Call CreateSuffixArray (seq_len == tokens.Dim() + 2, we include the
+  //  eos and terminator).
   //
-  //  Call CreateSuffixArray (seq_len == tokens.Dim() + 2, we include the eos and terminator).
-  //  Call CreateLcpArray, CreateLcpIntervalArray, FindTightestNonemptyIntervals()
-
+  //  Create the reordered counts array `counts_reordered`, in the same order
+  //  as the suffix array, then its exclusive sum,
+  //  e.g. `counts_reordered_excsum`. At this point we can also create similar
+  //  reordered exclusive-sums of `scores` and scores-squared;
+  //  do these as double or roundoff will be a problem.
+  //
+  //  Call CreateLcpArray, CreateLcpIntervalArray,
+  //  FindTightestNonemptyIntervals
+  //
   //  By this point we should have enough information to directly create the
-  //  outputs : mean, var, counts_out, ngram_order.  We need to be a bit careful
-  //  about ngram_order at positions when the suffix goes up to the next eos
-  //  (i.e. it goes to the beginning of the sentence) because the correct ngram order
-  //  to output here is `max_order`.  You will have to create an array containing
-  //  the distance from the beginning of the sentence (can be constructed from
-  //  the row_ids and row_splits of `tokens`), and index it with the suffix array
-  //  to get it in the right order.
-  //  Note: we only really care about the output at the query positions, but try
-  //  to make it so you don't need to treat keys as a special case.
+  //  outputs : mean, var, counts_out, ngram_order.  We need to be a bit
+  //  careful about ngram_order at positions when the suffix goes up to the
+  //  next eos (i.e. it goes to the beginning of the sentence) because the
+  //  correct ngram order to output here is `max_order`.  You will have to
+  //  create an array containing the distance from the beginning of the
+  //  sentence (can be constructed from the row_ids and row_splits of `tokens`)
+  //
+  //  Note: we only really care about the output at the query positions, but
+  //  try to make it so you don't need to treat keys as a special case.
   //
   //  Special cases/conditions to consider include:
-  //    - make sure the `count` in the position of the eos and terminator are zero
+  //    - make sure the `count` in the position of the eos and terminator
+  //      are zero
   //    - various code may break if the total count over all these sentences is
   //      zero, so you could just detect that and treat it as a special case.
   //      If the total count is nonzero, it should be guaranteed that you never
-  //      have to process an interval with zero count;  FindTightestNonemptyIntervals()
-  //      should guarantee that.
+  //      have to process an interval with zero count;
+  //      FindTightestNonemptyIntervals() should guarantee that.
   ContextPtr &c = tokens.Context();
   T num_elements = tokens.NumElements();
   K2_CHECK_EQ(mean->Dim(), num_elements);
@@ -412,8 +424,8 @@ void GetBestMatchingStatsInternal(Ragged<int32_t> &tokens,
   T *text_array_data = text_array.Data();
   const int32_t *tokens_values_data = tokens.values.Data();
   // we want to match the longest common prefix of the word and the words
-  // preceding it, so we need to reverse the sequence before constructing suffix
-  // array.
+  // preceding it, so we need to reverse the sequence before constructing
+  // suffix array.
   for (T i = 0; i < num_elements; ++i) {
     text_array_data[i] =
       tokens_values_data[num_elements - i - 1] + offset;
@@ -523,7 +535,7 @@ void GetBestMatchingStatsInternal(Ragged<int32_t> &tokens,
       ngram_order_data[i] = 0;
     } else {
       counts_out_data[i] = counts_out_interval;
-      ngram_order_data[i] = std::min(interval.lcp, (T)max_order);
+      ngram_order_data[i] = min(interval.lcp, (T)max_order);
       // handle the sentence boundary
       if (dist_to_begin_data[i] <= interval.lcp)
         ngram_order_data[i] = max_order;

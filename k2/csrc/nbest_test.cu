@@ -43,9 +43,9 @@ TEST(AlgorithmsTest, TestSuffixArray) {
     Array1<int32_t> array(cpu, array_len + 3);
     int32_t *array_data = array.Data();
     for (int i = 0; i + 1 < array_len; i++)
-      array_data[i] = RandInt(1, max_symbol - 1); // termination symbol must be
-                                                  // larger than all others,
-                                                  // don't allow
+      array_data[i] = RandInt(1, max_symbol - 1);  // termination symbol must
+                                                   // be larger than all
+                                                   // others, don't allow
     array_data[array_len - 1] = max_symbol;  // Termination symbol
 
     for (int i = array_len; i < array_len + 3; i++)
@@ -74,10 +74,11 @@ TEST(AlgorithmsTest, TestSuffixArray) {
       // positions.
       while (true) {
         if (*suffix_a < *suffix_b)
-          break; // correct order
+          break;  // correct order
         assert(!(*suffix_a > *suffix_b));  // order is wrong!
+        // past array end without correct comparison order.
         assert(!(suffix_a > array_data + array_len ||
-                 suffix_b > array_data + array_len)); // past array end without correct comparison order.
+                 suffix_b > array_data + array_len));
         suffix_a++;
         suffix_b++;
       }
@@ -163,7 +164,8 @@ TEST(AlgorithmsTest, TestCreateLcpIntervalArray) {
       assert(lcp_interval >= 0 && lcp_interval < num_intervals);
       assert(i >= lcp_intervals_data[lcp_interval].lb &&
              i <= lcp_intervals_data[lcp_interval].rb);
-      int32_t lcp = lcp_intervals_data[lcp_interval].lcp; // the lcp value / height
+      // the lcp value / height
+      int32_t lcp = lcp_intervals_data[lcp_interval].lcp;
 
       for (int32_t j = 0; j < num_intervals; j++) {
         // The interval that i is a member of should be the tightest enclosing
@@ -191,7 +193,8 @@ TEST(AlgorithmsTest, TestCreateLcpIntervalArray) {
              interval.rb < array_len);
       assert(lcp_data[interval.lb] < interval.lcp ||
              (interval.lb == 0 && interval.lcp == 0));
-      assert(interval.rb == array_len - 1 || lcp_data[interval.rb + 1] < interval.lcp);
+      assert(interval.rb == array_len - 1 ||
+             lcp_data[interval.rb + 1] < interval.lcp);
       if (array_len != 1) {
         int32_t min_lcp = 1000000;
         for (int32_t j = interval.lb + 1; j <= interval.rb; ++j)
@@ -266,7 +269,8 @@ TEST(AlgorithmsTest, TestFindTightestNonemptyIntervals) {
       int32_t lcp_interval = leaf_parent_intervals_data[i],
           nonempty_lcp_interval = leaf_parent_intervals_mod_data[i];
       assert(lcp_interval >= 0 && lcp_interval < num_intervals);
-      assert(nonempty_lcp_interval >= 0 && nonempty_lcp_interval < num_intervals);
+      assert(nonempty_lcp_interval >= 0 &&
+             nonempty_lcp_interval < num_intervals);
       if (counts_reordered_sum[array_len] == 0) {
         // If the total count is zero, everything should go to the top of the
         // tree, but we won't otherwise test this.
@@ -274,8 +278,8 @@ TEST(AlgorithmsTest, TestFindTightestNonemptyIntervals) {
       } else {
         int32_t lcp = lcp_intervals_data[lcp_interval].lcp;
         K2_CHECK_EQ((lcp_interval == nonempty_lcp_interval),
-                    (counts_reordered_sum[lcp_intervals_data[lcp_interval].lb] !=
-                     counts_reordered_sum[lcp_intervals_data[lcp_interval].rb + 1]));
+                    (counts_reordered_sum[lcp_intervals_data[lcp_interval].lb] !=      // NOLINT
+                     counts_reordered_sum[lcp_intervals_data[lcp_interval].rb + 1]));  // NOLINT
         K2_CHECK(i >= lcp_intervals_data[nonempty_lcp_interval].lb &&
                  i <= lcp_intervals_data[nonempty_lcp_interval].rb);
 
@@ -296,11 +300,30 @@ TEST(AlgorithmsTest, TestFindTightestNonemptyIntervals) {
   }
 }
 
-TEST(AlgorithmTest, TestGetBestMatchingStats) {
+TEST(AlgorithmTest, TestGetBestMatchingStatsEmpty) {
+  Ragged<int32_t> tokens(GetCpuContext(), "[ [ [ ] ] ]");
+  Array1<float> scores(GetCpuContext(), "[ ]");
+  Array1<int32_t> counts(GetCpuContext(), "[ ]");
+  Array1<float> mean, var;
+  Array1<int32_t> counts_out, ngram_order;
+  int32_t eos = 8,
+          min_token = 1,
+          max_token = 8,
+          max_order = 2;
+  GetBestMatchingStats(tokens, scores, counts, eos, min_token, max_token,
+                       max_order, &mean, &var, &counts_out, &ngram_order);
+
+  K2_CHECK_EQ(mean.Dim(), 0);
+  K2_CHECK_EQ(var.Dim(), 0);
+  K2_CHECK_EQ(counts_out.Dim(), 0);
+  K2_CHECK_EQ(ngram_order.Dim(), 0);
+}
+
+TEST(AlgorithmTest, TestGetBestMatchingStatsSingle) {
   // There are 20 tokens, index with [0, 20)
   // keys' positions are [0, 10), queries positions are [10, 20)
   // The best matching positions(include the token itself) are as follows
-  // index 0  : (0, 5, 10) with lcp "48", we add eos(8)
+  // index 0  : (0, 5, 10) with lcp "84", we add eos(8)
   // index 1  : (1, 16,) with lcp "6"
   // index 2  : (2, 17,) with lcp "76"
   // index 3  : (3, 18,) with lcp "671"
@@ -346,15 +369,47 @@ TEST(AlgorithmTest, TestGetBestMatchingStats) {
   K2_CHECK(Equal(var, var_ref));
   K2_CHECK(Equal(counts_out, counts_out_ref));
   K2_CHECK(Equal(ngram_order, ngram_order_ref));
+}
 
-  // max_order = 5
-  // index 0, 5, 6, 10, 11 match further than the BOS boundary
-  max_order = 5;
+TEST(AlgorithmTest, TestGetBestMatchingStatsSingleMulti) {
+  Ragged<int32_t> tokens(GetCpuContext(), "[ [ [ 4 6 7 1 8 ] [ 4 3 7 1 8 ] "
+                                          "    [ 4 3 2 1 8 ] [ 5 6 7 1 8 ] ] "
+                                          "  [ [ 5 1 4 8 ] [ 5 1 2 8 ] "
+                                          "    [ 5 3 4 8 ] ] ]");
+  Array1<float> scores(GetCpuContext(), "[ 1 2 3 4 5 6 7 8 9 10 "
+                                        "  0 0 0 0 0 0 0 0 0 0 "
+                                        "  1 2 3 4 5 7 8 6 0 0 0 0 ]");
+  Array1<int32_t> counts(GetCpuContext(), "[ 1 1 1 1 1 1 1 1 1 1 "
+                                          "  0 0 0 0 0 0 0 0 0 0 "
+                                          "  1 1 1 1 1 1 1 1 0 0 0 0 ]");
+  Array1<float> mean, var;
+  Array1<int32_t> counts_out, ngram_order;
+  int32_t eos = 8,
+          min_token = 0,
+          max_token = 10,
+          max_order = 5;
   GetBestMatchingStats(tokens, scores, counts, eos, min_token, max_token,
                        max_order, &mean, &var, &counts_out, &ngram_order);
-  Array1<int32_t> ngram_order3_ref(GetCpuContext(), "[ 5 1 2 3 4 5 5 1 2 3 "
-                                                    "  5 5 0 1 2 0 1 2 3 4 ]");
-  K2_CHECK(Equal(ngram_order, ngram_order3_ref));
+  Array1<float> mean_ref(GetCpuContext(), "[ 3.5 2 3 4 5 6 7 5.5 6.5 7.5 "
+                                          "  6 7 5.5 6.5 7.5 5.5 2 3 4 5 "
+                                          "  3 4.5 3 4 3 4.5 4.5 5 "
+                                          "  3 4.5 3 4 ]");
+  Array1<float> var_ref(GetCpuContext(), "[ 6.25 0 0 0 0 0 0 6.25 6.25 6.25 "
+                                      "  0 0 8.25 6.25 6.25 8.25 0 0 0 0 "
+                                      "  4 6.25 0 0 4 6.25 5.25 1 "
+                                      "  4 5.25 0 0 ]");
+  Array1<int32_t> counts_out_ref(GetCpuContext(), "[ 2 1 1 1 1 1 1 2 2 2 "
+                                                  "  1 1 0 2 2 0 1 1 1 1 "
+                                                  "  2 2 1 1 2 2 0 2 "
+                                                  "  2 0 1 1 ]");
+  Array1<int32_t> ngram_order_ref(GetCpuContext(), "[ 5 1 2 3 4 5 5 1 2 3 "
+                                                   "  5 5 0 1 2 0 1 2 3 4 "
+                                                   "  5 5 1 2 5 5 0 1 "
+                                                   "  5 0 1 2 ]");
+  K2_CHECK(Equal(mean, mean_ref));
+  K2_CHECK(Equal(var, var_ref));
+  K2_CHECK(Equal(counts_out, counts_out_ref));
+  K2_CHECK(Equal(ngram_order, ngram_order_ref));
 }
 
 }  // namespace k2
