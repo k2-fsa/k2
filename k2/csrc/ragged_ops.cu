@@ -999,7 +999,10 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
   K2_CHECK_GT(src.NumAxes(), 2);
   ContextPtr c = src.Context();
   int32_t src_dim0 = src.Dim0(), src_tot_size1 = src.TotSize(1);
-  if (src_dim0 <= 0) return src;
+  if (src_dim0 <= 0) {
+    *value_indexes = Array1<int32_t>(c, 0);
+    return src;
+  }
   int32_t src_dim1 = src_tot_size1 / src_dim0;
   K2_CHECK_EQ(src_tot_size1 % src_dim0, 0)
       << "Transpose(): all dims on axis 0 must be the same.\n"
