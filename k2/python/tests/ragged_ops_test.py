@@ -82,16 +82,16 @@ class TestRaggedOps(unittest.TestCase):
             self.assertEqual(k2.ragged.to_list(ans),
                              [[1, 2], [0], [3, 0], [2]])
 
-    def test_pad_ragged(self):
+    def test_pad(self):
         s = '''
             [ [ 1 2 ] [ 3 ] [ ] [ 4 5 6 ] [ 7 8 9 10 ] ]
         '''
         for device in self.devices:
             src = k2.RaggedInt(s).to(device)
-            padding_value = random.randint(0, 1000)
-            ans = k2.ragged.pad_ragged(src, padding_value)
+            value = random.randint(0, 1000)
+            ans = k2.ragged.pad(src, 'constant', value)
             expected = torch.ones(
-                (5, 4), dtype=torch.int32, device=device) * padding_value
+                (5, 4), dtype=torch.int32, device=device) * value
             expected[0, 0] = 1
             expected[0, 1] = 2
             expected[1, 0] = 3
@@ -105,16 +105,16 @@ class TestRaggedOps(unittest.TestCase):
 
             assert torch.all(torch.eq(ans, expected))
 
-    def test_pad_ragged_float(self):
+    def test_pad_float(self):
         s = '''
             [ [ 1.0 2.0 ] [ 3.0 ] [ ] [ 4.0 5.0 6.0 ] [ 7.0 8.0 9.0 10.0 ] ]
         '''
         for device in self.devices:
             src = k2.RaggedFloat(s).to(device)
-            padding_value = random.random() * 10
-            ans = k2.ragged.pad_ragged(src, padding_value)
+            value = random.random() * 10
+            ans = k2.ragged.pad(src, 'constant', value)
             expected = torch.ones(
-                (5, 4), dtype=torch.int32, device=device) * padding_value
+                (5, 4), dtype=torch.int32, device=device) * value
             expected[0, 0] = 1.0
             expected[0, 1] = 2.0
             expected[1, 0] = 3.0
@@ -127,6 +127,20 @@ class TestRaggedOps(unittest.TestCase):
             expected[4, 3] = 10.0
 
             assert torch.allclose(ans, expected)
+
+    def test_pad_replicate(self):
+        s = '''
+            [ [1 2] [10] [] [3 5 8 9] ]
+        '''
+        for device in self.devices:
+            for T in [k2.RaggedInt, k2.RaggedFloat]:
+                value = random.randint(0, 1000)
+                src = T(s).to(device)
+                padded = k2.ragged.pad(src, 'replicate', value)
+                expected = torch.tensor(
+                    [[1, 2, 2, 2], [10, 10, 10, 10],
+                     [value, value, value, value], [3, 5, 8, 9]],).to(padded)
+                assert torch.allclose(padded, expected)
 
     def test_remove_values_leq(self):
         s = '''

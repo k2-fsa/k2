@@ -87,7 +87,7 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip
-          python3 -m pip install -qq wheel twine
+          python3 -m pip install -qq wheel twine typing_extensions
           python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
 
           python3 -c "import torch; print('torch version:', torch.__version__)"

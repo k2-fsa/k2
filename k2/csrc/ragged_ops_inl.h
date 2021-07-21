@@ -30,6 +30,7 @@
 #include <limits>
 #include <memory>
 #include <numeric>
+#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -669,9 +670,20 @@ Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs) {
 }
 
 template <typename T>
-Array2<T> PadRagged(Ragged<T> &src, T padding_value) {
+Array2<T> PadRagged(Ragged<T> &src, const std::string &mode, T padding_value) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 2);
+
+  bool is_constant = false;
+  if (mode == "constant") {
+    is_constant = true;
+  } else if (mode == "replicate") {
+    is_constant = false;
+  } else {
+    K2_LOG(FATAL) << "Unsupported mode: " << mode << ".\n"
+                  << "Valid values are: constant, replicate";
+  }
+
   ContextPtr &c = src.Context();
   int32_t row_num = src.Dim0(),
           col_num = src.shape.MaxSize(1);
@@ -679,16 +691,36 @@ Array2<T> PadRagged(Ragged<T> &src, T padding_value) {
   auto res_acc = res.Accessor();
   const T *src_values_data = src.values.Data();
   const int32_t *src_row_splits1_data = src.RowSplits(1).Data();
-  K2_EVAL2(
-      c, res.Dim0(), res.Dim1(), lambda, (int32_t i, int32_t j)->void {
-        int32_t idx0x = src_row_splits1_data[i],
-                idx0x_next = src_row_splits1_data[i + 1],
-                len = idx0x_next - idx0x;
-        if (j >= len)
-          res_acc(i, j) = padding_value;
-        else
-          res_acc(i, j) = src_values_data[idx0x + j];
-      });
+  if (is_constant) {
+    K2_EVAL2(
+        c, res.Dim0(), res.Dim1(), lambda, (int32_t i, int32_t j)->void {
+          int32_t idx0x = src_row_splits1_data[i],
+                  idx0x_next = src_row_splits1_data[i + 1],
+                  len = idx0x_next - idx0x;
+          if (j >= len)
+            res_acc(i, j) = padding_value;
+          else
+            res_acc(i, j) = src_values_data[idx0x + j];
+        });
+  } else {
+    K2_EVAL2(
+        c, res.Dim0(), res.Dim1(), lambda, (int32_t i, int32_t j)->void {
+          int32_t idx0x = src_row_splits1_data[i],
+                  idx0x_next = src_row_splits1_data[i + 1],
+                  len = idx0x_next - idx0x;
+
+          if (len == 0) {
+            res_acc(i, j) = padding_value;
+            return;
+          }
+
+          if (j >= len)
+            // replicate the last element in this list
+            res_acc(i, j) = src_values_data[idx0x_next - 1];
+          else
+            res_acc(i, j) = src_values_data[idx0x + j];
+        });
+  }
   return res;
 }
 
