@@ -62,7 +62,7 @@ class CtcLoss(nn.Module):
             the total scores. False to use single precision.
           target_lengths:
             Used only when `reduction` is `mean`. It is a 1-D tensor of batch
-            size. It represent lengths of the targets, e.g., number of phones or
+            size representing lengths of the targets, e.g., number of phones or
             number of word pieces in a sentence.
         Returns:
           If `reduction` is `none`, return a 1-D tensor with size equal to batch
@@ -113,9 +113,9 @@ def ctc_loss(decoding_graph: Fsa,
         True to use double precision floating point in computing
         the total scores. False to use single precision.
       target_lengths:
-        Used only when `reduction` is `mean`. It is a 1-D tensor of batch size.
-        It represent lengths of the targets, e.g., number of phones or number of
-        word pieces in a sentence.
+        Used only when `reduction` is `mean`. It is a 1-D tensor of batch
+        size representing lengths of the targets, e.g., number of phones or
+        number of word pieces in a sentence.
     Returns:
       If `reduction` is `none`, return a 1-D tensor with size equal to batch
       size. If `reduction` is `mean` or `sum`, return a scalar.
