@@ -26,7 +26,8 @@ class CtcLoss(nn.Module):
     See `k2/python/tests/ctc_loss_test.py` for usage.
 
     We assume that the blank label is always 0. The arguments `reduction` and
-    `target_lengths` have the same meaning as `torch.CtcLoss`.
+    `target_lengths` have the same meaning as their counterparts in
+    `torch.CtcLoss`.
     '''
 
     def __init__(self):
@@ -36,7 +37,7 @@ class CtcLoss(nn.Module):
                 decoding_graph: Fsa,
                 dense_fsa_vec: DenseFsaVec,
                 output_beam: float = 10,
-                reduction: Literal['none', 'mean', 'sum'] = 'mean',
+                reduction: Literal['none', 'mean', 'sum'] = 'sum',
                 use_double_scores: bool = True,
                 target_lengths: Optional[torch.Tensor] = None) -> torch.Tensor:
         '''Compute the CTC loss given a decoding graph and a dense fsa vector.
@@ -89,7 +90,7 @@ class CtcLoss(nn.Module):
 def ctc_loss(decoding_graph: Fsa,
              dense_fsa_vec: DenseFsaVec,
              output_beam: float = 10,
-             reduction: Literal['none', 'mean', 'sum'] = 'mean',
+             reduction: Literal['none', 'mean', 'sum'] = 'sum',
              use_double_scores: bool = True,
              target_lengths: Optional[torch.Tensor] = None) -> torch.Tensor:
     '''Compute the CTC loss given a decoding graph and a dense fsa vector.
