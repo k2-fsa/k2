@@ -1000,7 +1000,7 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
   ContextPtr c = src.Context();
   int32_t src_dim0 = src.Dim0(), src_tot_size1 = src.TotSize(1);
   if (src_dim0 <= 0) {
-    *value_indexes = Array1<int32_t>(c, 0);
+    if (value_indexes) *value_indexes = Array1<int32_t>(c, 0);
     return src;
   }
   int32_t src_dim1 = src_tot_size1 / src_dim0;
