@@ -1011,3 +1011,78 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
     aux_labels = k2.index(symbol_values, arc_map)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
+
+def ctc_topo(max_token: int, standard: bool) -> k2.Fsa:
+    '''Create a CTC topology.
+
+    A token which appears once on the right side (i.e. olabels) may
+    appear multiple times on the left side (ilabels), possibly with
+    epsilons in between.
+    When 0 appears on the left side, it represents the blank symbol;
+    when it appears on the right side, it indicates an epsilon. That
+    is, 0 has two meanings here.
+
+    A standard CTC topology is the conventional one, where there
+    is a mandatory blank between two repeated neighboring symbols.
+    A non-standard, i.e., modified CTC topology, imposes no such constraint.
+
+    See https://github.com/k2-fsa/k2/issues/746#issuecomment-856421616
+    and https://github.com/k2-fsa/snowfall/pull/209
+    for more details.
+
+    Args:
+      max_token:
+        The maximum token ID (inclusive). We assume that token IDs
+        are contiguous (from 1 to `max_token`). 0 represents blank.
+      standard:
+        If True, create a standard CTC topology. Otherwise, create a
+        modified CTC topology.
+    Returns:
+      Return either a standard or a modified CTC topology as an FSA
+      depending on whether `standard` is True or False.
+    '''
+
+    def standard_ctc_topo():
+        final_state = max_token + 1
+        arcs = [[final_state]]
+        eps = 0
+        for i in range(max_token + 1):
+            for j in range(max_token + 1):
+                if i == j:
+                    # [src, dst, label, aux_label, score]
+                    arcs.append([i, i, i, eps, 0])
+                else:
+                    arcs.append([i, j, j, j, 0])
+            arcs.append([i, final_state, -1, -1, 0])
+        return arcs
+
+    def modified_ctc_topo():
+        start_state = 0
+        final_state = max_token + 1
+        blank = 0
+        eps = 0
+
+        arcs = [[final_state]]
+        arcs.append([start_state, start_state, blank, eps, 0])
+        arcs.append([start_state, final_state, -1, -1, 0])
+        for p in range(1, max_token+1):
+            i = p
+            arcs.append([start_state, start_state, p, p, 0])
+
+            arcs.append([start_state, i, p, p, 0])
+            arcs.append([i, i, p, eps, 0])
+
+            arcs.append([i, start_state, p, eps, 0])
+        return arcs
+
+    if standard:
+        arcs = standard_ctc_topo()
+    else:
+        arcs = modified_ctc_topo()
+
+    arcs = sorted(arcs, key=lambda arc: arc[0])
+    arcs = [[str(i) for i in arc] for arc in arcs]
+    arcs = [' '.join(arc) for arc in arcs]
+    arcs = '\n'.join(arcs)
+    ctc_topo = k2.Fsa.from_str(arcs, num_aux_labels=1)
+    return k2.arc_sort(ctc_topo)

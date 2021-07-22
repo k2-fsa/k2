@@ -22,6 +22,7 @@ from .fsa_algo import closure
 from .fsa_algo import compose
 from .fsa_algo import connect
 from .fsa_algo import ctc_graph
+from .fsa_algo import ctc_topo
 from .fsa_algo import determinize
 from .fsa_algo import expand_ragged_attributes
 from .fsa_algo import intersect
