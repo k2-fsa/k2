@@ -119,8 +119,11 @@ Array1<T> FromTorch(torch::Tensor &tensor) {
   K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<T>::value)
       << "Expected scalar type: " << ToScalarType<T>::value
       << ". Given: " << tensor.scalar_type();
-  K2_CHECK_EQ(tensor.strides()[0], 1)
-      << "Expected stride: 1. Given: " << tensor.strides()[0];
+  // Some empty tensor may have stride not equal to 1, e.g., tensor returned by
+  // clone() method, it is valid here, so we won't check its strieds.
+  if (tensor.numel())
+    K2_CHECK_EQ(tensor.strides()[0], 1)
+        << "Expected stride: 1. Given: " << tensor.strides()[0];
 
   auto region = NewRegion(tensor);
   Array1<T> ans(tensor.numel(), region, 0);
