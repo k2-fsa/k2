@@ -30,25 +30,12 @@ class CtcLoss(nn.Module):
     `torch.CtcLoss`.
     '''
 
-    def __init__(self):
-        super().__init__()
-
-    def forward(self,
-                decoding_graph: Fsa,
-                dense_fsa_vec: DenseFsaVec,
-                output_beam: float = 10,
-                reduction: Literal['none', 'mean', 'sum'] = 'sum',
-                use_double_scores: bool = True,
-                target_lengths: Optional[torch.Tensor] = None) -> torch.Tensor:
-        '''Compute the CTC loss given a decoding graph and a dense fsa vector.
-
+    def __init__(self,
+                 output_beam: float,
+                 reduction: Literal['none', 'mean', 'sum'] = 'sum',
+                 use_double_scores: bool = True):
+        '''
         Args:
-          decoding_graph:
-            An FsaVec. It can be the composition result of a CTC topology
-            and a transcript.
-          dense_fsa_vec:
-            It represents the neural network output. Refer to the help
-            information in :class:`k2.DenseFsaVec`.
           output_beam:
              Beam to prune output, similar to lattice-beam in Kaldi.  Relative
              to best path of output.
@@ -61,6 +48,26 @@ class CtcLoss(nn.Module):
           use_double_scores:
             True to use double precision floating point in computing
             the total scores. False to use single precision.
+        '''
+        super().__init__()
+        assert reduction in ('none', 'mean', 'sum')
+        self.output_beam = output_beam
+        self.reduction = reduction
+        self.use_double_scores = use_double_scores
+
+    def forward(self,
+                decoding_graph: Fsa,
+                dense_fsa_vec: DenseFsaVec,
+                target_lengths: Optional[torch.Tensor] = None) -> torch.Tensor:
+        '''Compute the CTC loss given a decoding graph and a dense fsa vector.
+
+        Args:
+          decoding_graph:
+            An FsaVec. It can be the composition result of a CTC topology
+            and a transcript.
+          dense_fsa_vec:
+            It represents the neural network output. Refer to the help
+            information in :class:`k2.DenseFsaVec`.
           target_lengths:
             Used only when `reduction` is `mean`. It is a 1-D tensor of batch
             size representing lengths of the targets, e.g., number of phones or
@@ -69,20 +76,20 @@ class CtcLoss(nn.Module):
           If `reduction` is `none`, return a 1-D tensor with size equal to batch
           size. If `reduction` is `mean` or `sum`, return a scalar.
         '''
-        assert reduction in ('none', 'mean', 'sum')
-        lattice = intersect_dense(decoding_graph, dense_fsa_vec, output_beam)
+        lattice = intersect_dense(decoding_graph, dense_fsa_vec,
+                                  self.output_beam)
 
         tot_scores = lattice.get_tot_scores(
-            log_semiring=True, use_double_scores=use_double_scores)
+            log_semiring=True, use_double_scores=self.use_double_scores)
         loss = -1 * tot_scores
         loss = loss.to(torch.float32)
 
-        if reduction == 'none':
+        if self.reduction == 'none':
             return loss
-        elif reduction == 'sum':
+        elif self.reduction == 'sum':
             return loss.sum()
         else:
-            assert reduction == 'mean'
+            assert self.reduction == 'mean'
             loss /= target_lengths
             return loss.mean()
 
@@ -121,5 +128,8 @@ def ctc_loss(decoding_graph: Fsa,
       If `reduction` is `none`, return a 1-D tensor with size equal to batch
       size. If `reduction` is `mean` or `sum`, return a scalar.
     '''
-    return CtcLoss()(decoding_graph, dense_fsa_vec, output_beam, reduction,
-                     use_double_scores, target_lengths)
+    m = CtcLoss(output_beam=output_beam,
+                reduction=reduction,
+                use_double_scores=use_double_scores)
+
+    return m(decoding_graph, dense_fsa_vec, target_lengths)
