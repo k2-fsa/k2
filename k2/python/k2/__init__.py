@@ -13,6 +13,8 @@ from . import utils
 from .autograd import intersect_dense
 from .autograd import intersect_dense_pruned
 from .autograd import union
+from .ctc_loss import CtcLoss
+from .ctc_loss import ctc_loss
 from .dense_fsa_vec import DenseFsaVec
 from .dense_fsa_vec import convert_dense_to_fsa_vec
 from .fsa import Fsa

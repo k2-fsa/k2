@@ -25,8 +25,8 @@ set(py_test_files
   compose_test.py
   connect_test.py
   create_sparse_test.py
-  ctc_gradients_test.py
   ctc_graph_test.py
+  ctc_loss_test.py
   ctc_topo_test.py
   dense_fsa_vec_test.py
   determinize_test.py

@@ -1012,7 +1012,8 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
 
-def ctc_topo(max_token: int, standard: bool) -> k2.Fsa:
+
+def ctc_topo(max_token: int, modified: bool = False) -> k2.Fsa:
     '''Create a CTC topology.
 
     A token which appears once on the right side (i.e. olabels) may
@@ -1034,8 +1035,8 @@ def ctc_topo(max_token: int, standard: bool) -> k2.Fsa:
       max_token:
         The maximum token ID (inclusive). We assume that token IDs
         are contiguous (from 1 to `max_token`). 0 represents blank.
-      standard:
-        If True, create a standard CTC topology. Otherwise, create a
+      modified:
+        If False, create a standard CTC topology. Otherwise, create a
         modified CTC topology.
     Returns:
       Return either a standard or a modified CTC topology as an FSA
@@ -1065,7 +1066,7 @@ def ctc_topo(max_token: int, standard: bool) -> k2.Fsa:
         arcs = [[final_state]]
         arcs.append([start_state, start_state, blank, eps, 0])
         arcs.append([start_state, final_state, -1, -1, 0])
-        for p in range(1, max_token+1):
+        for p in range(1, max_token + 1):
             i = p
             arcs.append([start_state, start_state, p, p, 0])
 
@@ -1075,10 +1076,10 @@ def ctc_topo(max_token: int, standard: bool) -> k2.Fsa:
             arcs.append([i, start_state, p, eps, 0])
         return arcs
 
-    if standard:
-        arcs = standard_ctc_topo()
-    else:
+    if modified:
         arcs = modified_ctc_topo()
+    else:
+        arcs = standard_ctc_topo()
 
     arcs = sorted(arcs, key=lambda arc: arc[0])
     arcs = [[str(i) for i in arc] for arc in arcs]

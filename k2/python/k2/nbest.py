@@ -4,11 +4,12 @@
 #
 # See https://github.com/k2-fsa/snowfall/issues/232 for more details
 #
+import logging
 from typing import List
 
+import torch
 import _k2
 import k2
-import torch
 
 from .fsa import Fsa
 
@@ -60,7 +61,8 @@ class Nbest(object):
             :func:`whole_lattice_rescoring`.
         Returns:
           Return a new Nbest. This new Nbest shares the same shape with `self`,
-          while its `fsa` is the 1-best path from intersecting `self.fsa` and `lats.
+          while its `fsa` is the 1-best path from intersecting `self.fsa` and
+          `lats.
         '''
         assert self.fsa.device == lats.device, \
                 f'{self.fsa.device} vs {lats.device}'
@@ -103,7 +105,8 @@ class Nbest(object):
 
     def top_k(self, k: int) -> 'Nbest':
         '''Get a subset of paths in the Nbest. The resulting Nbest is regular
-        in that each sequence (i.e., utterance) has the same number of paths (k).
+        in that each sequence (i.e., utterance) has the same number of
+        paths (k).
 
         We select the top-k paths according to the total_scores of each path.
         If a utterance has less than k paths, then its last path, after sorting
@@ -130,7 +133,8 @@ class Nbest(object):
                                        mode='replicate',
                                        value=-1)
         assert torch.ge(padded_indexes, 0).all(), \
-                f'Some utterances contain empty n-best: {self.shape.row_splits(1)}'
+                'Some utterances contain empty ' \
+                f'n-best: {self.shape.row_splits(1)}'
 
         # Select the idx01's of top-k paths of each utterance
         top_k_indexes = padded_indexes[:, :k].flatten().contiguous()
@@ -249,7 +253,7 @@ def generate_nbest_list(lats: Fsa, num_paths: int) -> Nbest:
     # unique_token_seqs is still a k2.RaggedInt with axes [seq][path]token_id].
     # But then number of pathsin each sequence may be different.
     unique_token_seqs, _, _ = k2.ragged.unique_sequences(
-        word_seqs, need_num_repeats=False, need_new2old_indexes=False)
+        token_seqs, need_num_repeats=False, need_new2old_indexes=False)
 
     seq_to_path_shape = k2.ragged.get_layer(unique_token_seqs.shape(), 0)
 

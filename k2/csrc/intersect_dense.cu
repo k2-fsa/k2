@@ -840,7 +840,7 @@ class MultiGraphDenseIntersect {
           int32_t backward_state_idx = (2 * fsa_info.state_offset),
                   forward_state_idx =
                       backward_state_idx + (2 * fsa_info.num_states) - 1;
-          // We get the start and end scoreas after fsa_info.T steps of
+          // We get the start and end scores after fsa_info.T steps of
           // propagation, and the result is in the state_scores of the Step
           // indexed fsa_info.T.
           float *this_state_scores = state_scores_data[fsa_info.T];

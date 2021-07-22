@@ -49,8 +49,8 @@ class TestCtcTopo(unittest.TestCase):
             zoo 1
         ''')
 
-        standard = k2.ctc_topo(max_token, standard=True)
-        modified = k2.ctc_topo(max_token, standard=False)
+        standard = k2.ctc_topo(max_token, modified=False)
+        modified = k2.ctc_topo(max_token, modified=True)
         standard.labels_sym = labels_sym
         standard.aux_labels_sym = aux_labels_sym
 
@@ -110,8 +110,8 @@ class TestCtcTopo(unittest.TestCase):
         # should be equivalent if there are no
         # repeated neighboring symbols in the transcript
         max_token = 3
-        standard = k2.ctc_topo(max_token, standard=True)
-        modified = k2.ctc_topo(max_token, standard=False)
+        standard = k2.ctc_topo(max_token, modified=False)
+        modified = k2.ctc_topo(max_token, modified=True)
         transcript = k2.linear_fsa([1, 2, 3])
         standard_graph = k2.compose(standard, transcript)
         modified_graph = k2.compose(modified, transcript)
@@ -138,8 +138,8 @@ class TestCtcTopo(unittest.TestCase):
 
     def test_with_repeated(self):
         max_token = 2
-        standard = k2.ctc_topo(max_token, standard=True)
-        modified = k2.ctc_topo(max_token, standard=False)
+        standard = k2.ctc_topo(max_token, modified=False)
+        modified = k2.ctc_topo(max_token, modified=True)
         transcript = k2.linear_fsa([1, 2, 2])
         standard_graph = k2.compose(standard, transcript)
         modified_graph = k2.compose(modified, transcript)
