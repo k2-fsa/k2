@@ -693,7 +693,7 @@ def get_best_matching_stats(tokens: _k2.RaggedInt, scores: torch.Tensor,
         bos symbols are allowed but not required.
 
       scores:
-        An one dim torch.tensor with scores.size() == tokens.NumElements(),
+        A one dim torch.tensor with scores.size() == tokens.NumElements(),
         this is the item for which we are requesting best-matching values
         (as means and variances in case there are multiple best matches).
         In our anticipated use, these would represent scores of words in the

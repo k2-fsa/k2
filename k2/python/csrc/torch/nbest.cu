@@ -38,8 +38,8 @@ static void PybindGetBestMatchingStats(py::module &m) {
       "get_best_matching_stats",
       [](Ragged<int32_t> &tokens, torch::Tensor scores, torch::Tensor counts,
          int32_t eos, int32_t min_token, int32_t max_token,
-         int32_t max_order) -> tuple<torch::Tensor, torch::Tensor,
-                                     torch::Tensor, torch::Tensor> {
+         int32_t max_order) -> std::tuple<torch::Tensor, torch::Tensor,
+                                          torch::Tensor, torch::Tensor> {
         DeviceGuard guard(tokens.Context());
         Array1<float> scores_array = FromTorch<float>(scores);
         Array1<int32_t> counts_array = FromTorch<int32_t>(counts);
