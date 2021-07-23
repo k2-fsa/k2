@@ -985,6 +985,10 @@ class TestFsa(unittest.TestCase):
         self.assertEqual(str(fsa.aux_labels),
                          '[ [ 1 0 2 ] [ 3 5 ] [ 5 8 9 ] ]')
 
+        fsa = k2.Fsa.from_fsas([fsa1, fsa2])
+        self.assertEqual(str(fsa.aux_labels),
+                         '[ [ 1 0 2 ] [ 3 5 ] [ 5 8 9 ] ]')
+
     def test_index_fsa(self):
         for device in self.devices:
             s1 = '''

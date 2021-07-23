@@ -1356,6 +1356,15 @@ class Fsa(object):
                             aux_label_names, ragged_label_names,
                             openfst=True)
 
+    @staticmethod
+    def from_fsas(fsas: List['Fsa']) -> 'Fsa':
+        '''Create an FsaVec from a list of FSAs.
+
+        See also :func:`k2.create_fsa_vec`. This function is just
+        a wrapper of that function.
+        '''
+        return k2.create_fsa_vec(fsas)
+
     def set_scores_stochastic_(self, scores) -> None:
         '''Normalize the given `scores` and assign it to `self.scores`.
 
