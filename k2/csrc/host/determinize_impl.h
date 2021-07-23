@@ -413,9 +413,6 @@ class DetStateMap;
 
   After we call Normalize() on it, it is a normalized determinized-state (this
   also outputs the weight you need for the incoming arc).
-
-  After that
-
  */
 
 template <class TracebackState>  // TracebackState == MaxTracebackState or
@@ -427,7 +424,7 @@ class DetState {
   // pair<int32_t, float> for LogSumTracebackState.
 
   // Constructor for the initial state of the determinized FSA
-  DetState() : seq_len(0), normalized(true) {
+  DetState() : seq_len(0), normalized(true), normalizer(0.0) {
     // the constructor of TracebackState that takes no args gives us what we
     // need for the start-state.
     elements[0] = std::make_shared<TracebackState>();
@@ -493,6 +490,19 @@ class DetState {
   // normalized will not yet have an `output_state`.
   bool normalized;
 
+  // `normalizer` is a field that is only set if `normalized` == true.
+  // It relates to a form of weight pushing that is done simultaneously with
+  // determinization.  The value will be:
+  //  if weight_pushing_type == kNoWeight -> 0.0
+  //  if weight_pushing_type == kMaxWeight -> the max of the forward_prob of
+  //     all values in `elements`
+  //  if weight_pushing_type == kLogSumWeight -> the log-sum of the forward_prob of
+  //     all values in `elements`
+  // Note: setting this normalizer is not the only thing we do when we 'normalize',
+  // in fact, it is not even the main thing.  Read the long HOW THIS WORKS comment
+  // above to understand how the algorithm works.
+  double normalizer;
+
   // `elements` can be thought of as weighted subsets of states in the input
   // FSA, that also stores some traceback information that lets us compute
   // derivatives.
@@ -535,18 +545,22 @@ class DetState {
                        long).
   */
   int32_t ProcessArcs(const WfsaWithFbWeights &wfsa_in, double prune_cutoff,
+                      FbWeightType weight_pushing_type,
                       std::vector<Arc> *arcs_out,
                       std::vector<std::vector<DerivType>> *derivs_per_arc,
                       DetStateMap<TracebackState> *state_map,
                       DetStatePriorityQueue<TracebackState> *queue);
 
+
   /*
     A version of `ProcessArcs` above without pruning.
   */
   int32_t ProcessArcs(const Fsa &fsa_in, std::vector<Arc> *arcs_out,
+                      FbWeightType weight_pushing_type,
                       std::vector<std::vector<DerivType>> *derivs_per_arc,
                       DetStateMap<TracebackState> *state_map,
                       DetStatePriorityQueue<TracebackState> *queue);
+
 
  private:
   /*
@@ -583,13 +597,20 @@ class DetState {
                       be written to here (else 0.0).
    */
   void Normalize(const WfsaWithFbWeights &wfsa_in, float *removed_weight,
-                 std::vector<DerivType> *deriv_info);
+                 std::vector<DerivType> *deriv_info,
+                 weight_pushing_type);
   /*
     A version of `Normalize` which does not require forward/backward weights,
     it will be called in the un-pruned version of `ProcessArcs`.
   */
   void Normalize(const Fsa &fsa_in, float *removed_weight,
-                 std::vector<DerivType> *deriv_info);
+                 std::vector<DerivType> *deriv_info,
+                 weight_pushing_type);
+  /*
+    Called from Normalize(), this function sets the `normalizer` member.
+    See documentation for `normalizer` for more information.
+  */
+  void SetNormalizer(FbWeightType weight_pushing_type);
 };
 
 template <class TracebackState>
@@ -629,6 +650,7 @@ int32_t DetState<TracebackState>::GetDetStatesSuccessor(
 template <class TracebackState>
 int32_t DetState<TracebackState>::ProcessArcs(
     const WfsaWithFbWeights &wfsa_in, double prune_cutoff,
+    FbWeightType weight_pushing_type,
     std::vector<Arc> *arcs_out,
     std::vector<std::vector<typename TracebackState::DerivType>>
         *derivs_per_arc,
@@ -646,7 +668,8 @@ int32_t DetState<TracebackState>::ProcessArcs(
 
     float arc_weight;
     std::vector<DerivType> deriv_info;
-    det_state->Normalize(wfsa_in, &arc_weight, &deriv_info);
+    det_state->Normalize(wfsa_in, &arc_weight, &deriv_info,
+                         weight_pushing_type);
     if (det_state->forward_backward_prob >= prune_cutoff) {
       bool is_new_state = state_map->GetOutputState(det_state, fsa);
       arcs_out->push_back({this->state_id, det_state->state_id,
@@ -666,6 +689,7 @@ int32_t DetState<TracebackState>::ProcessArcs(
 template <class TracebackState>
 int32_t DetState<TracebackState>::ProcessArcs(
     const Fsa &fsa_in, std::vector<Arc> *arcs_out,
+    FbWeightType weight_pushing_type,
     std::vector<std::vector<typename TracebackState::DerivType>>
         *derivs_per_arc,
     DetStateMap<TracebackState> *state_map,
@@ -679,10 +703,12 @@ int32_t DetState<TracebackState>::ProcessArcs(
        ++iter) {
     DetState<TracebackState> *det_state = iter->second;
 
-    float arc_weight;
+    float unpushed_arc_weight;
     std::vector<DerivType> deriv_info;
-    det_state->Normalize(fsa_in, &arc_weight, &deriv_info);
+    det_state->Normalize(fsa_in, &unpushed_arc_weight, &deriv_info,
+                         weight_pushing_type);
     bool is_new_state = state_map->GetOutputState(det_state, fsa_in);
+    float arc_weight = unpushed_arc_weight + det_state->normalizer - this->normalizer;
     arcs_out->push_back({this->state_id, det_state->state_id,
                          static_cast<int32_t>(iter->first), arc_weight});
     derivs_per_arc->push_back(std::move(deriv_info));
@@ -709,7 +735,8 @@ inline double LogSumOrMax<LogSumTracebackState>(double a, double b) {
 template <class TracebackState>
 void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
                                          float *removed_weight,
-                                         std::vector<DerivType> *deriv_info) {
+                                         std::vector<DerivType> *deriv_info,
+                                         FbWeightType weight_pushing_type) {
   NVTX_RANGE(K2_FUNC);
   std::unordered_set<TracebackState *> cur_states;
 
@@ -739,7 +766,7 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
   // history of DetStates from which this one is derived via ProcessArcs().
   fb_prob += wfsa_in.ForwardStateWeights()[base_state->state_id] -
              base_state->forward_prob;
-  // set thi->forward_backward_prob; it will affect pruning.
+  // set this->forward_backward_prob; it will affect pruning.
   this->forward_backward_prob = fb_prob;
   int32_t num_steps = seq_len - new_seq_len;
   this->seq_len = new_seq_len;
@@ -748,14 +775,15 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
   // `arcs` is needed to look up the weight.
   const Arc *arcs = wfsa_in.fsa.data;
   TraceBack(&cur_states, num_steps, arcs, removed_weight, deriv_info);
-
+  this->SetNormalizer();
   normalized = true;
 }
 
 template <class TracebackState>
 void DetState<TracebackState>::Normalize(const Fsa &fsa_in,
                                          float *removed_weight,
-                                         std::vector<DerivType> *deriv_info) {
+                                         std::vector<DerivType> *deriv_info,
+                                         FbWeightType weight_pushing_type) {
   NVTX_RANGE(K2_FUNC);
   std::unordered_set<TracebackState *> cur_states;
   for (const auto &p : elements) {
@@ -777,9 +805,29 @@ void DetState<TracebackState>::Normalize(const Fsa &fsa_in,
   // `arcs` is needed to look up the weight.
   const Arc *arcs = fsa_in.data;
   TraceBack(&cur_states, num_steps, arcs, removed_weight, deriv_info);
-
+  this->SetNormalizer();
   normalized = true;
 }
+
+template <class TracebackState>
+void DetState<TracebackState>::SetNormalizer(FbWeightType weight_pushing_type) {
+  if (weight_pushing_type == kNoWeight) {
+    this->normalizer = 0.0;
+  } else {
+    std::unordered_map<int32_t, std::shared_ptr<TracebackState>>::const_iterator
+        elem_iter = elements.begin(), elem_end = elements.end();
+    K2_CHECK(elem_iter != elem_end);  // DetState should not be empty
+    double total = elem_iter->forward_prob;
+    if (weight_pushing_type == kMaxWeight)
+      for (++elem_iter; elem_iter != elem_end; ++elem_iter)
+        total = std::max(total, elem_iter->forward_prob);
+    else  // kLogSumWeight
+      for (++elem_iter; elem_iter != elem_end; ++elem_iter)
+        total = LogSum(total, elem_iter->forward_prob);
+    this->normalizer = total;
+  }
+}
+
 
 /*
   This class maps from determinized states (DetState) to integer state-ids

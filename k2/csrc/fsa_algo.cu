@@ -314,19 +314,25 @@ void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
 
 
 void Determinize(FsaOrVec &src, FsaOrVec *dest,
+                 DeterminizeWeightPushingType weight_pushing_type,
                  Ragged<int32_t> *arc_derivs /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
   } else if (num_axes == 3) {
+    // TODO (dan): may have to just directly code this here instead of using the
+    // wrapper.
     return RecursionWrapper(Determinize, src, dest, arc_derivs);
   }
   k2host::Fsa host_fsa = FsaToHostFsa(src);
   int32_t num_states = host_fsa.NumStates();
   K2_CHECK_EQ(num_states, src.Dim0());
   int32_t max_step = -1;  // no limit
-  k2host::DeterminizerMax determinizer(host_fsa, max_step);
+  k2host::FbWeightType host_weight_pushing_type = static_cast<k2host::FbWeightType>(
+      static_cast<int>(weight_pushing_type));
+  k2host::DeterminizerMax determinizer(host_fsa, max_step,
+                                       host_weight_pushing_type);
   k2host::Array2Size<int32_t> fsa_size, arc_derivs_size;
   determinizer.GetSizes(&fsa_size, &arc_derivs_size);
   FsaCreator fsa_creator(fsa_size);
