@@ -38,6 +38,7 @@ from .fsa_algo import replace_fsa
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str
+from .nbest import Nbest
 from .ops import cat
 from .ops import compose_arc_maps
 from .ops import index

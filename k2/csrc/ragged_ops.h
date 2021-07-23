@@ -21,6 +21,7 @@
 #ifndef K2_CSRC_RAGGED_OPS_H_
 #define K2_CSRC_RAGGED_OPS_H_
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -1271,6 +1272,16 @@ Ragged<T> Index(Array1<T> &src, Ragged<int32_t> &indexes) {
 }
 
 /*
+ * Similar to the above `Index` but also supports -1 in indexes.
+ * The given default value is used if an index is -1.
+ */
+template <typename T>
+Ragged<T> Index(Array1<T> &src, Ragged<int32_t> &indexes, T default_value) {
+  return Ragged<T>(indexes.shape,
+                   Index(src, indexes.values, true, default_value));
+}
+
+/*
    Index ragged tensor with ragged tensor.
        @param [in] src   Source tensor, to be indexed
        @param [in] indexes   Indexes into source array; the values must
@@ -1411,11 +1422,19 @@ Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs);
   Pad a ragged array to be regular.
     @param [in] src  The input ragged array.
                      CAUTION: Only support `NumAxes() == 2`.
+    @param [in] mode Valid values are: "constant", "replicate".
+                     When it is "constant", the given padding_value
+                     is used for filling. When it is "replicate",
+                     the last entry of a list is used for filling.
+                     When the list is empty, the given padding_value
+                     is used for filling.
     @param [in] padding_value  Value for padded elements.
+                     Used only when mode is "constant" or a list
+                     is empty.
     @return  Returns the corresponding regular array (Array2).
  */
 template <typename T>
-Array2<T> PadRagged(Ragged<T> &src, T padding_value);
+Array2<T> PadRagged(Ragged<T> &src, const std::string &mode, T padding_value);
 
 }  // namespace k2
 

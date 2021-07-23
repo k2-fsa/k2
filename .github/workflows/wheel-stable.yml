@@ -64,7 +64,7 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install wheel twine
+          python3 -m pip install wheel twine typing_extensions
           python3 -m pip install bs4 requests tqdm
 
           ./scripts/github_actions/install_torch.sh

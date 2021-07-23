@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip six
-          python3 -m pip install -qq bs4 requests tqdm
+          python3 -m pip install -qq bs4 requests tqdm typing_extensions
           python3 -m pip install -qq dataclasses graphviz
           sudo apt-get -qq install graphviz
 

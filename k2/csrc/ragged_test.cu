@@ -764,6 +764,62 @@ template <typename T>
 void TestTransposeRagged() {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    // empty case, fsavec with a empty fsa
+    {
+      const std::vector<int32_t> row_splits1_vec = {0, 0};
+      const std::vector<int32_t> row_splits2_vec = {0};
+      Array1<int32_t> row_splits1(context, row_splits1_vec);
+      Array1<int32_t> row_splits2(context, row_splits2_vec);
+      RaggedShape src_shape =
+          RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr, -1);
+      ASSERT_EQ(src_shape.Dim0(), 1);
+      ASSERT_EQ(src_shape.TotSize(1), 0);
+
+      Array1<T> values_array(context, 0);
+      ASSERT_EQ(values_array.Dim(), src_shape.NumElements());
+
+      Ragged<T> ragged(src_shape, values_array);
+      Ragged<T> ans = Transpose(ragged);
+      RaggedShape shape = ans.shape;
+      // Check shape
+      ASSERT_EQ(shape.Dim0(), 0);
+      ASSERT_EQ(shape.TotSize(1), 0);
+      CheckArrayData(shape.RowSplits(1), std::vector<int32_t>({0}));
+      CheckArrayData(shape.RowSplits(2), std::vector<int32_t>({0}));
+      K2_CHECK_EQ(shape.RowIds(1).Dim(), 0);
+      K2_CHECK_EQ(shape.RowIds(2).Dim(), 0);
+      // Check values
+      K2_CHECK_EQ(ans.values.Dim(), 0);
+    }
+
+    // empty case, fsavec without any fsa
+    {
+      const std::vector<int32_t> row_splits1_vec = {0};
+      const std::vector<int32_t> row_splits2_vec = {0};
+      Array1<int32_t> row_splits1(context, row_splits1_vec);
+      Array1<int32_t> row_splits2(context, row_splits2_vec);
+      RaggedShape src_shape =
+          RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr, -1);
+      ASSERT_EQ(src_shape.Dim0(), 0);
+      ASSERT_EQ(src_shape.TotSize(1), 0);
+
+      Array1<T> values_array(context, 0);
+      ASSERT_EQ(values_array.Dim(), src_shape.NumElements());
+
+      Ragged<T> ragged(src_shape, values_array);
+      Ragged<T> ans = Transpose(ragged);
+      RaggedShape shape = ans.shape;
+      // Check shape
+      ASSERT_EQ(shape.Dim0(), 0);
+      ASSERT_EQ(shape.TotSize(1), 0);
+      CheckArrayData(shape.RowSplits(1), std::vector<int32_t>({0}));
+      CheckArrayData(shape.RowSplits(2), std::vector<int32_t>({0}));
+      K2_CHECK_EQ(shape.RowIds(1).Dim(), 0);
+      K2_CHECK_EQ(shape.RowIds(2).Dim(), 0);
+      // Check values
+      K2_CHECK_EQ(ans.values.Dim(), 0);
+    }
+
     {
       const std::vector<int32_t> row_splits1_vec = {0, 2, 4, 6};
       const std::vector<int32_t> row_splits2_vec = {0, 3, 4, 7, 8, 10, 12};
@@ -2686,7 +2742,7 @@ static void TestPadRagged() {
     {
       Ragged<T> src(c, "[ [1 2] [3 4 3] [] [5 6 7 8] ]");
       T padding_value = 0;
-      Array2<T> res = PadRagged(src, padding_value);
+      Array2<T> res = PadRagged(src, "constant", padding_value);
       Array1<T> dst = res.Flatten();
       std::vector<T> expected = {1, 2, 0, 0,
                                  3, 4, 3, 0,
@@ -2697,11 +2753,22 @@ static void TestPadRagged() {
     {
       Ragged<T> src(c, "[ [1 2] [3 4 3] [] [5 6 7 8] ]");
       T padding_value = -1;
-      Array2<T> res = PadRagged(src, padding_value);
+      Array2<T> res = PadRagged(src, "constant", padding_value);
       Array1<T> dst = res.Flatten();
       std::vector<T> expected = {1, 2, -1, -1,
                                  3, 4, 3, -1,
                                  -1, -1, -1, -1,
+                                 5, 6, 7, 8};
+      CheckArrayData(dst, expected);
+    }
+    {
+      Ragged<T> src(c, "[ [1 2] [3 4 3] [] [5 6 7 8] ]");
+      T padding_value = 100;
+      Array2<T> res = PadRagged(src, "replicate", padding_value);
+      Array1<T> dst = res.Flatten();
+      std::vector<T> expected = {1, 2, 2, 2,
+                                 3, 4, 3, 3,
+                                 100, 100, 100, 100,
                                  5, 6, 7, 8};
       CheckArrayData(dst, expected);
     }

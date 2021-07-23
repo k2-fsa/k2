@@ -33,7 +33,6 @@
 namespace k2 {
 
 
-
 // __host__ __device__ version of CUDA's atomicCAS (copy and swap).  In the host
 // case it assumes the calling code is single-threaded and that `compare` is the
 // value that was just read from `address`, so it assumes it still has that
@@ -45,8 +44,10 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
 #ifdef __CUDA_ARCH__
   return atomicCAS(address, compare, val);
 #else
-  *address = val;
-  return compare;
+  // For host code, we assume single-threaded for now).
+  unsigned long long int res = *address;
+  *address = *address == compare ? val : *address;
+  return res;
 #endif
 }
 
