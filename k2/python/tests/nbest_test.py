@@ -45,7 +45,7 @@ class TestNbest(unittest.TestCase):
 
         fsa_vec = k2.create_fsa_vec([fsa, fsa, fsa])
         shape = k2.RaggedShape('[[x x] [x]]')
-        nbest = k2.Nbest(fsa_vec, shape)
+        k2.Nbest(fsa_vec, shape)
 
     def test_top_k(self):
         fsa0 = k2.Fsa.from_str('''
