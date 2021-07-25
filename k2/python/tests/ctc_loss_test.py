@@ -18,7 +18,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R ctc_gradients_test_py
+#  ctest --verbose -R ctc_loss_test_py
 
 from typing import List
 
@@ -28,45 +28,10 @@ import k2
 import torch
 
 
-def build_ctc_topo(tokens: List[int]) -> k2.Fsa:
-    '''Build CTC topology.
-
-    A token which appears once on the right side (i.e. olabels) may
-    appear multiple times on the left side (ilabels), possibly with
-    epsilons in between.
-
-    When 0 appears on the left side, it represents the blank symbol;
-    when it appears on the right side, it indicates an epsilon. That
-    is, 0 has two meanings here.
-
-    Args:
-      tokens:
-        A list of tokens, e.g., phones, characters, etc.
-    Returns:
-      Returns an FST that converts repeated tokens to a single token.
-    '''
-    assert 0 in tokens, 'We assume 0 is ID of the blank symbol'
-
-    num_states = len(tokens)
-    final_state = num_states
-    arcs = ''
-    for i in range(num_states):
-        for j in range(num_states):
-            if i == j:
-                arcs += f'{i} {i} {tokens[i]} 0 0.0\n'
-            else:
-                arcs += f'{i} {j} {tokens[j]} {tokens[j]} 0.0\n'
-        arcs += f'{i} {final_state} -1 -1 0.0\n'
-    arcs += f'{final_state}'
-    ans = k2.Fsa.from_str(arcs, num_aux_labels=1)
-    return ans
-
-
 def _visualize_ctc_topo():
     '''See https://git.io/JtqyJ
     for what the resulting ctc_topo looks like.
     '''
-    tokens = [1, 2]
     symbols = k2.SymbolTable.from_str('''
         <blk> 0
         a 1
@@ -76,8 +41,7 @@ def _visualize_ctc_topo():
         a 1
         b 2
     ''')
-    tokens_with_blank = [0] + tokens
-    ctc_topo = build_ctc_topo(tokens_with_blank)
+    ctc_topo = k2.ctc_topo(2)
     ctc_topo.labels_sym = symbols
     ctc_topo.aux_labels_sym = aux_symbols
     ctc_topo.draw('ctc_topo.pdf')
@@ -91,7 +55,7 @@ def _visualize_ctc_topo():
 #
 # The gradients with respect to network outputs are also identical
 # for PyTorch and k2.
-class TestCtcLossGradients(unittest.TestCase):
+class TestCtcLoss(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -129,7 +93,7 @@ class TestCtcLossGradients(unittest.TestCase):
                 targets=targets,
                 input_lengths=input_lengths,
                 target_lengths=target_lengths,
-                reduction='none')
+                reduction='mean')
 
             assert torch.allclose(torch_loss,
                                   torch.tensor([1.6094379425049]).to(device))
@@ -142,21 +106,19 @@ class TestCtcLossGradients(unittest.TestCase):
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
 
-            ctc_topo_inv = k2.arc_sort(
-                build_ctc_topo([0, 1, 2, 3, 4]).invert_())
+            ctc_topo = k2.ctc_topo(4)
             linear_fsa = k2.linear_fsa([1])
-            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
-            decoding_graph = k2.connect(decoding_graph).invert_().to(device)
+            decoding_graph = k2.compose(ctc_topo, linear_fsa).to(device)
 
-            target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
-                                              100.0)
+            k2_loss = k2.ctc_loss(decoding_graph,
+                                  dense_fsa_vec,
+                                  reduction='mean',
+                                  target_lengths=target_lengths)
 
-            k2_scores = target_graph.get_tot_scores(log_semiring=True,
-                                                    use_double_scores=False)
-            assert torch.allclose(torch_loss, -1 * k2_scores)
+            assert torch.allclose(torch_loss, k2_loss)
 
             torch_loss.backward()
-            (-k2_scores).backward()
+            k2_loss.backward()
             assert torch.allclose(torch_activation.grad, k2_activation.grad)
 
     def test_case2(self):
@@ -182,7 +144,7 @@ class TestCtcLossGradients(unittest.TestCase):
                 targets=targets,
                 input_lengths=input_lengths,
                 target_lengths=target_lengths,
-                reduction='none')
+                reduction='mean')
 
             act = k2_activation.permute(1, 0, 2)  # (T, N, C) -> (N, T, C)
             k2_log_probs = torch.nn.functional.log_softmax(act, dim=-1)
@@ -191,23 +153,22 @@ class TestCtcLossGradients(unittest.TestCase):
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
 
-            ctc_topo_inv = k2.arc_sort(
-                build_ctc_topo([0, 1, 2, 3, 4]).invert_())
+            ctc_topo = k2.ctc_topo(4)
             linear_fsa = k2.linear_fsa([3, 3])
-            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
-            decoding_graph = k2.connect(decoding_graph).invert_().to(device)
+            decoding_graph = k2.compose(ctc_topo, linear_fsa).to(device)
 
-            target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
-                                              100.0)
+            k2_loss = k2.ctc_loss(decoding_graph,
+                                  dense_fsa_vec,
+                                  reduction='mean',
+                                  target_lengths=target_lengths)
 
-            k2_scores = target_graph.get_tot_scores(log_semiring=True,
-                                                    use_double_scores=False)
-            assert torch.allclose(torch_loss, -1 * k2_scores)
-            assert torch.allclose(torch_loss,
-                                  torch.tensor([7.355742931366]).to(device))
+            expected_loss = torch.tensor([7.355742931366],
+                                         device=device) / target_lengths
+            assert torch.allclose(torch_loss, k2_loss)
+            assert torch.allclose(torch_loss, expected_loss)
 
             torch_loss.backward()
-            (-k2_scores).backward()
+            k2_loss.backward()
             assert torch.allclose(torch_activation.grad, k2_activation.grad)
 
     def test_case3(self):
@@ -236,7 +197,7 @@ class TestCtcLossGradients(unittest.TestCase):
                 targets=targets,
                 input_lengths=input_lengths,
                 target_lengths=target_lengths,
-                reduction='none')
+                reduction='mean')
 
             act = k2_activation.permute(1, 0, 2)  # (T, N, C) -> (N, T, C)
             k2_log_probs = torch.nn.functional.log_softmax(act, dim=-1)
@@ -245,23 +206,23 @@ class TestCtcLossGradients(unittest.TestCase):
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
 
-            ctc_topo_inv = k2.arc_sort(
-                build_ctc_topo([0, 1, 2, 3, 4]).invert_())
+            ctc_topo = k2.ctc_topo(4)
             linear_fsa = k2.linear_fsa([2, 3])
-            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
-            decoding_graph = k2.connect(decoding_graph).invert_().to(device)
+            decoding_graph = k2.compose(ctc_topo, linear_fsa).to(device)
 
-            target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
-                                              100.0)
+            k2_loss = k2.ctc_loss(decoding_graph,
+                                  dense_fsa_vec,
+                                  reduction='mean',
+                                  target_lengths=target_lengths)
 
-            k2_scores = target_graph.get_tot_scores(log_semiring=True,
-                                                    use_double_scores=False)
-            assert torch.allclose(torch_loss, -1 * k2_scores)
-            assert torch.allclose(torch_loss,
-                                  torch.tensor([4.938850402832]).to(device))
+            expected_loss = torch.tensor([4.938850402832],
+                                         device=device) / target_lengths
+
+            assert torch.allclose(torch_loss, k2_loss)
+            assert torch.allclose(torch_loss, expected_loss)
 
             torch_loss.backward()
-            (-k2_scores).backward()
+            k2_loss.backward()
             assert torch.allclose(torch_activation.grad, k2_activation.grad)
 
     def test_case4(self):
@@ -311,12 +272,12 @@ class TestCtcLossGradients(unittest.TestCase):
                 targets=targets,
                 input_lengths=input_lengths,
                 target_lengths=target_lengths,
-                reduction='none')
+                reduction='sum')
 
-            assert torch.allclose(
-                torch_loss,
-                torch.tensor([4.938850402832, 7.355742931366,
-                              1.6094379425049]).to(device))
+            expected_loss = torch.tensor(
+                [4.938850402832, 7.355742931366, 1.6094379425049]).sum()
+
+            assert torch.allclose(torch_loss, expected_loss.to(device))
 
             k2_log_probs = torch.nn.functional.log_softmax(k2_activations,
                                                            dim=-1)
@@ -325,23 +286,21 @@ class TestCtcLossGradients(unittest.TestCase):
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
 
-            ctc_topo_inv = k2.arc_sort(
-                build_ctc_topo([0, 1, 2, 3, 4]).invert_())
+            ctc_topo = k2.ctc_topo(4)
             # [ [b, c], [c, c], [a]]
             linear_fsa = k2.linear_fsa([[2, 3], [3, 3], [1]])
-            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
-            decoding_graph = k2.connect(decoding_graph).invert_().to(device)
+            decoding_graph = k2.compose(ctc_topo, linear_fsa).to(device)
 
-            target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
-                                              100.0)
+            k2_loss = k2.ctc_loss(decoding_graph,
+                                  dense_fsa_vec,
+                                  reduction='sum',
+                                  target_lengths=target_lengths)
 
-            k2_scores = target_graph.get_tot_scores(log_semiring=True,
-                                                    use_double_scores=False)
-            assert torch.allclose(torch_loss, -1 * k2_scores)
+            assert torch.allclose(torch_loss, k2_loss)
 
             scale = torch.tensor([1., -2, 3.5]).to(device)
             (torch_loss * scale).sum().backward()
-            (-k2_scores * scale).sum().backward()
+            (k2_loss * scale).sum().backward()
             assert torch.allclose(torch_activation_1.grad,
                                   k2_activation_1.grad)
             assert torch.allclose(torch_activation_2.grad,
@@ -375,28 +334,25 @@ class TestCtcLossGradients(unittest.TestCase):
                 targets=targets,
                 input_lengths=input_lengths,
                 target_lengths=target_lengths,
-                reduction='none')
+                reduction='mean')
             k2_log_probs = torch.nn.functional.log_softmax(k2_activation,
                                                            dim=-1)
             supervision_segments = torch.tensor([[0, 0, T]], dtype=torch.int32)
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
-            ctc_topo_inv = k2.arc_sort(
-                build_ctc_topo(list(range(C))).invert_())
+            ctc_topo = k2.ctc_topo(C - 1)
             linear_fsa = k2.linear_fsa([targets.tolist()])
+            decoding_graph = k2.compose(ctc_topo, linear_fsa).to(device)
 
-            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
-            decoding_graph = k2.connect(decoding_graph).invert_().to(device)
+            k2_loss = k2.ctc_loss(decoding_graph,
+                                  dense_fsa_vec,
+                                  reduction='mean',
+                                  target_lengths=target_lengths)
 
-            target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
-                                              100.0)
-
-            k2_scores = target_graph.get_tot_scores(log_semiring=True,
-                                                    use_double_scores=False)
-            assert torch.allclose(torch_loss, -1 * k2_scores)
+            assert torch.allclose(torch_loss, k2_loss)
             scale = torch.rand_like(torch_loss) * 100
             (torch_loss * scale).sum().backward()
-            (-k2_scores * scale).sum().backward()
+            (k2_loss * scale).sum().backward()
             assert torch.allclose(torch_activation.grad,
                                   k2_activation.grad,
                                   atol=1e-2)
@@ -452,7 +408,7 @@ class TestCtcLossGradients(unittest.TestCase):
                 targets=targets,
                 input_lengths=input_lengths,
                 target_lengths=target_lengths,
-                reduction='none')
+                reduction='mean')
 
             assert T1 >= T2
             supervision_segments = torch.tensor([[0, 0, T1], [1, 0, T2]],
@@ -461,22 +417,22 @@ class TestCtcLossGradients(unittest.TestCase):
                                                            dim=-1)
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
-            ctc_topo_inv = k2.arc_sort(
-                build_ctc_topo(list(range(C))).invert_())
+            ctc_topo = k2.ctc_topo(C - 1)
             linear_fsa = k2.linear_fsa([
                 targets[:target_length1].tolist(),
                 targets[target_length1:].tolist()
             ])
-            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
-            decoding_graph = k2.connect(decoding_graph).invert_().to(device)
-            target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
-                                              100.0)
-            k2_scores = target_graph.get_tot_scores(log_semiring=True,
-                                                    use_double_scores=False)
-            assert torch.allclose(torch_loss, -1 * k2_scores)
+            decoding_graph = k2.compose(ctc_topo, linear_fsa).to(device)
+
+            k2_loss = k2.ctc_loss(decoding_graph,
+                                  dense_fsa_vec,
+                                  reduction='mean',
+                                  target_lengths=target_lengths)
+
+            assert torch.allclose(torch_loss, k2_loss)
             scale = torch.rand_like(torch_loss) * 100
             (torch_loss * scale).sum().backward()
-            (-k2_scores * scale).sum().backward()
+            (k2_loss * scale).sum().backward()
             assert torch.allclose(torch_activation_1.grad,
                                   k2_activation_1.grad,
                                   atol=1e-2)

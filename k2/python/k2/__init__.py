@@ -14,6 +14,8 @@ from . import utils
 from .autograd import intersect_dense
 from .autograd import intersect_dense_pruned
 from .autograd import union
+from .ctc_loss import CtcLoss
+from .ctc_loss import ctc_loss
 from .dense_fsa_vec import DenseFsaVec
 from .dense_fsa_vec import convert_dense_to_fsa_vec
 from .fsa import Fsa
@@ -23,6 +25,7 @@ from .fsa_algo import closure
 from .fsa_algo import compose
 from .fsa_algo import connect
 from .fsa_algo import ctc_graph
+from .fsa_algo import ctc_topo
 from .fsa_algo import determinize
 from .fsa_algo import expand_ragged_attributes
 from .fsa_algo import intersect
