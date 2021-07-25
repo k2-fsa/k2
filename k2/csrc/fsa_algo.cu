@@ -311,26 +311,40 @@ void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
 }
 
 
-
-
-void Determinize(FsaOrVec &src, FsaOrVec *dest,
+void Determinize(FsaOrVec &src,
                  DeterminizeWeightPushingType weight_pushing_type,
-                 Ragged<int32_t> *arc_derivs /*=nullptr*/) {
+                 FsaOrVec *dest, Ragged<int32_t> *arc_derivs /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
   } else if (num_axes == 3) {
-    // TODO (dan): may have to just directly code this here instead of using the
-    // wrapper.
-    return RecursionWrapper(Determinize, src, dest, arc_derivs);
+    int32_t num_fsas = src.shape.Dim0();
+    std::vector<Fsa> srcs(num_fsas), dests(num_fsas);
+    std::vector<Ragged<int32_t>> derivs_vector(num_fsas);
+    int32_t tot_num_arcs = 0;
+    for (int32_t i = 0; i < num_fsas; ++i) {
+      srcs[i] = src.Index(0, i);
+      Determinize(srcs[i], weight_pushing_type, &(dests[i]),
+                 arc_derivs != nullptr ? &(derivs_vector[i]) : nullptr);
+      if (arc_derivs != nullptr) {
+        // convert arc indexes in arc_derivs from idx2 to idx012
+        Array1<int32_t> &values = arc_derivs[i].values;
+        values = Plus(values, tot_num_arcs);
+        tot_num_arcs += srcs[i].NumElements();
+      }
+    }
+    *dest = Stack(0, num_fsas, dests.data());
+    if (arc_derivs != nullptr) *arc_derivs = Cat(0, num_fsas,
+                                                 derivs_vector.data());
+    return;
   }
   k2host::Fsa host_fsa = FsaToHostFsa(src);
   int32_t num_states = host_fsa.NumStates();
   K2_CHECK_EQ(num_states, src.Dim0());
   int32_t max_step = -1;  // no limit
-  k2host::FbWeightType host_weight_pushing_type = static_cast<k2host::FbWeightType>(
-      static_cast<int>(weight_pushing_type));
+  k2host::FbWeightType host_weight_pushing_type =
+      static_cast<k2host::FbWeightType>(static_cast<int>(weight_pushing_type));
   k2host::DeterminizerMax determinizer(host_fsa, max_step,
                                        host_weight_pushing_type);
   k2host::Array2Size<int32_t> fsa_size, arc_derivs_size;

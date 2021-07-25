@@ -476,7 +476,7 @@ enum DeterminizeWeightPushingType {
     CAUTION: It only works for CPU;
  */
 void Determinize(FsaOrVec &src,
-                 xDeterminizeWeightPushingType weight_pushing_type,
+                 DeterminizeWeightPushingType weight_pushing_type,
                  FsaOrVec *dest,
                  Ragged<int32_t> *arc_derivs = nullptr);
 

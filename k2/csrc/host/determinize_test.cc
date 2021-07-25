@@ -64,7 +64,8 @@ class DeterminizeTest : public ::testing::Test {
 
 TEST_F(DeterminizeTest, DeterminizePrunedMax) {
   float beam = 10.0;
-  DeterminizerPrunedMax determinizer(*max_wfsa_, beam, 100);
+  DeterminizerPrunedMax determinizer(*max_wfsa_, beam, 100,
+    FbWeightType::kNoWeight);
   Array2Size<int32_t> fsa_size, arc_derivs_size;
   determinizer.GetSizes(&fsa_size, &arc_derivs_size);
 
@@ -88,7 +89,8 @@ TEST_F(DeterminizeTest, DeterminizePrunedMax) {
 
 TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
   float beam = 10.0;
-  DeterminizerPrunedLogSum determinizer(*log_wfsa_, beam, 100);
+  DeterminizerPrunedLogSum determinizer(*log_wfsa_, beam, 100,
+    FbWeightType::kNoWeight);
   Array2Size<int32_t> fsa_size, arc_derivs_size;
   determinizer.GetSizes(&fsa_size, &arc_derivs_size);
 
@@ -113,7 +115,7 @@ TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
 }
 
 TEST_F(DeterminizeTest, DeterminizeMax) {
-  DeterminizerMax determinizer(*fsa_, 100);
+  DeterminizerMax determinizer(*fsa_, 100, FbWeightType::kNoWeight);
   Array2Size<int32_t> fsa_size, arc_derivs_size;
   determinizer.GetSizes(&fsa_size, &arc_derivs_size);
 
@@ -136,7 +138,7 @@ TEST_F(DeterminizeTest, DeterminizeMax) {
 }
 
 TEST_F(DeterminizeTest, DeterminizeLogSum) {
-  DeterminizerLogSum determinizer(*fsa_, 100);
+  DeterminizerLogSum determinizer(*fsa_, 100, FbWeightType::kNoWeight);
   Array2Size<int32_t> fsa_size, arc_derivs_size;
   determinizer.GetSizes(&fsa_size, &arc_derivs_size);
 

@@ -52,8 +52,8 @@ void Determinizer<TracebackState>::GetSizes(
     std::shared_ptr<DS> state(queue.top());
     queue.pop();
     num_steps +=
-        state->ProcessArcs(fsa_in_, &arcs_, &arc_derivs_, &map, &queue,
-                           weight_pushing_type_);
+        state->ProcessArcs(fsa_in_, &arcs_, weight_pushing_type_,
+                           &arc_derivs_, &map, &queue);
   }
   // We may stopped early due to max_step
 

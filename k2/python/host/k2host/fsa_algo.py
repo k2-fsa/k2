@@ -23,6 +23,7 @@ from .array import IntArray2
 from .array import FloatArray1
 from .array import LogSumArcDerivs
 from .weights import WfsaWithFbWeights
+from _k2host import FbWeightType
 from _k2host import IntArray2Size
 from _k2host import _ArcSorter
 from _k2host import _arc_sort
@@ -102,8 +103,9 @@ class Intersection(_Intersection):
 
 class DeterminizerPrunedMax(_DeterminizerPrunedMax):
 
-    def __init__(self, fsa_in: WfsaWithFbWeights, beam: float, max_step: int):
-        super().__init__(fsa_in, beam, max_step)
+    def __init__(self, fsa_in: WfsaWithFbWeights, beam: float, max_step: int,
+                 fb_weight_type: FbWeightType):
+        super().__init__(fsa_in, beam, max_step, fb_weight_type)
 
     def get_sizes(self, fsa_size: IntArray2Size,
                   arc_derivs_size: IntArray2Size) -> None:
@@ -115,8 +117,9 @@ class DeterminizerPrunedMax(_DeterminizerPrunedMax):
 
 class DeterminizerPrunedLogSum(_DeterminizerPrunedLogSum):
 
-    def __init__(self, fsa_in: WfsaWithFbWeights, beam: float, max_step: int):
-        super().__init__(fsa_in, beam, max_step)
+    def __init__(self, fsa_in: WfsaWithFbWeights, beam: float, max_step: int,
+                 fb_weight_type: FbWeightType):
+        super().__init__(fsa_in, beam, max_step, fb_weight_type)
 
     def get_sizes(self, fsa_size: IntArray2Size,
                   arc_derivs_size: IntArray2Size) -> None:

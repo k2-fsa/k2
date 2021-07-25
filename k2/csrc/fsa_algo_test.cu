@@ -585,7 +585,8 @@ TEST(FsaAlgo, Determinize) {
               kFsaPropertiesArcSortedAndDeterministic);
     Fsa dest;
     Ragged<int32_t> arc_derivs;
-    Determinize(src, &dest, &arc_derivs);
+    Determinize(src, DeterminizeWeightPushingType::kNoWeightPushing,
+                &dest, &arc_derivs);
     K2_LOG(INFO) << arc_derivs;
     bool log_semiring = false;
     EXPECT_TRUE(IsRandEquivalent(src, dest, log_semiring));
@@ -611,7 +612,9 @@ TEST(FsaAlgo, Determinize) {
     FsaVec connected;
     Connect(fsas, &connected);
     FsaVec dest;
-    Determinize(connected, &dest);
+    Determinize(connected,
+                DeterminizeWeightPushingType::kNoWeightPushing,
+                &dest);
     bool log_semiring = false;
     float beam = std::numeric_limits<float>::infinity();
     EXPECT_TRUE(

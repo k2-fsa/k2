@@ -98,8 +98,10 @@ template <typename TracebackState>
 void PybindDeterminizerPrunedTpl(py::module &m, const char *name) {
   using PyClass = k2host::DeterminizerPruned<TracebackState>;
   py::class_<PyClass>(m, name)
-      .def(py::init<const k2host::WfsaWithFbWeights &, float, int64_t>(),
-           py::arg("fsa_in"), py::arg("beam"), py::arg("max_step"))
+      .def(py::init<const k2host::WfsaWithFbWeights &,
+                    float, int64_t, k2host::FbWeightType>(),
+           py::arg("fsa_in"), py::arg("beam"), py::arg("max_step"),
+           py::arg("fb_weight_type"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"),
            py::arg("arc_derivs_size"))
       .def(

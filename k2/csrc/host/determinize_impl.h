@@ -496,11 +496,11 @@ class DetState {
   //  if weight_pushing_type == kNoWeight -> 0.0
   //  if weight_pushing_type == kMaxWeight -> the max of the forward_prob of
   //     all values in `elements`
-  //  if weight_pushing_type == kLogSumWeight -> the log-sum of the forward_prob of
-  //     all values in `elements`
-  // Note: setting this normalizer is not the only thing we do when we 'normalize',
-  // in fact, it is not even the main thing.  Read the long HOW THIS WORKS comment
-  // above to understand how the algorithm works.
+  //  if weight_pushing_type == kLogSumWeight -> the log-sum of the
+  //     forward_prob of all values in `elements`
+  // Note: setting this normalizer is not the only thing we do when we
+  // 'normalize', in fact, it is not even the main thing.  Read the long
+  // HOW THIS WORKS comment above to understand how the algorithm works.
   double normalizer;
 
   // `elements` can be thought of as weighted subsets of states in the input
@@ -598,14 +598,14 @@ class DetState {
    */
   void Normalize(const WfsaWithFbWeights &wfsa_in, float *removed_weight,
                  std::vector<DerivType> *deriv_info,
-                 weight_pushing_type);
+                 FbWeightType weight_pushing_type);
   /*
     A version of `Normalize` which does not require forward/backward weights,
     it will be called in the un-pruned version of `ProcessArcs`.
   */
   void Normalize(const Fsa &fsa_in, float *removed_weight,
                  std::vector<DerivType> *deriv_info,
-                 weight_pushing_type);
+                 FbWeightType weight_pushing_type);
   /*
     Called from Normalize(), this function sets the `normalizer` member.
     See documentation for `normalizer` for more information.
@@ -708,7 +708,8 @@ int32_t DetState<TracebackState>::ProcessArcs(
     det_state->Normalize(fsa_in, &unpushed_arc_weight, &deriv_info,
                          weight_pushing_type);
     bool is_new_state = state_map->GetOutputState(det_state, fsa_in);
-    float arc_weight = unpushed_arc_weight + det_state->normalizer - this->normalizer;
+    float arc_weight = unpushed_arc_weight + det_state->normalizer -
+        this->normalizer;
     arcs_out->push_back({this->state_id, det_state->state_id,
                          static_cast<int32_t>(iter->first), arc_weight});
     derivs_per_arc->push_back(std::move(deriv_info));
@@ -775,7 +776,7 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
   // `arcs` is needed to look up the weight.
   const Arc *arcs = wfsa_in.fsa.data;
   TraceBack(&cur_states, num_steps, arcs, removed_weight, deriv_info);
-  this->SetNormalizer();
+  this->SetNormalizer(weight_pushing_type);
   normalized = true;
 }
 
@@ -805,7 +806,7 @@ void DetState<TracebackState>::Normalize(const Fsa &fsa_in,
   // `arcs` is needed to look up the weight.
   const Arc *arcs = fsa_in.data;
   TraceBack(&cur_states, num_steps, arcs, removed_weight, deriv_info);
-  this->SetNormalizer();
+  this->SetNormalizer(weight_pushing_type);
   normalized = true;
 }
 
@@ -814,16 +815,16 @@ void DetState<TracebackState>::SetNormalizer(FbWeightType weight_pushing_type) {
   if (weight_pushing_type == kNoWeight) {
     this->normalizer = 0.0;
   } else {
-    std::unordered_map<int32_t, std::shared_ptr<TracebackState>>::const_iterator
-        elem_iter = elements.begin(), elem_end = elements.end();
+    auto elem_iter = elements.begin(), elem_end = elements.end();
     K2_CHECK(elem_iter != elem_end);  // DetState should not be empty
-    double total = elem_iter->forward_prob;
+    double total = elem_iter->second->forward_prob;
     if (weight_pushing_type == kMaxWeight)
       for (++elem_iter; elem_iter != elem_end; ++elem_iter)
-        total = std::max(total, elem_iter->forward_prob);
+        total = std::max(total, elem_iter->second->forward_prob);
     else  // kLogSumWeight
       for (++elem_iter; elem_iter != elem_end; ++elem_iter)
-        total = LogSum(total, elem_iter->forward_prob);
+        total = LogSumOrMax<TracebackState>(
+          total, elem_iter->second->forward_prob);
     this->normalizer = total;
   }
 }

@@ -603,7 +603,9 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa,
     return out_fsa
 
 
-def determinize(fsa: Fsa) -> Fsa:
+def determinize(fsa: Fsa,
+                weight_pushing_type: _k2.DeterminizeWeightPushingType =
+                _k2.DeterminizeWeightPushingType.kNoWeightPushing) -> Fsa:
     '''Determinize the input Fsa.
 
     Caution:
@@ -628,7 +630,7 @@ def determinize(fsa: Fsa) -> Fsa:
     if fsa.properties & fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0:  # noqa
         return fsa
 
-    ragged_arc, arc_map = _k2.determinize(fsa.arcs)
+    ragged_arc, arc_map = _k2.determinize(fsa.arcs, weight_pushing_type)
     out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map)
     return out_fsa
 

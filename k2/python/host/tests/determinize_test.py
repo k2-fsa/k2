@@ -60,7 +60,8 @@ class TestDeterminize(unittest.TestCase):
                                         forward_max_weights,
                                         backward_max_weights)
         beam = 10.0
-        determinizer = k2host.DeterminizerPrunedMax(wfsa, beam, 100)
+        determinizer = k2host.DeterminizerPrunedMax(wfsa, beam, 100,
+            k2host.FbWeightType.kNoWeight)
         fsa_size = k2host.IntArray2Size()
         arc_derivs_size = k2host.IntArray2Size()
         determinizer.get_sizes(fsa_size, arc_derivs_size)
@@ -87,7 +88,8 @@ class TestDeterminize(unittest.TestCase):
                                         forward_logsum_weights,
                                         backward_logsum_weights)
         beam = 10.0
-        determinizer = k2host.DeterminizerPrunedLogSum(wfsa, beam, 100)
+        determinizer = k2host.DeterminizerPrunedLogSum(wfsa, beam, 100,
+            k2host.FbWeightType.kNoWeight)
         fsa_size = k2host.IntArray2Size()
         arc_derivs_size = k2host.IntArray2Size()
         determinizer.get_sizes(fsa_size, arc_derivs_size)
