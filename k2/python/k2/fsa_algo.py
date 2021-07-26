@@ -623,9 +623,8 @@ def determinize(fsa: Fsa,
         but this is not checked; in any case,
         epsilon will be treated as a normal symbol.
       weight_pushing_type:
-        An enum value that determines what
-        kind of weight pushing is desired.  (Regardless of this,
-        equivalence in tropical semiring will be preserved).
+        An enum value that determines what kind of weight pushing is desired,
+        default kNoWeightPushing.
 
           kTropicalWeightPushing:
             use tropical semiring (actually, max on scores) for weight pushing.
