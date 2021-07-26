@@ -627,6 +627,42 @@ TEST(FsaAlgo, Determinize) {
     EXPECT_EQ(p & kFsaPropertiesArcSortedAndDeterministic,
               kFsaPropertiesArcSortedAndDeterministic);
   }
+
+  {
+    // weight pushing
+    Fsa fsa;
+    while (true) {
+      bool acyclic = true;
+      int32_t max_symbol = 20;
+      int32_t min_num_arcs = 50;
+      int32_t max_num_arcs = 500;
+      Fsa random_fsa = RandomFsa(acyclic, max_symbol,
+                                 min_num_arcs, max_num_arcs);
+      Fsa connected;
+      Connect(random_fsa, &connected);
+      Fsa sorted;
+      ArcSort(connected, &sorted);
+      int32_t p = GetFsaBasicProperties(sorted);
+      if (!(p & kFsaPropertiesArcSortedAndDeterministic)) {
+        fsa = sorted;
+        break;
+      }
+    }
+    bool log_semiring = false;
+    float beam = std::numeric_limits<float>::infinity();
+    Fsa dest_log;
+    Determinize(fsa,
+                DeterminizeWeightPushingType::kLogWeightPushing,
+                &dest_log);
+    EXPECT_TRUE(
+      IsRandEquivalent(fsa, dest_log, log_semiring, beam, true, 0.01));
+    Fsa dest_max;
+    Determinize(fsa,
+                DeterminizeWeightPushingType::kTropicalWeightPushing,
+                &dest_max);
+    EXPECT_TRUE(
+      IsRandEquivalent(fsa, dest_max, log_semiring, beam, true, 0.01));
+  }
 }
 
 TEST(FsaAlgo, ClosureSimpleCase) {

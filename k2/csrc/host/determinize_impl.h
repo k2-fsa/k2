@@ -708,8 +708,11 @@ int32_t DetState<TracebackState>::ProcessArcs(
     det_state->Normalize(fsa_in, &unpushed_arc_weight, &deriv_info,
                          weight_pushing_type);
     bool is_new_state = state_map->GetOutputState(det_state, fsa_in);
-    float arc_weight = unpushed_arc_weight + det_state->normalizer -
-        this->normalizer;
+    float arc_weight;
+    if (weight_pushing_type == kNoWeight)
+      arc_weight = unpushed_arc_weight;
+    else
+      arc_weight = det_state->normalizer - this->normalizer;
     arcs_out->push_back({this->state_id, det_state->state_id,
                          static_cast<int32_t>(iter->first), arc_weight});
     derivs_per_arc->push_back(std::move(deriv_info));
@@ -818,13 +821,16 @@ void DetState<TracebackState>::SetNormalizer(FbWeightType weight_pushing_type) {
     auto elem_iter = elements.begin(), elem_end = elements.end();
     K2_CHECK(elem_iter != elem_end);  // DetState should not be empty
     double total = elem_iter->second->forward_prob;
-    if (weight_pushing_type == kMaxWeight)
-      for (++elem_iter; elem_iter != elem_end; ++elem_iter)
+    if (weight_pushing_type == kMaxWeight) {
+      for (++elem_iter; elem_iter != elem_end; ++elem_iter) {
         total = std::max(total, elem_iter->second->forward_prob);
-    else  // kLogSumWeight
-      for (++elem_iter; elem_iter != elem_end; ++elem_iter)
+      }
+    } else {  // kLogSumWeight
+      for (++elem_iter; elem_iter != elem_end; ++elem_iter) {
         total = LogSumOrMax<TracebackState>(
           total, elem_iter->second->forward_prob);
+      }
+    }
     this->normalizer = total;
   }
 }
