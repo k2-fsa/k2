@@ -501,8 +501,14 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
             # of -1 as the label precisely indicates final-arcs.
             if filler != -1:
                 value = value.clone()
-                value[torch.where(torch.logical_and(
-                    src.labels == -1, value == -1))] = filler
+                if hasattr(torch, 'logical_and'):
+                    # torch.logical_and requires torch>=1.5.0
+                    value[torch.where(
+                        torch.logical_and(src.labels == -1,
+                                          value == -1))] = filler
+                else:
+                    value[torch.where((src.labels == -1) &
+                                      (value == -1))] = filler
             new_value = index(value, arc_map)
             setattr(dest, name, k2.ragged.remove_values_eq(new_value, filler))
         else:
