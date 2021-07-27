@@ -20,7 +20,7 @@ name: build-windows-conda
 on:
   push:
     branches:
-      - conda
+      - conda-win
 
 env:
   BUILD_TYPE: Release

@@ -31,7 +31,7 @@ name: build_conda_cpu
 on:
   push:
     branches:
-      - conda
+      - conda-cpu
 
 env:
   K2_BUILD_TYPE: Release

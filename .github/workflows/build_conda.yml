@@ -21,7 +21,7 @@ name: build_conda_cuda
 on:
   push:
     branches:
-      - conda
+      - conda-cuda
 
 env:
   K2_BUILD_TYPE: Release
