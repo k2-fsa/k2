@@ -827,8 +827,7 @@ void DetState<TracebackState>::SetNormalizer(FbWeightType weight_pushing_type) {
       }
     } else {  // kLogSumWeight
       for (++elem_iter; elem_iter != elem_end; ++elem_iter) {
-        total = LogSumOrMax<TracebackState>(
-          total, elem_iter->second->forward_prob);
+        total = LogAdd(total, elem_iter->second->forward_prob);
       }
     }
     this->normalizer = total;
