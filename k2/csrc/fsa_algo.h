@@ -482,8 +482,8 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols);
 
     @param [in] symbols  Input symbol sequences (must not contain
                 kFinalSymbol == -1). Its num_axes is 2.
-    @param [in] standard Option to specify the type of CTC topology: "standard"
-                         or "simplified", where the "standard" one makes the
+    @param [in] modified Option to specify the type of CTC topology: "standard"
+                         or "modified", where the "standard" one makes the
                          blank mandatory between a pair of identical symbols.
     @param [out] It maps the arcs of output fsa to the symbols(idx01), the
                  olabel of the `arc[i]` would be `symbols[arc_map[i]]`,
@@ -491,8 +491,13 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols);
 
     @return     Returns an FsaVec with `ans.Dim0() == symbols.Dim0()`.
  */
-FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard = true,
+FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified = false,
                  Array1<int32_t> *arc_map = nullptr);
+
+/*
+ 
+ */
+Fsa CtcTopo(const ContextPtr &c, int32_t max_token_id, bool modified = false);
 
 /* Compute the forward shortest path in the tropical semiring.
 

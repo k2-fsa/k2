@@ -957,7 +957,7 @@ def replace_fsa(
 
 
 def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
-              standard: bool = True,
+              modified: bool = False,
               device: Optional[Union[torch.device, str]] = None) -> Fsa:
     '''Construct ctc graphs from symbols.
 
@@ -1007,13 +1007,14 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.ctc_graph(symbols, gpu_id,
-                                        standard, need_arc_map)
+                                        modified, need_arc_map)
     aux_labels = k2.index(symbol_values, arc_map)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
 
 
-def ctc_topo(max_token: int, modified: bool = False) -> k2.Fsa:
+def ctc_topo(max_token: int, modified: bool = False,
+             device: Optional[Union[torch.device, str]] = None) -> k2.Fsa:
     '''Create a CTC topology.
 
     A token which appears once on the right side (i.e. olabels) may
@@ -1038,52 +1039,38 @@ def ctc_topo(max_token: int, modified: bool = False) -> k2.Fsa:
       modified:
         If False, create a standard CTC topology. Otherwise, create a
         modified CTC topology.
+      device:
+        Optional. It can be either a string (e.g., 'cpu',
+        'cuda:0') or a torch.device.
+        If it is None, then the returned FSA is on CPU.
     Returns:
       Return either a standard or a modified CTC topology as an FSA
       depending on whether `standard` is True or False.
     '''
-
-    def standard_ctc_topo():
-        final_state = max_token + 1
-        arcs = [[final_state]]
-        eps = 0
-        for i in range(max_token + 1):
-            for j in range(max_token + 1):
-                if i == j:
-                    # [src, dst, label, aux_label, score]
-                    arcs.append([i, i, i, eps, 0])
-                else:
-                    arcs.append([i, j, j, j, 0])
-            arcs.append([i, final_state, -1, -1, 0])
-        return arcs
-
-    def modified_ctc_topo():
-        start_state = 0
-        final_state = max_token + 1
-        blank = 0
-        eps = 0
-
-        arcs = [[final_state]]
-        arcs.append([start_state, start_state, blank, eps, 0])
-        arcs.append([start_state, final_state, -1, -1, 0])
-        for p in range(1, max_token + 1):
-            i = p
-            arcs.append([start_state, start_state, p, p, 0])
-
-            arcs.append([start_state, i, p, p, 0])
-            arcs.append([i, i, p, eps, 0])
-
-            arcs.append([i, start_state, p, eps, 0])
-        return arcs
-
-    if modified:
-        arcs = modified_ctc_topo()
+    if device is not None:
+        device = torch.device(device)
+        if device.type == 'cpu':
+            gpu_id = -1
+        else:
+            assert device.type == 'cuda'
+            gpu_id = getattr(device, 'index', 0)
     else:
-        arcs = standard_ctc_topo()
-
-    arcs = sorted(arcs, key=lambda arc: arc[0])
-    arcs = [[str(i) for i in arc] for arc in arcs]
-    arcs = [' '.join(arc) for arc in arcs]
-    arcs = '\n'.join(arcs)
-    ctc_topo = k2.Fsa.from_str(arcs, num_aux_labels=1)
-    return k2.arc_sort(ctc_topo)
+        gpu_id = -1
+    ragged_arc = _k2.ctc_topo(max_token, gpu_id, modified)
+    if modified:
+      pass
+    else:
+      states = max_token + 1
+      aux_labels = torch.reshape(
+        torch.arange(0, states * states, dtype=torch.int32, device=device),
+          (states, states)) -\
+        torch.reshape(torch.arange(0, states, dtype=torch.int32, device=device),
+          (states, -1)) * states
+      mask = torch.eye(states, dtype=torch.bool, device=device)
+      aux_labels[mask] = 0
+      aux_labels = torch.cat((
+        aux_labels, torch.ones(
+          (states, 1), dtype=torch.int32, device=device) * -1), dim=1)
+      aux_labels = aux_labels.flatten()
+    fsa = Fsa(ragged_arc, aux_labels=aux_labels)
+    return fsa

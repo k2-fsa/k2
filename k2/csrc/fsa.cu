@@ -110,8 +110,6 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 
         int32_t neg_property = 0;
         if (arc.src_state != idx1) neg_property |= kFsaPropertiesValid;
-        if (arc.dest_state < 0 || arc.dest_state >= this_fsa_num_states)
-          neg_property |= kFsaPropertiesValid;
         if (arc.dest_state <= arc.src_state) {
           neg_property |= kFsaPropertiesTopSortedAndAcyclic;
           if (arc.dest_state < arc.src_state)

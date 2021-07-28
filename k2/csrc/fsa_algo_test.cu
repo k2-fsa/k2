@@ -1243,7 +1243,7 @@ TEST(FsaAlgo, TestCtcGraph) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     Ragged<int32_t> symbols(c, "[ [ 1 2 2 3 ] [ 1 2 3 ] ]");
     Array1<int32_t> arc_map;
-    FsaVec graph = CtcGraphs(symbols, true, &arc_map);
+    FsaVec graph = CtcGraphs(symbols, false, &arc_map);
     FsaVec graph_ref(c, "[ [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
                         "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 ] "
                         "    [ 4 4 0 0 4 5 2 0 ] [ 5 6 0 0 5 5 2 0 5 7 3 0 ] "
@@ -1265,7 +1265,7 @@ TEST(FsaAlgo, TestCtcGraphSimplified) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     Ragged<int32_t> symbols(c, "[ [ 1 2 2 3 ] [ 1 2 3 ] ]");
     Array1<int32_t> arc_map;
-    FsaVec graph = CtcGraphs(symbols, false, &arc_map);
+    FsaVec graph = CtcGraphs(symbols, true, &arc_map);
     FsaVec graph_ref(c, "[ [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
                         "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 3 5 2 0] "
                         "    [ 4 4 0 0 4 5 2 0 ] [ 5 6 0 0 5 5 2 0 5 7 3 0 ] "
@@ -1280,6 +1280,13 @@ TEST(FsaAlgo, TestCtcGraphSimplified) {
                                    "  -1 5 -1 -1 6 -1 6 -1 -1 -1 -1 -1 ]");
     K2_CHECK(Equal(graph, graph_ref));
     K2_CHECK(Equal(arc_map, arc_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestCtcTopo) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    Fsa topo = CtcTopo(c, 3);
+    // K2_CHECK(Equal(graph, graph_ref));
   }
 }
 }  // namespace k2

@@ -432,7 +432,7 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols) {
 }
 
 
-FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
+FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
                  Array1<int32_t> *arc_map /*= nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(symbols.NumAxes(), 2);
@@ -482,7 +482,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
           // There are no arcs for final states
           if (sym_state_idx01 == sym_final_state) {
             current_num_arcs = 0;
-          } else if (!standard) {
+          } else if (modified) {
             current_num_arcs = 3;
           } else {
             int32_t current_symbol = symbol_data[sym_state_idx01],
@@ -550,7 +550,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
               -1 : symbol_data[sym_state_idx01 + 1];
           // for standard topology, the symbol state can not point to next
           // symbol state if the next symbol is identical to current symbol.
-          if (current_symbol == next_symbol && standard) {
+          if (current_symbol == next_symbol && !modified) {
             K2_CHECK_LT(arc_idx2, 2);
             arc.label = arc_idx2 == 0 ? 0 : current_symbol;
             arc.dest_state = arc_idx2 == 0 ? state_idx1 + 1 : state_idx1;
@@ -584,6 +584,36 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
         if (arc_map) arc_map_data[arc_idx012] = arc_map_value;
       });
   return Ragged<Arc>(ctc_shape, arcs);
+}
+
+Fsa CtcTopo(const ContextPtr &c, int32_t max_token,
+            bool modified /*= false*/) {
+  NVTX_RANGE(K2_FUNC);
+  if (modified) {
+    // TODO
+
+  } else {
+    int32_t dim0 = max_token + 1,
+            dim1 = max_token + 2;
+    Array1<int32_t> row_splits = Range<int32_t>(c, dim0 + 2, 0, dim1);
+    row_splits.Data()[dim0 + 1] = row_splits[dim0];
+    Array1<int32_t> row_ids(c, dim0 * dim1);
+    Array1<Arc> arcs(c, dim0 * dim1);
+    int32_t *row_ids_data = row_ids.Data();
+    Arc *arcs_data = arcs.Data();
+    K2_EVAL2(
+      c, dim0, dim1, lambda_set_row_ids_and_arcs,
+        (int32_t i, int32_t j)->void {
+          row_ids_data[i * dim1 + j] = i;
+          Arc arc;
+          arc.src_state = i;
+          arc.dest_state = j;
+          arc.label = j == (dim1 - 1) ? -1 : j;
+          arc.score = 0;
+          arcs_data[i * dim1 + j] = arc;
+      });
+    return Ragged<Arc>(RaggedShape2(&row_splits, &row_ids, dim0 * dim1), arcs);
+  }
 }
 
 void ArcSort(Fsa *fsa) {
