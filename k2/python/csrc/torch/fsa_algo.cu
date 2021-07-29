@@ -724,14 +724,17 @@ static void PybindCtcTopo(py::module &m) {
   m.def(
       "ctc_topo",
       [](int32_t max_token, int32_t gpu_id = -1,
-         bool modified = false) -> Fsa {
+         bool modified = false) -> std::pair<Fsa, torch::Tensor> {
         ContextPtr context;
         if (gpu_id < 0)
           context = GetCpuContext();
         else
           context = GetCudaContext(gpu_id);
         DeviceGuard guard(context);
-        return CtcTopo(context, max_token, modified);
+        Array1<int32_t> aux_labels;
+        Fsa fsa = CtcTopo(context, max_token, modified, &aux_labels);
+        torch::Tensor tensor = ToTorch(aux_labels);
+        return std::make_pair(fsa, tensor);
       },
       py::arg("max_token"), py::arg("gpu_id") = -1,
       py::arg("modified") = false,

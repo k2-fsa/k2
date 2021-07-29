@@ -508,10 +508,14 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified = false,
                           where there is a mandatory blank between two repeated
                           neighboring symbols.
                           A modified CTC topology, imposes no such constraint.
+    @param [out] aux_labels The output labels of ctc topopoly will write to this
+                            array, will be allocated if it did not have the
+                            correct size at entry.
 
     @return    Returns the corresponding ctc topology, an Fsa.
  */
-Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified = false);
+Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
+            Array1<int32_t> *aux_labels);
 
 /* Compute the forward shortest path in the tropical semiring.
 

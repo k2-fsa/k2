@@ -586,21 +586,26 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
   return Ragged<Arc>(ctc_shape, arcs);
 }
 
-Fsa CtcTopo(const ContextPtr &c, int32_t max_token,
-            bool modified /*= false*/) {
+Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
+            Array1<int32_t> *aux_labels) {
   NVTX_RANGE(K2_FUNC);
+  K2_CHECK(aux_labels);
   if (modified) {
     // plusing 2 here to include 0(epsilon) and final state
     int32_t states = max_token + 2;
-    // for modified topology, there are number of states minus one self loops
-    // for state 0, and two arcs for each of other states
-    // see links belove for details :
+    // for modified topology, the number of self loops and leaving arcs for
+    // state 0 are all the number of states minus one.
+    // and there two arcs(one for self loop, the other points to state 0) for
+    // each of other states. see links belove for details :
     // https://github.com/k2-fsa/k2/issues/746#issuecomment-856421616
     // https://github.com/k2-fsa/snowfall/pull/209
     int32_t num_arcs = (states - 1) * 2 + (states - 2) * 2;
+    if (aux_labels->Dim() != num_arcs)
+      *aux_labels = Array1<int32_t>(c, num_arcs);
     Array1<int32_t> row_ids(c, num_arcs);
     Array1<Arc> arcs(c, num_arcs);
-    int32_t *row_ids_data = row_ids.Data();
+    int32_t *row_ids_data = row_ids.Data(),
+            *aux_labels_data = aux_labels->Data();
     Arc *arcs_data = arcs.Data();
     K2_EVAL(
       c, num_arcs, lambad_set_row_ids_and_arcs, (int32_t idx01) -> void {
@@ -611,12 +616,14 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token,
           arc.dest_state = 0;
           arc.label = idx01;
           row_ids_data[idx01] = 0;
+          aux_labels_data[idx01] = idx01;
         } else if (idx01 < (states - 1) * 2) {  // arcs leaving state 0
           int32_t dest_state = idx01 - (states - 1) + 1;
           arc.src_state = 0;
           arc.dest_state = dest_state;
           arc.label = dest_state == states - 1 ? -1 : dest_state;
           row_ids_data[idx01] = 0;
+          aux_labels_data[idx01] = dest_state == states -1 ? -1 : dest_state;
         } else {  // arcs for other states
           int32_t bias = idx01 - (states - 1) * 2;
           int32_t state = bias / 2 + 1;
@@ -627,6 +634,7 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token,
           else
             arc.dest_state = state;
           row_ids_data[idx01] = state;
+          aux_labels_data[idx01] = 0;
         }
         arcs_data[idx01] = arc;
       });
@@ -638,11 +646,15 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token,
     int32_t states = max_token + 2,
             dim0 = states - 1,  // minusing 1 here because there is not
                                 // any leaving arcs for final state
-            dim1 = max_token + 2;  // there are number of states arcs leaving
+            dim1 = max_token + 2,  // there are number of states arcs leaving
                                    // each state for standard topolopy
-    Array1<int32_t> row_ids(c, dim0 * dim1);
-    Array1<Arc> arcs(c, dim0 * dim1);
-    int32_t *row_ids_data = row_ids.Data();
+            num_arcs = dim0 * dim1;
+    if (aux_labels->Dim() != num_arcs)
+      *aux_labels = Array1<int32_t>(c, num_arcs);
+    Array1<int32_t> row_ids(c, num_arcs);
+    Array1<Arc> arcs(c, num_arcs);
+    int32_t *row_ids_data = row_ids.Data(),
+            *aux_labels_data = aux_labels->Data();
     Arc *arcs_data = arcs.Data();
     K2_EVAL2(
       c, dim0, dim1, lambda_set_row_ids_and_arcs,
@@ -654,6 +666,8 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token,
           arc.label = j == (dim1 - 1) ? -1 : j;
           arc.score = 0;
           arcs_data[i * dim1 + j] = arc;
+          int32_t olabel = i == j ? 0 : (j == (dim1 - 1) ? -1 : j);
+          aux_labels_data[i * dim1 + j] = olabel;
       });
     Array1<int32_t> row_splits(c, states + 1);
     RowIdsToRowSplits(row_ids, &row_splits);
