@@ -1243,7 +1243,7 @@ TEST(FsaAlgo, TestCtcGraph) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     Ragged<int32_t> symbols(c, "[ [ 1 2 2 3 ] [ 1 2 3 ] ]");
     Array1<int32_t> arc_map;
-    FsaVec graph = CtcGraphs(symbols, true, &arc_map);
+    FsaVec graph = CtcGraphs(symbols, false, &arc_map);
     FsaVec graph_ref(c, "[ [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
                         "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 ] "
                         "    [ 4 4 0 0 4 5 2 0 ] [ 5 6 0 0 5 5 2 0 5 7 3 0 ] "
@@ -1265,7 +1265,7 @@ TEST(FsaAlgo, TestCtcGraphSimplified) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     Ragged<int32_t> symbols(c, "[ [ 1 2 2 3 ] [ 1 2 3 ] ]");
     Array1<int32_t> arc_map;
-    FsaVec graph = CtcGraphs(symbols, false, &arc_map);
+    FsaVec graph = CtcGraphs(symbols, true, &arc_map);
     FsaVec graph_ref(c, "[ [ [ 0 0 0 0 0 1 1 0 ] [ 1 2 0 0 1 1 1 0 1 3 2 0 ] "
                         "    [ 2 2 0 0 2 3 2 0 ] [ 3 4 0 0 3 3 2 0 3 5 2 0] "
                         "    [ 4 4 0 0 4 5 2 0 ] [ 5 6 0 0 5 5 2 0 5 7 3 0 ] "
@@ -1280,6 +1280,33 @@ TEST(FsaAlgo, TestCtcGraphSimplified) {
                                    "  -1 5 -1 -1 6 -1 6 -1 -1 -1 -1 -1 ]");
     K2_CHECK(Equal(graph, graph_ref));
     K2_CHECK(Equal(arc_map, arc_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestCtcTopo) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    // Test standard topology
+    Array1<int32_t> aux_label;
+    Fsa topo = CtcTopo(c, 3, false, &aux_label);
+    Fsa topo_ref(c, "[ [ 0 0 0 0 0 1 1 0 0 2 2 0 0 3 3 0 0 4 -1 0 ] "
+                    "  [ 1 0 0 0 1 1 1 0 1 2 2 0 1 3 3 0 1 4 -1 0 ] "
+                    "  [ 2 0 0 0 2 1 1 0 2 2 2 0 2 3 3 0 2 4 -1 0 ] "
+                    "  [ 3 0 0 0 3 1 1 0 3 2 2 0 3 3 3 0 3 4 -1 0 ] [ ] ]");
+    Array1<int32_t> aux_label_ref(c, "[ 0 1 2 3 -1 0 0 2 3 -1 0 1 0 3 -1 "
+                                     "  0 1 2 0 -1 ]");
+    K2_CHECK(Equal(topo, topo_ref));
+    K2_CHECK(Equal(aux_label, aux_label_ref));
+
+    // Test simplified topology
+    topo = CtcTopo(c, 3, true, &aux_label);
+    topo_ref = Fsa(c, "[ [ 0 0 0 0 0 0 1 0 0 0 2 0 0 0 3 0 "
+                      "    0 1 1 0 0 2 2 0 0 3 3 0 0 4 -1 0 ]"
+                      "  [ 1 1 1 0 1 0 1 0 ]"
+                      "  [ 2 2 2 0 2 0 2 0 ]"
+                      "  [ 3 3 3 0 3 0 3 0 ] [ ] ]");
+    aux_label_ref = Array1<int32_t>(c, "[ 0 1 2 3 1 2 3 -1 0 0 0 0 0 0 ]");
+    K2_CHECK(Equal(topo, topo_ref));
+    K2_CHECK(Equal(aux_label, aux_label_ref));
   }
 }
 }  // namespace k2

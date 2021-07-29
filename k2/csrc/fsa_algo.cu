@@ -432,7 +432,7 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols) {
 }
 
 
-FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
+FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
                  Array1<int32_t> *arc_map /*= nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(symbols.NumAxes(), 2);
@@ -482,7 +482,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
           // There are no arcs for final states
           if (sym_state_idx01 == sym_final_state) {
             current_num_arcs = 0;
-          } else if (!standard) {
+          } else if (modified) {
             current_num_arcs = 3;
           } else {
             int32_t current_symbol = symbol_data[sym_state_idx01],
@@ -550,7 +550,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
               -1 : symbol_data[sym_state_idx01 + 1];
           // for standard topology, the symbol state can not point to next
           // symbol state if the next symbol is identical to current symbol.
-          if (current_symbol == next_symbol && standard) {
+          if (current_symbol == next_symbol && !modified) {
             K2_CHECK_LT(arc_idx2, 2);
             arc.label = arc_idx2 == 0 ? 0 : current_symbol;
             arc.dest_state = arc_idx2 == 0 ? state_idx1 + 1 : state_idx1;
@@ -584,6 +584,93 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard /*= true*/,
         if (arc_map) arc_map_data[arc_idx012] = arc_map_value;
       });
   return Ragged<Arc>(ctc_shape, arcs);
+}
+
+Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
+            Array1<int32_t> *aux_labels) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK(aux_labels);
+  if (modified) {
+    // plusing 2 here to include 0(epsilon) and final state
+    int32_t states = max_token + 2;
+    // for modified topology, the number of self loops and leaving arcs for
+    // state 0 are all the number of states minus one.
+    // and there two arcs(one for self loop, the other points to state 0) for
+    // each of other states. see links belove for details :
+    // https://github.com/k2-fsa/k2/issues/746#issuecomment-856421616
+    // https://github.com/k2-fsa/snowfall/pull/209
+    int32_t num_arcs = (states - 1) * 2 + (states - 2) * 2;
+    *aux_labels = Array1<int32_t>(c, num_arcs);
+    Array1<int32_t> row_ids(c, num_arcs);
+    Array1<Arc> arcs(c, num_arcs);
+    int32_t *row_ids_data = row_ids.Data(),
+            *aux_labels_data = aux_labels->Data();
+    Arc *arcs_data = arcs.Data();
+    K2_EVAL(
+      c, num_arcs, lambad_set_row_ids_and_arcs, (int32_t idx01) -> void {
+        Arc arc;
+        arc.score = 0;
+        if (idx01 < states - 1) {  // state 0 self loop
+          arc.src_state = 0;
+          arc.dest_state = 0;
+          arc.label = idx01;
+          row_ids_data[idx01] = 0;
+          aux_labels_data[idx01] = idx01;
+        } else if (idx01 < (states - 1) * 2) {  // arcs leaving state 0
+          int32_t dest_state = idx01 - (states - 1) + 1;
+          arc.src_state = 0;
+          arc.dest_state = dest_state;
+          arc.label = dest_state == states - 1 ? -1 : dest_state;
+          row_ids_data[idx01] = 0;
+          aux_labels_data[idx01] = dest_state == states -1 ? -1 : dest_state;
+        } else {  // arcs for other states
+          int32_t bias = idx01 - (states - 1) * 2;
+          int32_t state = bias / 2 + 1;
+          arc.src_state = state;
+          arc.label = state;
+          if (bias % 2)
+            arc.dest_state = 0;
+          else
+            arc.dest_state = state;
+          row_ids_data[idx01] = state;
+          aux_labels_data[idx01] = 0;
+        }
+        arcs_data[idx01] = arc;
+      });
+    Array1<int32_t> row_splits(c, states + 1);
+    RowIdsToRowSplits(row_ids, &row_splits);
+    return Ragged<Arc>(RaggedShape2(&row_splits, &row_ids, num_arcs), arcs);
+  } else {
+    // plusing 2 here to include 0(epsilon) and final state
+    int32_t states = max_token + 2,
+            dim0 = states - 1,  // minusing 1 here because there is not
+                                // any leaving arcs for final state
+            dim1 = max_token + 2,  // there are number of states arcs leaving
+                                   // each state for standard topolopy
+            num_arcs = dim0 * dim1;
+    *aux_labels = Array1<int32_t>(c, num_arcs);
+    Array1<int32_t> row_ids(c, num_arcs);
+    Array1<Arc> arcs(c, num_arcs);
+    int32_t *row_ids_data = row_ids.Data(),
+            *aux_labels_data = aux_labels->Data();
+    Arc *arcs_data = arcs.Data();
+    K2_EVAL2(
+      c, dim0, dim1, lambda_set_row_ids_and_arcs,
+        (int32_t i, int32_t j)->void {
+          row_ids_data[i * dim1 + j] = i;
+          Arc arc;
+          arc.src_state = i;
+          arc.dest_state = j;
+          arc.label = j == (dim1 - 1) ? -1 : j;
+          arc.score = 0;
+          arcs_data[i * dim1 + j] = arc;
+          int32_t olabel = i == j ? 0 : (j == (dim1 - 1) ? -1 : j);
+          aux_labels_data[i * dim1 + j] = olabel;
+      });
+    Array1<int32_t> row_splits(c, states + 1);
+    RowIdsToRowSplits(row_ids, &row_splits);
+    return Ragged<Arc>(RaggedShape2(&row_splits, &row_ids, dim0 * dim1), arcs);
+  }
 }
 
 void ArcSort(Fsa *fsa) {

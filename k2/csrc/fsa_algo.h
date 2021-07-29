@@ -482,8 +482,8 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols);
 
     @param [in] symbols  Input symbol sequences (must not contain
                 kFinalSymbol == -1). Its num_axes is 2.
-    @param [in] standard Option to specify the type of CTC topology: "standard"
-                         or "simplified", where the "standard" one makes the
+    @param [in] modified Option to specify the type of CTC topology: "standard"
+                         or "modified", where the "standard" one makes the
                          blank mandatory between a pair of identical symbols.
     @param [out] It maps the arcs of output fsa to the symbols(idx01), the
                  olabel of the `arc[i]` would be `symbols[arc_map[i]]`,
@@ -491,8 +491,30 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols);
 
     @return     Returns an FsaVec with `ans.Dim0() == symbols.Dim0()`.
  */
-FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool standard = true,
+FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified = false,
                  Array1<int32_t> *arc_map = nullptr);
+
+/*
+  Create ctc topology from max token id.
+
+    @param [in] c  The context with which we'll allocate memory for
+                   ctc topopogy.
+    @param [in] max_token  The maximum token ID (inclusive). We assume that
+                           token IDs are contiguous (from 1 to `max_token`).
+                           0 represents blank.
+    @param [in] modified  If False, create a standard CTC topology.
+                          Otherwise, create a modified CTC topology.
+                          A standard CTC topology is the conventional one,
+                          where there is a mandatory blank between two repeated
+                          neighboring symbols.
+                          A modified CTC topology, imposes no such constraint.
+    @param [out] aux_labels The output labels of ctc topopoly will write to this
+                            array, will be reallocated.
+
+    @return    Returns the corresponding ctc topology, an Fsa.
+ */
+Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
+            Array1<int32_t> *aux_labels);
 
 /* Compute the forward shortest path in the tropical semiring.
 
