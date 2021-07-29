@@ -495,9 +495,23 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified = false,
                  Array1<int32_t> *arc_map = nullptr);
 
 /*
- 
+  Create ctc topology from max token id.
+
+    @param [in] c  The context with which we'll allocate memory for
+                   ctc topopogy.
+    @param [in] max_token  The maximum token ID (inclusive). We assume that
+                           token IDs are contiguous (from 1 to `max_token`).
+                           0 represents blank.
+    @param [in] modified  If False, create a standard CTC topology.
+                          Otherwise, create a modified CTC topology.
+                          A standard CTC topology is the conventional one,
+                          where there is a mandatory blank between two repeated
+                          neighboring symbols.
+                          A modified CTC topology, imposes no such constraint.
+
+    @return    Returns the corresponding ctc topology, an Fsa.
  */
-Fsa CtcTopo(const ContextPtr &c, int32_t max_token_id, bool modified = false);
+Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified = false);
 
 /* Compute the forward shortest path in the tropical semiring.
 

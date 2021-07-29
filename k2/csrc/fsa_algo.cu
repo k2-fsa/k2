@@ -590,13 +590,56 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token,
             bool modified /*= false*/) {
   NVTX_RANGE(K2_FUNC);
   if (modified) {
-    // TODO
-
+    // plusing 2 here to include 0(epsilon) and final state
+    int32_t states = max_token + 2;
+    // for modified topology, there are number of states minus one self loops
+    // for state 0, and two arcs for each of other states
+    // see links belove for details :
+    // https://github.com/k2-fsa/k2/issues/746#issuecomment-856421616
+    // https://github.com/k2-fsa/snowfall/pull/209
+    int32_t num_arcs = (states - 1) * 2 + (states - 2) * 2;
+    Array1<int32_t> row_ids(c, num_arcs);
+    Array1<Arc> arcs(c, num_arcs);
+    int32_t *row_ids_data = row_ids.Data();
+    Arc *arcs_data = arcs.Data();
+    K2_EVAL(
+      c, num_arcs, lambad_set_row_ids_and_arcs, (int32_t idx01) -> void {
+        Arc arc;
+        arc.score = 0;
+        if (idx01 < states - 1) {  // state 0 self loop
+          arc.src_state = 0;
+          arc.dest_state = 0;
+          arc.label = idx01;
+          row_ids_data[idx01] = 0;
+        } else if (idx01 < (states - 1) * 2) {  // arcs leaving state 0
+          int32_t dest_state = idx01 - (states - 1) + 1;
+          arc.src_state = 0;
+          arc.dest_state = dest_state;
+          arc.label = dest_state == states - 1 ? -1 : dest_state;
+          row_ids_data[idx01] = 0;
+        } else {  // arcs for other states
+          int32_t bias = idx01 - (states - 1) * 2;
+          int32_t state = bias / 2 + 1;
+          arc.src_state = state;
+          arc.label = state;
+          if (bias % 2)
+            arc.dest_state = 0;
+          else
+            arc.dest_state = state;
+          row_ids_data[idx01] = state;
+        }
+        arcs_data[idx01] = arc;
+      });
+    Array1<int32_t> row_splits(c, states + 1);
+    RowIdsToRowSplits(row_ids, &row_splits);
+    return Ragged<Arc>(RaggedShape2(&row_splits, &row_ids, num_arcs), arcs);
   } else {
-    int32_t dim0 = max_token + 1,
-            dim1 = max_token + 2;
-    Array1<int32_t> row_splits = Range<int32_t>(c, dim0 + 2, 0, dim1);
-    row_splits.Data()[dim0 + 1] = row_splits[dim0];
+    // plusing 2 here to include 0(epsilon) and final state
+    int32_t states = max_token + 2,
+            dim0 = states - 1,  // minusing 1 here because there is not
+                                // any leaving arcs for final state
+            dim1 = max_token + 2;  // there are number of states arcs leaving
+                                   // each state for standard topolopy
     Array1<int32_t> row_ids(c, dim0 * dim1);
     Array1<Arc> arcs(c, dim0 * dim1);
     int32_t *row_ids_data = row_ids.Data();
@@ -612,6 +655,8 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token,
           arc.score = 0;
           arcs_data[i * dim1 + j] = arc;
       });
+    Array1<int32_t> row_splits(c, states + 1);
+    RowIdsToRowSplits(row_ids, &row_splits);
     return Ragged<Arc>(RaggedShape2(&row_splits, &row_ids, dim0 * dim1), arcs);
   }
 }

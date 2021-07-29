@@ -1058,19 +1058,53 @@ def ctc_topo(max_token: int, modified: bool = False,
         gpu_id = -1
     ragged_arc = _k2.ctc_topo(max_token, gpu_id, modified)
     if modified:
-      pass
+        # states here means states with leaving arcs
+        states = max_token + 1
+        # aux_labels likes (max_token = 3):
+        # [ 0 1 2 3 1 2 3 -1 0 0 0 0 0 0 ]
+        aux_labels = torch.cat(
+            (torch.arange(0, states, dtype=torch.int32, device=device),
+                torch.arange(1, states + 1, dtype=torch.int32, device=device),
+                torch.zeros((states - 1) * 2, dtype=torch.int32, device=device)))  # noqa
+        aux_labels[states * 2 - 1] = -1
     else:
-      states = max_token + 1
-      aux_labels = torch.reshape(
-        torch.arange(0, states * states, dtype=torch.int32, device=device),
-          (states, states)) -\
-        torch.reshape(torch.arange(0, states, dtype=torch.int32, device=device),
-          (states, -1)) * states
-      mask = torch.eye(states, dtype=torch.bool, device=device)
-      aux_labels[mask] = 0
-      aux_labels = torch.cat((
-        aux_labels, torch.ones(
-          (states, 1), dtype=torch.int32, device=device) * -1), dim=1)
-      aux_labels = aux_labels.flatten()
+        # states here means states with leaving arcs
+        states = max_token + 1
+        # aux_labels likes (max_token = 3):
+        # [ [ 0 1 2 3 ]
+        #   [ 4 5 6 7 ]
+        #   [ 8 9 10 11 ]
+        #   [ 12 13 14 15 ] ]
+        aux_labels = torch.reshape(
+            torch.arange(0, states * states, dtype=torch.int32, device=device), (states, states)) # noqa
+        # bias likes:
+        # [ [0]
+        #   [4]
+        #   [8]
+        #   [12] ]
+        bias = torch.reshape(
+            torch.arange(0, states, dtype=torch.int32, device=device), (states, -1)) * states # noqa
+        # aux_labels likes:
+        # [ [ 0 1 2 3 ]
+        #   [ 0 1 2 3 ]
+        #   [ 0 1 2 3 ]
+        #   [ 0 1 2 3 ] ]
+        aux_labels = aux_labels - bias
+        mask = torch.eye(states, dtype=torch.bool, device=device)
+        # aux_labels likes:
+        # [ [ 0 1 2 3 ]
+        #   [ 0 0 2 3 ]
+        #   [ 0 1 0 3 ]
+        #   [ 0 1 2 0 ] ]
+        aux_labels[mask] = 0
+        # aux_labels likes:
+        # [ [ 0 1 2 3 -1 ]
+        #   [ 0 0 2 3 -1 ]
+        #   [ 0 1 0 3 -1 ]
+        #   [ 0 1 2 0 -1 ] ]
+        aux_labels = torch.cat(
+            (aux_labels, torch.ones(
+                (states, 1), dtype=torch.int32, device=device) * -1), dim=1)
+        aux_labels = aux_labels.flatten()
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
