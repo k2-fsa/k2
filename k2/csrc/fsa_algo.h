@@ -509,8 +509,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified = false,
                           neighboring symbols.
                           A modified CTC topology, imposes no such constraint.
     @param [out] aux_labels The output labels of ctc topopoly will write to this
-                            array, will be allocated if it did not have the
-                            correct size at entry.
+                            array, will be reallocated.
 
     @return    Returns the corresponding ctc topology, an Fsa.
  */

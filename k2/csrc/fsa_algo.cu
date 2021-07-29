@@ -600,8 +600,7 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
     // https://github.com/k2-fsa/k2/issues/746#issuecomment-856421616
     // https://github.com/k2-fsa/snowfall/pull/209
     int32_t num_arcs = (states - 1) * 2 + (states - 2) * 2;
-    if (aux_labels->Dim() != num_arcs)
-      *aux_labels = Array1<int32_t>(c, num_arcs);
+    *aux_labels = Array1<int32_t>(c, num_arcs);
     Array1<int32_t> row_ids(c, num_arcs);
     Array1<Arc> arcs(c, num_arcs);
     int32_t *row_ids_data = row_ids.Data(),
@@ -649,8 +648,7 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
             dim1 = max_token + 2,  // there are number of states arcs leaving
                                    // each state for standard topolopy
             num_arcs = dim0 * dim1;
-    if (aux_labels->Dim() != num_arcs)
-      *aux_labels = Array1<int32_t>(c, num_arcs);
+    *aux_labels = Array1<int32_t>(c, num_arcs);
     Array1<int32_t> row_ids(c, num_arcs);
     Array1<Arc> arcs(c, num_arcs);
     int32_t *row_ids_data = row_ids.Data(),
