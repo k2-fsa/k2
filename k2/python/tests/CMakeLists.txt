@@ -37,6 +37,7 @@ set(py_test_files
   get_arc_post_test.py
   get_backward_scores_test.py
   get_forward_scores_test.py
+  get_best_matching_stats_test.py
   get_tot_scores_test.py
   index_add_test.py
   index_and_sum_test.py
