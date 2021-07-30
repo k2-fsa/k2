@@ -14,7 +14,8 @@ void PybindFbWeightType(py::module &m) {
   using PyEnum = k2host::FbWeightType;
   py::enum_<PyEnum>(m, "FbWeightType", py::arithmetic())
       .value("kMaxWeight", PyEnum::kMaxWeight)
-      .value("kLogSumWeight", PyEnum::kLogSumWeight);
+      .value("kLogSumWeight", PyEnum::kLogSumWeight)
+      .value("kNoWeight", PyEnum::kNoWeight);
 }
 
 void PybindWfsaWithFbWeights(py::module &m) {

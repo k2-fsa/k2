@@ -52,7 +52,9 @@ void DeterminizerPruned<TracebackState>::GetSizes(
   while (num_steps < max_step_ && !queue.empty()) {
     std::shared_ptr<DS> state(queue.top());
     queue.pop();
-    num_steps += state->ProcessArcs(fsa_in_, prune_cutoff, &arcs_, &arc_derivs_,
+    num_steps += state->ProcessArcs(fsa_in_, prune_cutoff,
+                                    weight_pushing_type_,
+                                    &arcs_, &arc_derivs_,
                                     &map, &queue);
   }
 

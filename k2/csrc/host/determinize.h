@@ -64,10 +64,30 @@ class DeterminizerPruned {
     @param [in] max_step Maximum number of computation steps before we return
                          (or if <= 0, there is no limit); provided so users can
                          limit the time taken in pathological cases.
+    @param [in] weight_pushing_type  This determines the "weight-pushing"
+                         behavior of the algorithm, i.e. it affects the way
+                         weights are pushed forward and backward along
+                         paths, but not the structure of the output or the
+                         total weight along the path.   We allow the user
+                         to specify this separately from the semiring in
+                         which they want equivalence to be preserved in
+                         (determined by TracebackState), and from the
+                         weights used for pruning; a common scenario is
+                         that you want to determinize a decoding graph while
+                         preserving equivalency in the tropical semiring, but
+                         you want log-semiring behavior for the weight pushing.
+                         Think of this as a form of weight pushing that's
+                         integrated with the determinization algorithm; if
+                         the input was 'stochastic' (sum-to-one) in the
+                         sense in which you wanted, and you use the correct
+                         weight_pushing_type, the output will remain stochastic
+                         in that sense.
   */
   DeterminizerPruned(const WfsaWithFbWeights &fsa_in, float beam,
-                     int64_t max_step)
-      : fsa_in_(fsa_in), beam_(beam), max_step_(max_step) {
+                     int64_t max_step,
+                     FbWeightType weight_pushing_type)
+      : fsa_in_(fsa_in), beam_(beam), max_step_(max_step),
+        weight_pushing_type_(weight_pushing_type) {
     K2_CHECK_GT(beam, 0);
     if (std::is_same<TracebackState, MaxTracebackState>::value)
       K2_CHECK_EQ(fsa_in_.weight_type, kMaxWeight);
@@ -138,6 +158,7 @@ class DeterminizerPruned {
   const WfsaWithFbWeights &fsa_in_;
   const float beam_;
   int64_t max_step_;
+  FbWeightType weight_pushing_type_;
 
   float effective_beam_;
   std::vector<Arc> arcs_;  // arcs of fsa_out
@@ -167,9 +188,29 @@ class Determinizer {
     @param [in] max_step Maximum number of computation steps before we return
                          (or if <= 0, there is no limit); provided so users can
                          limit the time taken in pathological cases.
+    @param [in] weight_pushing_type  This determines the "weight-pushing"
+                         behavior of the algorithm, i.e. it affects the way
+                         weights are pushed forward and backward along
+                         paths, but not the structure of the output or the
+                         total weight along the path.   We allow the user
+                         to specify this separately from the semiring in
+                         which they want equivalence to be preserved in
+                         (determined by TracebackState), and from the
+                         weights used for pruning; a common scenario is
+                         that you want to determinize a decoding graph while
+                         preserving equivalency in the tropical semiring, but
+                         you want log-semiring behavior for the weight pushing.
+                         Think of this as a form of weight pushing that's
+                         integrated with the determinization algorithm; if
+                         the input was 'stochastic' (sum-to-one) in the
+                         sense in which you wanted, and you use the correct
+                         weight_pushing_type, the output will remain stochastic
+                         in that sense.
   */
-  Determinizer(const Fsa &fsa_in, int64_t max_step)
-      : fsa_in_(fsa_in), max_step_(max_step) {}
+  Determinizer(const Fsa &fsa_in, int64_t max_step,
+               FbWeightType weight_pushing_type)
+      : fsa_in_(fsa_in), max_step_(max_step),
+        weight_pushing_type_(weight_pushing_type) { }
 
   /*
     Do enough work to know how much memory will be needed, and output
@@ -226,6 +267,7 @@ class Determinizer {
  private:
   const Fsa &fsa_in_;
   int64_t max_step_;
+  FbWeightType weight_pushing_type_;
 
   std::vector<Arc> arcs_;  // arcs of fsa_out
   std::vector<std::vector<typename TracebackState::DerivType>> arc_derivs_;

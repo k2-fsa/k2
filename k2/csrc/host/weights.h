@@ -112,7 +112,14 @@ void ComputeForwardLogSumWeights(const Fsa &fsa, double *state_weights);
  */
 void ComputeBackwardLogSumWeights(const Fsa &fsa, double *state_weights);
 
-enum FbWeightType { kMaxWeight, kLogSumWeight };
+enum FbWeightType {  // Most of the time when you see FbWeightType, only
+                     // kMaxWeight and kLogSumWeight are allowed; kNoWeight is
+                     // only allowed as an option to the determinization code,
+                     // regarding weight-pushing.
+  kMaxWeight,
+  kLogSumWeight,
+  kNoWeight
+};
 
 // Version of `ComputeForwardWeights` as a template interface, see documentation
 // of `ComputeForwardMaxWeights` or `ComputeForwardLogSumWeights`

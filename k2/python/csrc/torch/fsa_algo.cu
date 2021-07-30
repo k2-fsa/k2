@@ -397,16 +397,26 @@ static void PybindRemoveEpsilon(py::module &m) {
 }
 
 static void PybindDeterminize(py::module &m) {
+  py::enum_<DeterminizeWeightPushingType>(m,
+      "DeterminizeWeightPushingType", py::arithmetic())
+      .value("kTropicalWeightPushing",
+             DeterminizeWeightPushingType::kTropicalWeightPushing)
+      .value("kLogWeightPushing",
+             DeterminizeWeightPushingType::kLogWeightPushing)
+      .value("kNoWeightPushing",
+             DeterminizeWeightPushingType::kNoWeightPushing);
+
   m.def(
       "determinize",
-      [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+      [](FsaOrVec &src, DeterminizeWeightPushingType weight_pushing_type)
+      -> std::pair<FsaOrVec, Ragged<int32_t>> {
         DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
-        Determinize(src, &dest, &arc_map);
+        Determinize(src, weight_pushing_type, &dest, &arc_map);
         return std::make_pair(dest, arc_map);
       },
-      py::arg("src"));
+      py::arg("src"), py::arg("weight_pushing_type"));
 }
 
 static void PybindClosure(py::module &m) {

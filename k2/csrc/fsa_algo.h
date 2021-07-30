@@ -425,12 +425,39 @@ void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
                                   FsaOrVec *dest,
                                   Ragged<int32_t> *arc_derivs = nullptr);
 
+
+enum DeterminizeWeightPushingType {
+  kTropicalWeightPushing,
+  kLogWeightPushing,
+  kNoWeightPushing
+};
+
 /*
     Determinize the input Fsas, it works for both Fsa and FsaVec.
     @param [in] src   Source Fsa or FsaVec.
                       Expected to be epsilon free, but this is not checked;
                       in any case, epsilon will be treated as a normal
                       symbol. We also assume src is connected.
+    @param [in] weight_pushing_type  An enum value that determines what
+                      kind of weight pushing is desired.  (Regardless of this,
+                      equivalence in tropical semiring will be preserved).
+                      For decoding graph creation, we recommend
+                      kLogSumWeightPushing.  Caution: any value other than
+                      kNoWeightPushing causes the 'arc_derivs' to not accurately
+                      reflect the real derivatives, although this will not
+                      matter as long as the derivatives ultimately derive
+                      from FSA operations such as getting total scores or
+                      arc posteriors, which are insensitive to pushing.
+
+                         kTropicalWeightPushing: use tropical semiring (actually,
+                          max on scores) for weight pushing.
+                         kLogWeightPushing: use log semiring (actually, log-sum
+                          on score) for weight pushing
+                         kNoWeightPushing: do no weight pushing; this will
+                          cause some delay in scores being emitted, and the
+                          weights created in this way will correspond exactly
+                          to those that would be produced by the arc_derivs.
+
     @param [out] dest Destination; at exit will be equivalent to `src` under
                       tropical semiring but will be deterministic, i.e.
                       there are no duplicate labels for arcs leaving a given
@@ -442,11 +469,15 @@ void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
                       arc_derivs is the sequence of arcs in `src` that arc
                       `i` in `dest` corresponds to; the weight of the arc in
                       `dest` will equal the sum of those input arcs' weights.
-    Note we don't support pruning here.
+
+    Note we don't support pruning here.  There is a pruned form of
+    determinization implemented in the host code, which we may wrap later.
 
     CAUTION: It only works for CPU;
  */
-void Determinize(FsaOrVec &src, FsaOrVec *dest,
+void Determinize(FsaOrVec &src,
+                 DeterminizeWeightPushingType weight_pushing_type,
+                 FsaOrVec *dest,
                  Ragged<int32_t> *arc_derivs = nullptr);
 
 /*
