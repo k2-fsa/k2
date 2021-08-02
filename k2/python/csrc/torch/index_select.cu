@@ -81,7 +81,7 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
   Tensor tensor = FromTorch(src, TensorTag{});
   Tensor ans = Index(tensor, index_array, allow_minus_one, default_value);
   // When index_array.Dim() equals to zero, the `Index` above would produce an
-  // ans with `ans.Data()` be a nullptr, which will cause crash when call
+  // ans with `ans.Data()` be a nullptr, which will cause crash when calling
   // `torch::from_blob`. Just return an empty tensor here.
   if (index_array.Dim() == 0) return torch::empty({0}, src.options());
   return ToTorch(ans);
