@@ -399,6 +399,9 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols) {
   // row_splits2 maps from state_idx01 to arc_idx012; row_ids2 does the reverse.
   // We'll set them in the lambda below.
   Array1<int32_t> row_splits2(c, num_states + 1), row_ids2(c, num_arcs);
+  // When num_states equals to zero, the code below won't set the last value of
+  // row_splits2, we should initialize here, or it will be a random value.
+  if (num_states == 0) row_splits2 = 0;
 
   int32_t *row_ids2_data = row_ids2.Data(),
           *row_splits2_data = row_splits2.Data();
@@ -444,7 +447,6 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols) {
         }
         row_splits2_data[state_idx01] = arc_idx012;
       });
-
   return Ragged<Arc>(
       RaggedShape3(&states_shape.RowSplits(1), &states_shape.RowIds(1),
                    num_states, &row_splits2, &row_ids2, num_arcs),

@@ -58,12 +58,16 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
                                    T default_value) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
-  K2_CHECK_EQ(src.scalar_type(), ToScalarType<T>::value);
+  K2_CHECK_EQ(src.scalar_type(), ToScalarType<T>::value) << "Expeted equal type"
+    << " Given : " << src.scalar_type() << ", " << ToScalarType<T>::value;
 
-  K2_CHECK_EQ(index.dim(), 1);
-  K2_CHECK_EQ(index.scalar_type(), ToScalarType<int32_t>::value);
-  K2_CHECK(index.is_contiguous());
-  K2_CHECK_EQ(src.device(), index.device());
+  K2_CHECK_EQ(index.dim(), 1) << "Expected index dim: 1. Givev : "
+    << index.dim();
+  K2_CHECK_EQ(index.scalar_type(), ToScalarType<int32_t>::value)
+    << "Expected type int32_t Given : " << index.scalar_type();
+  K2_CHECK(index.is_contiguous()) << "Expected contiguous";
+  K2_CHECK_EQ(src.device(), index.device()) << "Expected in the same device"
+    << " Given : " << src.device() << ", " << index.device();
 
   bool allow_minus_one = true;
   Array1<int32_t> index_array = FromTorch<int32_t>(index);
@@ -76,6 +80,10 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
 
   Tensor tensor = FromTorch(src, TensorTag{});
   Tensor ans = Index(tensor, index_array, allow_minus_one, default_value);
+  // When index_array.Dim() equals to zero, the `Index` above would produce an
+  // ans with `ans.Data()` be a nullptr, which will cause crash when call
+  // `torch::from_blob`. Just return an empty tensor here.
+  if (index_array.Dim() == 0) return torch::empty({0}, src.options());
   return ToTorch(ans);
 }
 

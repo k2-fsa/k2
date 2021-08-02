@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 #
 # Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang)
-#                      Xiaomi Corp.       (authors: Daniel Povey)
+#                      Xiaomi Corp.       (authors: Daniel Povey,
+#                                                   Wei Kang)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 #
@@ -81,6 +82,47 @@ class TestIndexSelect(unittest.TestCase):
                                   size=(num_indexes,),
                                   dtype=torch.int32,
                                   device=device)
+
+                c = k2.index_select(a, b)
+                assert c.dtype == a.dtype
+                c.sum().backward()
+
+                new_a = a.detach().requires_grad_(True)
+                padded_a = torch.cat([torch.tensor([0]).to(new_a), new_a])
+                expected = padded_a.index_select(0, (b + 1).to(torch.int64))
+                expected.sum().backward()
+
+                assert torch.allclose(c, expected)
+                assert torch.allclose(a.grad, new_a.grad)
+
+    def test_1d_empty_index(self):
+        for device in self.devices:
+            for dtype in [torch.int32, torch.int64]:
+                num_rows = torch.randint(1, 2000, size=(1,)).item()
+                a = torch.randint(-1000,
+                                  1000,
+                                  size=(num_rows,),
+                                  dtype=dtype,
+                                  device=device)
+                assert a.is_contiguous()
+                assert a.dtype == dtype
+
+                b = torch.empty(0, dtype=torch.int32, device=device)
+
+                c = k2.index_select(a, b)
+                assert c.dtype == a.dtype
+                assert c.numel() == b.numel()
+
+            for dtype in [torch.float32, torch.float64]:
+                num_rows = torch.randint(1, 2000, size=(1,)).item()
+                a = torch.rand(num_rows,
+                               dtype=dtype,
+                               device=device,
+                               requires_grad=True)
+                assert a.is_contiguous()
+                assert a.dtype == dtype
+
+                b = torch.empty(0, dtype=torch.int32, device=device)
 
                 c = k2.index_select(a, b)
                 assert c.dtype == a.dtype
