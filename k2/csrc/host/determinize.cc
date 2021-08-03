@@ -52,7 +52,8 @@ void Determinizer<TracebackState>::GetSizes(
     std::shared_ptr<DS> state(queue.top());
     queue.pop();
     num_steps +=
-        state->ProcessArcs(fsa_in_, &arcs_, &arc_derivs_, &map, &queue);
+        state->ProcessArcs(fsa_in_, &arcs_, weight_pushing_type_,
+                           &arc_derivs_, &map, &queue);
   }
   // We may stopped early due to max_step
 
@@ -185,9 +186,10 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
   K2_CHECK_EQ(cur_states->size(), 1);
   double prev_forward_prob = (*(cur_states->begin()))->forward_prob;
   *weight_out = static_cast<float>(cur_forward_prob - prev_forward_prob);
-  // The following is mostly for ease of interpretability of the output;
-  // conceptually the order makes no difference.
-  // TODO(dpovey): maybe remove this, for efficiency?
+  // The following makes sure the arcs in the arc_map we ultimately generate are
+  // in the correct order (not reversed), although you can't really interpret
+  // them as a sequence because it's a weighted set where not all of the
+  // connection information is retained.
   std::reverse(deriv_out->begin(), deriv_out->end());
 }
 

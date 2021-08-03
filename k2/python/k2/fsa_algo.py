@@ -603,11 +603,18 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa,
     return out_fsa
 
 
-def determinize(fsa: Fsa) -> Fsa:
+def determinize(fsa: Fsa,
+                weight_pushing_type: _k2.DeterminizeWeightPushingType =
+                _k2.DeterminizeWeightPushingType.kNoWeightPushing) -> Fsa:
     '''Determinize the input Fsa.
 
     Caution:
-      It only works on for CPU.
+      - It only works on for CPU.
+      - Any weight_pushing_type value other than kNoWeightPushing causes
+        the 'arc_derivs' to not accurately reflect the real derivatives,
+        although this will not matter as long as the derivatives ultimately
+        derive from FSA operations such as getting total scores or
+        arc posteriors, which are insensitive to pushing.
 
     Args:
       fsa:
@@ -615,6 +622,20 @@ def determinize(fsa: Fsa) -> Fsa:
         Must be connected. It's also expected to be epsilon-free,
         but this is not checked; in any case,
         epsilon will be treated as a normal symbol.
+      weight_pushing_type:
+        An enum value that determines what kind of weight pushing is desired,
+        default kNoWeightPushing.
+
+          kTropicalWeightPushing:
+            use tropical semiring (actually, max on scores) for weight pushing.
+          kLogWeightPushing:
+            use log semiring (actually, log-sum on score) for weight pushing
+          kNoWeightPushing:
+            do no weight pushing; this will cause some delay in scores being
+            emitted, and the weights created in this way will correspond
+            exactly to those that would be produced by the arc_derivs.
+
+        For decoding graph creation, we recommend kLogSumWeightPushing.
     Returns:
       The resulting Fsa, it's equivalent to the input `fsa` under
       tropical semiring but will be deterministic.
@@ -628,7 +649,7 @@ def determinize(fsa: Fsa) -> Fsa:
     if fsa.properties & fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0:  # noqa
         return fsa
 
-    ragged_arc, arc_map = _k2.determinize(fsa.arcs)
+    ragged_arc, arc_map = _k2.determinize(fsa.arcs, weight_pushing_type)
     out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map)
     return out_fsa
 

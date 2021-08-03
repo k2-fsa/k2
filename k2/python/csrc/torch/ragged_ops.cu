@@ -411,6 +411,7 @@ void PybindRaggedOps(py::module &m) {
   PybindArgMaxPerSublist<float>(m);
   PybindArgMaxPerSublist<int32_t>(m);
   PybindCat<int32_t>(m);
+  PybindCat<float>(m);
   PybindCat<Arc>(m);
   PybindCreateRagged2<int32_t>(m);
   PybindCreateRagged2<float>(m);

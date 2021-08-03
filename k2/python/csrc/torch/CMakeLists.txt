@@ -6,6 +6,7 @@ set(torch_srcs
   fsa_algo.cu
   index_add.cu
   index_select.cu
+  nbest.cu
   ragged.cu
   ragged_ops.cu
   torch_util.cu

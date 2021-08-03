@@ -71,7 +71,9 @@ set(context_srcs
   timer.cu
   top_sort.cu
   utils.cu
+  nbest.cu
 )
+
 
 if(K2_USE_PYTORCH)
   list(APPEND context_srcs pytorch_context.cu)
@@ -148,6 +150,7 @@ set(cuda_test_srcs
   log_test.cu
   macros_test.cu
   math_test.cu
+  nbest_test.cu
   nvtx_test.cu
   pinned_context_test.cu
   ragged_shape_test.cu

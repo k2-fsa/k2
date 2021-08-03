@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright      2020  Xiaomi Corporation (authors: Haowen Qiu)
+# Copyright      2020  Xiaomi Corporation (authors: Haowen Qiu, Wei Kang)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 #
@@ -55,6 +55,35 @@ class TestDeterminize(unittest.TestCase):
         prop = arc_sorted.properties
         self.assertTrue(
             prop & k2.fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0)
+        # test weight pushing tropical
+        dest_max = k2.determinize(
+            fsa, k2.DeterminizeWeightPushingType.kTropicalWeightPushing)
+        self.assertTrue(k2.is_rand_equivalent(dest, dest_max, log_semiring))
+        # test weight pushing log
+        dest_log = k2.determinize(
+            fsa, k2.DeterminizeWeightPushingType.kLogWeightPushing)
+        self.assertTrue(k2.is_rand_equivalent(dest, dest_log, log_semiring))
+
+    def test_random(self):
+        while True:
+            fsa = k2.random_fsa(
+                max_symbol=20, min_num_arcs=50, max_num_arcs=500)
+            fsa = k2.arc_sort(k2.connect(k2.remove_epsilon(fsa)))
+            prob = fsa.properties
+            # we need non-deterministic fsa
+            if not prob & k2.fsa_properties.ARC_SORTED_AND_DETERMINISTIC:
+                break
+        log_semiring = False
+        # test weight pushing tropical
+        dest_max = k2.determinize(
+            fsa, k2.DeterminizeWeightPushingType.kTropicalWeightPushing)
+        self.assertTrue(k2.is_rand_equivalent(
+            fsa, dest_max, log_semiring, delta=1e-3))
+        # test weight pushing log
+        dest_log = k2.determinize(
+            fsa, k2.DeterminizeWeightPushingType.kLogWeightPushing)
+        self.assertTrue(k2.is_rand_equivalent(
+            fsa, dest_log, log_semiring, delta=1e-3))
 
 
 if __name__ == '__main__':
