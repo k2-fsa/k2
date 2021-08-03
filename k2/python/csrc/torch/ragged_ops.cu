@@ -344,8 +344,6 @@ static void PybindArgMaxPerSublist(py::module &m) {
         int32_t last_axis = src.NumAxes() - 1;
         const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
         int32_t num_rows = row_splits_array.Dim() - 1;
-        // The RowSplits(last_axis) of an empty Ragged could be [0] or [0, 0]
-        if (src.NumElements() == 0) num_rows = 0;
 
         Array1<int32_t> indexes(src.Context(), num_rows);
         ArgMaxPerSublist(src, initial_value, &indexes);

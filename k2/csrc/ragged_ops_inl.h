@@ -541,8 +541,6 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
   int32_t last_axis = src.NumAxes() - 1;
   const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
   int32_t num_rows = row_splits_array.Dim() - 1;
-  // The RowSplits(last_axis) of an empty Ragged could be [0] or [0, 0]
-  if (src.NumElements() == 0) num_rows = 0;
   K2_CHECK_EQ(num_rows, dst->Dim());
 
   ContextPtr &c = src.Context();

@@ -334,10 +334,13 @@ void TestArgMaxPerSubListTest() {
       Ragged<T> ragged(shape, values);
 
       int32_t num_rows = ragged.shape.Dim0();
-      ASSERT_EQ(num_rows, 0);
+      ASSERT_EQ(num_rows, 1);
       Array1<int32_t> argmax_values(context, num_rows);
       // just run to check if there's any error
       ArgMaxPerSublist(ragged, 1, &argmax_values);
+      EXPECT_EQ(argmax_values.Dim(), 1);
+      std::vector<T> expected_data = {-1};
+      CheckArrayData(argmax_values, expected_data);
     }
     {
       const std::vector<int32_t> row_splits_vec = {0, 3, 3, 6, 7};
