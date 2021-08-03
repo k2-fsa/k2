@@ -37,3 +37,13 @@ create_sparse
 -------------
 
 .. autofunction:: create_sparse
+
+random_fsa
+----------
+
+.. autofunction:: random_fsa
+
+random_fsa_vec
+--------------
+
+.. autofunction:: random_fsa_vec

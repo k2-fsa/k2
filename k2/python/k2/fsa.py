@@ -306,18 +306,22 @@ class Fsa(object):
         return self.to_str(openfst=False)
 
     def get_filler(self, attribute_name: str) -> Union[int, float]:
-        '''
-        Return the filler value associated with attribute names.  This is
-        0 unless otherwise specified, but you can override this by
-        for example, doing
+        '''Return the filler value associated with attribute names.
+
+        This is 0 unless otherwise specified, but you can override this by
+        for example, doing::
+
             fsa.foo_filler = -1
-        which will mean the "filler" for attribute fsa.foo is -1; and
-        this will get propagated when you do FSA operations, like any
-        other non-tensor attribute.  The filler is the value that means
-        "nothing is here" (like epsilon).
-        Caution: you should use a value that is castable to float and back
-        to integer without loss of precision, because currently the
-        `default_value` parameter of `index_select` in ./ops.py is a float.
+
+        which will mean the "filler" for attribute fsa.foo is -1; and this will
+        get propagated when you do FSA operations, like any other non-tensor
+        attribute.  The filler is the value that means "nothing is here" (like
+        epsilon).
+
+        Caution::
+          you should use a value that is castable to float and back to integer
+          without loss of precision, because currently the `default_value`
+          parameter of `index_select` in ./ops.py is a float.
         '''
 
         ans = getattr(self, attribute_name + '_filler', 0)
@@ -867,25 +871,26 @@ class Fsa(object):
         return self
 
     def rename_tensor_attribute_(self, src_name: str, dest_name: str) -> 'Fsa':
-        '''
-        Rename a tensor attribute (or, as a special case 'labels'),
+        '''Rename a tensor attribute (or, as a special case 'labels'),
         and also rename non-tensor attributes that are associated with it,
         i.e. that have it as a prefix.
-        Args:
-           src_name: The original name, exist as
-                a tensor attribute, e.g. 'aux_labels', or, as a special
-                case, equal 'labels'; special attributes 'labels'
-                and 'scores' are allowed but won't be deleted.
-           dest_name: The new name, that we are renaming it to.
-                If it already existed as a tensor attribute, it will
-                be rewritten; and any previously existing non-tensor
-                attributes that have this as a prefix will be
-                deleted.  As a special case, may equal 'labels'.
-        Returns: `self`
 
-        Note:
-           It is OK if src_name and/or dest_name equals 'labels' or 'scores',
-           but these special attributes won't be deleted.
+        Args:
+          src_name:
+            The original name, exist as a tensor attribute, e.g. 'aux_labels',
+            or, as a special case, equal 'labels'; special attributes 'labels'
+            and 'scores' are allowed but won't be deleted.
+          dest_name:
+            The new name, that we are renaming it to. If it already existed as
+            a tensor attribute, it will be rewritten; and any previously
+            existing non-tensor attributes that have this as a prefix will be
+            deleted.  As a special case, may equal 'labels'.
+        Returns:
+          Return `self`.
+
+        Note::
+          It is OK if src_name and/or dest_name equals 'labels' or 'scores',
+          but these special attributes won't be deleted.
         '''
         assert src_name != dest_name
         assert src_name in self._tensor_attr or src_name == 'labels'

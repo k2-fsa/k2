@@ -970,20 +970,21 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
 
             - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
             - An instance of :class:`k2.RaggedInt`. Must have `num_axes() == 2`.
+
       standard:
         Option to specify the type of CTC topology: "standard" or "simplified",
         where the "standard" one makes the blank mandatory between a pair of
         identical symbols. Default True.
       device:
-        Optional. It can be either a string (e.g., 'cpu',
-        'cuda:0') or a torch.device.
+        Optional. It can be either a string (e.g., 'cpu', 'cuda:0') or a
+        torch.device.
         If it is None, then the returned FSA is on CPU. It has to be None
         if `symbols` is an instance of :class:`k2.RaggedInt`, the returned
         FSA will on the same device as `k2.RaggedInt`.
 
     Returns:
-        An FsaVec containing the returned ctc graphs, with `Dim0()` the same as
-        `len(symbols)`(List[List[int]]) or `Dim0()`(k2.RaggedInt)
+        An FsaVec containing the returned ctc graphs, with "Dim0()" the same as
+        "len(symbols)"(List[List[int]]) or "Dim0()"(k2.RaggedInt)
     '''
     if device is not None:
         device = torch.device(device)
