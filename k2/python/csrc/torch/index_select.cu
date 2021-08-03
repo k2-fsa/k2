@@ -71,7 +71,7 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
 
   bool allow_minus_one = true;
   Array1<int32_t> index_array = FromTorch<int32_t>(index);
-  // When index_array.Dim() equals to zero, the `Index` above would produce an
+  // If index_array.Dim() equals to zero, the `Index` below would produce an
   // ans with `ans.Data()` be a nullptr, which will cause crash when calling
   // `torch::from_blob`. Just return an empty tensor here.
   // If src is an empty tensor, we should return an empty torch.
@@ -118,8 +118,8 @@ static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
 
   Array2<T> src_array = FromTorch<T>(src, Array2Tag{});
   Array1<int32_t> index_array = FromTorch<int32_t>(index);
-  // When index_array.Dim() equals to zero, the `Index` above would produce an
-  // ans with `ans.Data()` be a nullptr, which will cause crash when calling
+  // If index_array.Dim() equals to zero, the `IndexRows` below would produce
+  // an ans with `ans.Data()` be a nullptr, which will cause crash when calling
   // `torch::from_blob`. Just return an empty tensor here.
   // If src is an empty tensor, we should return an empty torch.
   if (index_array.Dim() == 0 || src.sizes()[0] == 0)
