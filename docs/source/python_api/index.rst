@@ -7,6 +7,7 @@ Python API reference
    :caption: Python API
 
    fsa
+   ctc_loss
    dense_fsa
    fsa_algo
    symbol_table

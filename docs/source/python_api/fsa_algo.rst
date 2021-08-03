@@ -17,15 +17,25 @@ closure
 
 .. autofunction:: closure
 
+compose
+-------
+
+.. autofunction:: compose
+
 connect
 -------
 
 .. autofunction:: connect
 
-compose
--------
+ctc_graph
+---------
 
-.. autofunction:: compose
+.. autofunction:: ctc_graph
+
+ctc_topo
+--------
+
+.. autofunction:: ctc_topo
 
 determinize
 -----------
@@ -41,6 +51,11 @@ intersect
 ---------
 
 .. autofunction:: intersect
+
+intersect_device
+----------------
+
+.. autofunction:: intersect_device
 
 intersect_dense
 ---------------
@@ -91,6 +106,11 @@ remove_epsilon_self_loops
 -------------------------
 
 .. autofunction:: remove_epsilon_self_loops
+
+replace_fsa
+-----------
+
+.. autofunction:: replace_fsa
 
 shortest_path
 -------------

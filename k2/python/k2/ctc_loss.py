@@ -23,7 +23,8 @@ class CtcLoss(nn.Module):
     a general FSA while PyTorch requires a linear FSA (represented as a list).
     That means, `k2.CtcLoss` supports words with multiple pronunciations.
 
-    See `k2/python/tests/ctc_loss_test.py` for usage.
+    See `k2/python/tests/ctc_loss_test.py <https://github.com/k2-fsa/k2/blob/master/k2/python/tests/ctc_loss_test.py>`_
+    for usage.
 
     We assume that the blank label is always 0. The arguments `reduction` and
     `target_lengths` have the same meaning as their counterparts in
