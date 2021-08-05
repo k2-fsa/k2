@@ -855,10 +855,6 @@ class MultiGraphDenseIntersect {
                 tot_score_min =
                     (tot_score_start < tot_score_end ? tot_score_start
                                                      : tot_score_end);
-          K2_CHECK(tot_score_end == tot_score_start ||
-                   fabs(tot_score_end - tot_score_start) < 1.0)
-              << tot_score_end << " vs "
-              << tot_score_start;  // TODO: remove this
           score_cutoffs_data[fsa_idx0] = tot_score_min - output_beam;
         });
     return score_cutoffs;
