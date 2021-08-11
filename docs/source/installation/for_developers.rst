@@ -36,8 +36,8 @@ To build a release version, use:
   cd build_release
   cmake -DCMAKE_BUILD_TYPE=Release ..
   make -j
-  export PYHONPATH=$PWD/../k2/python:$PYHONPATH # for `import k2`
-  export PYHONPATH=$PWD/lib:$PYHONPATH # for `import _k2`
+  export PYTHONPATH=$PWD/../k2/python:$PYTHONPATH # for `import k2`
+  export PYTHONPATH=$PWD/lib:$PYTHONPATH # for `import _k2`
 
   # To test that your build is successful, run
   python3 -c "import k2; print(k2.__file__)"
@@ -56,8 +56,8 @@ To build a debug version, use:
   cd build_debug
   cmake -DCMAKE_BUILD_TYPE=Debug ..
   make -j
-  export PYHONPATH=$PWD/../k2/python:$PYHONPATH # for `import k2`
-  export PYHONPATH=$PWD/lib:$PYHONPATH # for `import _k2`
+  export PYTHONPATH=$PWD/../k2/python:$PYTHONPATH # for `import k2`
+  export PYTHONPATH=$PWD/lib:$PYTHONPATH # for `import _k2`
 
   # To test that your build is successful, run
   python3 -c "import k2; print(k2.__file__)"
@@ -106,8 +106,8 @@ To run a specific Python test, use:
 
   cd /some/path/k2/build_release # or switch to build_debug
 
-  export PYHONPATH=$PWD/../k2/python:$PYHONPATH # for `import k2`
-  export PYHONPATH=$PWD/lib:$PYHONPATH # for `import _k2`
+  export PYTHONPATH=$PWD/../k2/python:$PYTHONPATH # for `import k2`
+  export PYTHONPATH=$PWD/lib:$PYTHONPATH # for `import _k2`
 
   python3 ../k2/python/tests/index_test.py
 
