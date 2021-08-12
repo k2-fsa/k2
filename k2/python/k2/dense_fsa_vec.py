@@ -65,9 +65,18 @@ class DenseFsaVec(object):
               - `duration > 0`
 
             Caution:
-              The last column, i.e., the duration column, has to be sorted
-              in **decreasing** order. That is, the first supervision_segment
-              (the first row) has the largest duration.
+              If the resulting dense fsa vec is used as an input to
+              `k2.intersect_dense`, then the last column, i.e., the duration
+              column, has to be sorted in **decreasing** order.
+              That is, the first supervision_segment (the first row) has the
+              largest duration.
+              Otherwise, you don't need to sort the last column.
+
+              `k2.intersect_dense` is often used in the training stage, so
+              you should usually sort dense fsa vecs by its duration
+              in training. `k2.intersect_dense_pruned` is usually used in the
+              decoding stage, so you don't need to sort dense fsa vecs in
+              decoding.
           allow_truncate:
             If not zero, it truncates at most this number of frames from
             duration in case start_frame + duration > T.
