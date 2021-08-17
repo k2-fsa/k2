@@ -8,11 +8,6 @@ index
 
 .. autofunction:: index
 
-remove_axis
------------
-
-.. autofunction:: remove_axis
-
 remove_values_leq
 ------------------
 
@@ -23,10 +18,20 @@ remove_values_eq
 
 .. autofunction:: remove_values_eq
 
+remove_axis
+-----------
+
+.. autofunction:: remove_axis
+
 to_list
 -------
 
 .. autofunction:: to_list
+
+pad
+---
+
+.. autofunction:: pad
 
 sum_per_sublist
 ---------------
@@ -67,3 +72,8 @@ max_per_sublist
 ---------------
 
 .. autofunction:: max_per_sublist
+
+sort_sublist
+------------
+
+.. autofunction:: sort_sublist

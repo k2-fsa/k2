@@ -23,6 +23,11 @@ __str__
 
 .. automethod:: k2.Fsa.__str__
 
+get_filler
+----------
+
+.. automethod:: k2.Fsa.get_filler
+
 draw
 ----
 
@@ -153,10 +158,10 @@ _get_entering_arcs
 
 .. automethod:: k2.Fsa.requires_grad_
 
-rename_tensor_attribute
------------------------
+rename_tensor_attribute_
+------------------------
 
-.. automethod:: k2.Fsa.rename_tensor_attribute
+.. automethod:: k2.Fsa.rename_tensor_attribute_
 
 `invert_`
 ---------
@@ -243,7 +248,18 @@ from_openfst
 
 .. automethod:: k2.Fsa.from_openfst
 
+from_fsas
+---------
+
+.. automethod:: k2.Fsa.from_fsas
+
 `set_scores_stochastic_`
 ------------------------
 
 .. automethod:: k2.Fsa.set_scores_stochastic_
+
+`convert_attr_to_ragged_`
+-------------------------
+
+.. automethod:: k2.Fsa.convert_attr_to_ragged_
+

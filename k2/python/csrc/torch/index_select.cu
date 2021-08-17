@@ -58,22 +58,31 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
                                    T default_value) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
-  K2_CHECK_EQ(src.scalar_type(), ToScalarType<T>::value);
+  K2_CHECK_EQ(src.scalar_type(), ToScalarType<T>::value) << "Expeted equal type"
+    << " Given : " << src.scalar_type() << ", " << ToScalarType<T>::value;
 
-  K2_CHECK_EQ(index.dim(), 1);
-  K2_CHECK_EQ(index.scalar_type(), ToScalarType<int32_t>::value);
-  K2_CHECK(index.is_contiguous());
-  K2_CHECK_EQ(src.device(), index.device());
+  K2_CHECK_EQ(index.dim(), 1) << "Expected index dim: 1. Givev : "
+    << index.dim();
+  K2_CHECK_EQ(index.scalar_type(), ToScalarType<int32_t>::value)
+    << "Expected type int32_t Given : " << index.scalar_type();
+  K2_CHECK(index.is_contiguous()) << "Expected contiguous";
+  K2_CHECK_EQ(src.device(), index.device()) << "Expected in the same device"
+    << " Given : " << src.device() << ", " << index.device();
 
   bool allow_minus_one = true;
   Array1<int32_t> index_array = FromTorch<int32_t>(index);
+  // If index_array.Dim() equals to zero, the `Index` below would produce an
+  // ans with `ans.Data()` be a nullptr, which will cause crash when calling
+  // `torch::from_blob`. Just return an empty tensor here.
+  // If src is an empty tensor, we should return an empty torch.
+  if (index_array.Dim() == 0 || src.numel() == 0)
+    return torch::empty({0}, src.options());
   if (src.is_contiguous()) {
     Array1<T> src_array = FromTorch<T>(src);
     Array1<T> ans_array =
         Index(src_array, index_array, allow_minus_one, default_value);
     return ToTorch(ans_array);
   }
-
   Tensor tensor = FromTorch(src, TensorTag{});
   Tensor ans = Index(tensor, index_array, allow_minus_one, default_value);
   return ToTorch(ans);
@@ -109,6 +118,12 @@ static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
 
   Array2<T> src_array = FromTorch<T>(src, Array2Tag{});
   Array1<int32_t> index_array = FromTorch<int32_t>(index);
+  // If index_array.Dim() equals to zero, the `IndexRows` below would produce
+  // an ans with `ans.Data()` be a nullptr, which will cause crash when calling
+  // `torch::from_blob`. Just return an empty tensor here.
+  // If src is an empty tensor, we should return an empty torch.
+  if (index_array.Dim() == 0 || src.sizes()[0] == 0)
+    return torch::empty({0, src.sizes()[1]}, src.options());
   bool allow_minus_one = true;
   Array2<T> ans_array = IndexRows(src_array, index_array, allow_minus_one);
 

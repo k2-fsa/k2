@@ -285,14 +285,19 @@ def index_ragged(src: _k2.RaggedInt,
 
 def index_tensor(src: torch.Tensor, indexes: Union[torch.Tensor, _k2.RaggedInt]
                 ) -> Union[torch.Tensor, _k2.RaggedInt]:  # noqa
-    '''Indexing a 1-D tensor with a 1-D tensor a ragged tensor.
+    '''Indexing a 1-D tensor or a 2-D tensor with a 1-D tensor or a ragged
+    tensor.
+
+    Caution:
+      Indexing a 2-D tensor supported only when indexes is a 1-D tensor.
 
     Args:
       src:
-        Source 1-D tensor to index, must have `src.dtype == torch.int32`
-        or `src.dtype == torch.float32`.
+        Source 1-D tensor or 2-D tensor to index, must have
+        `src.dtype == torch.int32` or `src.dtype == torch.float32`.
+
       indexes:
-        It satisfies -1 <= indexes.values()[i] < src.numel().
+        It satisfies -1 <= indexes.values()[i] < src.sizes()[0].
 
         - If it's a tensor, its values will be interpreted as indexes into
           `src`; if indexes.values()[i] is -1, then ans[i] is 0.
@@ -319,9 +324,13 @@ def index_tensor(src: torch.Tensor, indexes: Union[torch.Tensor, _k2.RaggedInt]
 def index(src: Union[Fsa, torch.Tensor, _k2.RaggedInt],
           indexes: Union[torch.Tensor, _k2.RaggedInt]
          ) -> Union[Fsa, torch.Tensor, _k2.RaggedInt]:  # noqa
-    '''Indexing an Fsa or a 1-D tensor with a tensor or a ragged tensor.
-    It's a wrapper of above function `index_fsa`, `index_tensor` and
+    '''Indexing an Fsa, a 1-D tensor of a 2-D tensor with a tensor or a ragged
+    tensor. It's a wrapper of above function `index_fsa`, `index_tensor` and
     `index_ragged`.
+
+    Caution:
+      Indexing a 2-D tensor supported only when indexes is a 1-D tensor.
+
     Supports autograd where applicable (e.g. for floating point values)
     '''
     if isinstance(src, Fsa):
