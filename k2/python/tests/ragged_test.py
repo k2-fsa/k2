@@ -20,7 +20,7 @@
 #
 #  ctest --verbose -R  ragged_test_py
 
-import pickle
+import os
 import unittest
 
 import k2
@@ -60,8 +60,9 @@ class TestRagged(unittest.TestCase):
         raggeds = ("[ ]", "[ [ ] ]", "[ [1 2] [3] ]")
         for s in raggeds:
             ragged_int = k2.RaggedInt(s)
-            ragged_bytes = pickle.dumps(ragged_int)
-            ragged_reload = pickle.loads(ragged_bytes)
+            torch.save(ragged_int, "ragged.pt")
+            ragged_reload = torch.load("ragged.pt")
+            os.remove("ragged.pt")
             assert torch.all(
                 torch.eq(ragged_int.row_splits(1),
                          ragged_reload.row_splits(1))
@@ -79,8 +80,9 @@ class TestRagged(unittest.TestCase):
         raggeds = ("[ [ [ ] ] ]", "[ [ [1 2] [3] ] [ [4 5] [6] ] ]")
         for s in raggeds:
             ragged_int = k2.RaggedInt(s)
-            ragged_bytes = pickle.dumps(ragged_int)
-            ragged_reload = pickle.loads(ragged_bytes)
+            torch.save(ragged_int, "ragged.pt")
+            ragged_reload = torch.load("ragged.pt")
+            os.remove("ragged.pt")
             assert torch.all(
                 torch.eq(ragged_int.row_splits(1),
                          ragged_reload.row_splits(1))
