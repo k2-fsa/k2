@@ -20,6 +20,7 @@
 #
 #  ctest --verbose -R  ragged_test_py
 
+import os
 import unittest
 
 import k2
@@ -33,6 +34,7 @@ class TestRagged(unittest.TestCase):
         cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
+            torch.cuda.set_device(0)
             if torch.cuda.device_count() > 1:
                 torch.cuda.set_device(1)
                 cls.devices.append(torch.device('cuda', 1))
@@ -53,6 +55,28 @@ class TestRagged(unittest.TestCase):
                          torch.tensor([0, 2, 3], device=device)))
 
             self.assertEqual([2, 3], ragged_int.tot_sizes())
+
+    def test_pickle_ragged(self):
+        for device in self.devices:
+            # test num_axes == 2
+            raggeds = ("[ ]", "[ [ ] ]", "[ [1 2] [3] ]")
+            for s in raggeds:
+                for cls in [k2.RaggedInt, k2.RaggedFloat]:
+                    ragged = cls(s).to(device)
+                    torch.save(ragged, "ragged.pt")
+                    ragged_reload = torch.load("ragged.pt")
+                    self.assertEqual(ragged, ragged_reload)
+                    os.remove("ragged.pt")
+
+            # test num_axes == 3
+            raggeds = ("[ [ [ ] ] ]", "[ [ [1 2] [3] ] [ [4 5] [6] ] ]")
+            for s in raggeds:
+                for cls in [k2.RaggedInt, k2.RaggedFloat]:
+                    ragged = cls(s).to(device)
+                    torch.save(ragged, "ragged.pt")
+                    ragged_reload = torch.load("ragged.pt")
+                    self.assertEqual(ragged, ragged_reload)
+                    os.remove("ragged.pt")
 
 
 if __name__ == '__main__':

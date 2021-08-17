@@ -159,24 +159,37 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   pyclass.def(py::pickle(
       [](const PyClass &obj) {
         DeviceGuard guard(obj.Context());
-        K2_CHECK_EQ(obj.NumAxes(), 2)
-            << "Only support Ragged with NumAxes() == 2 for now";
+        K2_CHECK(obj.NumAxes() == 2 || obj.NumAxes() == 3)
+            << "Only support Ragged with NumAxes() == 2 or 3 for now, given "
+            << obj.NumAxes();
         Array1<int32_t> row_splits1 = obj.RowSplits(1);
-        Array1<int32_t> row_ids1 = obj.RowIds(1);
         Array1<T> values = obj.values;
-        return py::make_tuple(ToTorch(row_splits1), ToTorch(row_ids1),
-                              ToTorch(values));
+        if (obj.NumAxes() == 2) {
+           return py::make_tuple(ToTorch(row_splits1), ToTorch(values));
+        } else {
+           Array1<int32_t> row_splits2 = obj.RowSplits(2);
+           return py::make_tuple(ToTorch(row_splits1), ToTorch(values),
+                                 ToTorch(row_splits2));
+        }
       },
       [](py::tuple t) {
-        K2_CHECK_EQ(t.size(), 3) << "Invalid state";
+        K2_CHECK_GE(t.size(), 2) << "Invalid state";
         torch::Tensor row_splits1_tensor = t[0].cast<torch::Tensor>();
         DeviceGuard guard(GetContext(row_splits1_tensor));
         Array1<int32_t> row_splits1 = FromTorch<int32_t>(row_splits1_tensor);
-        torch::Tensor row_ids1_tensor = t[1].cast<torch::Tensor>();
-        Array1<int32_t> row_ids1 = FromTorch<int32_t>(row_ids1_tensor);
-        torch::Tensor values_tensor = t[2].cast<torch::Tensor>();
+        torch::Tensor values_tensor = t[1].cast<torch::Tensor>();
         Array1<T> values = FromTorch<T>(values_tensor);
-        RaggedShape shape = RaggedShape2(&row_splits1, &row_ids1, -1);
+        RaggedShape shape;
+        if (t.size() == 2) {
+          shape = RaggedShape2(&row_splits1, nullptr, values.Dim());
+        } else if (t.size() == 3) {
+          torch::Tensor row_splits2_tensor = t[2].cast<torch::Tensor>();
+          Array1<int32_t> row_splits2 = FromTorch<int32_t>(row_splits2_tensor);
+          shape = RaggedShape3(&row_splits1, nullptr, -1,
+                               &row_splits2, nullptr, values.Dim());
+        } else {
+          K2_LOG(FATAL) << "Invalid size : " << t.size();
+        }
         PyClass obj(shape, values);
         return obj;
       }));
