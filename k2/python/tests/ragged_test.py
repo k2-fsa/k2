@@ -56,23 +56,24 @@ class TestRagged(unittest.TestCase):
             self.assertEqual([2, 3], ragged_int.tot_sizes())
 
     def test_pickle_ragged(self):
-        # test num_axes == 2
-        raggeds = ("[ ]", "[ [ ] ]", "[ [1 2] [3] ]")
-        for s in raggeds:
-            ragged_int = k2.RaggedInt(s)
-            torch.save(ragged_int, "ragged.pt")
-            ragged_reload = torch.load("ragged.pt")
-            self.assertEqual(ragged_int, ragged_reload)
-            os.remove("ragged.pt")
+        for device in self.devices:
+            # test num_axes == 2
+            raggeds = ("[ ]", "[ [ ] ]", "[ [1 2] [3] ]")
+            for s in raggeds:
+                ragged_int = k2.RaggedInt(s).to(device)
+                torch.save(ragged_int, "ragged.pt")
+                ragged_reload = torch.load("ragged.pt")
+                self.assertEqual(ragged_int, ragged_reload)
+                os.remove("ragged.pt")
 
-        # test num_axes == 3
-        raggeds = ("[ [ [ ] ] ]", "[ [ [1 2] [3] ] [ [4 5] [6] ] ]")
-        for s in raggeds:
-            ragged_int = k2.RaggedInt(s)
-            torch.save(ragged_int, "ragged.pt")
-            ragged_reload = torch.load("ragged.pt")
-            self.assertEqual(ragged_int, ragged_reload)
-            os.remove("ragged.pt")
+            # test num_axes == 3
+            raggeds = ("[ [ [ ] ] ]", "[ [ [1 2] [3] ] [ [4 5] [6] ] ]")
+            for s in raggeds:
+                ragged_int = k2.RaggedInt(s).to(device)
+                torch.save(ragged_int, "ragged.pt")
+                ragged_reload = torch.load("ragged.pt")
+                self.assertEqual(ragged_int, ragged_reload)
+                os.remove("ragged.pt")
 
 
 if __name__ == '__main__':
