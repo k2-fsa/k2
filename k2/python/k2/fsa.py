@@ -246,7 +246,7 @@ class Fsa(object):
         if scores_only is False:
             self.__dict__['_cache'] = dict()
         else:
-            pattern = re.compile('score')
+            pattern = re.compile(r'score|arc_cdf|arc_post')
             to_remove = []
 
             for key in self.__dict__['_cache']:
