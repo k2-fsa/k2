@@ -62,19 +62,8 @@ class TestRagged(unittest.TestCase):
             ragged_int = k2.RaggedInt(s)
             torch.save(ragged_int, "ragged.pt")
             ragged_reload = torch.load("ragged.pt")
+            self.assertEqual(ragged_int, ragged_reload)
             os.remove("ragged.pt")
-            assert torch.all(
-                torch.eq(ragged_int.row_splits(1),
-                         ragged_reload.row_splits(1))
-            )
-            assert torch.all(
-                torch.eq(ragged_int.row_ids(1),
-                         ragged_reload.row_ids(1))
-            )
-            assert torch.all(
-                torch.eq(ragged_int.values(),
-                         ragged_reload.values())
-            )
 
         # test num_axes == 3
         raggeds = ("[ [ [ ] ] ]", "[ [ [1 2] [3] ] [ [4 5] [6] ] ]")
@@ -82,27 +71,8 @@ class TestRagged(unittest.TestCase):
             ragged_int = k2.RaggedInt(s)
             torch.save(ragged_int, "ragged.pt")
             ragged_reload = torch.load("ragged.pt")
+            self.assertEqual(ragged_int, ragged_reload)
             os.remove("ragged.pt")
-            assert torch.all(
-                torch.eq(ragged_int.row_splits(1),
-                         ragged_reload.row_splits(1))
-            )
-            assert torch.all(
-                torch.eq(ragged_int.row_ids(1),
-                         ragged_reload.row_ids(1))
-            )
-            assert torch.all(
-                torch.eq(ragged_int.row_splits(2),
-                         ragged_reload.row_splits(2))
-            )
-            assert torch.all(
-                torch.eq(ragged_int.row_ids(2),
-                         ragged_reload.row_ids(2))
-            )
-            assert torch.all(
-                torch.eq(ragged_int.values(),
-                         ragged_reload.values())
-            )
 
 
 if __name__ == '__main__':
