@@ -355,7 +355,12 @@ class RaggedAxis0Splitter : public RaggedShapeAxis0Splitter {
 
 /*
   Return a sub-range of `src` containing indexes `begin` through `end - 1`
-  along axis `axis` of src.
+  along axis `axis` of src.  The `axis` argument may be confusing;
+  its behavior is equivalent to:
+
+   for (int i = 0; i < axis; i++) src = src.RemoveAxis(0)
+   return Arange(src, 0, begin, end, value_range)
+
       @param [in] src   Source RaggedShape. Must have src.NumAxes() >= 2.
       @param [in] axis  The axis we'll get ans, must have
                         0 <= axis < src.NumAxes() - 1.
