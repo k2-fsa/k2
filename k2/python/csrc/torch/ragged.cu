@@ -186,7 +186,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
           torch::Tensor row_splits2_tensor = t[2].cast<torch::Tensor>();
           Array1<int32_t> row_splits2 = FromTorch<int32_t>(row_splits2_tensor);
           shape = RaggedShape3(&row_splits1, nullptr, -1,
-                               &row_splits2, nullptr, -1);
+                               &row_splits2, nullptr, values.Dim());
         } else {
           K2_LOG(FATAL) << "Invalid size : " << t.size();
         }
