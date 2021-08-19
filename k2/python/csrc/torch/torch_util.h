@@ -214,35 +214,39 @@ torch::Tensor ToTorch(Tensor &tensor);
 
    @return  Return an object on the given `device`.
  */
-template <typename PyClass>
-PyClass To(PyClass &pyclass, py::object device) {
-  std::string device_type = static_cast<py::str>(device.attr("type"));
-  K2_CHECK(device_type == "cpu" || device_type == "cuda")
-      << "Unsupported device type: " << device_type;
 
+template <typename PyClass>
+PyClass To(PyClass &pyclass, py::object device_obj) {
+  auto device = torch::Device(static_cast<py::str>(device_obj));
   ContextPtr &context = pyclass.Context();
-  if (device_type == "cpu") {
+  if (device.type() == torch::kCPU) {
     // CPU to CPU
     if (context->GetDeviceType() == kCpu) return pyclass;
-
     // CUDA to CPU
     DeviceGuard guard(context);
     return pyclass.To(GetCpuContext());
+  } else if (device.type() == torch::kCUDA) {
+    if (context->GetDeviceType() == kCuda &&
+        context->GetDeviceId() == device.index())
+      // CUDA to CUDA
+      return pyclass;
+    // CPU to CUDA
+    DeviceGuard guard(device.index());
+    return pyclass.To(GetCudaContext(device.index()));
+  } else {
+    K2_LOG(FATAL) << "Unsupported device type : " << device_obj;
+    return pyclass;   // unreachable code
   }
-
-  auto index_attr = static_cast<py::object>(device.attr("index"));
-  int32_t device_index = 0;
-  if (!index_attr.is_none()) device_index = static_cast<py::int_>(index_attr);
-
-  if (context->GetDeviceType() == kCuda &&
-      context->GetDeviceId() == device_index)
-    // CUDA to CUDA
-    return pyclass;
-
-  // CPU to CUDA
-  DeviceGuard guard(device_index);
-  return pyclass.To(GetCudaContext(device_index));
 }
+
+/* Create a k2 context from a py::object.
+
+   @param [in] device  A py::object contains the device information.
+
+   @return Return either a CpuContext or a CudaContext
+           depending on the given device.
+ */
+ContextPtr GetContext(py::object devices);
 
 /* Create a k2 context from a torch tensor.
 

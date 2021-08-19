@@ -33,6 +33,7 @@
 #include "torch/extension.h"
 
 namespace k2 {
+
 template <typename T>
 static void PybindRaggedTpl(py::module &m, const char *name) {
   using PyClass = Ragged<T>;
@@ -49,6 +50,15 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
                 return std::make_unique<PyClass>(shape, FromTorch<T>(values));
               }),
               py::arg("shape"), py::arg("values"));
+
+  pyclass.def(py::init([](const std::vector<std::vector<T>> lists,
+                          py::object device = py::str("cpu"))
+    -> std::unique_ptr<PyClass> {
+                ContextPtr context = GetContext(device);
+                return std::make_unique<PyClass>(context, lists);
+              }),
+              py::arg("lists"), py::arg("device") = py::str("cpu"));
+
   pyclass.def(
       "to",
       [](const PyClass &self, py::object device) -> PyClass {
@@ -155,6 +165,12 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
     for (int32_t i = 0; i != num_axes; ++i) ans[i] = self.TotSize(i);
     return ans;
   });
+
+  pyclass.def("arange", [](PyClass &self, int32_t axis,
+                           int32_t begin, int32_t end) -> PyClass {
+    DeviceGuard guard(self.Context());
+    return Arange(self, axis, begin, end);
+  }, py::arg("axis"), py::arg("begin"), py::arg("end"));
 
   pyclass.def(py::pickle(
       [](const PyClass &obj) {

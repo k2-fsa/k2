@@ -155,6 +155,18 @@ torch::Tensor ToTorch(Tensor &tensor) {
       [saved_region = tensor.GetRegion()](void *) {}, options);
 }
 
+ContextPtr GetContext(py::object device_obj) {
+  auto device = torch::Device(static_cast<py::str>(device_obj));
+  if (device.type() == torch::kCPU) {
+    return GetCpuContext();
+  } else if (device.type() == torch::kCUDA) {
+    return GetCudaContext(device.index());
+  } else {
+    K2_LOG(FATAL) << "Unsupported devices.";
+    return GetCpuContext();   // unreachable code
+  }
+}
+
 ContextPtr GetContext(torch::Tensor tensor) {
   if (tensor.device().type() == torch::kCPU) return GetCpuContext();
 
