@@ -42,7 +42,7 @@ message(STATUS "Enabled languages: ${languages}")
 
 project(k2 ${languages})
 
-set(K2_VERSION "1.3")
+set(K2_VERSION "1.4")
 
 # ----------------- Supported build types for K2 project -----------------
 set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
@@ -204,6 +204,7 @@ if(K2_WITH_CUDA)
   message(WARNING "arch 62/72 are not supported for now")
 
   set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
+  set(K2_COMPUTE_ARCH_CANDIDATES 70)
   set(K2_COMPUTE_ARCHS)
 
   foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
