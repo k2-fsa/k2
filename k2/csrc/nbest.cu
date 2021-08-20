@@ -184,7 +184,7 @@ void CreateLcpArray(const T *array,
   Array1<T> plcp(GetCpuContext(), seq_len);
   T *plcp_data = plcp.Data();
 
-  Array1<T> phi(GetCpuContext(), seq_len); // the Phi array
+  Array1<T> phi(GetCpuContext(), seq_len);  // the Phi array
   T *phi_data = phi.Data();
   phi_data[suffix_array[0]] = -1;
   for (T i = 1; i < seq_len; i++)
