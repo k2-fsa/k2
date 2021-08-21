@@ -20,3 +20,4 @@ from .ragged_shape import compose_ragged_shapes
 from .ragged_shape import create_ragged_shape2
 from .ragged_shape import random_ragged_shape
 from .tensor import RaggedFloat
+from .tensor import RaggedInt

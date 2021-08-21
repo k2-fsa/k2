@@ -427,6 +427,7 @@ void PybindRaggedOps(py::module &m) {
   PybindRaggedArange<int32_t>(m, "ragged_int_arange");
   PybindRaggedIntToList(m, "ragged_int_to_list");
   PybindRaggedRemoveAxis<int32_t>(m);
+  PybindRaggedRemoveAxis<float>(m);
   PybindRegularRaggedShape(m);
   PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
   PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
