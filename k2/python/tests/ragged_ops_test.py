@@ -339,8 +339,8 @@ class TestRaggedOps(unittest.TestCase):
         for device in self.devices:
             ragged = _k2.RaggedInt("[[1 2 3] [4 5] [6]]").to(device)
             ragged_sum = k2.ragged.sum_per_sublist(ragged)
-            ragged_refs = torch.tensor([6, 9, 6],
-                dtype=torch.int32, device=device)
+            ragged_refs = torch.tensor(
+                [6, 9, 6], dtype=torch.int32, device=device)
             assert torch.all(torch.eq(ragged_sum, ragged_refs))
 
     def test_cat(self):
