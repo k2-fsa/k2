@@ -120,6 +120,23 @@ class TestRaggedShape(unittest.TestCase):
             prod2 = k2.RaggedInt(abshape2, b.values())
             self.assertEqual(str(prod), str(prod2))
 
+    def test_to_device(self):
+        cpu = torch.device('cpu')
+        for device in self.devices:
+            src = k2.RaggedShape('[[x x] [x]]').to(cpu)
+            dst = src.to(device)
+            assert dst.device() == device
+            assert str(src) == str(dst)
+            if device == cpu:
+                src.row_splits(1)[0] = 10
+                assert dst.row_splits(1)[0] == 10
+
+                dst.row_splits(1)[0] = 0
+                assert src.row_splits(1)[0] == 0
+
+            dst2 = dst.to(cpu)
+            assert dst2 == src
+
 
 if __name__ == '__main__':
     unittest.main()

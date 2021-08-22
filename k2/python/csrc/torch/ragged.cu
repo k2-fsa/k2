@@ -80,7 +80,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
 
     PyObject *ptr = THPDevice_New(device);
 
-    // ans takes the ownership of the returned result of "ptr"
+    // ans takes the ownership of "ptr"
     py::handle ans(ptr);
     return ans;
   });
@@ -329,6 +329,26 @@ static void PybindRaggedShape(py::module &m) {
         return To<PyClass, PyClass>(self, device);
       },
       py::arg("device"));
+
+  pyclass.def("device", [](const PyClass &self) -> py::handle {
+    // Return an instance of torch.device
+    torch::Device device("cpu");
+
+    ContextPtr c = self.Context();
+    if (c->GetDeviceType() == kCpu) {
+      device = torch::Device("cpu");
+    } else {
+      K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+
+      device = torch::Device(torch::kCUDA, c->GetDeviceId());
+    }
+
+    PyObject *ptr = THPDevice_New(device);
+
+    // ans takes the ownership of "ptr"
+    py::handle ans(ptr);
+    return ans;
+  });
 
   pyclass.def(
       "row_ids",
