@@ -335,6 +335,14 @@ class TestRaggedOps(unittest.TestCase):
             # the final state has no leaving arcs
             assert normalized_scores[-1].item() == 0
 
+    def test_sum_per_sublist_int(self):
+        for device in self.devices:
+            ragged = _k2.RaggedInt("[[1 2 3] [4 5] [6]]").to(device)
+            ragged_sum = k2.ragged.sum_per_sublist(ragged)
+            ragged_refs = torch.tensor([6, 9, 6],
+                dtype=torch.int32, device=device)
+            assert torch.all(torch.eq(ragged_sum, ragged_refs))
+
     def test_cat(self):
         for device in self.devices:
             ragged1 = k2.RaggedInt('[ [1 2 3] [] [4 5] ]').to(device)

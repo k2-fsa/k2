@@ -422,6 +422,7 @@ void PybindRaggedOps(py::module &m) {
   PybindNormalizePerSublist<float>(m, "normalize_per_sublist");
   PybindNormalizePerSublistBackward<float>(m, "normalize_per_sublist_backward");
   PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
+  PybindOpPerSublist<int32_t>(m, SumPerSublist<int32_t>, "sum_per_sublist");
   PybindPadRaggedToTensor<int32_t>(m);
   PybindPadRaggedToTensor<float>(m);
   PybindRaggedArange<int32_t>(m, "ragged_int_arange");
