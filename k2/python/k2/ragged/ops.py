@@ -175,7 +175,7 @@ def pad(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
     return _k2.pad_ragged(src, mode, value)
 
 
-def sum_per_sublist(src: _k2.RaggedFloat,
+def sum_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
                     initial_value: float = 0) -> torch.Tensor:
     '''Return the sum of each sublist.
 
@@ -191,9 +191,11 @@ def sum_per_sublist(src: _k2.RaggedFloat,
 
     Args:
       src:
-        A ragged float tensor. Note that the sum is performed on the last axis.
+        A ragged float or int32 tensor.
+        Note that the sum is performed on the last axis.
     Returns:
-      Return a 1-D torch.Tensor with dtype torch.float32. Its `numel` equals to
+      Return a 1-D torch.Tensor with dtype torch.float32 if the input is
+      `_k2.RaggedFloat`, otherwise torch.int32. Its `numel` equals to
       `src.tot_size(src.num_axes() - 2)`.
     '''
     return _k2.sum_per_sublist(src, initial_value)
