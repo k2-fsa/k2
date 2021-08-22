@@ -1,7 +1,8 @@
 import torch  # noqa
 from _k2 import DeterminizeWeightPushingType
-from _k2 import RaggedFloat  # TODO(fangjun): move it to k2.ragged
-from _k2 import RaggedInt  # TODO(fangjun): move it to k2.ragged
+# Put RaggedInt RaggedFloat in the top to avoid circular import
+from .ragged import RaggedFloat
+from .ragged import RaggedInt
 from _k2 import simple_ragged_index_select
 
 from . import autograd

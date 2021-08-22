@@ -25,7 +25,8 @@ class Ragged(object):
     It is a wrapper of :class:`_k2.RaggedFloat` and :class:`_k2.RaggedInt`
     '''
 
-    def __init__(self, ragged: Union[_k2.RaggedInt, _k2.RaggedFloat]):
+    def __init__(self, ragged: Union[_k2.RaggedInt, _k2.RaggedFloat],
+                       requires_grad: bool = False):
         '''Construct an instance of :class:`k2.Ragged` from _k2.RaggedInt or
         _k2.RaggedFloat.
 
@@ -37,16 +38,78 @@ class Ragged(object):
         assert isinstance(ragged, _k2.RaggedFloat) or\
                isinstance(ragged, _k2.RaggedInt)
 
+        if requires_grad:
+            assert isinstance(ragged, _k2.RaggedFloat)
+
         self.ragged = ragged
+        self._values = ragged.values()
+        self.requires_grad_(requires_grad)
 
     def __str__(self) -> str:
         return str(self.ragged)
 
-    @property
-    def values(self) -> torch.Tensor:
-        '''Return the underlying array as a 1-D torch.Tensor.
+    def __eq__(self, other: 'Ragged') -> bool:
+        return self.ragged == other.ragged
+
+    def __ne__(self, other: 'Ragged') -> bool:
+        return self.ragged != other.ragged
+
+    def __getstate__(self):
+        '''Custom the behavior of pickling.
+
+        This function will be called when pickling this instance, and the
+        returned object is pickled as the contents for the instance, we only
+        pickle out `self.ragged` for efficiency.
         '''
-        return self.ragged.values()
+        return self.ragged
+
+    def __setstate__(self, state):
+        '''Restore this instance from pickled state.
+        '''
+        self.ragged = state
+        self._values = self.ragged.values()
+
+    @property
+    def grad(self) -> torch.Tensor:
+        '''This attribute is None by default and becomes a Tensor the first
+        time a call to backward() computes gradients for this tensor.
+        The attribute will then contain the gradients computed and future calls
+        to backward() will accumulate (add) gradients into it.
+        '''
+        return self._values.grad
+
+    @property
+    def requires_grad(self) -> bool:
+        '''
+        Return True if this object requires grad.
+        Return False otherwise.
+        '''
+        return self._values.requires_grad
+
+    def requires_grad_(self, requires_grad: bool) -> 'RaggedFloat':
+        '''Change if autograd should record operations on this tensor.
+
+        Sets the `values`'s requires_grad attribute in-place.
+        Returns this object.
+        You can test whether this object has the requires_grad property
+        true or false by accessing self.requires_grad property.
+
+        Caution:
+          This is an **in-place** operation as you can see that the function
+          name ends with `_`.
+
+        Args:
+          requires_grad:
+            If autograd should record operations on this object or not.
+
+        Returns:
+          This object itself.
+        '''
+        self._values.requires_grad_(requires_grad)
+        return self
+
+    def clone(self) -> 'Ragged':
+        return Ragged(self.ragged.clone())
 
     def to(self, device: Union[torch.device, str]) -> 'Ragged':
         '''Move the RaggedFloat onto a given device.
@@ -65,10 +128,15 @@ class Ragged(object):
             device = torch.device(device)
 
         assert device.type in ('cpu', 'cuda')
-        if device == self.values.device:
+        if device == self.values().device:
             return self
 
         return Ragged(self.ragged.to(device))
+
+    def values(self) -> torch.Tensor:
+        '''Return the underlying array as a 1-D torch.Tensor.
+        '''
+        return self._values
 
     @property
     def is_cpu(self) -> bool:
@@ -110,6 +178,7 @@ class Ragged(object):
         return self.ragged.row_ids(axis)
 
     def row_splits(self, axis: int) -> torch.Tensor:
+        '''Return the row_splits of given axis.'''
         return self.ragged.row_splits(axis)
 
     def arange(self, axis: int, begin: int, end: int) -> 'Ragged': 
@@ -144,7 +213,8 @@ class RaggedFloat(Ragged):
     def __init__(self,
                  ragged: Union[str, List[List[float]],
                                _k2.RaggedFloat, _k2.RaggedShape],
-                 values: Optional[torch.Tensor] = None):
+                 values: Optional[torch.Tensor] = None,
+                 requires_grad: bool = False):
         '''Construct an instance of :class:`k2.RaggedFloat`.
 
         Args:
@@ -182,39 +252,7 @@ class RaggedFloat(Ragged):
         else:
             self._values = ragged.values()
 
-    @property
-    def grad(self) -> torch.Tensor:
-        return self._values.grad
-
-    @property
-    def requires_grad(self) -> bool:
-        '''
-        Return True if this object requires grad.
-        Return False otherwise.
-        '''
-        return self._values.requires_grad
-
-    def requires_grad_(self, requires_grad: bool) -> 'RaggedFloat':
-        '''Change if autograd should record operations on this tensor.
-
-        Sets the `values`'s requires_grad attribute in-place.
-        Returns this object.
-        You can test whether this object has the requires_grad property
-        true or false by accessing self.requires_grad property.
-
-        Caution:
-          This is an **in-place** operation as you can see that the function
-          name ends with `_`.
-
-        Args:
-          requires_grad:
-            If autograd should record operations on this object or not.
-
-        Returns:
-          This object itself.
-        '''
-        self._values.requires_grad_(requires_grad)
-        return self
+        self.requires_grad_(requires_grad)
 
 
 class RaggedInt(Ragged):
@@ -254,4 +292,8 @@ class RaggedInt(Ragged):
         assert isinstance(ragged, _k2.RaggedInt)
 
         self.ragged = ragged
+        if values is not None:
+            self._values = values
+        else:
+            self._values = ragged.values()
 

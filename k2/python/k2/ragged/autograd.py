@@ -77,7 +77,7 @@ class _NormalizeScores(torch.autograd.Function):
         out[0] = RaggedFloat(ans_ragged)
         ctx.out_ragged = out[0].ragged  # save for backward
         ctx.use_log = use_log
-        return out[0].values
+        return out[0].values()
 
     @staticmethod
     def backward(ctx,
@@ -140,6 +140,6 @@ def normalize_scores(src: RaggedFloat, use_log: bool) -> RaggedFloat:
 
     # the return value is discarded for the following call
     # as it equals to out[0].values
-    _NormalizeScores.apply(src, use_log, out, src.values)
+    _NormalizeScores.apply(src, use_log, out, src.values())
 
     return out[0]

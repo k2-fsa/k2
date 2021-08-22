@@ -30,6 +30,7 @@ from typing import Union
 
 import torch
 import _k2
+from .tensor import Ragged, RaggedInt, RaggedFloat
 
 
 def index(
@@ -75,7 +76,7 @@ def index(
     return ans, value_indexes
 
 
-def remove_values_leq(src: _k2.RaggedInt, cutoff: int) -> _k2.RaggedInt:
+def remove_values_leq(src: RaggedInt, cutoff: int) -> RaggedInt:
     '''Remove values less than or equal to `cutoff` from a ragged tensor.
 
     Args:
@@ -87,10 +88,10 @@ def remove_values_leq(src: _k2.RaggedInt, cutoff: int) -> _k2.RaggedInt:
     Returns:
       A new ragged tensor whose elements are all **greater than** `cutoff`.
     '''
-    return _k2.ragged_int_remove_values_leq(src, cutoff)
+    return RaggedInt(_k2.ragged_int_remove_values_leq(src.ragged, cutoff))
 
 
-def remove_values_eq(src: _k2.RaggedInt, target: int) -> _k2.RaggedInt:
+def remove_values_eq(src: RaggedInt, target: int) -> RaggedInt:
     '''Remove values equal to `target` from a ragged tensor.
 
     Args:
@@ -102,11 +103,11 @@ def remove_values_eq(src: _k2.RaggedInt, target: int) -> _k2.RaggedInt:
     Returns:
       A new ragged tensor whose elements do **not equal to** `target`.
     '''
-    return _k2.ragged_int_remove_values_eq(src, target)
+    return RaggedInt(_k2.ragged_int_remove_values_eq(src.ragged, target))
 
 
-def remove_axis(src: Union[_k2.RaggedInt, _k2.RaggedShape],
-                axis: int) -> _k2.RaggedInt:
+def remove_axis(src: Union[RaggedInt, _k2.RaggedShape],
+                axis: int) -> RaggedInt:
     '''Remove an axis from a ragged tensor.
 
     Args:
@@ -123,10 +124,13 @@ def remove_axis(src: Union[_k2.RaggedInt, _k2.RaggedShape],
        The vector of `ans.tot_sizes()` will be the same as `src.tot_sizes()`,
        but with element `axis` removed.
     '''
-    return _k2.remove_axis(src, axis)
+    if isinstance(src, _k2.RaggedShape):
+        return _k2.remove_axis(src, axis)
+    else:
+        return RaggedInt(_k2.remove_axis(src.ragged, axis))
 
 
-def to_list(src: _k2.RaggedInt) -> List:
+def to_list(src: RaggedInt) -> List:
     '''Turn a ragged tensor of ints into a List of Lists [of Lists..] of ints.
 
     Args:
@@ -136,10 +140,10 @@ def to_list(src: _k2.RaggedInt) -> List:
        A list of list of ints containing the same elements and structure
        as `src`.
     '''
-    return _k2.ragged_int_to_list(src)
+    return _k2.ragged_int_to_list(src.ragged)
 
 
-def pad(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
+def pad(src: Union[RaggedInt, RaggedFloat],
         mode: Literal['constant', 'replicate'] = 'constant',
         value: Union[int, float] = 0) -> torch.Tensor:
     '''Pad a ragged tensor to a torch tensor.
@@ -172,10 +176,10 @@ def pad(src: Union[_k2.RaggedInt, _k2.RaggedFloat],
       tensor. The tensor returned is on the same device as `src`.
     '''
     assert mode in ['constant', 'replicate'], f'mode: {mode}'
-    return _k2.pad_ragged(src, mode, value)
+    return _k2.pad_ragged(src.ragged, mode, value)
 
 
-def sum_per_sublist(src: _k2.RaggedFloat,
+def sum_per_sublist(src: RaggedFloat,
                     initial_value: float = 0) -> torch.Tensor:
     '''Return the sum of each sublist.
 
@@ -196,10 +200,10 @@ def sum_per_sublist(src: _k2.RaggedFloat,
       Return a 1-D torch.Tensor with dtype torch.float32. Its `numel` equals to
       `src.tot_size(src.num_axes() - 2)`.
     '''
-    return _k2.sum_per_sublist(src, initial_value)
+    return _k2.sum_per_sublist(src.ragged, initial_value)
 
 
-def cat(srcs: List[_k2.RaggedInt], axis=0) -> _k2.RaggedInt:
+def cat(srcs: List[_k2.RaggedInt], axis=0) -> RaggedInt:
     '''Concatenate a list of :class:`_k2.RaggedInt` along a given axis.
 
     Args:
@@ -211,11 +215,12 @@ def cat(srcs: List[_k2.RaggedInt], axis=0) -> _k2.RaggedInt:
       A single ragged tensor.
     '''
     assert axis in (0, 1)
-    return _k2.cat(srcs, axis)
+    srcs_ragged = [x.ragged for x in srcs]
+    return RaggedInt(_k2.cat(srcs_ragged, axis))
 
 
 def create_ragged2(vecs: Union[List[List[int]], List[List[float]]]
-                  ) -> Union[_k2.RaggedInt, _k2.RaggedFloat]:  # noqa
+                  ) -> Union[RaggedInt, RaggedFloat]:  # noqa
     '''
     Construct a Ragged with 2 axes.
     Args:
@@ -224,7 +229,7 @@ def create_ragged2(vecs: Union[List[List[int]], List[List[float]]]
     Returns:
       A single ragged array.
     '''
-    return _k2.create_ragged2(vecs)
+    return Ragged(_k2.create_ragged2(vecs))
 
 
 def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
@@ -244,10 +249,10 @@ def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
 
 
 def unique_sequences(
-        src: _k2.RaggedInt,
+        src: RaggedInt,
         need_num_repeats: bool = True,
         need_new2old_indexes: bool = False) -> \
-                Tuple[_k2.RaggedInt, Optional[_k2.RaggedInt], Optional[torch.Tensor]]:  # noqa
+                Tuple[RaggedInt, Optional[RaggedInt], Optional[torch.Tensor]]:  # noqa
     '''Remove repeated sequences.
 
     If `src` has two axes, this will return the unique sub-lists (in a possibly
@@ -300,9 +305,13 @@ def unique_sequences(
        - new2old_indexes: A 1-D tensor whose i-th element specifies the
          input sublist that the i-th output sublist corresponds to.
     '''
-    return _k2.unique_sequences(src,
+    res = _k2.unique_sequences(src.ragged,
                                 need_num_repeats=need_num_repeats,
                                 need_new2old_indexes=need_new2old_indexes)
+    if need_new2old_indexes:
+        return RaggedInt(res[0]), RaggedInt(res[1]), res[2]
+    else:
+        return RaggedInt(res[0]), RaggedInt(res[1])
 
 
 def regular_ragged_shape(dim0: int, dim1: int) -> _k2.RaggedShape:
@@ -325,7 +334,7 @@ def regular_ragged_shape(dim0: int, dim1: int) -> _k2.RaggedShape:
     return _k2.regular_ragged_shape(dim0, dim1)
 
 
-def argmax_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
+def argmax_per_sublist(src: Union[RaggedFloat, RaggedInt],
                        initial_value: float = torch.finfo(torch.float32).min
                       ) -> torch.Tensor:  # noqa
     '''Compute the argmax per sublist for a ragged tensor.
@@ -340,10 +349,10 @@ def argmax_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
     Returns:
       Return a 1-D tensor with dtype torch.int32.
     '''
-    return _k2.argmax_per_sublist(src, initial_value)
+    return _k2.argmax_per_sublist(src.ragged, initial_value)
 
 
-def max_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
+def max_per_sublist(src: Union[RaggedFloat, RaggedInt],
                     initial_value: float = torch.finfo(torch.float32).min
                    ) -> torch.Tensor:  # noqa
     '''Compute the max per sublist for a ragged tensor (including
@@ -361,10 +370,10 @@ def max_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
     Returns:
       Return a 1-D tensor with dtype torch.int32.
     '''
-    return _k2.max_per_sublist(src, initial_value)
+    return _k2.max_per_sublist(src.ragged, initial_value)
 
 
-def sort_sublist(in_out: Union[_k2.RaggedFloat, _k2.RaggedInt],
+def sort_sublist(in_out: Union[RaggedFloat, RaggedInt],
                  descending: bool = False,
                  need_new2old_indexes: bool = False) -> Optional[torch.Tensor]:
     '''Sort a ragged tensor **in-place**.
@@ -383,6 +392,6 @@ def sort_sublist(in_out: Union[_k2.RaggedFloat, _k2.RaggedInt],
       If `need_new2old_indexes` is False, returns None. Otherwise, returns
       a 1-D tensor of dtype torch.int32.
     '''
-    return _k2.sort_sublists(in_out=in_out,
+    return _k2.sort_sublists(in_out=in_out.ragged,
                              descending=descending,
                              need_new2old_indexes=need_new2old_indexes)

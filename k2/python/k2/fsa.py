@@ -1394,7 +1394,7 @@ class Fsa(object):
 
         # Note we use `to` here since `scores` and `self.scores` may not
         # be on the same device.
-        self.scores = ragged_scores.values.to(self.scores.device)
+        self.scores = ragged_scores.values().to(self.scores.device)
 
     def convert_attr_to_ragged_(self, name: str,
                                 remove_eps: bool = True) -> 'Fsa':
