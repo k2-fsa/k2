@@ -465,6 +465,20 @@ struct Ragged {
     return Ragged<T>(new_shape, new_values);
   }
 
+#define ToType(type, name)                                  \
+  Ragged<type> To##name() const {                           \
+    if (std::is_same<type, T>::value)                       \
+      return *reinterpret_cast<const Ragged<type> *>(this); \
+    Array1<type> new_values = values.To##name();            \
+    return Ragged<type>(shape, new_values);                 \
+  }
+ToType(float, Float)
+ToType(double, Double)
+ToType(int32_t, Int)
+ToType(int64_t, Long)
+
+#undef ToType
+
   // There is no need to clone the shape because it's a kind of convention that
   // Array1's that are the row_ids or row_splits of a Ragged object are not
   // mutable so they can be re-used.

@@ -405,8 +405,8 @@ static void PybindDenseFsaVec(py::module &m) {
 
   pyclass.def(
       "to",
-      [](const PyClass &self, py::object device) -> PyClass {
-        return To(self, device);
+      [](PyClass &self, py::object device) -> py::object {
+        return To<PyClass, PyClass>(self, device);
       },
       py::arg("device"));
 }

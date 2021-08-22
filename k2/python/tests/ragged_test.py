@@ -78,6 +78,57 @@ class TestRagged(unittest.TestCase):
                     self.assertEqual(ragged, ragged_reload)
                     os.remove("ragged.pt")
 
+    def test_to_same_device(self):
+        for Type in [k2.RaggedInt, k2.RaggedFloat]:
+            for device in self.devices:
+                src = Type('[[1 2] [3]]').to(device)
+                dst = src.to(device)
+
+                assert src.device() == dst.device() == device
+                assert src == dst
+
+                src.values()[0] = 10
+
+                # dst shares the underlying memory with src
+                # since src was already on the given device
+                assert src == dst
+
+    def test_cpu_to_cuda(self):
+        if not (torch.cuda.is_available() and k2.with_cuda):
+            return
+
+        cpu = torch.device('cpu')
+        cuda_devices = [torch.device('cuda', 0)]
+        torch.cuda.set_device(0)
+        if torch.cuda.device_count() > 1:
+            torch.cuda.set_device(1)
+            cuda_devices.append(torch.device('cuda', 1))
+
+        for Type in [k2.RaggedInt, k2.RaggedFloat]:
+            src = Type('[[1 2] [3]]')
+            for device in cuda_devices:
+                dst = src.to(device)
+                assert dst.device() == device
+                assert str(src) == str(dst)
+
+                src.values()[0] = 10
+                assert str(src) != str(dst)
+
+    def test_cuda_to_cpu(self):
+        pass
+
+    def test_cuda_to_cuda(self):
+        pass
+
+    def test_to_same_type(self):
+        pass
+
+    def test_int_to_float(self):
+        pass
+
+    def test_float_to_int(self):
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -51,12 +51,39 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
               py::arg("shape"), py::arg("values"));
   pyclass.def(
       "to",
-      [](const PyClass &self, py::object device) -> PyClass {
+      [](PyClass &self, py::object obj) -> py::object {
         DeviceGuard guard(self.Context());
-        return To(self, device);
+        return To<PyClass, T>(self, obj);
       },
-      py::arg("device"));
+      py::arg("obj"),
+      R"(Move the current object to a new device or convert it to a new type
+      Args:
+        obj:
+          It can be either an instance of torch.device or torch.dtype.
+      Returns:
+        If the current object has the desired device or dtype, itself
+        is returned; otherwise, a new object is created and returned.
+      )");
 
+  pyclass.def("device", [](const PyClass &self) -> py::handle {
+    // Return an instance of torch.device
+    torch::Device device("cpu");
+
+    ContextPtr c = self.Context();
+    if (c->GetDeviceType() == kCpu) {
+      device = torch::Device("cpu");
+    } else {
+      K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+
+      device = torch::Device(torch::kCUDA, c->GetDeviceId());
+    }
+
+    PyObject *ptr = THPDevice_New(device);
+
+    // ans takes the ownership of the returned result of "ptr"
+    py::handle ans(ptr);
+    return ans;
+  });
   pyclass.def("cpu", [](const PyClass &self) -> PyClass {
     DeviceGuard guard(self.Context());
     return self.To(GetCpuContext());
@@ -131,15 +158,21 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       },
       py::arg("axis"), py::arg("i"));
 
-  pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
-    DeviceGuard guard(self.Context());
-    return Equal(self, other);
-    }, py::arg("other"));
+  pyclass.def(
+      "__eq__",
+      [](const PyClass &self, const PyClass &other) -> bool {
+        DeviceGuard guard(self.Context());
+        return Equal(self, other);
+      },
+      py::arg("other"));
 
-  pyclass.def("__ne__", [](const PyClass &self, const PyClass &other) -> bool {
-    DeviceGuard guard(self.Context());
-    return !Equal(self, other);
-    }, py::arg("other"));
+  pyclass.def(
+      "__ne__",
+      [](const PyClass &self, const PyClass &other) -> bool {
+        DeviceGuard guard(self.Context());
+        return !Equal(self, other);
+      },
+      py::arg("other"));
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
     DeviceGuard guard(self.Context());
@@ -165,11 +198,11 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         Array1<int32_t> row_splits1 = obj.RowSplits(1);
         Array1<T> values = obj.values;
         if (obj.NumAxes() == 2) {
-           return py::make_tuple(ToTorch(row_splits1), ToTorch(values));
+          return py::make_tuple(ToTorch(row_splits1), ToTorch(values));
         } else {
-           Array1<int32_t> row_splits2 = obj.RowSplits(2);
-           return py::make_tuple(ToTorch(row_splits1), ToTorch(values),
-                                 ToTorch(row_splits2));
+          Array1<int32_t> row_splits2 = obj.RowSplits(2);
+          return py::make_tuple(ToTorch(row_splits1), ToTorch(values),
+                                ToTorch(row_splits2));
         }
       },
       [](py::tuple t) {
@@ -185,8 +218,8 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         } else if (t.size() == 3) {
           torch::Tensor row_splits2_tensor = t[2].cast<torch::Tensor>();
           Array1<int32_t> row_splits2 = FromTorch<int32_t>(row_splits2_tensor);
-          shape = RaggedShape3(&row_splits1, nullptr, -1,
-                               &row_splits2, nullptr, values.Dim());
+          shape = RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr,
+                               values.Dim());
         } else {
           K2_LOG(FATAL) << "Invalid size : " << t.size();
         }
@@ -291,9 +324,9 @@ static void PybindRaggedShape(py::module &m) {
 
   pyclass.def(
       "to",
-      [](const PyClass &self, py::object device) -> PyClass {
+      [](PyClass &self, py::object device) -> py::object {
         DeviceGuard guard(self.Context());
-        return To(self, device);
+        return To<PyClass, PyClass>(self, device);
       },
       py::arg("device"));
 
@@ -323,15 +356,21 @@ static void PybindRaggedShape(py::module &m) {
     return ans;
   });
 
-  pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
-    DeviceGuard guard(self.Context());
-    return Equal(self, other);
-    }, py::arg("other"));
+  pyclass.def(
+      "__eq__",
+      [](const PyClass &self, const PyClass &other) -> bool {
+        DeviceGuard guard(self.Context());
+        return Equal(self, other);
+      },
+      py::arg("other"));
 
-  pyclass.def("__ne__", [](const PyClass &self, const PyClass &other) -> bool {
-    DeviceGuard guard(self.Context());
-    return !Equal(self, other);
-  }, py::arg("other"));
+  pyclass.def(
+      "__ne__",
+      [](const PyClass &self, const PyClass &other) -> bool {
+        DeviceGuard guard(self.Context());
+        return !Equal(self, other);
+      },
+      py::arg("other"));
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
     DeviceGuard guard(self.Context());

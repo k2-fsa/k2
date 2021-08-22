@@ -237,8 +237,32 @@ class Array1 {
     return ans;
   }
 
-  // Copy from another array of the same dimension and type.
-  void CopyFrom(const Array1<T> &src);
+#define ToType(type, name)                                    \
+  Array1<type> To##name() const {                             \
+    if (std::is_same<type, T>::value)                         \
+      return *reinterpret_cast<const Array1<type> *>(this);   \
+                                                              \
+    Array1<type> ans(Context(), Dim(), DtypeOf<type>::dtype); \
+    if (Dim() == 0) return ans;                               \
+                                                              \
+    type *ans_data = ans.Data();                              \
+    const T *src_data = this->Data();                         \
+    int32_t dim = Dim();                                      \
+    K2_EVAL(                                                  \
+        Context(), Dim(), copy_data,                          \
+        (int32_t i)->void { ans_data[i] = src_data[i]; });    \
+    return ans;                                               \
+  }
+
+ToType(float, Float)
+ToType(double, Double)
+ToType(int32_t, Int)
+ToType(int64_t, Long)
+
+#undef ToType
+
+      // Copy from another array of the same dimension and type.
+      void CopyFrom(const Array1<T> &src);
 
   // Copy this array to another array with type S; but if S == T, then it just
   // returns *this

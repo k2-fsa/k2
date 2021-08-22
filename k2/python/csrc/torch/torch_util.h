@@ -203,45 +203,142 @@ struct TensorTag {};
 Tensor FromTorch(torch::Tensor &tensor, TensorTag);
 torch::Tensor ToTorch(Tensor &tensor);
 
-/* Transfer an object to a specific device.
+/* Transfer an object to a given device. If the given object
+   is already on the given device, itself is returned.
 
-   Note: If the object is already on the given device, itself
-   is returned; otherwise, a new object is created and returned.
+   @param pyclass The object to move.
+   @param device  The device to move to.
 
-   @param [in] pyclass  The given object. It should have two methods:
-                        `Context()` and `To()`.
-   @param [in] device   It is an instance of `torch.device`.
-
-   @return  Return an object on the given `device`.
+   @return Return the passed object if it was on the device;
+           otherwise, return a clone of the given object on
+           the given device.
  */
 template <typename PyClass>
-PyClass To(PyClass &pyclass, py::object device) {
-  std::string device_type = static_cast<py::str>(device.attr("type"));
-  K2_CHECK(device_type == "cpu" || device_type == "cuda")
-      << "Unsupported device type: " << device_type;
-
+py::object To(PyClass &pyclass, torch::Device device) {
+  // PyClass can be Ragged<int32_t>, DenseFsaVec, RaggedShape, etc.
   ContextPtr &context = pyclass.Context();
-  if (device_type == "cpu") {
+  if (device.is_cpu()) {
     // CPU to CPU
-    if (context->GetDeviceType() == kCpu) return pyclass;
+    if (context->GetDeviceType() == kCpu) return py::cast(pyclass);
 
     // CUDA to CPU
     DeviceGuard guard(context);
-    return pyclass.To(GetCpuContext());
+    return py::cast(pyclass.To(GetCpuContext()));
   }
 
-  auto index_attr = static_cast<py::object>(device.attr("index"));
-  int32_t device_index = 0;
-  if (!index_attr.is_none()) device_index = static_cast<py::int_>(index_attr);
+  K2_CHECK(device.is_cuda()) << device.str();
+
+  int32_t device_index = device.index();
 
   if (context->GetDeviceType() == kCuda &&
       context->GetDeviceId() == device_index)
     // CUDA to CUDA
-    return pyclass;
+    return py::cast(pyclass);
 
   // CPU to CUDA
+  // or from one GPU to another GPU
   DeviceGuard guard(device_index);
-  return pyclass.To(GetCudaContext(device_index));
+  return py::cast(pyclass.To(GetCudaContext(device_index)));
+}
+
+/* Convert an object to a given type. If the given object
+   is already of the given type, itself is returned.
+
+   @param pyclass      The object to move.
+   @param scalar_type  The type to convert to.
+
+   @return Return the passed object if it was of the given type;
+           otherwise, return a clone of the given object with the
+           given type.
+ */
+template <typename PyClass>
+py::object To(PyClass &pyclass, torch::ScalarType scalar_type) {
+  // PyClass can be Ragged<int32_t>, Ragged<float>, etc.
+  switch (scalar_type) {
+    case torch::kFloat:
+      return py::cast(pyclass.ToFloat());
+    case torch::kInt:
+      return py::cast(pyclass.ToInt());
+#if 0
+      // enable the following branches if needed
+    case torch::kDouble:
+      return py::cast(pyclass.ToDouble());
+    case torch::kLong:
+      return py::cast(pyclass.ToLong());
+#endif
+    default:
+      K2_LOG(FATAL) << "Unsupported scalar type: "
+                    << torch::toString(scalar_type) << "\n"
+                    << "Supported types are: "
+                    << "torch.int32, torch.float32, ";
+      // << "torch.float32, and torch.float64";
+  }
+
+  // Unreachable code
+  return {};
+}
+
+/* Transfer an object to a specific device or convert it to a specific dtype.
+
+   Note: If the object is already on the given device or it is
+   of the specified type, itself is returned;
+   otherwise, a new object on the given device or with the given type
+   is created and returned.
+
+   @param [in] pyclass  The given object. It should have two methods:
+                        `Context()` and `To()`.
+   @param [in] obj   It is an instance of `torch.device` or `torch.dtype`.
+
+   @return  Return an object on the given `device` or with the specified dtype.
+ */
+template <typename PyClass, typename T,
+          std::enable_if_t<(std::is_scalar<T>::value), int> = 0>
+py::object To(PyClass &pyclass, py::object obj) {
+  // PyClass can be Ragged<int32_t>, Ragged<float>, etc.
+  PyObject *ptr = obj.ptr();
+
+  if (THPDevice_Check(ptr)) {
+    torch::Device device = reinterpret_cast<THPDevice *>(ptr)->device;
+    return To(pyclass, device);
+  }
+
+  if (THPDtype_Check(ptr)) {
+    torch::ScalarType type = reinterpret_cast<THPDtype *>(ptr)->scalar_type;
+    return To(pyclass, type);
+  }
+
+  K2_LOG(FATAL) << "Expect an instance of torch.device or torch.dtype. Given: "
+                << std::string(py::str(obj));
+
+  // Unreachable code
+  return {};
+}
+
+/* Move an object to a given device.
+   If the object is already on the specified device, itself is returned;
+   otherwise, a new object is created and returned.
+
+   @param pyclass  The object to move.
+   @param device   An instance of torch.device
+
+   @return Return an object on the given device.
+ */
+template <typename PyClass, typename T,
+          std::enable_if_t<!(std::is_scalar<T>::value), int> = 0>
+py::object To(PyClass &pyclass, py::object device) {
+  // PyClass can be DenseFsaVec, RaggedShape
+  PyObject *ptr = device.ptr();
+
+  if (THPDevice_Check(ptr)) {
+    torch::Device device = reinterpret_cast<THPDevice *>(ptr)->device;
+    return To(pyclass, device);
+  }
+
+  K2_LOG(FATAL) << "Expect an instance of torch.device. Given: "
+                << std::string(py::str(device));
+
+  // Unreachable code
+  return {};
 }
 
 /* Create a k2 context from a torch tensor.
