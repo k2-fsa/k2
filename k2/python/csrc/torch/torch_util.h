@@ -271,7 +271,7 @@ py::object To(PyClass &pyclass, torch::ScalarType scalar_type) {
                     << torch::toString(scalar_type) << "\n"
                     << "Supported types are: "
                     << "torch.int32, torch.float32, ";
-      // << "torch.float32, and torch.float64";
+      // << "torch.int64, and torch.float64";
   }
 
   // Unreachable code

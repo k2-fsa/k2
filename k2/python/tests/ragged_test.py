@@ -105,29 +105,91 @@ class TestRagged(unittest.TestCase):
             cuda_devices.append(torch.device('cuda', 1))
 
         for Type in [k2.RaggedInt, k2.RaggedFloat]:
-            src = Type('[[1 2] [3]]')
             for device in cuda_devices:
+                src = Type('[[1 2] [3]]')
                 dst = src.to(device)
                 assert dst.device() == device
                 assert str(src) == str(dst)
 
                 src.values()[0] = 10
+
                 assert str(src) != str(dst)
 
     def test_cuda_to_cpu(self):
-        pass
+        if not (torch.cuda.is_available() and k2.with_cuda):
+            return
+
+        cpu = torch.device('cpu')
+        cuda_devices = [torch.device('cuda', 0)]
+        torch.cuda.set_device(0)
+        if torch.cuda.device_count() > 1:
+            torch.cuda.set_device(1)
+            cuda_devices.append(torch.device('cuda', 1))
+
+        for device in cuda_devices:
+            for Type in [k2.RaggedInt, k2.RaggedFloat]:
+                src = Type('[[1 2] [3]]').to(device)
+                dst = src.to(cpu)
+                assert str(src) == str(dst)
+
+                src.values()[0] = 10
+                assert str(src) != str(dst)
 
     def test_cuda_to_cuda(self):
-        pass
+        if not (torch.cuda.is_available() and k2.with_cuda):
+            return
 
-    def test_to_same_type(self):
-        pass
+        if torch.cuda.device_count() < 2:
+            return
+
+        cuda_devices = [torch.device('cuda', 0)]
+        cuda_devices.append(torch.device('cuda', 1))
+        for i in [0, 1]:
+            src_device = cuda_devices[i]
+            dst_device = cuda_devices[1 - i]
+            torch.cuda.set_device(dst_device)
+            for Type in [k2.RaggedInt, k2.RaggedFloat]:
+                src = Type('[[1 2] [3]]').to(src_device)
+                dst = src.to(dst_device)
+
+                assert dst.device() == dst_device
+                assert str(src) == str(dst)
+
+                src.values()[0] = 10
+
+                assert str(src) != str(dst)
+
+    def test_to_same_dtype(self):
+        for device in self.devices:
+            for Type in [k2.RaggedInt, k2.RaggedFloat]:
+                for dtype in [torch.float32, torch.int32]:
+                    src = Type('[[1 2] [3]]').to(device).to(dtype)
+                    dst = src.to(dtype)
+                    assert src == dst
+
+                    src.values()[0] = 10
+                    # src and dst share the underlying memory
+                    assert src == dst
 
     def test_int_to_float(self):
-        pass
+        for device in self.devices:
+            src = k2.RaggedInt('[[1 2] [3]]').to(device)
+            dst = src.to(torch.float32)
+            assert isinstance(dst, k2.RaggedFloat)
+            assert str(src) == str(dst)
+
+            src.values()[0] = 10
+            assert str(src) != str(dst)
 
     def test_float_to_int(self):
-        pass
+        for device in self.devices:
+            src = k2.RaggedFloat('[[1 2] [3]]').to(device)
+            dst = src.to(torch.int32)
+            assert isinstance(dst, k2.RaggedInt)
+            assert str(src) == str(dst)
+
+            src.values()[0] = 10
+            assert str(src) != str(dst)
 
 
 if __name__ == '__main__':
