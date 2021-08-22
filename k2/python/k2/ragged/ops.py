@@ -199,7 +199,7 @@ def sum_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
       Return a 1-D torch.Tensor with dtype torch.float32 if the input is
       `_k2.RaggedFloat`, otherwise torch.int32. Its `numel` equals to
       `src.tot_size(src.num_axes() - 2)`. If a sublist is empty, the value in
-      the coresponding index will be the initial_value.
+      the corresponding index will be the initial_value.
     '''
     return _k2.sum_per_sublist(src, initial_value)
 
