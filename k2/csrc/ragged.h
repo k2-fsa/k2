@@ -465,6 +465,24 @@ struct Ragged {
     return Ragged<T>(new_shape, new_values);
   }
 
+  // The ToType() macro will be expanded to
+  //
+  //  Ragged<int32_t> ToInt() const;
+  //  Ragged<float> ToFloat() const;
+  //  Ragged<double> ToDouble() const;
+  //  Ragged<int64_t> ToLong() const;
+  //
+  // which is roughly equivalent to the following template
+  //
+  //  template<typename U>
+  //  Ragged<U> To() const;
+  //
+  // The purpose is to convert Ragged<T> to Ragged<U>, e.g.,
+  // convert Ragged<int32_t> to Ragged<float>.
+  //
+  // If T == U, then the Ragged itself is returned; otherwise,
+  // a new Ragged is returned.
+  //
 #define ToType(type, name)                                  \
   Ragged<type> To##name() const {                           \
     if (std::is_same<type, T>::value)                       \

@@ -237,6 +237,24 @@ class Array1 {
     return ans;
   }
 
+  // The ToType() macro will be expanded to
+  //
+  //  Array1<int32_t> ToInt() const;
+  //  Array1<float> ToFloat() const;
+  //  Array1<double> ToDouble() const;
+  //  Array1<int64_t> ToLong() const;
+  //
+  // which is roughly equivalent to the following template
+  //
+  //  template<typename U>
+  //  Array1<U> To() const;
+  //
+  // The purpose is to convert Array1<T> to Array1<U>, e.g.,
+  // convert Array1<int32_t> to Array1<float>.
+  //
+  // If T == U, then the array itself is returned; otherwise,
+  // a new array is returned.
+  //
 #define ToType(type, name)                                    \
   Array1<type> To##name() const {                             \
     if (std::is_same<type, T>::value)                         \
