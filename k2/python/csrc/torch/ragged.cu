@@ -164,27 +164,35 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
             << obj.NumAxes();
         Array1<int32_t> row_splits1 = obj.RowSplits(1);
         Array1<T> values = obj.values;
+        // We use "row_ids" placeholder here to make it compatible for the
+        // old format file.
         if (obj.NumAxes() == 2) {
-           return py::make_tuple(ToTorch(row_splits1), ToTorch(values));
+           return py::make_tuple(ToTorch(row_splits1), "row_ids1",
+                                 ToTorch(values));
         } else {
            Array1<int32_t> row_splits2 = obj.RowSplits(2);
-           return py::make_tuple(ToTorch(row_splits1), ToTorch(values),
-                                 ToTorch(row_splits2));
+           return py::make_tuple(ToTorch(row_splits1), "row_ids1",
+                                 ToTorch(row_splits2), "row_ids2",
+                                 ToTorch(values));
         }
       },
       [](py::tuple t) {
-        K2_CHECK_GE(t.size(), 2) << "Invalid state";
+        K2_CHECK(t.size() == 3 || t.size() == 5) << "Invalid state";
         torch::Tensor row_splits1_tensor = t[0].cast<torch::Tensor>();
         DeviceGuard guard(GetContext(row_splits1_tensor));
         Array1<int32_t> row_splits1 = FromTorch<int32_t>(row_splits1_tensor);
-        torch::Tensor values_tensor = t[1].cast<torch::Tensor>();
-        Array1<T> values = FromTorch<T>(values_tensor);
+        torch::Tensor values_tensor;
+        Array1<T> values;
         RaggedShape shape;
-        if (t.size() == 2) {
+        if (t.size() == 3) {
+          values_tensor = t[2].cast<torch::Tensor>();
+          values = FromTorch<T>(values_tensor);
           shape = RaggedShape2(&row_splits1, nullptr, values.Dim());
-        } else if (t.size() == 3) {
+        } else if (t.size() == 5) {
           torch::Tensor row_splits2_tensor = t[2].cast<torch::Tensor>();
           Array1<int32_t> row_splits2 = FromTorch<int32_t>(row_splits2_tensor);
+          values_tensor = t[4].cast<torch::Tensor>();
+          values = FromTorch<T>(values_tensor);
           shape = RaggedShape3(&row_splits1, nullptr, -1,
                                &row_splits2, nullptr, values.Dim());
         } else {
