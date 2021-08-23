@@ -181,17 +181,16 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         torch::Tensor row_splits1_tensor = t[0].cast<torch::Tensor>();
         DeviceGuard guard(GetContext(row_splits1_tensor));
         Array1<int32_t> row_splits1 = FromTorch<int32_t>(row_splits1_tensor);
-        torch::Tensor values_tensor;
         Array1<T> values;
         RaggedShape shape;
         if (t.size() == 3) {
-          values_tensor = t[2].cast<torch::Tensor>();
+          torch::Tensor values_tensor = t[2].cast<torch::Tensor>();
           values = FromTorch<T>(values_tensor);
           shape = RaggedShape2(&row_splits1, nullptr, values.Dim());
         } else if (t.size() == 5) {
           torch::Tensor row_splits2_tensor = t[2].cast<torch::Tensor>();
           Array1<int32_t> row_splits2 = FromTorch<int32_t>(row_splits2_tensor);
-          values_tensor = t[4].cast<torch::Tensor>();
+          torch::Tensor values_tensor = t[4].cast<torch::Tensor>();
           values = FromTorch<T>(values_tensor);
           shape = RaggedShape3(&row_splits1, nullptr, -1,
                                &row_splits2, nullptr, values.Dim());
