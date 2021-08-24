@@ -48,9 +48,9 @@ static void PybindRaggedRemoveAxis(py::module &m) {
 }
 
 template <typename T>
-static void PybindRaggedArange(py::module &m, const char *name) {
+static void PybindRaggedArange(py::module &m) {
   m.def(
-      name,
+      "ragged_arange",
       [](Ragged<T> &src, int32_t axis, int32_t begin,
          int32_t end) -> Ragged<T> {
         DeviceGuard guard(src.Context());
@@ -60,9 +60,9 @@ static void PybindRaggedArange(py::module &m, const char *name) {
 }
 
 template <typename T>
-static void PybindRemoveValuesLeq(py::module &m, const char *name) {
+static void PybindRemoveValuesLeq(py::module &m) {
   m.def(
-      name,
+      "ragged_remove_values_leq",
       [](Ragged<T> &src, T cutoff) -> Ragged<T> {
         DeviceGuard guard(src.Context());
         return RemoveValuesLeq(src, cutoff);
@@ -71,9 +71,9 @@ static void PybindRemoveValuesLeq(py::module &m, const char *name) {
 }
 
 template <typename T>
-static void PybindRemoveValuesEq(py::module &m, const char *name) {
+static void PybindRemoveValuesEq(py::module &m) {
   m.def(
-      name,
+      "ragged_remove_values_eq",
       [](Ragged<T> &src, T target) -> Ragged<T> {
         DeviceGuard guard(src.Context());
         return RemoveValuesEq(src, target);
@@ -107,9 +107,9 @@ static py::list RaggedInt32ToList(Ragged<int32_t> &r, int32_t axis,
   return ans;
 };
 
-static void PybindRaggedIntToList(py::module &m, const char *name) {
+static void PybindRaggedIntToList(py::module &m) {
   m.def(
-      name,
+      "ragged_int_to_list",
       [](Ragged<int32_t> &src) -> py::list {
         DeviceGuard guard(src.Context());
         Ragged<int32_t> r = src.To(GetCpuContext());
@@ -132,9 +132,9 @@ static void PybindPadRaggedToTensor(py::module &m) {
 }
 
 template <typename T>
-static void PybindNormalizePerSublist(py::module &m, const char *name) {
+static void PybindNormalizePerSublist(py::module &m) {
   m.def(
-      name,
+      "normalize_per_sublist",
       [](Ragged<T> &src, bool use_log) -> Ragged<T> {
         DeviceGuard guard(src.Context());
         return NormalizePerSublist(src, use_log);
@@ -220,23 +220,25 @@ static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out, bool use_log,
 }
 
 template <typename T>
-static void PybindNormalizePerSublistBackward(py::module &m, const char *name) {
+static void PybindNormalizePerSublistBackward(py::module &m) {
   // the device guard is used inside NormalizePerSublistBackward<T>
-  m.def(name, NormalizePerSublistBackward<T>, py::arg("out"),
-        py::arg("use_log"), py::arg("out_grad"));
+  m.def("normalize_per_sublist_backward", NormalizePerSublistBackward<T>,
+      py::arg("out"), py::arg("use_log"), py::arg("out_grad"));
 }
 
 template <typename T, typename Op>
 static void PybindOpPerSublist(py::module &m, Op op, const char *name) {
   m.def(
       name,
-      [op](Ragged<T> &src, T initial_value) -> torch::Tensor {
+      [op](Ragged<T> &src, T initial_value, int32_t axis) -> torch::Tensor {
         DeviceGuard guard(src.Context());
+        K2_CHECK(axis == -1 || axis == (src.NumAxes() - 1))
+          << "Only support operations on last axis now";
         Array1<T> values(src.Context(), src.TotSize(src.NumAxes() - 2));
         op(src, initial_value, &values);
         return ToTorch(values);
       },
-      py::arg("src"), py::arg("initial_value"));
+      py::arg("src"), py::arg("initial_value"), py::arg("axis") = -1);
 }
 
 template <typename T>
@@ -339,9 +341,11 @@ template <typename T>
 static void PybindArgMaxPerSublist(py::module &m) {
   m.def(
       "argmax_per_sublist",
-      [](Ragged<T> &src, T initial_value) -> torch::Tensor {
+      [](Ragged<T> &src, T initial_value, int axis = -1) -> torch::Tensor {
         DeviceGuard guard(src.Context());
         int32_t last_axis = src.NumAxes() - 1;
+        K2_CHECK(last_axis == axis || axis == -1)
+          << "Only support operations on last axis now";
         const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
         int32_t num_rows = row_splits_array.Dim() - 1;
 
@@ -350,25 +354,7 @@ static void PybindArgMaxPerSublist(py::module &m) {
 
         return ToTorch(indexes);
       },
-      py::arg("src"), py::arg("initial_value"));
-}
-
-template <typename T>
-static void PybindMaxPerSublist(py::module &m) {
-  m.def(
-      "max_per_sublist",
-      [](Ragged<T> &src, T initial_value) -> torch::Tensor {
-        DeviceGuard guard(src.Context());
-        int32_t last_axis = src.NumAxes() - 1;
-        const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
-        int32_t num_rows = row_splits_array.Dim() - 1;
-
-        Array1<T> max_values(src.Context(), num_rows);
-        MaxPerSublist(src, initial_value, &max_values);
-
-        return ToTorch(max_values);
-      },
-      py::arg("src"), py::arg("initial_value"));
+      py::arg("src"), py::arg("initial_value"), py::arg("axis") = -1);
 }
 
 template <typename T>
@@ -382,7 +368,10 @@ static void PybindSortSublists(py::module &m) {
   m.def(
       "sort_sublists",
       [](Ragged<T> &in_out, bool descending = false,
-         bool need_new2old_indexes = false) -> torch::optional<torch::Tensor> {
+         bool need_new2old_indexes = false,
+         int axis = -1) -> torch::optional<torch::Tensor> {
+        K2_CHECK(axis == -1 || axis == (in_out.NumAxes() - 1))
+          << "Only support operations on last axis now";
         ContextPtr &c = in_out.Context();
         DeviceGuard guard(c);
         Array1<int32_t> new2old;
@@ -401,7 +390,8 @@ static void PybindSortSublists(py::module &m) {
         return ans;
       },
       py::arg("in_out"), py::arg("descending") = false,
-      py::arg("need_new2old_indexes") = false);
+      py::arg("need_new2old_indexes") = false,
+      py::arg("axis") = -1);
 }
 
 }  // namespace k2
@@ -417,20 +407,27 @@ void PybindRaggedOps(py::module &m) {
   PybindCreateRagged2<float>(m);
   PybindGetLayer(m);
   PybindIndex(m);
-  PybindMaxPerSublist<float>(m);
-  PybindMaxPerSublist<int32_t>(m);
-  PybindNormalizePerSublist<float>(m, "normalize_per_sublist");
-  PybindNormalizePerSublistBackward<float>(m, "normalize_per_sublist_backward");
+  PybindNormalizePerSublist<float>(m);
+  PybindNormalizePerSublistBackward<float>(m);
+  PybindOpPerSublist<float>(m, LogSumPerSublist<float>, "logsum_per_sublist");
+  PybindOpPerSublist<float>(m, MaxPerSublist<float>, "max_per_sublist");
+  PybindOpPerSublist<int32_t>(m, MaxPerSublist<int32_t>, "max_per_sublist");
+  PybindOpPerSublist<float>(m, MinPerSublist<float>, "min_per_sublist");
+  PybindOpPerSublist<int32_t>(m, MinPerSublist<int32_t>, "min_per_sublist");
   PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
+  PybindOpPerSublist<int32_t>(m, SumPerSublist<int32_t>, "sum_per_sublist");
   PybindPadRaggedToTensor<int32_t>(m);
   PybindPadRaggedToTensor<float>(m);
-  PybindRaggedArange<int32_t>(m, "ragged_int_arange");
-  PybindRaggedIntToList(m, "ragged_int_to_list");
+  PybindRaggedArange<int32_t>(m);
+  PybindRaggedArange<float>(m);
+  PybindRaggedIntToList(m);
   PybindRaggedRemoveAxis<int32_t>(m);
   PybindRaggedRemoveAxis<float>(m);
   PybindRegularRaggedShape(m);
-  PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
-  PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
+  PybindRemoveValuesEq<int32_t>(m);
+  PybindRemoveValuesEq<float>(m);
+  PybindRemoveValuesLeq<int32_t>(m);
+  PybindRemoveValuesLeq<float>(m);
   PybindSortSublists<float>(m);
   PybindSortSublists<int32_t>(m);
   PybindUniqueSequences(m);

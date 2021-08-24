@@ -162,7 +162,7 @@ ContextPtr GetContext(py::object device_obj) {
   } else if (device.type() == torch::kCUDA) {
     return GetCudaContext(device.index());
   } else {
-    K2_LOG(FATAL) << "Unsupported devices.";
+    K2_LOG(FATAL) << "Unsupported device: " << device.str();
     return GetCpuContext();   // unreachable code
   }
 }

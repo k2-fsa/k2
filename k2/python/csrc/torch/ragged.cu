@@ -51,7 +51,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
               }),
               py::arg("shape"), py::arg("values"));
 
-  pyclass.def(py::init([](const std::vector<std::vector<T>> lists,
+  pyclass.def(py::init([](const std::vector<std::vector<T>> &lists,
                           py::object device = py::str("cpu"))
     -> std::unique_ptr<PyClass> {
                 ContextPtr context = GetContext(device);
@@ -141,6 +141,41 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       },
       py::arg("axis"), py::arg("i"));
 
+  pyclass.def(
+      "index",
+      [](PyClass &self, int32_t axis, torch::Tensor indexes,
+         bool need_value_indexes =
+             true) -> std::pair<PyClass, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(self.Context());
+        Array1<int32_t> indexes_array = FromTorch<int32_t>(indexes);
+        Array1<int32_t> value_indexes;
+
+        Ragged<T> ans = Index(self, axis, indexes_array,
+                              need_value_indexes ? &value_indexes : nullptr);
+        torch::optional<torch::Tensor> value_indexes_tensor;
+
+        if (need_value_indexes) value_indexes_tensor = ToTorch(value_indexes);
+
+        return std::make_pair(ans, value_indexes_tensor);
+      },
+      py::arg("axis"), py::arg("indexes"),
+      py::arg("need_value_indexes") = true);
+
+  pyclass.def(
+      "index",
+      [](PyClass &self, Ragged<int32_t> &indexes, bool remove_axis = false)
+      -> Ragged<T> {
+        DeviceGuard guard(self.Context());
+        return Index(self, indexes, remove_axis);
+      }, py::arg("indexes"), py::arg("remove_axis") = false);
+
+  pyclass.def(
+     "remove_axis",
+     [](PyClass &self, int32_t axis) -> PyClass {
+       DeviceGuard guard(self.Context());
+       return self.RemoveAxis(axis);
+     }, py::arg("axis"));
+
   pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
     DeviceGuard guard(self.Context());
     return Equal(self, other);
@@ -217,9 +252,9 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   //     == true, None if need_value_indexes_out == false
   m.def(
       "index",
-      [](PyClass &src, int32_t axis, torch::Tensor indexes,
+      [](Ragged<T> &src, int32_t axis, torch::Tensor indexes,
          bool need_value_indexes =
-             true) -> std::pair<PyClass, torch::optional<torch::Tensor>> {
+             true) -> std::pair<Ragged<T>, torch::optional<torch::Tensor>> {
         DeviceGuard guard(src.Context());
         Array1<int32_t> indexes_array = FromTorch<int32_t>(indexes);
         Array1<int32_t> value_indexes;

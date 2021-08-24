@@ -34,13 +34,13 @@ from .tensor import Ragged, RaggedInt, RaggedFloat
 
 
 def index(
-        src: Union[_k2.RaggedArc, _k2.RaggedInt, _k2.RaggedShape],
-        indexes: torch.Tensor,
-        need_value_indexes: bool = True,
-        axis: int = 0
-) -> Tuple[Union[_k2.RaggedArc, _k2.RaggedInt, _k2.RaggedShape],  # noqa
-           Optional[torch.Tensor]]:  # noqa
-    '''Indexing operation on ragged tensor, returns src[indexes], where
+    src: Union[_k2.RaggedArc, _k2.RaggedInt, _k2.RaggedShape],
+    indexes: torch.Tensor,
+    need_value_indexes: bool = True,
+    axis: int = 0,
+) -> Tuple[
+    Union[_k2.RaggedArc, _k2.RaggedInt, _k2.RaggedShape], Optional[torch.Tensor]]:  # noqa
+    """Indexing operation on ragged tensor, returns src[indexes], where
     the elements of `indexes` are interpreted as indexes into axis `axis` of
     `src`.
 
@@ -68,16 +68,44 @@ def index(
        - None if `need_value_indexes` is False; a 1-D torch.tensor of
          dtype `torch.int32` containing the indexes into `src.values()` that
          `ans.values()` has.
-    '''
-    ans, value_indexes = _k2.index(src=src,
-                                   axis=axis,
-                                   indexes=indexes,
-                                   need_value_indexes=need_value_indexes)
+    """
+    ans, value_indexes = _k2.index(
+        src=src, axis=axis,
+        indexes=indexes,
+        need_value_indexes=need_value_indexes
+    )
     return ans, value_indexes
 
+def arange(
+    src: Union[RaggedInt, RaggedFloat], axis: int, begin: int, end: int
+) -> Union[RaggedInt, RaggedFloat]:
+    """Return a sub-range of `src` containing indexes `begin` through `end - 1`
+    along axis `axis` of src.
+
+    The `axis` argument may be confusing, its behavior is equivalent to:
+
+       for (i = 0; i < axis; i++) src = src.remove_axis(0)
+           return arange(src, 0, begin, end)
+
+    Args:
+      src:
+        Source Ragged. Must have src.num_axes() >= 2.
+      axis:
+        The axis we'll get ans, must have 0 <= axis < src.num_axes() - 1.
+      begin:
+        The first element we'll get along axis `axis`.
+        Must have 0 <= begin <= end <= src.tot_size(axis).
+      end:
+        The one-past-the-last element we'll get along axisv`axis`.
+        Must have 0 <= begin <= end <= src.tot_size(axis).
+    Returns:
+      A Ragged with num_axes() == src.num_axes() - `axis`, it contains element
+      of `src` along axis `axis` from `begin` to `end - 1`.
+    """
+    return src.arange(axis, begin, end)
 
 def remove_values_leq(src: RaggedInt, cutoff: int) -> RaggedInt:
-    '''Remove values less than or equal to `cutoff` from a ragged tensor.
+    """Remove values less than or equal to `cutoff` from a ragged tensor.
 
     Args:
       src:
@@ -87,12 +115,11 @@ def remove_values_leq(src: RaggedInt, cutoff: int) -> RaggedInt:
         from `src`.
     Returns:
       A new ragged tensor whose elements are all **greater than** `cutoff`.
-    '''
-    return RaggedInt(_k2.ragged_int_remove_values_leq(src.ragged, cutoff))
-
+    """
+    return RaggedInt(_k2.ragged_remove_values_leq(src.ragged, cutoff))
 
 def remove_values_eq(src: RaggedInt, target: int) -> RaggedInt:
-    '''Remove values equal to `target` from a ragged tensor.
+    """Remove values equal to `target` from a ragged tensor.
 
     Args:
       src:
@@ -102,13 +129,12 @@ def remove_values_eq(src: RaggedInt, target: int) -> RaggedInt:
         from `src`.
     Returns:
       A new ragged tensor whose elements do **not equal to** `target`.
-    '''
-    return RaggedInt(_k2.ragged_int_remove_values_eq(src.ragged, target))
+    """
+    return RaggedInt(_k2.ragged_remove_values_eq(src.ragged, target))
 
 
-def remove_axis(src: Union[RaggedInt, _k2.RaggedShape],
-                axis: int) -> RaggedInt:
-    '''Remove an axis from a ragged tensor.
+def remove_axis(src: Union[RaggedInt, _k2.RaggedShape], axis: int) -> RaggedInt:
+    """Remove an axis from a ragged tensor.
 
     Args:
       src:
@@ -123,15 +149,14 @@ def remove_axis(src: Union[RaggedInt, _k2.RaggedShape],
        A new ragged tensor with one fewer axis than `src`.
        The vector of `ans.tot_sizes()` will be the same as `src.tot_sizes()`,
        but with element `axis` removed.
-    '''
+    """
     if isinstance(src, _k2.RaggedShape):
         return _k2.remove_axis(src, axis)
     else:
         return RaggedInt(_k2.remove_axis(src.ragged, axis))
 
-
 def to_list(src: RaggedInt) -> List:
-    '''Turn a ragged tensor of ints into a List of Lists [of Lists..] of ints.
+    """Turn a ragged tensor of ints into a List of Lists [of Lists..] of ints.
 
     Args:
       src:
@@ -139,14 +164,15 @@ def to_list(src: RaggedInt) -> List:
     Returns:
        A list of list of ints containing the same elements and structure
        as `src`.
-    '''
+    """
     return _k2.ragged_int_to_list(src.ragged)
 
-
-def pad(src: Union[RaggedInt, RaggedFloat],
-        mode: Literal['constant', 'replicate'] = 'constant',
-        value: Union[int, float] = 0) -> torch.Tensor:
-    '''Pad a ragged tensor to a torch tensor.
+def pad(
+    src: Union[RaggedInt, RaggedFloat],
+    mode: Literal["constant", "replicate"] = "constant",
+    value: Union[int, float] = 0,
+) -> torch.Tensor:
+    """Pad a ragged tensor to a torch tensor.
 
     For example, if `src` has the following values::
 
@@ -174,20 +200,33 @@ def pad(src: Union[RaggedInt, RaggedFloat],
       A 2-D torch.Tensor whose dtype is torch.int32 if the input is
       _k2.RaggedInt tensor or torch.float32 if the input is _k2.RaggedFloat
       tensor. The tensor returned is on the same device as `src`.
-    '''
-    assert mode in ['constant', 'replicate'], f'mode: {mode}'
+    """
+    assert mode in ["constant", "replicate"], f"mode: {mode}"
     return _k2.pad_ragged(src.ragged, mode, value)
 
 
-def sum_per_sublist(src: RaggedFloat,
-                    initial_value: float = 0) -> torch.Tensor:
-    '''Return the sum of each sublist.
+def sum_per_sublist(
+    src: Union[RaggedFloat, RaggedInt], initial_value: float = 0, axis: int = -1
+) -> torch.Tensor:
+    """Return the sum of the sublist on the given axis.
+
+    See :func:`sum` for details.
+    """
+    return _k2.sum_per_sublist(src.ragged, initial_value, axis)
+
+
+def sum(
+    src: Union[RaggedFloat, RaggedInt], initial_value: float = 0, axis: int = -1
+) -> torch.Tensor:
+    """Return the sum per sublist on the given axis.
+
+    Caution: Only support the last axis currently.
 
     For example, if `src` has the following values::
 
         [ [a b] [h j k] [m] ]
 
-    Then it returns a 1-D tensor with 3 entries:
+    Then it returns a 1-D tensor with 3 entries if given axis equals 1:
 
         - entry 0: a + b + initial_value
         - entry 1: h + j + k + initial_value
@@ -195,16 +234,66 @@ def sum_per_sublist(src: RaggedFloat,
 
     Args:
       src:
-        A ragged float tensor. Note that the sum is performed on the last axis.
+        A ragged float or int tensor.
+      initial_value:
+        Value to initialize the summed value of each sublist, default 0.
+      axis:
+        Axis the sum performed, only support the last axis now, default -1.
     Returns:
-      Return a 1-D torch.Tensor with dtype torch.float32. Its `numel` equals to
-      `src.tot_size(src.num_axes() - 2)`.
-    '''
-    return _k2.sum_per_sublist(src.ragged, initial_value)
+      Return a 1-D torch.Tensor with dtype torch.float32 if the input is
+      `RaggedFloat`, otherwise torch.int32. Its `numel` equals to
+      `src.tot_size(axis - 1)`. If a sublist is empty, the value in
+      the corresponding index will be the initial_value.
+    """
+    return sum_per_sublist(src, initial_value, axis)
+
+
+def logsum_per_sublist(
+    src: RaggedFloat, initial_value: float = 0, axis: int = -1
+) -> torch.Tensor:
+    """Return the logsum of the sublist on the given axis.
+
+    See :func:`logsum` for details.
+    """
+    return _k2.logsum_per_sublist(src.ragged, initial_value, axis)
+
+
+def logsum(
+    src: RaggedFloat,
+    initial_value: float = 0,
+    axis: int = -1
+) -> torch.Tensor:
+    """Return the logsum per sublist on the given axis.
+
+    Caution: Only support the last axis currently.
+
+    For example, if `src` has the following values::
+
+        [ [a b] [h j k] [m] ]
+
+    Then it returns a 1-D tensor with 3 entries if given axis equals 1:
+
+        - entry 0: LogAdd(b, LogAdd(a, initial_value)
+        - entry 1: LogAdd(k, LogAdd(j, LogAdd(h, initial_value)))
+        - entry 2: LogAdd(m, initial_value)
+
+    Args:
+      src:
+        A ragged float tensor.
+      initial_value:
+        Value to initialize the summed value of each sublist, default 0.
+      axis:
+        Axis the logsum performed, only support the last axis now, default -1.
+    Returns:
+      Return a 1-D torch.Tensor with dtype torch.float32, Its `numel` equals to
+      `src.tot_size(axis - 1)`. If a sublist is empty, the value in
+      the corresponding index will be the initial_value.
+    """
+    return logsum_per_sublist(src, initial_value, axis)
 
 
 def cat(srcs: List[_k2.RaggedInt], axis=0) -> RaggedInt:
-    '''Concatenate a list of :class:`_k2.RaggedInt` along a given axis.
+    """Concatenate a list of :class:`_k2.RaggedInt` along a given axis.
 
     Args:
       srcs:
@@ -213,27 +302,28 @@ def cat(srcs: List[_k2.RaggedInt], axis=0) -> RaggedInt:
         It can be either 0 or 1.
     Returns:
       A single ragged tensor.
-    '''
+    """
     assert axis in (0, 1)
     srcs_ragged = [x.ragged for x in srcs]
     return RaggedInt(_k2.cat(srcs_ragged, axis))
 
 
-def create_ragged2(vecs: Union[List[List[int]], List[List[float]]]
-                  ) -> Union[RaggedInt, RaggedFloat]:  # noqa
-    '''
+def create_ragged2(
+    vecs: Union[List[List[int]], List[List[float]]]
+) -> Union[RaggedInt, RaggedFloat]:  # noqa
+    """
     Construct a Ragged with 2 axes.
     Args:
       vecs:
         Input of a list of list
     Returns:
       A single ragged array.
-    '''
+    """
     return Ragged(_k2.create_ragged2(vecs))
 
 
 def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
-    '''Returns a `sub-shape` of `src`.
+    """Returns a `sub-shape` of `src`.
 
     Args:
       src:
@@ -244,16 +334,16 @@ def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
     Returns:
       This returned shape will have `num_axes() == 2`, the minimal case of
       a RaggedShape.
-    '''
+    """
     return _k2.get_layer(src, layer)
 
 
 def unique_sequences(
-        src: RaggedInt,
-        need_num_repeats: bool = True,
-        need_new2old_indexes: bool = False) -> \
-                Tuple[RaggedInt, Optional[RaggedInt], Optional[torch.Tensor]]:  # noqa
-    '''Remove repeated sequences.
+    src: RaggedInt,
+    need_num_repeats: bool = True,
+    need_new2old_indexes: bool = False
+) -> Tuple[RaggedInt, Optional[RaggedInt], Optional[torch.Tensor]]:
+    """Remove repeated sequences.
 
     If `src` has two axes, this will return the unique sub-lists (in a possibly
     different order, but without repeats).  If `src` has 3 axes, it will
@@ -304,10 +394,12 @@ def unique_sequences(
 
        - new2old_indexes: A 1-D tensor whose i-th element specifies the
          input sublist that the i-th output sublist corresponds to.
-    '''
-    res = _k2.unique_sequences(src.ragged,
-                                need_num_repeats=need_num_repeats,
-                                need_new2old_indexes=need_new2old_indexes)
+    """
+    res = _k2.unique_sequences(
+        src.ragged,
+        need_num_repeats=need_num_repeats,
+        need_new2old_indexes=need_new2old_indexes,
+    )
     if need_new2old_indexes:
         return RaggedInt(res[0]), RaggedInt(res[1]), res[2]
     else:
@@ -315,7 +407,7 @@ def unique_sequences(
 
 
 def regular_ragged_shape(dim0: int, dim1: int) -> _k2.RaggedShape:
-    '''Returns a RaggedShape with dim0() == dim0 and tot_size(1) == dim0 * dim1.
+    """Returns a RaggedShape with dim0() == dim0 and tot_size(1) == dim0 * dim1.
 
     Require dim0 >= 0 and dim1 >= 0.
 
@@ -330,36 +422,68 @@ def regular_ragged_shape(dim0: int, dim1: int) -> _k2.RaggedShape:
         It equals to ans.tot_size(1) / dim0
     Returns:
       Return a ragged shape with 2 axes.
-    '''
+    """
     return _k2.regular_ragged_shape(dim0, dim1)
 
 
-def argmax_per_sublist(src: Union[RaggedFloat, RaggedInt],
-                       initial_value: float = torch.finfo(torch.float32).min
-                      ) -> torch.Tensor:  # noqa
-    '''Compute the argmax per sublist for a ragged tensor.
+def argmax_per_sublist(
+    src: Union[RaggedFloat, RaggedInt],
+    initial_value: float = torch.finfo(torch.float32).min,
+    axis: int = -1,
+) -> torch.Tensor:  # noqa
+    """Compute the argmax per sublist for a ragged tensor on the given axis.
 
-    The argmax is computed on the last axis.
+    See :func:`argmax` for more details.
+    """
+    return _k2.argmax_per_sublist(src.ragged, initial_value)
+
+
+def argmax(
+    src: Union[RaggedFloat, RaggedInt],
+    initial_value: float = torch.finfo(torch.float32).min,
+    axis: int = -1,
+) -> torch.Tensor:  # noqa
+    """Compute the argmax per sublist for a ragged tensor.
+
+    Caution: The argmax operation only support on last axis currently.
 
     Args:
       src:
         The input ragged tensor.
       initial_value:
         The initial value used to compute the argmax.
+      axis:
+        Axis the max performed, only support the last axis now, default -1.
     Returns:
       Return a 1-D tensor with dtype torch.int32.
-    '''
-    return _k2.argmax_per_sublist(src.ragged, initial_value)
+    """
+    return argmax_per_sublist(src, initial_value, axis)
 
 
-def max_per_sublist(src: Union[RaggedFloat, RaggedInt],
-                    initial_value: float = torch.finfo(torch.float32).min
-                   ) -> torch.Tensor:  # noqa
-    '''Compute the max per sublist for a ragged tensor (including
-    `initial_value` in the maximum)
+def max_per_sublist(
+    src: Union[RaggedFloat, RaggedInt],
+    initial_value: float = torch.finfo(torch.float32).min,
+    axis: int = -1,
+) -> torch.Tensor:  # noqa
+    """Compute the max per sublist for a ragged tensor (including
+    `initial_value` in the maximum) on the given axis.
 
-    The max is computed on the last layer, ignoring other layers, so it's
-    as if you removed other layers first.
+    See :func:`max` for details.
+    """
+    return _k2.max_per_sublist(src.ragged, initial_value, axis)
+
+
+def max(
+    src: Union[RaggedFloat, RaggedInt],
+    initial_value: float = torch.finfo(torch.float32).min,
+    axis: int = -1
+) -> torch.Tensor:
+    """Compute the max per sublist for a ragged tensor (including
+    `initial_value` in the maximum) on the given axis.
+
+    Caution: The max operation only support on last axis, currently.
+             The max is computed on the last layer, ignoring other layers,
+             so it's as if you removed other layers first.
 
     Args:
       src:
@@ -367,31 +491,100 @@ def max_per_sublist(src: Union[RaggedFloat, RaggedInt],
       initial_value:
         The initial value that is included with the elements of each
         sub-list when computing the maximum.
+      axis:
+        Axis the max performed, only support the last axis now, default -1.
     Returns:
-      Return a 1-D tensor with dtype torch.int32.
-    '''
-    return _k2.max_per_sublist(src.ragged, initial_value)
+      Return a 1-D torch.Tensor with dtype torch.float32 if the input is
+      `RaggedFloat`, otherwise torch.int32. Its `numel` equals to
+      `src.tot_size(axis - 1)`. If a sublist is empty, the value in
+      the corresponding index will be the initial_value.
+    """
+    return max_per_sublist(src, initial_value, axis)
 
 
-def sort_sublist(in_out: Union[RaggedFloat, RaggedInt],
-                 descending: bool = False,
-                 need_new2old_indexes: bool = False) -> Optional[torch.Tensor]:
-    '''Sort a ragged tensor **in-place**.
+def min_per_sublist(
+    src: Union[RaggedFloat, RaggedInt],
+    initial_value: float = torch.finfo(torch.float32).max,
+    axis: int = -1
+) -> torch.Tensor:
+    """Compute the min per sublist for a ragged tensor (including
+    `initial_value` in the minimum) on the given axis.
+
+    See :func:`min` for details.
+    """
+    return _k2.min_per_sublist(src.ragged, initial_value, axis)
+
+
+def min(
+    src: Union[RaggedFloat, RaggedInt],
+    initial_value: float = torch.finfo(torch.float32).max,
+    axis: int = -1
+) -> torch.Tensor:
+    """Compute the min per sublist for a ragged tensor (including
+    `initial_value` in the minimum) on the given axis.
+
+    Caution: The min operation only support on last axis, currently.
+             The min is computed on the last layer, ignoring other layers,
+             so it's as if you removed other layers first.
+
+    Args:
+      src:
+        The input ragged tensor.
+      initial_value:
+        The initial value that is included with the elements of each
+        sub-list when computing the minimum.
+      axis:
+        Axis the min performed, only support the last axis now, default -1.
+    Returns:
+      Return a 1-D torch.Tensor with dtype torch.float32 if the input is
+      `RaggedFloat`, otherwise torch.int32. Its `numel` equals to
+      `src.tot_size(axis - 1)`. If a sublist is empty, the value in
+      the corresponding index will be the initial_value.
+    """
+    return min_per_sublist(src, initial_value, axis)
+
+
+def sort_sublist(
+    in_out: Union[RaggedFloat, RaggedInt],
+    descending: bool = False,
+    need_new2old_indexes: bool = False,
+    axis: int = -1
+) -> Optional[torch.Tensor]:
+    """Sort a ragged tensor **in-place** on the given axis.
+
+    See :func:`sort` for more details.
+    """
+    return _k2.sort_sublists(
+        in_out=in_out.ragged,
+        descending=descending,
+        need_new2old_indexes=need_new2old_indexes,
+        axis=axis,
+    )
+
+
+def sort(
+    in_out: Union[RaggedFloat, RaggedInt],
+    descending: bool = False,
+    need_new2old_indexes: bool = False,
+    axis: int = -1
+) -> Optional[torch.Tensor]:
+    """Sort a ragged tensor **in-place** on the given axis.
+
+    Caution: The sort operation only support on last axis currently.
 
     Args:
       in_out:
-        The ragged tensor to be sorted. The sort operation is applied to
-        the last axis. Caution: It is sorted **in-place**.
+        The ragged tensor to be sorted. Caution: It is sorted **in-place**.
       descending:
         True to sort in descending order. False to sort in ascending order.
       need_new2old_indexes:
         If True, also returns a 1-D tensor, which contains the indexes mapping
         from the sorted elements to the unsorted elements. We can use
         `in_out.clone().values()[ans_tensor]` to get a sorted tensor.
+      axis:
+        Axis the sort performed, only support the last axis now, default -1.
     Returns:
       If `need_new2old_indexes` is False, returns None. Otherwise, returns
       a 1-D tensor of dtype torch.int32.
-    '''
-    return _k2.sort_sublists(in_out=in_out.ragged,
-                             descending=descending,
-                             need_new2old_indexes=need_new2old_indexes)
+    """
+    return sort_sublist(in_out, descending, need_new2old_indexes, axis)
