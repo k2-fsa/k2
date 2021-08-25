@@ -62,7 +62,7 @@ Dtype ScalarTypeToDtype(torch::ScalarType scalar_type) {
     case torch::kLong:
       return kInt64Dtype;
     default:
-      // TODO(fangjun): add other type when needed
+      // TODO(fangjun): add other types when needed
       K2_LOG(FATAL) << "Unsupported scalar_type: " << scalar_type;
       return kInt32Dtype;  // unreachable code
   }
@@ -79,7 +79,7 @@ torch::ScalarType ScalarTypeFromDtype(Dtype dtype) {
     case kInt64Dtype:
       return torch::kLong;
     default:
-      // TODO(fangjun): add other type when needed
+      // TODO(fangjun): add other types when needed
       K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(dtype).Name();
       return torch::ScalarType::Undefined;  // unreachable code
   }

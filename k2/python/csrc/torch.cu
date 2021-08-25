@@ -24,6 +24,7 @@
 
 #if defined(K2_USE_PYTORCH)
 
+#include "k2/python/csrc/torch/any.h"
 #include "k2/python/csrc/torch/arc.h"
 #include "k2/python/csrc/torch/discounted_cum_sum.h"
 #include "k2/python/csrc/torch/fsa.h"
@@ -44,6 +45,8 @@ void PybindTorch(py::module &m) {
   PybindNbest(m);
   PybindRagged(m);
   PybindRaggedOps(m);
+  // TODO: Move Pybind* to the namespace k2
+  k2::PybindAny(m);
 }
 
 #else

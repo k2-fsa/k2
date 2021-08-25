@@ -17,3 +17,4 @@ Python API reference
    ragged_ops
    ragged_shape
    _k2
+   tensor

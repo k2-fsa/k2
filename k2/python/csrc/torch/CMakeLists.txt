@@ -1,5 +1,6 @@
 # please keep the list sorted
 set(torch_srcs
+  any.cu
   arc.cu
   discounted_cum_sum.cu
   fsa.cu
