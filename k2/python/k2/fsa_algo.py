@@ -172,6 +172,10 @@ def intersect_device(
         Requires
             - `b_to_a_map.shape[0] == b_fsas.shape[0]`
             - `0 <= b_to_a_map[i] < a_fsas.shape[0]`
+      sorted_match_a:
+        If true, the arcs of a_fsas must be sorted by label (checked by
+        calling code via properties), and we'll use a matching approach
+        that requires this.
       ret_arc_maps:
         If False, return the resulting Fsa. If True, return a tuple
         containing three entries:

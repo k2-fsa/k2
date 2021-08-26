@@ -73,7 +73,7 @@ class TestIntersect(unittest.TestCase):
                                   torch.tensor([-1, 0, -1]).to(b_fsa.grad))
 
             # if any of the input FSA is an FsaVec,
-            # the outupt FSA is also an FsaVec.
+            # the output FSA is also an FsaVec.
             a_fsa.scores.grad = None
             b_fsa.scores.grad = None
             a_fsa = k2.create_fsa_vec([a_fsa])
@@ -125,7 +125,7 @@ class TestIntersect(unittest.TestCase):
                               torch.tensor([0, -1, -1, -1]).to(b_fsa.grad))
 
         # if any of the input FSA is an FsaVec,
-        # the outupt FSA is also an FsaVec.
+        # the output FSA is also an FsaVec.
         a_fsa.scores.grad = None
         b_fsa.scores.grad = None
         a_fsa = k2.create_fsa_vec([a_fsa])
