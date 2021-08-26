@@ -21,3 +21,4 @@ from .ragged_shape import create_ragged_shape2
 from .ragged_shape import random_ragged_shape
 from .tensor import RaggedFloat
 from _k2.ragged import Tensor
+from _k2.ragged import create_tensor

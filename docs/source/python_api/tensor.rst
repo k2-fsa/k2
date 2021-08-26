@@ -6,10 +6,10 @@ k2.ragged
 .. currentmodule:: _k2.ragged
 
 
-tensor
-------
+create_tensor
+-------------
 
-.. autofunction:: tensor
+.. autofunction:: create_tensor
 
 
 Tensor

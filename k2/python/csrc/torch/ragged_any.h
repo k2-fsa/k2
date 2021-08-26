@@ -20,8 +20,8 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_ANY_TENSOR_H
-#define K2_PYTHON_CSRC_TORCH_ANY_TENSOR_H
+#ifndef K2_PYTHON_CSRC_TORCH_RAGGED_ANY_H
+#define K2_PYTHON_CSRC_TORCH_RAGGED_ANY_H
 
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/k2.h"
@@ -29,12 +29,16 @@
 
 namespace k2 {
 
-// AnyTensor is introduced to support backward propagations on
-// RaggedAny since there has to be a tensor involved during backprob
-class AnyTensor {
- public:
+// RaggedAny is introduced to support backward propagations on
+// Ragged<Any> since there has to be a tensor involved during backprob
+struct RaggedAny {
+  Ragged<Any> any_;
+  torch::Tensor data_;  // shares the underlying memory with any_.values
+
   // The default constructor initializes an invalid ragged tensor.
-  AnyTensor() = default;
+  RaggedAny() = default;
+
+  explicit RaggedAny(const Ragged<Any> &any) : any_(any) {}
 
   /* Create a ragged tensor with two axes.
 
@@ -49,7 +53,7 @@ class AnyTensor {
      and torch.int32. To support torch.int64 and other dtypes, we can
      add a new macro to replace `FOR_REAL_AND_INT32_TYPES`.
    */
-  AnyTensor(py::list data, py::object dtype = py::none());
+  RaggedAny(py::list data, py::object dtype = py::none());
 
   /* Convert a ragged tensor to a string.
 
@@ -69,7 +73,7 @@ class AnyTensor {
 
      @return Return a ragged tensor on the given device.
    */
-  AnyTensor To(torch::Device device) const;
+  RaggedAny To(torch::Device device) const;
 
   /* Convert a ragged tensor to given scalar type.
 
@@ -81,15 +85,14 @@ class AnyTensor {
 
      @return Return a ragged tensor with the specified type.
    */
-  AnyTensor To(torch::ScalarType scalar_type) const;
+  RaggedAny To(torch::ScalarType scalar_type) const;
+
+  // Return a copy of this ragged tensor
+  RaggedAny Clone() const;
 
   // TODO: Add more operations
-
- private:
-  RaggedAny any_;
-  torch::Tensor data_;  // shares the underlying memory with any_.values
 };
 
 }  // namespace k2
 
-#endif  // K2_PYTHON_CSRC_TORCH_ANY_TENSOR_H
+#endif  // K2_PYTHON_CSRC_TORCH_RAGGED_ANY_H

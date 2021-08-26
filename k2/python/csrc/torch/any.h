@@ -27,7 +27,7 @@
 
 namespace k2 {
 
-void PybindAny(py::module &m);
+void PybindRaggedAny(py::module &m);
 
 }  // namespace k2
 #endif  // K2_PYTHON_CSRC_TORCH_ANY_H_

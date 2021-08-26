@@ -43,6 +43,44 @@ class Tensor(object):
         """Return a string representation of this tensor"""
         pass
 
+    def __eq__(self, other: "Tensor") -> bool:
+        """Compare two ragged tensors.
+
+        Caution::
+          The two tensors MUST have the same dtype. Otherwise,
+          it throws.
+
+        Args:
+          other:
+            The tensor to be compared.
+        Returns:
+          Return True if the two tensors are equal.
+          Return False otherwise.
+
+        """
+        pass
+
+    def __ne__(self, other: "Tensor") -> bool:
+        """Compare two ragged tensors.
+
+        Caution::
+          The two tensors MUST have the same dtype. Otherwise,
+          it throws.
+
+        Args:
+          other:
+            The tensor to be compared.
+        Returns:
+          Return True if the two tensors are NOT equal.
+          Return False otherwise.
+
+        """
+        pass
+
+    def clone(self) -> "Tensor":
+        """Return a copy of this tensor."""
+        pass
+
     @overload
     def to(self, o: torch.device) -> "Tensor":
         """Transfer this tensor to a given device.
@@ -69,6 +107,11 @@ class Tensor(object):
           If `self` is already of the specified `dtype`, return
           a ragged tensor sharing the underlying memory with `self`.
           Otherwise, a new tensor is returned.
+
+        Caution::
+          Currently, only for dtypes torch.int32, torch.float32, and
+          torch.float64 are implemented. We can support other types
+          if needed.
 
         Args:
           o:

@@ -9,6 +9,7 @@ set(torch_srcs
   index_select.cu
   nbest.cu
   ragged.cu
+  ragged_any.cu
   ragged_ops.cu
   torch_util.cu
 )

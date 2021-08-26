@@ -4,7 +4,7 @@ from typing import Optional
 from .tensor import Tensor
 
 
-def tensor(data: any, dtype: Optional[torch.dtype] = None) -> Tensor:
+def create_tensor(data: any, dtype: Optional[torch.dtype] = None) -> Tensor:
     """Return a k2.ragged.Tensor with two axes.
 
     Args:

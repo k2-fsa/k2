@@ -46,7 +46,7 @@ void PybindTorch(py::module &m) {
   PybindRagged(m);
   PybindRaggedOps(m);
   // TODO: Move Pybind* to the namespace k2
-  k2::PybindAny(m);
+  k2::PybindRaggedAny(m);
 }
 
 #else
