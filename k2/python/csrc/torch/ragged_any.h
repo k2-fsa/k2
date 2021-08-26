@@ -40,6 +40,19 @@ struct RaggedAny {
 
   explicit RaggedAny(const Ragged<Any> &any) : any_(any) {}
 
+  // share Ragged<Any> with other
+  RaggedAny(const RaggedAny &other) : any_(other.any_) {}
+
+  // share Ragged<Any> with other
+  RaggedAny &operator=(const RaggedAny &other) { any_ = other.any_; }
+
+  RaggedAny(RaggedAny &&other) { any_ = std::move(other.any_); }
+
+  RaggedAny &operator=(RaggedAny &&other) {
+    if (&other != this) any_ = std::move(other.any_);
+    return *this;
+  }
+
   /* Create a ragged tensor with two axes.
 
      @param data a list-of-list
@@ -90,7 +103,16 @@ struct RaggedAny {
   // Return a copy of this ragged tensor
   RaggedAny Clone() const;
 
-  // TODO: Add more operations
+  /* Enable/Disable requires_grad of this tensor
+
+     @param requires_grad True to requires grad for this tensors.
+                          False to not require grad.
+   */
+  void SetRequiresGrad(bool requires_grad);
+
+  // TODO: Add const
+  // TODO: Return a RaggedAny
+  torch::Tensor Sum(float initial_value = 0) /*const*/;
 };
 
 }  // namespace k2

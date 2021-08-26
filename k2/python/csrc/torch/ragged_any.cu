@@ -20,6 +20,7 @@
  * limitations under the License.
  */
 
+#include "k2/python/csrc/torch/autograd/sum.h"
 #include "k2/python/csrc/torch/ragged_any.h"
 #include "k2/python/csrc/torch/torch_util.h"
 
@@ -122,6 +123,27 @@ RaggedAny RaggedAny::Clone() const {
 
   // Unreachable code
   return {};
+}
+
+void RaggedAny::SetRequiresGrad(bool requires_grad) {
+  // TODO: support other types
+  if (!data_.defined()) {
+    data_ = ToTorch(any_.Specialize<float>().values);
+  }
+
+  data_.requires_grad_(requires_grad);
+}
+
+torch::Tensor RaggedAny::Sum(float initial_value /*=0*/) {
+  // TODO: support other types
+  if (!data_.defined()) {
+    // TODO: for int32_t, we don't need this
+    data_ = ToTorch(any_.Specialize<float>().values);
+  }
+  return SumFunction<float>::apply(*this, this->data_, initial_value);
+  // TODO:
+  // - return a raggedAny
+  // - handle other types
 }
 
 }  // namespace k2

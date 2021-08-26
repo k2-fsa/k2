@@ -2,7 +2,7 @@
  * @brief Wraps Ragged<Any>
  *
  * @copyright
- * Copyright      2021  Xiaomi Corp.  (authors: Daniel Povey)
+ * Copyright      2021  Xiaomi Corp.  (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -49,6 +49,9 @@ void PybindRaggedAny(py::module &m) {
       py::arg("data"), py::arg("dtype") = py::none());
 
   any.def("__str__",
+          [](const RaggedAny &self) -> std::string { return self.ToString(); });
+
+  any.def("__repr__",
           [](const RaggedAny &self) -> std::string { return self.ToString(); });
 
   // o is either torch.device or torch.dtype
@@ -104,6 +107,11 @@ void PybindRaggedAny(py::module &m) {
       },
       py::arg("other"));
 
+  any.def("requires_grad_", &RaggedAny::SetRequiresGrad,
+          py::arg("requires_grad"));
+
+  any.def("sum", &RaggedAny::Sum, py::arg("initial_value") = 0);
+
   //==================================================
   //      k2.ragged.Tensor properties
   //--------------------------------------------------
@@ -145,6 +153,20 @@ void PybindRaggedAny(py::module &m) {
     Dtype t = self.any_.GetDtype();
     FOR_REAL_AND_INT32_TYPES(
         t, T, { return ToTorch(self.any_.values.Specialize<T>()); });
+  });
+
+  any.def_property_readonly(
+      "grad", [](RaggedAny &self) -> torch::optional<torch::Tensor> {
+        if (!self.data_.defined()) return {};
+
+        return self.data_.grad();
+      });
+
+  // TODO: make it writable
+  any.def_property_readonly("requires_grad", [](RaggedAny &self) -> bool {
+    if (!self.data_.defined()) return false;
+
+    return self.data_.requires_grad();
   });
 
   //==================================================
