@@ -5,8 +5,9 @@ k2.ragged
 
 .. currentmodule:: _k2.ragged
 
+
 tensor
--------
+------
 
 .. autofunction:: tensor
 
@@ -14,28 +15,6 @@ tensor
 Tensor
 ------
 
-__init__
-~~~~~~~~~
-
-.. automethod:: k2.ragged.Tensor.__init__
-
-__str__
-~~~~~~~
-
-.. automethod:: k2.ragged.Tensor.__str__
-
-
-to
-~~
-
-.. automethod:: k2.ragged.Tensor.to
-
-dtype
-~~~~~
-
-.. autoattribute:: k2.ragged.Tensor.dtype
-
-device
-~~~~~~
-
-.. autoattribute:: k2.ragged.Tensor.device
+.. autoclass:: k2.ragged.Tensor
+  :members:
+  :special-members:

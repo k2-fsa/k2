@@ -35,12 +35,18 @@ using RaggedAny = Ragged<Any>;
 
    @param data a list-of-list
    @param dtype An instance of torch.dtype. If it is None,
-                the data type is inferred from the input data,
-                which with either be torch.int32 or torch.float32.
+                the data type is inferred from the input `data`,
+                which will either be torch.int32 or torch.float32.
+
+   @TODO To support `data` with arbitrary number of axes.
+
+   @CAUTION Currently supported dtypes are torch.float32, torch.float64,
+   and torch.int32. To support torch.int64 and other dtypes, we can
+   add a new macro to replace `FOR_REAL_AND_INT32_TYPES`.
 
    @return A ragged tensor with two axes.
  */
-static Ragged<Any> CreateRagged2(py::list data, py::object dtype = py::none()) {
+static RaggedAny CreateRagged2(py::list data, py::object dtype = py::none()) {
   if (!dtype.is_none() && !THPDtype_Check(dtype.ptr())) {
     K2_LOG(FATAL) << "Expect an instance of torch.dtype. "
                   << "Given: " << py::str(dtype);
@@ -60,14 +66,18 @@ static Ragged<Any> CreateRagged2(py::list data, py::object dtype = py::none()) {
   auto scalar_type = reinterpret_cast<THPDtype *>(dtype.ptr())->scalar_type;
 
   Dtype t = ScalarTypeToDtype(scalar_type);
+
+  // TODO: To support kInt64Dtype
   FOR_REAL_AND_INT32_TYPES(t, T, {
     auto vecs = data.cast<std::vector<std::vector<T>>>();
     return CreateRagged2(vecs).Generic();
   });
 
   K2_LOG(FATAL) << "Unsupported dtype: " << scalar_type
-                << ". Supported dtypes are: torch.float32, torch.int32";
+                << ". Supported dtypes are: torch.int32, torch.float32, "
+                << "and torch.float64";
 
+  // Unreachable code
   return {};
 }
 
@@ -83,6 +93,16 @@ static std::string ToString(const RaggedAny &any) {
   return os.str();
 }
 
+/* Move a ragged tensor to a given device.
+
+   Note: If the input tensor is already on the given device, itself
+   is returned. Otherwise, a copy of the input tensor moved to the given
+   device is returned.
+
+   @param any  The input ragged tensor.
+   @param device  A torch device, which can be either a CPU device
+                  or a CUDA device.
+ */
 static RaggedAny To(const RaggedAny &any, torch::Device device) {
   ContextPtr context = any.Context();
   if (device.is_cpu()) {
@@ -202,6 +222,14 @@ void PybindAny(py::module &m) {
 
     // takes ownership
     return py::reinterpret_steal<py::object>(h);
+  });
+
+  // Return the underlying memory of this tensor.
+  // No data is copied. Memory is shared.
+  any.def_property_readonly("data", [](RaggedAny &self) -> torch::Tensor {
+    Dtype t = self.GetDtype();
+    FOR_REAL_AND_INT32_TYPES(t, T,
+                             { return ToTorch(self.values.Specialize<T>()); });
   });
 
   ragged.def(

@@ -11,7 +11,7 @@ class Tensor(object):
 
     @overload
     def __init__(self, data: list, dtype: Optional[torch.dtype] = None) -> None:
-        """Create ragged tensor with two axes.
+        """Create a ragged tensor with two axes.
 
         Args:
           data:
@@ -33,6 +33,12 @@ class Tensor(object):
         """Return the device of this tensor."""
         pass
 
+    @property
+    def data(self) -> torch.Tensor:
+        """Return the underlying memory as a 1-D tensor."""
+
+        pass
+
     def __str__(self) -> str:
         """Return a string representation of this tensor"""
         pass
@@ -42,8 +48,9 @@ class Tensor(object):
         """Transfer this tensor to a given device.
 
         Note::
-          If `self` is already on the specified device, itself
-          is returned. Otherwise, a new tensor is returned.
+          If `self` is already on the specified device, return a
+          ragged tensor sharing the underlying memory with `self`.
+          Otherwise, a new tensor is returned.
 
         Args:
           o:
@@ -59,8 +66,9 @@ class Tensor(object):
         """Convert this tensor to a specific dtype.
 
         Note::
-          If `self` is already of the specified `dtype`, itself
-          is returned. Otherwise, a new tensor is returned.
+          If `self` is already of the specified `dtype`, return
+          a ragged tensor sharing the underlying memory with `self`.
+          Otherwise, a new tensor is returned.
 
         Args:
           o:
