@@ -39,7 +39,6 @@ void PybindRaggedAny(py::module &m) {
   //==================================================
   //      k2.ragged.Tensor methods
   //--------------------------------------------------
-  any.def(py::init<>());
 
   any.def(
       py::init([](py::list data,
@@ -131,9 +130,13 @@ void PybindRaggedAny(py::module &m) {
     return self.any_.NumElements();
   });
 
-  // NumAxes() does not access GPU memory
-  any.def("num_axes",
-          [](RaggedAny &self) -> int { return self.any_.NumAxes(); });
+  any.def(
+      "tot_size",
+      [](const RaggedAny &self, int32_t axis) -> int32_t {
+        DeviceGuard guard(self.any_.Context());
+        return self.any_.TotSize(axis);
+      },
+      py::arg("axis"));
 
   any.def(py::pickle(
       [](const RaggedAny &self) -> py::tuple {
@@ -271,6 +274,16 @@ void PybindRaggedAny(py::module &m) {
 
   any.def_property_readonly("is_cuda", [](RaggedAny &self) -> bool {
     return self.any_.Context()->GetDeviceType() == kCuda;
+  });
+
+  // NumAxes() does not access GPU memory
+  any.def_property_readonly("num_axes", [](const RaggedAny &self) -> int32_t {
+    return self.any_.NumAxes();
+  });
+
+  // Dim0() does not access GPU memory
+  any.def_property_readonly("dim0", [](const RaggedAny &self) -> int32_t {
+    return self.any_.Dim0();
   });
 
   //==================================================

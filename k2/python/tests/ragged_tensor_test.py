@@ -41,7 +41,7 @@ class TestRaggedTensor(unittest.TestCase):
                 cls.devices.append(torch.device("cuda", 1))
         cls.dtypes = [torch.float32, torch.float64, torch.int32]
 
-    def test_creat_tensor(self):
+    def test_create_tensor(self):
         funcs = [k2r.create_tensor, k2r.Tensor]
         for func in funcs:
             a = func([[1000, 2], [3]])
@@ -53,6 +53,16 @@ class TestRaggedTensor(unittest.TestCase):
 
             a = func([[1000, 2], [3]], dtype=torch.float64)
             assert a.dtype == torch.float64
+
+    def test_create_tensor_from_string(self):
+        a = k2r.Tensor([[1], [2, 3, 4, 5], []])
+        b = k2r.Tensor("[[1] [2 3 4 5] []]")
+        assert a == b
+        assert b.dim0 == 3
+
+        b = k2r.Tensor("[[[1] [2 3] []] [[10]]]")
+        assert b.num_axes == 3
+        assert b.dim0 == 2
 
     def test_property_data(self):
         a = k2r.Tensor([[1], [2], [], [3, 4]])
@@ -215,6 +225,27 @@ class TestRaggedTensor(unittest.TestCase):
                 os.remove(tmp_filename)
 
                 assert a == b
+
+    def test_tot_size_2axes(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                a = k2r.Tensor("[ [1 2 3] [] [5 8] ]", dtype=dtype)
+                a = a.to(device)
+
+                assert a.tot_size(0) == 3
+                assert a.tot_size(1) == 5
+
+    def test_tot_size_3axes(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                a = k2r.Tensor(
+                    "[ [[1 2 3] [] [5 8]] [[] [1 5 9 10 -1] [] [] []] ]", dtype=dtype
+                )
+                a = a.to(device)
+
+                assert a.tot_size(0) == 2
+                assert a.tot_size(1) == 8
+                assert a.tot_size(2) == 10
 
 
 if __name__ == "__main__":

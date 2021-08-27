@@ -1,26 +1,43 @@
-from typing import Optional, overload
+from typing import Optional, Tuple, Union, overload
+
 
 import torch
-from k2.ragged import RaggedShape
+
+
+class RaggedShape:
+    pass
 
 
 class Tensor(object):
     @overload
-    def __init__(self):
-        """Create an empty ragged tensor."""
-        pass
-
-    @overload
     def __init__(self, data: list, dtype: Optional[torch.dtype] = None) -> None:
         """Create a ragged tensor with two axes.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([ [1, 2], [5], [], [9] ])
+        >>> a
+        [ [ 1 2 ] [ 5 ] [ ] [ 9 ] ]
+        >>> a.dtype
+        torch.int32
+        >>> b = k2r.Tensor([ [1, 3.0], [] ])
+        >>> b
+        [ [ 1 3 ] [ ] ]
+        >>> b.dtype
+        torch.float32
+        >>> c = k2r.Tensor([ [1] ], dtype=torch.float64)
+        >>> c
+        [ [ 1 ] ]
+        >>> c.dtype
+        torch.float64
 
         Args:
           data:
             A list-of-list of integers or real numbers.
           dtype:
-            Optional. If None, it infers the dtype from `data`
-            automatically, which is either `torch.int32` or
-            `torch.float32.
+            Optional. If None, it infers the dtype from ``data``
+            automatically, which is either ``torch.int32`` or
+            ``torch.float32``.
         """
         pass
 
@@ -36,14 +53,32 @@ class Tensor(object):
 
             [ [[1] [2 3]]  [[2] [] [3, 4,]] ]
 
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor('[ [1] [] [3 4] ]')
+        >>> a
+        [ [ 1 ] [ ] [ 3 4 ] ]
+        >>> a.num_axes
+        2
+        >>> a.dtype
+        torch.int32
+        >>> b = k2r.Tensor('[ [[] [3]]  [[10]] ]', dtype=torch.float32)
+        >>> b
+        [ [ [ ] [ 3 ] ] [ [ 10 ] ] ]
+        >>> b.dtype
+        torch.float32
+        >>> b.num_axes
+        3
+
         Note::
-          Number of spaces in `s` does not affect the result.
+          Number of spaces in ``s`` does not affect the result.
           Of course, numbers have to be separated by at least one space.
+
         Args:
           s:
             A string representation of the tensor.
           dtype:
-            The desired dtype of the tensor. If it's ``None``, it tries
+            The desired dtype of the tensor. If it is ``None``, it tries
             to infer the correct dtype from `s`, which is assumed to be
             either ``torch.int32`` or ``torch.float32``.
         """
@@ -51,29 +86,96 @@ class Tensor(object):
 
     @property
     def dtype(self) -> torch.dtype:
-        """Return the dtype of this tensor."""
+        """Return the dtype of this tensor.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1], []])
+        >>> a.dtype
+        torch.int32
+        >>> a = a.to(torch.float32)
+        >>> a.dtype
+        torch.float32
+        >>> b = k2r.Tensor([[3]], dtype=torch.float64)
+        >>> b.dtype
+        torch.float64
+
+        """
         pass
 
     @property
     def device(self) -> torch.device:
-        """Return the device of this tensor."""
+        """Return the device of this tensor.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1]])
+        >>> a.device
+        device(type='cpu')
+        >>> b = a.to(torch.device('cuda', 0))
+        >>> b.device
+        device(type='cuda', index=0)
+        >>> b.device == torch.device('cuda:0')
+        True
+
+        """
         pass
 
     @property
     def data(self) -> torch.Tensor:
-        """Return the underlying memory as a 1-D tensor."""
+        """Return the underlying memory as a 1-D tensor.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1, 2], [], [5], [], [8, 9, 10]])
+        >>> a.data
+        tensor([ 1,  2,  5,  8,  9, 10], dtype=torch.int32)
+        >>> isinstance(a.data, torch.Tensor)
+        True
+        >>> a.data[0] = -1
+        >>> a
+        [ [ -1 2 ] [ ] [ 5 ] [ ] [ 8 9 10 ] ]
+        >>> a.data[3] = -3
+        >>> a
+        [ [ -1 2 ] [ ] [ 5 ] [ ] [ -3 9 10 ] ]
+        >>> a.data[2] = -2
+        >>> a
+        [ [ -1 2 ] [ ] [ -2 ] [ ] [ -3 9 10 ] ]
+
+        """
         pass
 
     @property
     def requires_grad(self) -> bool:
         """Return ``True`` if gradients need to be computed for this tensor.
         Return ``False`` otherwise.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1]], dtype=torch.float32)
+        >>> a.requires_grad
+        False
+        >>> a.requires_grad = True
+        >>> a.requires_grad
+        True
+
         """
         pass
 
     @requires_grad.setter
     def requires_grad(self, requires_grad: bool) -> None:
-        """Set the requires grad attribute of this tensor."""
+        """Set the requires grad attribute of this tensor.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1]], dtype=torch.float32)
+        >>> a.requires_grad
+        False
+        >>> a.requires_grad = True
+        >>> a.requires_grad
+        True
+
+        """
         pass
 
     def requires_grad_(self, requires_grad: bool = True) -> "Tensor":
@@ -87,6 +189,16 @@ class Tensor(object):
         Caution:
           This method ends with an underscore, meaning it changes this tensor
           **in-place**.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1]], dtype=torch.float64)
+        >>> a.requires_grad
+        False
+        >>> a.requires_grad_(True)
+        [ [ 1 ] ]
+        >>> a.requires_grad
+        True
 
         Args:
           requires_grad:
@@ -103,6 +215,19 @@ class Tensor(object):
 
         The attribute will contain the gradients computed and future
         calls to ``backward()`` will accumulate (add) gradients into it.
+
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1, 2], [3], [5, 6], []], dtype=torch.float32)
+        >>> a.requires_grad_(True)
+        [ [ 1 2 ] [ 3 ] [ 5 6 ] [ ] ]
+        >>> b = a.sum()
+        >>> b
+        tensor([ 3.,  3., 11.,  0.], grad_fn=<SumFunction>>)
+        >>> c = b * torch.arange(4)
+        >>> c.sum().backward()
+        >>> a.grad
+        tensor([0., 0., 1., 2., 2.])
+
         """
         pass
 
@@ -112,11 +237,21 @@ class Tensor(object):
         Returns:
           Return ``True`` if the tensor is stored on the GPU, ``False``
           otherwise.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1]])
+        >>> a.is_cuda
+        False
+        >>> b = a.to(torch.device('cuda', 0))
+        >>> b.is_cuda
+        True
+
         """
         pass
 
     @property
-    def shape(self) -> RaggedShape:
+    def shape(self) -> "RaggedShape":
         """
         Returns:
           Return the shape of this tensor.
@@ -127,14 +262,50 @@ class Tensor(object):
         """
         Returns:
           Return number of elements in this tensor. It equals to
-          `self.data.numel()
+          `self.data.numel()`.
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1], [], [3, 4, 5, 6]])
+        >>> a.numel()
+        5
+        >>> b = k2r.Tensor('[ [[1] [] []]  [[2 3]]]')
+        >>> b.numel()
+        3
         """
         pass
 
+    @property
     def num_axes(self) -> int:
-        """
+        """Return the number of axes of this tensor.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor('[ [] [] [] [] ]')
+        >>> a.num_axes
+        2
+        >>> b = k2r.Tensor('[ [[] []] [[]] ]')
+        >>> b.num_axes
+        3
+        >>> c = k24.Tensor('[ [ [[] [1]] [[3 4] []] ]  [ [[1]] [[2] [3 4]] ] ]')
+        >>> c.num_axes
+        4
+
         Returns:
           Return number of axes of this tensor, which is at least 2.
+        """
+        pass
+
+    @property
+    def dim0(self) -> int:
+        """Return number of sublists at axis 0.
+
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([ [1, 2], [3], [], [], [] ])
+        >>> a.dim0
+        5
+        >>> b = k2r.Tensor('[ [[]] [[] []]]')
+        >>> b.dim0
+        2
         """
         pass
 
@@ -149,6 +320,20 @@ class Tensor(object):
           This operation supports autograd if this tensor is a float tensor,
           i.e., with dtype being torch.float32 or torch.float64.
 
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor('[ [[1 2] [] [5]]  [[10]] ]', dtype=torch.float32)
+        >>> a.requires_grad_(True)
+        [ [ [ 1 2 ] [ ] [ 5 ] ] [ [ 10 ] ] ]
+        >>> b = a.sum()
+        >>> c = (b * torch.arange(4)).sum()
+        >>> c.backward()
+        >>> a.grad
+        tensor([0., 0., 2., 3.])
+        >>> b
+        tensor([ 3.,  0.,  5., 10.], grad_fn=<SumFunction>>)
+        >>> c
+        tensor(40., grad_fn=<SumBackward0>)
+
         Args:
           initial_value:
             This value is added to the sum of each sublist. So when
@@ -159,7 +344,17 @@ class Tensor(object):
         """
 
     def __str__(self) -> str:
-        """Return a string representation of this tensor"""
+        """Return a string representation of this tensor.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1], [2, 3], []])
+        >>> a
+        [ [ 1 ] [ 2 3 ] [ ] ]
+        >>> str(a)
+        '[ [ 1 ] [ 2 3 ] [ ] ]'
+
+        """
         pass
 
     def __eq__(self, other: "Tensor") -> bool:
@@ -204,6 +399,16 @@ class Tensor(object):
 
         Note::
           It requires that this tensor has at least 3 axes.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor('[ [[1 3] [] [9]]  [[8]] ]')
+        >>> a
+        [ [ [ 1 3 ] [ ] [ 9 ] ] [ [ 8 ] ] ]
+        >>> a[0]
+        [ [ 1 3 ] [ ] [ 9 ] ]
+        >>> a[1]
+        [ [ 8 ] ]
 
         Args:
           i:
@@ -251,7 +456,29 @@ class Tensor(object):
         pass
 
     def clone(self) -> "Tensor":
-        """Return a copy of this tensor."""
+        """Return a copy of this tensor.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1, 2], [3]])
+        >>> b = a
+        >>> c = a.clone()
+        >>> a
+        [ [ 1 2 ] [ 3 ] ]
+        >>> b.data[0] = 10
+        >>> a
+        [ [ 10 2 ] [ 3 ] ]
+        >>> c
+        [ [ 1 2 ] [ 3 ] ]
+        >>> c.data[0] = -1
+        >>> c
+        [ [ -1 2 ] [ 3 ] ]
+        >>> a
+        [ [ 10 2 ] [ 3 ] ]
+        >>> b
+        [ [ 10 2 ] [ 3 ] ]
+
+        """
         pass
 
     @overload
@@ -262,6 +489,15 @@ class Tensor(object):
           If `self` is already on the specified device, return a
           ragged tensor sharing the underlying memory with `self`.
           Otherwise, a new tensor is returned.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1], [2, 3]])
+        >>> a.device
+        device(type='cpu')
+        >>> b = a.to(torch.device('cuda', 0))
+        >>> b.device
+        device(type='cuda', index=0)
 
         Args:
           o:
@@ -281,6 +517,15 @@ class Tensor(object):
           a ragged tensor sharing the underlying memory with `self`.
           Otherwise, a new tensor is returned.
 
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor([[1], [2, 3, 5]])
+        >>> a.dtype
+        torch.int32
+        >>> b = a.to(torch.float64)
+        >>> b.dtype
+        torch.float64
+
         Caution::
           Currently, only for dtypes torch.int32, torch.float32, and
           torch.float64 are implemented. We can support other types
@@ -292,5 +537,28 @@ class Tensor(object):
 
         Returns:
           Return a tensor of the given `dtype`.
+        """
+        pass
+
+    def tot_size(self, axis: int) -> int:
+        """Return the number of elments of an given axis. If axis is 0, it's
+        equivalent to the property ``dim0``.
+
+        >>> import torch
+        >>> import k2.ragged as k2r
+        >>> a = k2r.Tensor('[ [1 2 3] [] [5 8 ] ]')
+        >>> a.tot_size(0)
+        3
+        >>> a.tot_size(1)
+        5
+        >>> import k2.ragged as k2r
+        >>> b = k2r.Tensor('[ [[1 2 3] [] [5 8]] [[] [1 5 9 10 -1] [] [] []] ]')
+        >>> b.tot_size(0)
+        2
+        >>> b.tot_size(1)
+        8
+        >>> b.tot_size(2)
+        10
+
         """
         pass

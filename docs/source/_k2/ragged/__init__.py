@@ -4,10 +4,6 @@ from typing import Optional
 from .tensor import Tensor
 
 
-class RaggedShape:
-    pass
-
-
 def create_tensor(data: any, dtype: Optional[torch.dtype] = None) -> Tensor:
     """Return a k2.ragged.Tensor with two axes.
 
