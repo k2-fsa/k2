@@ -44,7 +44,10 @@ struct RaggedAny {
   RaggedAny(const RaggedAny &other) : any_(other.any_) {}
 
   // share Ragged<Any> with other
-  RaggedAny &operator=(const RaggedAny &other) { any_ = other.any_; }
+  RaggedAny &operator=(const RaggedAny &other) {
+    any_ = other.any_;
+    return *this;
+  }
 
   RaggedAny(RaggedAny &&other) { any_ = std::move(other.any_); }
 
@@ -52,6 +55,9 @@ struct RaggedAny {
     if (&other != this) any_ = std::move(other.any_);
     return *this;
   }
+
+  // Populate `this->data_` and return it
+  const torch::Tensor &Data() const;
 
   /* Create a ragged tensor with two axes.
 
@@ -107,12 +113,23 @@ struct RaggedAny {
 
      @param requires_grad True to requires grad for this tensors.
                           False to not require grad.
-   */
-  void SetRequiresGrad(bool requires_grad);
 
-  // TODO: Add const
-  // TODO: Return a RaggedAny
-  torch::Tensor Sum(float initial_value = 0) /*const*/;
+     @note If this is NOT a float tenors and requires_grad is True,
+     it throws a RuntimeError exception.
+   */
+  RaggedAny &SetRequiresGrad(bool requires_grad = true);
+
+  /* Compute the sum over the last axis of the ragged tensor.
+
+     @note It supports autograd if the dtype of this tensor is
+     torch.float32 or torch.flaot64.
+
+     @param initial_value  This value is added to the sum of each
+     sub-list. If a sublist is empty, the sum of it is just initial_value.
+
+     @return Return the sum of each sublist as a 1-D tensor.
+   */
+  torch::Tensor Sum(float initial_value = 0) const;
 };
 
 }  // namespace k2

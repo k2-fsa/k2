@@ -108,7 +108,7 @@ void PybindRaggedAny(py::module &m) {
       py::arg("other"));
 
   any.def("requires_grad_", &RaggedAny::SetRequiresGrad,
-          py::arg("requires_grad"));
+          py::arg("requires_grad") = true);
 
   any.def("sum", &RaggedAny::Sum, py::arg("initial_value") = 0);
 
@@ -153,21 +153,28 @@ void PybindRaggedAny(py::module &m) {
     Dtype t = self.any_.GetDtype();
     FOR_REAL_AND_INT32_TYPES(
         t, T, { return ToTorch(self.any_.values.Specialize<T>()); });
+
+    // Unreachable code
+    return {};
   });
 
   any.def_property_readonly(
       "grad", [](RaggedAny &self) -> torch::optional<torch::Tensor> {
         if (!self.data_.defined()) return {};
 
-        return self.data_.grad();
+        return self.Data().grad();
       });
 
-  // TODO: make it writable
-  any.def_property_readonly("requires_grad", [](RaggedAny &self) -> bool {
-    if (!self.data_.defined()) return false;
+  any.def_property(
+      "requires_grad",
+      [](RaggedAny &self) -> bool {
+        if (!self.data_.defined()) return false;
 
-    return self.data_.requires_grad();
-  });
+        return self.Data().requires_grad();
+      },
+      [](RaggedAny &self, bool requires_grad) -> void {
+        self.SetRequiresGrad(requires_grad);
+      });
 
   //==================================================
   //      _k2.ragged.functions

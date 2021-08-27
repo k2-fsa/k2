@@ -22,9 +22,7 @@
 
 import unittest
 
-import random
 import torch
-import _k2
 import k2
 
 import k2.ragged as k2r
@@ -94,6 +92,46 @@ class TestRaggedTensor(unittest.TestCase):
 
     def test_dtypes_conversion(self):
         pass
+
+    def test_grad(self):
+        a = k2r.Tensor([[1, 2], [10], []], dtype=torch.float32)
+        assert a.grad is None
+        assert a.requires_grad is False
+
+        a.requires_grad = True
+        assert a.requires_grad is True
+
+        a.requires_grad_(False)
+        assert a.requires_grad is False
+
+        a.requires_grad_(True)
+        assert a.requires_grad is True
+
+    def test_sum_with_grad(self):
+        for device in self.devices:
+            for dtype in [torch.float32, torch.float64]:
+                a = k2r.Tensor([[1, 2], [], [5]], dtype=dtype)
+                a = a.to(device)
+                a.requires_grad_(True)
+                b = a.sum()
+                expected_sum = torch.tensor([3, 0, 5], dtype=dtype, device=device)
+
+                assert torch.all(torch.eq(b, expected_sum))
+
+                c = b[0] * 10 + b[1] * 20 + b[2] * 30
+                c.backward()
+                expected_grad = torch.tensor([10, 10, 30], device=device, dtype=dtype)
+                assert torch.all(torch.eq(a.grad, expected_grad))
+
+    def test_sum_no_grad(self):
+        for device in self.devices:
+            for dtype in [torch.float32, torch.float64, torch.int32]:
+                a = k2r.Tensor([[1, 2], [], [5]], dtype=dtype)
+                a = a.to(device)
+                b = a.sum()
+                expected_sum = torch.tensor([3, 0, 5], dtype=dtype, device=device)
+
+                assert torch.all(torch.eq(b, expected_sum))
 
 
 if __name__ == "__main__":

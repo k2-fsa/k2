@@ -25,47 +25,80 @@
 
 #include "k2/csrc/ragged_ops.h"
 #include "k2/python/csrc/torch/ragged_any.h"
+#include "k2/python/csrc/torch/torch_util.h"
 #include "torch/extension.h"
 
 using namespace torch::autograd;
 
 namespace k2 {
 
-template <typename T>
-class SumFunction : public torch::autograd::Function<SumFunction<T>> {
-  static_assert(std::is_floating_point<T>::value);
-
+// see https://pytorch.org/tutorials/advanced/cpp_autograd
+class SumFunction : public torch::autograd::Function<SumFunction> {
  public:
-  /* Compute the argmax of a RaggedAny. It is a wrapper around
+  /* Compute the Sum of a RaggedAny. It is a wrapper around
      "SumPerSublist" and supports autograd.
 
-     @param RaggedAny The input RaggedAny
-     @param dummy  Its purpose is to make autograd to track the operation
-                   of the input `any§. It is the same as any.data_
+     The sum is done over the last axis.
+
+     @param ragged The input RaggedAny
+     @param dummy  Its purpose is to make autograd to track the operations on
+                   the input `ragged`. It is the same as `ragged.data_`.
+
+     @return Return a 1-D tensor containing the sum of each sublist.
    */
-  static torch::Tensor forward(AutogradContext *ctx, RaggedAny &any,
+  static torch::Tensor forward(AutogradContext *ctx, const RaggedAny &ragged,
                                torch::Tensor /*dummy*/, float initial_value) {
-    ctx->saved_data["n"] = any.any_.values.Dim();
+    ctx->saved_data["n"] = ragged.any_.values.Dim();
 
-    Array1<T> values(any.any_.Context(),
-                     any.any_.TotSize(any.any_.NumAxes() - 2));
+    int32_t num_axes = ragged.any_.NumAxes();
 
-    SumPerSublist<T>(any.any_.Specialize<T>(), initial_value, &values);
-    return ToTorch(values);
+    torch::Tensor row_ids =
+        ToTorch(const_cast<RaggedAny &>(ragged).any_.RowIds(num_axes - 1));
+
+    ctx->save_for_backward({row_ids});
+
+    Dtype t = ragged.any_.GetDtype();
+
+    FOR_REAL_AND_INT32_TYPES(t, T, {
+      Array1<T> values(ragged.any_.Context(),
+                       ragged.any_.TotSize(num_axes - 2));
+      SumPerSublist<T>(ragged.any_.Specialize<T>(), initial_value, &values);
+      return ToTorch(values);
+    });
+
+    // Unreachable code
+    return {};
   }
 
   static tensor_list backward(AutogradContext *ctx, tensor_list grad_outputs) {
-    // see https://pytorch.org/cppdocs/api/structc10_1_1_i_value.html
-    // https://pytorch.org/cppdocs/api/structtorch_1_1autograd_1_1_function.html
     auto n = ctx->saved_data["n"].toInt();
+    auto saved = ctx->get_saved_variables();
+    torch::Tensor row_ids = saved[0];
+
+    auto grad_output = grad_outputs[0];
 
     auto opts = torch::TensorOptions()
-                    .dtype(grad_outputs[0].dtype())
-                    .device(grad_outputs[0].device());
+                    .dtype(grad_output.dtype())
+                    .device(grad_output.device());
 
     // The gradient is not correct, for each sublist, we should multiply it with
     // the corresponding grad_outputs[0]
-    torch::Tensor ans = torch::ones({n}, opts);
+    torch::Tensor ans = torch::empty({n}, opts);
+    ContextPtr c = GetContext(row_ids);
+
+    const int32_t *row_ids_data = row_ids.data_ptr<int32_t>();
+    Dtype t = ScalarTypeToDtype(grad_output.scalar_type());
+
+    FOR_REAL_AND_INT32_TYPES(t, T, {
+      const T *grad_output_data = grad_output.data_ptr<T>();
+      T *ans_data = ans.data_ptr<T>();
+
+      K2_EVAL(
+          c, n, set_grad, (int32_t idx01)->void {
+            int32_t idx0 = row_ids_data[idx01];
+            ans_data[idx01] = grad_output_data[idx0];
+          });
+    });
 
     return {
         torch::Tensor(),  // any
@@ -73,7 +106,7 @@ class SumFunction : public torch::autograd::Function<SumFunction<T>> {
         torch::Tensor()   // initial value
     };
   }
-};  // namespace k2
+};
 
 }  // namespace k2
 

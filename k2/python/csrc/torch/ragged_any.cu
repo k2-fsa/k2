@@ -60,6 +60,17 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
                 << "and torch.float64";
 }
 
+const torch::Tensor &RaggedAny::Data() const {
+  if (!data_.defined()) {
+    Dtype t = any_.GetDtype();
+    FOR_REAL_AND_INT32_TYPES(t, T, {
+      const_cast<RaggedAny *>(this)->data_ =
+          ToTorch((const_cast<RaggedAny *>(this)->any_).Specialize<T>().values);
+    });
+  }
+  return data_;
+}
+
 std::string RaggedAny::ToString() const {
   std::ostringstream os;
   Dtype t = any_.GetDtype();
@@ -125,25 +136,16 @@ RaggedAny RaggedAny::Clone() const {
   return {};
 }
 
-void RaggedAny::SetRequiresGrad(bool requires_grad) {
-  // TODO: support other types
-  if (!data_.defined()) {
-    data_ = ToTorch(any_.Specialize<float>().values);
-  }
-
-  data_.requires_grad_(requires_grad);
+RaggedAny &RaggedAny::SetRequiresGrad(bool requires_grad /*=true*/) {
+  // PyTorch will throw a RuntimeError exception if dtype is torch.int32
+  // So no need to check it by us here
+  Data().requires_grad_(requires_grad);
+  return *this;
 }
 
-torch::Tensor RaggedAny::Sum(float initial_value /*=0*/) {
-  // TODO: support other types
-  if (!data_.defined()) {
-    // TODO: for int32_t, we don't need this
-    data_ = ToTorch(any_.Specialize<float>().values);
-  }
-  return SumFunction<float>::apply(*this, this->data_, initial_value);
-  // TODO:
-  // - return a raggedAny
-  // - handle other types
+torch::Tensor RaggedAny::Sum(float initial_value /*=0*/) const {
+  DeviceGuard guard(any_.Context());
+  return SumFunction::apply(*this, Data(), initial_value);
 }
 
 }  // namespace k2

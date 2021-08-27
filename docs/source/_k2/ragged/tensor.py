@@ -36,8 +36,70 @@ class Tensor(object):
     @property
     def data(self) -> torch.Tensor:
         """Return the underlying memory as a 1-D tensor."""
-
         pass
+
+    @property
+    def requires_grad(self) -> bool:
+        """Return ``True`` if gradients need to be computed for this tensor.
+        Return ``False`` otherwise.
+        """
+        pass
+
+    @requires_grad.setter
+    def requires_grad(self, requires_grad: bool) -> None:
+        """Set the requires grad attribute of this tensor."""
+        pass
+
+    def requires_grad_(self, requires_grad: bool = True) -> "Tensor":
+        """Change if autograd should record operations on this tensor: sets
+        this tensor's :attr:`requires_grad` attribute **in-place**. Returns
+        this tensor.
+
+        Note::
+          If this tensor is not a float tensor, PyTorch will throw a
+          RuntimeError exception.
+
+        Caution:
+          This method ends with an underscore, meaning it changes this tensor
+          **in-place**.
+
+        Args:
+          requires_grad:
+            If autograd should record operations on this tensor.
+        Returns:
+          Return this tensor.
+        """
+        pass
+
+    @property
+    def grad(self) -> torch.Tensor:
+        """This attribute is ``None`` by default. PyTorch will set it
+        during ``backward()``.
+
+        The attribute will contain the gradients computed and future
+        calls to ``backward()`` will accumulate (add) gradients into it.
+        """
+        pass
+
+    def sum(self, initial_value: float = 0) -> torch.Tensor:
+        """Compute the sum of sublists over the last axis of this tensor.
+
+        Note::
+          If a sublist is empty, the sum for it is the provided
+          ``initial_value``.
+
+        Note::
+          This operation supports autograd if this tensor is a float tensor,
+          i.e., with dtype being torch.float32 or torch.float64.
+
+        Args:
+          initial_value:
+            This value is added to the sum of each sublist. So when
+            a sublist is empty, its sum is this value.
+        Returns:
+          Return a 1-D tensor with the same dtype of this tensor
+          containing the computed sum.
+        """
 
     def __str__(self) -> str:
         """Return a string representation of this tensor"""
