@@ -48,11 +48,25 @@ void PybindRaggedAny(py::module &m) {
       }),
       py::arg("data"), py::arg("dtype") = py::none());
 
+  any.def(
+      py::init([](const std::string &s,
+                  py::object dtype = py::none()) -> std::unique_ptr<RaggedAny> {
+        return std::make_unique<RaggedAny>(s, dtype);
+      }),
+      py::arg("s"), py::arg("dtype") = py::none());
+
   any.def("__str__",
           [](const RaggedAny &self) -> std::string { return self.ToString(); });
 
   any.def("__repr__",
           [](const RaggedAny &self) -> std::string { return self.ToString(); });
+
+  any.def(
+      "__getitem__",
+      [](RaggedAny &self, int32_t i) -> RaggedAny {
+        return self.Index(/*axis*/ 0, i);
+      },
+      py::arg("i"));
 
   // o is either torch.device or torch.dtype
   any.def("to", [](const RaggedAny &self, py::object o) -> RaggedAny {
@@ -112,6 +126,82 @@ void PybindRaggedAny(py::module &m) {
 
   any.def("sum", &RaggedAny::Sum, py::arg("initial_value") = 0);
 
+  any.def("numel", [](RaggedAny &self) -> int32_t {
+    DeviceGuard guard(self.any_.Context());
+    return self.any_.NumElements();
+  });
+
+  // NumAxes() does not access GPU memory
+  any.def("num_axes",
+          [](RaggedAny &self) -> int { return self.any_.NumAxes(); });
+
+  any.def(py::pickle(
+      [](const RaggedAny &self) -> py::tuple {
+        DeviceGuard guard(self.any_.Context());
+        K2_CHECK(self.any_.NumAxes() == 2 || self.any_.NumAxes() == 3)
+            << "Only support Ragged with NumAxes() == 2 or 3 for now, given "
+            << self.any_.NumAxes();
+        Array1<int32_t> row_splits1 = self.any_.RowSplits(1);
+        Dtype t = self.any_.GetDtype();
+
+        FOR_REAL_AND_INT32_TYPES(t, T, {
+          auto values = self.any_.Specialize<T>().values;
+          // We use "row_ids" placeholder here to make it compatible for the
+          // old format file.
+          if (self.any_.NumAxes() == 2) {
+            return py::make_tuple(ToTorch(row_splits1), "row_ids1",
+                                  ToTorch(values));
+          } else {
+            Array1<int32_t> row_splits2 = self.any_.RowSplits(2);
+            return py::make_tuple(ToTorch(row_splits1), "row_ids1",
+                                  ToTorch(row_splits2), "row_ids2",
+                                  ToTorch(values));
+          }
+        });
+        // Unreachable code
+        return py::none();
+      },
+      [](const py::tuple &t) -> RaggedAny {
+        K2_CHECK(t.size() == 3 || t.size() == 5)
+            << "Invalid state. "
+            << "Expect a size of 3 or 5. Given: " << t.size();
+
+        torch::Tensor row_splits1_tensor = t[0].cast<torch::Tensor>();
+        DeviceGuard guard(GetContext(row_splits1_tensor));
+        Array1<int32_t> row_splits1 = FromTorch<int32_t>(row_splits1_tensor);
+
+        RaggedShape shape;
+        if (t.size() == 3) {
+          auto values_tensor = t[2].cast<torch::Tensor>();
+          Dtype t = ScalarTypeToDtype(values_tensor.scalar_type());
+          FOR_REAL_AND_INT32_TYPES(t, T, {
+            auto values = FromTorch<T>(values_tensor);
+            shape = RaggedShape2(&row_splits1, nullptr, values.Dim());
+            Ragged<T> any(shape, values);
+            return RaggedAny(any.Generic());
+          });
+        } else if (t.size() == 5) {
+          torch::Tensor row_splits2_tensor = t[2].cast<torch::Tensor>();
+          Array1<int32_t> row_splits2 = FromTorch<int32_t>(row_splits2_tensor);
+
+          auto values_tensor = t[4].cast<torch::Tensor>();
+          Dtype t = ScalarTypeToDtype(values_tensor.scalar_type());
+
+          FOR_REAL_AND_INT32_TYPES(t, T, {
+            auto values = FromTorch<T>(values_tensor);
+            shape = RaggedShape3(&row_splits1, nullptr, -1, &row_splits2,
+                                 nullptr, values.Dim());
+            Ragged<T> any(shape, values);
+            return RaggedAny(any.Generic());
+          });
+        } else {
+          K2_LOG(FATAL) << "Invalid size : " << t.size();
+        }
+
+        // Unreachable code
+        return {};
+      }));
+
   //==================================================
   //      k2.ragged.Tensor properties
   //--------------------------------------------------
@@ -159,6 +249,9 @@ void PybindRaggedAny(py::module &m) {
   });
 
   any.def_property_readonly(
+      "shape", [](RaggedAny &self) -> RaggedShape { return self.any_.shape; });
+
+  any.def_property_readonly(
       "grad", [](RaggedAny &self) -> torch::optional<torch::Tensor> {
         if (!self.data_.defined()) return {};
 
@@ -175,6 +268,10 @@ void PybindRaggedAny(py::module &m) {
       [](RaggedAny &self, bool requires_grad) -> void {
         self.SetRequiresGrad(requires_grad);
       });
+
+  any.def_property_readonly("is_cuda", [](RaggedAny &self) -> bool {
+    return self.any_.Context()->GetDeviceType() == kCuda;
+  });
 
   //==================================================
   //      _k2.ragged.functions

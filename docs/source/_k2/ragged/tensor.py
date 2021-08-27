@@ -1,6 +1,7 @@
 from typing import Optional, overload
 
 import torch
+from k2.ragged import RaggedShape
 
 
 class Tensor(object):
@@ -20,6 +21,31 @@ class Tensor(object):
             Optional. If None, it infers the dtype from `data`
             automatically, which is either `torch.int32` or
             `torch.float32.
+        """
+        pass
+
+    @overload
+    def __init__(self, s: str, dtype: Optional[torch.dtype] = None) -> None:
+        """Create a ragged tensor from its string representation.
+
+        An example string for a 2-axis ragged tensor is given below::
+
+            [ [1]  [2] ]
+
+        An example string for a 3-axis ragged tensor is given below::
+
+            [ [[1] [2 3]]  [[2] [] [3, 4,]] ]
+
+        Note::
+          Number of spaces in `s` does not affect the result.
+          Of course, numbers have to be separated by at least one space.
+        Args:
+          s:
+            A string representation of the tensor.
+          dtype:
+            The desired dtype of the tensor. If it's ``None``, it tries
+            to infer the correct dtype from `s`, which is assumed to be
+            either ``torch.int32`` or ``torch.float32``.
         """
         pass
 
@@ -51,9 +77,8 @@ class Tensor(object):
         pass
 
     def requires_grad_(self, requires_grad: bool = True) -> "Tensor":
-        """Change if autograd should record operations on this tensor: sets
-        this tensor's :attr:`requires_grad` attribute **in-place**. Returns
-        this tensor.
+        """Change if autograd should record operations on this tensor: Set
+        this tensor's :attr:`requires_grad` attribute **in-place**.
 
         Note::
           If this tensor is not a float tensor, PyTorch will throw a
@@ -78,6 +103,38 @@ class Tensor(object):
 
         The attribute will contain the gradients computed and future
         calls to ``backward()`` will accumulate (add) gradients into it.
+        """
+        pass
+
+    @property
+    def is_cuda(self) -> bool:
+        """
+        Returns:
+          Return ``True`` if the tensor is stored on the GPU, ``False``
+          otherwise.
+        """
+        pass
+
+    @property
+    def shape(self) -> RaggedShape:
+        """
+        Returns:
+          Return the shape of this tensor.
+        """
+        pass
+
+    def numel(self) -> int:
+        """
+        Returns:
+          Return number of elements in this tensor. It equals to
+          `self.data.numel()
+        """
+        pass
+
+    def num_axes(self) -> int:
+        """
+        Returns:
+          Return number of axes of this tensor, which is at least 2.
         """
         pass
 
@@ -136,6 +193,60 @@ class Tensor(object):
           Return True if the two tensors are NOT equal.
           Return False otherwise.
 
+        """
+        pass
+
+    def __getitem__(self, i) -> "Tensor":
+        """Select the i-th sublist along axis 0.
+
+        Caution:
+          Support for autograd is to be implemented.
+
+        Note::
+          It requires that this tensor has at least 3 axes.
+
+        Args:
+          i:
+            The i-th sublist along axis 0.
+        Returns:
+          Return a new ragged tensor with one fewer axis.
+        """
+        pass
+
+    def __getstate__(
+        self,
+    ) -> Union[
+        Tuple[torch.Tensor, str, torch.Tensor],
+        Tuple[torch.Tensor, str, torch.Tensor, str, torch.Tensor],
+    ]:
+        """Requires a tensor with 2 axes or 3 axes. Other number
+        of axes are not implemented yet.
+
+        This method is to support ``pickle``, e.g., used by torch.save().
+        You are not expected to call it by yourself.
+
+        Returns:
+          If this tensor has 2 axes, return a tuple containing
+          (self.row_splits(1), "row_ids1", self.data).
+          If this tensor has 3 axes, return a tuple containing
+          (self.row_splits(1), "row_ids1", self.row_splits(1),
+          "row_ids2", self.data)
+
+        Note::
+          "row_ids1" and "row_ids2" in the returned value is for
+          backward compatibility.
+        """
+        pass
+
+    def __setstate__(self, arg0: tuple):
+        """Set the content of this class from ``arg0``.
+
+        This method is to support ``pickle``, e.g., used by torch.load().
+        You are not expected to call it by yourself.
+
+        Args:
+          arg0:
+            It is the return value from the method ``__getstate__``.
         """
         pass
 

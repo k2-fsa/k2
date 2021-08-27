@@ -20,12 +20,14 @@
 #
 #  ctest --verbose -R ragged_tensor_test_py
 
+import os
+import tempfile
 import unittest
 
-import torch
 import k2
-
 import k2.ragged as k2r
+
+import torch
 
 
 class TestRaggedTensor(unittest.TestCase):
@@ -37,6 +39,7 @@ class TestRaggedTensor(unittest.TestCase):
             if torch.cuda.device_count() > 1:
                 torch.cuda.set_device(1)
                 cls.devices.append(torch.device("cuda", 1))
+        cls.dtypes = [torch.float32, torch.float64, torch.int32]
 
     def test_creat_tensor(self):
         funcs = [k2r.create_tensor, k2r.Tensor]
@@ -125,13 +128,93 @@ class TestRaggedTensor(unittest.TestCase):
 
     def test_sum_no_grad(self):
         for device in self.devices:
-            for dtype in [torch.float32, torch.float64, torch.int32]:
+            for dtype in self.dtypes:
                 a = k2r.Tensor([[1, 2], [], [5]], dtype=dtype)
                 a = a.to(device)
                 b = a.sum()
                 expected_sum = torch.tensor([3, 0, 5], dtype=dtype, device=device)
 
                 assert torch.all(torch.eq(b, expected_sum))
+
+    def test_getitem(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                a = k2r.Tensor("[ [[1 2] [] [10]] [[3] [5]] ]", dtype=dtype)
+                a = a.to(device)
+                b = a[0]
+                expected = k2r.Tensor("[[1 2] [] [10]]", dtype=dtype).to(device)
+                assert b == expected
+
+                b = a[1]
+                expected = k2r.Tensor("[[3] [5]]", dtype=dtype).to(device)
+                assert b == expected
+
+    def test_getstate_2axes(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                a = k2r.Tensor([[1, 2], [3], []], dtype=dtype).to(device)
+                b = a.__getstate__()
+                assert isinstance(b, tuple)
+                assert len(b) == 3
+                # b contains (row_splits, "row_ids1", values)
+                b_0 = torch.tensor([0, 2, 3, 3], dtype=torch.int32, device=device)
+                b_1 = "row_ids1"
+                b_2 = a.data
+
+                assert torch.all(torch.eq(b[0], b_0))
+                assert b[1] == b_1
+                assert torch.all(torch.eq(b[2], b_2))
+
+    def test_getstate_3axes(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                a = k2r.Tensor("[[[1 2] [3] []] [[4] [5 6]]]", dtype=dtype).to(device)
+                b = a.__getstate__()
+                assert isinstance(b, tuple)
+                assert len(b) == 5
+                # b contains (row_splits1, "row_ids1", row_splits2,
+                # "row_ids2", values)
+                b_0 = torch.tensor([0, 3, 5], dtype=torch.int32, device=device)
+                b_1 = "row_ids1"
+                b_2 = torch.tensor([0, 2, 3, 3, 4, 6], dtype=torch.int32, device=device)
+                b_3 = "row_ids2"
+                b_4 = a.data
+
+                assert torch.all(torch.eq(b[0], b_0))
+                assert b[1] == b_1
+                assert torch.all(torch.eq(b[2], b_2))
+                assert b[3] == b_3
+                assert torch.all(torch.eq(b[4], b_4))
+
+    def test_setstate_2axes(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                a = k2r.Tensor([[1], [2, 3], []], dtype=dtype)
+                a = a.to(device)
+                fid, tmp_filename = tempfile.mkstemp()
+                os.close(fid)
+
+                torch.save(a, tmp_filename)
+
+                b = torch.load(tmp_filename)
+                os.remove(tmp_filename)
+
+                # It checks both dtype and device, not just value
+                assert a == b
+
+    def test_setstate_3axes(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                a = k2r.Tensor("[ [[1] [2 3] []]  [[10]]]", dtype=dtype)
+                fid, tmp_filename = tempfile.mkstemp()
+                os.close(fid)
+
+                torch.save(a, tmp_filename)
+
+                b = torch.load(tmp_filename)
+                os.remove(tmp_filename)
+
+                assert a == b
 
 
 if __name__ == "__main__":

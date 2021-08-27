@@ -40,6 +40,33 @@ struct RaggedAny {
 
   explicit RaggedAny(const Ragged<Any> &any) : any_(any) {}
 
+  /* Create a ragged tensor from its string representation.
+
+     An example string with 3 axes is::
+
+      [ [[1 2] [3] []]   [[1] [10] [20 30]] ]
+
+     @param s  The string representation of this ragged tensor.
+     @param dtype  An instance of torch.dtype. Support only torch.float32,
+                   torch.float64, and torch.int32 for now.
+   */
+  RaggedAny(const std::string &s, py::object dtype);
+
+  /* Create a ragged tensor with two axes.
+
+     @param data a list-of-list
+     @param dtype An instance of torch.dtype. If it is None,
+                  the data type is inferred from the input `data`,
+                  which will either be torch.int32 or torch.float32.
+
+     @TODO To support `data` with arbitrary number of axes.
+
+     @CAUTION Currently supported dtypes are torch.float32, torch.float64,
+     and torch.int32. To support torch.int64 and other dtypes, we can
+     add a new macro to replace `FOR_REAL_AND_INT32_TYPES`.
+   */
+  RaggedAny(py::list data, py::object dtype = py::none());
+
   // share Ragged<Any> with other
   RaggedAny(const RaggedAny &other) : any_(other.any_) {}
 
@@ -58,21 +85,6 @@ struct RaggedAny {
 
   // Populate `this->data_` and return it
   const torch::Tensor &Data() const;
-
-  /* Create a ragged tensor with two axes.
-
-     @param data a list-of-list
-     @param dtype An instance of torch.dtype. If it is None,
-                  the data type is inferred from the input `data`,
-                  which will either be torch.int32 or torch.float32.
-
-     @TODO To support `data` with arbitrary number of axes.
-
-     @CAUTION Currently supported dtypes are torch.float32, torch.float64,
-     and torch.int32. To support torch.int64 and other dtypes, we can
-     add a new macro to replace `FOR_REAL_AND_INT32_TYPES`.
-   */
-  RaggedAny(py::list data, py::object dtype = py::none());
 
   /* Convert a ragged tensor to a string.
 
@@ -130,6 +142,20 @@ struct RaggedAny {
      @return Return the sum of each sublist as a 1-D tensor.
    */
   torch::Tensor Sum(float initial_value = 0) const;
+
+  /* Index of a ragged tensor (supporting axis==0 at present).
+
+     It requires that the ragged tensor has at least 3 axes.
+
+     @TODO: To add autograd support.
+
+     @param axis  The axis to index
+     @param i  The i-th sublist of the specified axis.
+
+     @return Return a ragged tensor with one fewer axis.
+     It shares data with "this" tensor.
+   */
+  RaggedAny Index(int32_t axis, int32_t i) const;
 };
 
 }  // namespace k2

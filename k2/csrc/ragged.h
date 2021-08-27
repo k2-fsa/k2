@@ -158,7 +158,8 @@ class RaggedShape {
                          values necessary to take the needed sub-part
                          of the data will be written to here.
    */
-  RaggedShape Index(int32_t axis, int32_t i, int32_t *value_offset = nullptr);
+  RaggedShape Index(int32_t axis, int32_t i,
+                    int32_t *value_offset = nullptr) const;
 
   /*
     Given a vector `indexes` of length NumAxes() which is a valid index
@@ -430,7 +431,7 @@ struct Ragged {
                          is supported.
       @param [in]  i     Index to select
    */
-  Ragged<T> Index(int32_t axis, int32_t i) {
+  Ragged<T> Index(int32_t axis, int32_t i) const {
     // Get returned Ragged.shape
     int32_t values_offset;
     RaggedShape sub_shape = shape.Index(axis, i, &values_offset);

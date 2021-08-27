@@ -26,6 +26,37 @@
 
 namespace k2 {
 
+RaggedAny::RaggedAny(const std::string &s, py::object dtype) {
+  if (!dtype.is_none() && !THPDtype_Check(dtype.ptr())) {
+    K2_LOG(FATAL) << "Expect an instance of torch.dtype. "
+                  << "Given: " << py::str(dtype);
+  }
+
+  if (dtype.is_none()) {
+    try {
+      // we try int first, if it fails, use float
+      any_ = Ragged<int32_t>(s).Generic();
+      return;
+    } catch (const std::exception &) {
+      // we try int first, if it fails, use float
+      any_ = Ragged<int32_t>(s).Generic();
+    }
+  }
+
+  auto scalar_type = reinterpret_cast<THPDtype *>(dtype.ptr())->scalar_type;
+
+  Dtype t = ScalarTypeToDtype(scalar_type);
+
+  FOR_REAL_AND_INT32_TYPES(t, T, {
+    any_ = Ragged<T>(s).Generic();
+    return;
+  });
+
+  K2_LOG(FATAL) << "Unsupported dtype: " << scalar_type
+                << ". Supported dtypes are: torch.int32, torch.float32, "
+                << "and torch.float64";
+}
+
 RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
   if (!dtype.is_none() && !THPDtype_Check(dtype.ptr())) {
     K2_LOG(FATAL) << "Expect an instance of torch.dtype. "
@@ -146,6 +177,12 @@ RaggedAny &RaggedAny::SetRequiresGrad(bool requires_grad /*=true*/) {
 torch::Tensor RaggedAny::Sum(float initial_value /*=0*/) const {
   DeviceGuard guard(any_.Context());
   return SumFunction::apply(*this, Data(), initial_value);
+}
+
+RaggedAny RaggedAny::Index(int32_t axis, int32_t i) const {
+  K2_CHECK_EQ(axis, 0) << "Support only axis == 0 right now";
+
+  return RaggedAny(any_.Index(axis, i));
 }
 
 }  // namespace k2
