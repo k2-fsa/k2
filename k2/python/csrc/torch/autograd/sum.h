@@ -43,8 +43,11 @@ class SumFunction : public torch::autograd::Function<SumFunction> {
      @param ragged The input RaggedAny
      @param dummy  Its purpose is to make autograd to track the operations on
                    the input `ragged`. It is the same as `ragged.data_`.
+     @param initial_value This value is added to the sum of each sublist,
+                          so when a sublist is empty, its sum is this value.
 
-     @return Return a 1-D tensor containing the sum of each sublist.
+     @return Return a 1-D tensor containing the sum of each sublist, with
+             the same dtype as the input ragged tensor.
    */
   static torch::Tensor forward(AutogradContext *ctx, const RaggedAny &ragged,
                                torch::Tensor /*dummy*/, float initial_value) {
@@ -81,8 +84,6 @@ class SumFunction : public torch::autograd::Function<SumFunction> {
                     .dtype(grad_output.dtype())
                     .device(grad_output.device());
 
-    // The gradient is not correct, for each sublist, we should multiply it with
-    // the corresponding grad_outputs[0]
     torch::Tensor ans = torch::empty({n}, opts);
     ContextPtr c = GetContext(row_ids);
 
@@ -101,7 +102,7 @@ class SumFunction : public torch::autograd::Function<SumFunction> {
     });
 
     return {
-        torch::Tensor(),  // any
+        torch::Tensor(),  // ragged
         ans,              // dummy
         torch::Tensor()   // initial value
     };
