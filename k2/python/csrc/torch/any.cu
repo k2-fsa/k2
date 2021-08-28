@@ -292,7 +292,7 @@ void PybindRaggedAny(py::module &m) {
       [](py::list data, py::object dtype = py::none()) -> RaggedAny {
         return RaggedAny(data, dtype);
       },
-      py::arg("data"), py::arg("dtype") = py::none());
+      py::arg("data"), py::arg("dtype") = py::none(), kRaggedAnyInitDataDoc);
 }
 
 }  // namespace k2

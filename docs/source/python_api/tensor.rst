@@ -17,4 +17,4 @@ Tensor
 
 .. autoclass:: k2.ragged.Tensor
   :members:
-  :special-members: __str__, __repr__, __getitem__, __getstate__, __setstate__
+  :special-members:
