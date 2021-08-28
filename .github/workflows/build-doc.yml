@@ -81,7 +81,7 @@ jobs:
         shell: bash
         run: |
           cd build
-          make -j _k2
+          make -j2 _k2
           pwd
           ls -lh lib
 

@@ -14,6 +14,7 @@ import os
 import re
 import sys
 sys.path.insert(0, os.path.abspath('../../k2/python'))
+sys.path.insert(0, os.path.abspath('../../build-ragged/lib'))
 sys.path.insert(0, os.path.abspath('../../build/lib'))
 
 import sphinx_rtd_theme
@@ -108,7 +109,7 @@ autodoc_default_options = {
     'content': 'both',
     'members': None,
     'member-order': 'bysource',
-    'special-members': '__init__',
+    #  'special-members': '__init__'
     'undoc-members': True,
     'exclude-members': '__weakref__'
 }

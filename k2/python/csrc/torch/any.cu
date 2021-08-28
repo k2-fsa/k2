@@ -55,18 +55,22 @@ void PybindRaggedAny(py::module &m) {
       }),
       py::arg("s"), py::arg("dtype") = py::none(), kRaggedAnyInitStrDoc);
 
-  any.def("__str__",
-          [](const RaggedAny &self) -> std::string { return self.ToString(); });
+  any.def(
+      "__str__",
+      [](const RaggedAny &self) -> std::string { return self.ToString(); },
+      kRaggedAnyStrDoc);
 
-  any.def("__repr__",
-          [](const RaggedAny &self) -> std::string { return self.ToString(); });
+  any.def(
+      "__repr__",
+      [](const RaggedAny &self) -> std::string { return self.ToString(); },
+      kRaggedAnyStrDoc);
 
   any.def(
       "__getitem__",
       [](RaggedAny &self, int32_t i) -> RaggedAny {
         return self.Index(/*axis*/ 0, i);
       },
-      py::arg("i"));
+      py::arg("i"), kRaggedAnyGetItemDoc);
 
   any.def("to",
           static_cast<RaggedAny (RaggedAny::*)(torch::Device) const>(
@@ -78,10 +82,13 @@ void PybindRaggedAny(py::module &m) {
               &RaggedAny::To),
           py::arg("dtype"), kRaggedAnyToDtypeDoc);
 
-  any.def("clone", [](const RaggedAny &self) -> RaggedAny {
-    DeviceGuard guard(self.any_.Context());
-    return self.Clone();
-  });
+  any.def(
+      "clone",
+      [](const RaggedAny &self) -> RaggedAny {
+        DeviceGuard guard(self.any_.Context());
+        return self.Clone();
+      },
+      kRaggedAnyCloneDoc);
 
   any.def(
       "__eq__",

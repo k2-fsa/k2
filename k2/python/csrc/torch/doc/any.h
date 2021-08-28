@@ -63,7 +63,7 @@ torch.float32
 >>> b.num_axes
 3
 
-Note::
+Note:
   Number of spaces in ``s`` does not affect the result.
   Of course, numbers have to be separated by at least one space.
 
@@ -80,7 +80,7 @@ Args:
 static constexpr const char *kRaggedAnyToDeviceDoc = R"doc(
 Transfer this tensor to a given device.
 
-Note::
+Note:
   If `self` is already on the specified device, return a
   ragged tensor sharing the underlying memory with `self`.
   Otherwise, a new tensor is returned.
@@ -105,7 +105,7 @@ Returns:
 static constexpr const char *kRaggedAnyToDtypeDoc = R"doc(
 Convert this tensor to a specific dtype.
 
-Note::
+Note:
   If `self` is already of the specified `dtype`, return
   a ragged tensor sharing the underlying memory with `self`.
   Otherwise, a new tensor is returned.
@@ -130,6 +130,68 @@ Args:
 
 Returns:
   Return a tensor of the given `dtype`.
+)doc";
+
+static constexpr const char *kRaggedAnyStrDoc = R"doc(
+Return a string representation of this tensor.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1], [2, 3], []])
+>>> a
+[ [ 1 ] [ 2 3 ] [ ] ]
+>>> str(a)
+'[ [ 1 ] [ 2 3 ] [ ] ]'
+)doc";
+
+static constexpr const char *kRaggedAnyGetItemDoc = R"doc(
+Select the i-th sublist along axis 0.
+
+Caution:
+  Support for autograd is to be implemented.
+
+Note:
+  It requires that this tensor has at least 3 axes.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor('[ [[1 3] [] [9]]  [[8]] ]')
+>>> a
+[ [ [ 1 3 ] [ ] [ 9 ] ] [ [ 8 ] ] ]
+>>> a[0]
+[ [ 1 3 ] [ ] [ 9 ] ]
+>>> a[1]
+[ [ 8 ] ]
+
+Args:
+  i:
+    The i-th sublist along axis 0.
+Returns:
+  Return a new ragged tensor with one fewer axis.
+)doc";
+
+static constexpr const char *kRaggedAnyCloneDoc = R"doc(
+Return a copy of this tensor.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1, 2], [3]])
+>>> b = a
+>>> c = a.clone()
+>>> a
+[ [ 1 2 ] [ 3 ] ]
+>>> b.data[0] = 10
+>>> a
+[ [ 10 2 ] [ 3 ] ]
+>>> c
+[ [ 1 2 ] [ 3 ] ]
+>>> c.data[0] = -1
+>>> c
+[ [ -1 2 ] [ 3 ] ]
+>>> a
+[ [ 10 2 ] [ 3 ] ]
+>>> b
+[ [ 10 2 ] [ 3 ] ]
 )doc";
 
 }  // namespace k2
