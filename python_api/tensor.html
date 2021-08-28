@@ -233,7 +233,35 @@ automatically, which is either <code class="docutils literal notranslate"><span 
 <dd><dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.__eq__">
 <span class="sig-name descname"><span class="pre">__eq__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#k2.ragged.Tensor.__eq__" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Compare two ragged tensors.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The two tensors MUST have the same dtype. Otherwise,
+it throws.</p>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">==</span>  <span class="n">b</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">try</span><span class="p">:</span>
+<span class="gp">... </span>  <span class="n">c</span> <span class="o">==</span> <span class="n">b</span>
+<span class="gp">... </span><span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+<span class="gp">... </span>  <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;raised exception&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – The tensor to be compared.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return True if the two tensors are equal.
+Return False otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.__getitem__">
@@ -271,7 +299,26 @@ automatically, which is either <code class="docutils literal notranslate"><span 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.__getstate__">
 <span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="headerlink" href="#k2.ragged.Tensor.__getstate__" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Requires a tensor with 2 axes or 3 axes. Other number
+of axes are not implemented yet.</p>
+<p>This method is to support <code class="docutils literal notranslate"><span class="pre">pickle</span></code>, e.g., used by <code class="docutils literal notranslate"><span class="pre">torch.save()</span></code>.
+You are not expected to call it by yourself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>If this tensor has 2 axes, return a tuple containing
+(self.row_splits(1), “row_ids1”, self.data).
+If this tensor has 3 axes, return a tuple containing
+(self.row_splits(1), “row_ids1”, self.row_splits(1),
+“row_ids2”, self.data)</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>“row_ids1” and “row_ids2” in the returned value is for
+backward compatibility.</p>
+</div>
+<p>“””</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.__hash__">
@@ -371,7 +418,33 @@ either <code class="docutils literal notranslate"><span class="pre">torch.int32<
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.__ne__">
 <span class="sig-name descname"><span class="pre">__ne__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#k2.ragged.Tensor.__ne__" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Compare two ragged tensors.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The two tensors MUST have the same dtype. Otherwise,
+it throws.</p>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="go">impor&gt;&gt;&gt; import k2.ragged as k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">!=</span> <span class="n">a</span>
+<span class="go">False</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">!=</span> <span class="n">a</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – The tensor to be compared.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return <code class="docutils literal notranslate"><span class="pre">True</span></code> if the two tensors are NOT equal.
+Return <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.__repr__">
@@ -391,7 +464,15 @@ either <code class="docutils literal notranslate"><span class="pre">torch.int32<
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.__setstate__">
 <span class="sig-name descname"><span class="pre">__setstate__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg0</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">tuple</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#k2.ragged.Tensor.__setstate__" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Set the content of this class from <code class="docutils literal notranslate"><span class="pre">arg0</span></code>.</p>
+<p>This method is to support <code class="docutils literal notranslate"><span class="pre">pickle</span></code>, e.g., used by torch.load().
+You are not expected to call it by yourself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>arg0</strong> – It is the return value from the method <code class="docutils literal notranslate"><span class="pre">__getstate__</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.__str__">
@@ -458,7 +539,24 @@ either <code class="docutils literal notranslate"><span class="pre">torch.int32<
 <dl class="py property">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.grad">
 <em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">grad</span></span><a class="headerlink" href="#k2.ragged.Tensor.grad" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>This attribute is <code class="docutils literal notranslate"><span class="pre">None</span></code> by default. PyTorch will set it
+during <code class="docutils literal notranslate"><span class="pre">backward()</span></code>.</p>
+<p>The attribute will contain the gradients computed and future
+calls to <code class="docutils literal notranslate"><span class="pre">backward()</span></code> will accumulate (add) gradients into it.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">[ [ 1 2 ] [ 3 ] [ 5 6 ] [ ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">tensor([ 3.,  3., 11.,  0.], grad_fn=&lt;SumFunction&gt;&gt;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">b</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">grad</span>
+<span class="go">tensor([0., 0., 1., 2., 2.])</span>
+</pre></div>
+</div>
+</dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.is_cuda">
@@ -473,17 +571,76 @@ either <code class="docutils literal notranslate"><span class="pre">torch.int32<
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.numel">
 <span class="sig-name descname"><span class="pre">numel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#k2.ragged.Tensor.numel" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Return number of elements in this tensor. It equals to
+<cite>self.data.numel()</cite>.</p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span>
+<span class="go">5</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="s1">&#39;[ [[1] [] []]  [[2 3]]]&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.requires_grad">
 <em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">requires_grad</span></span><a class="headerlink" href="#k2.ragged.Tensor.requires_grad" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">True</span></code> if gradients need to be computed for this tensor.
+Return <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad</span>
+<span class="go">False</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.requires_grad_">
 <span class="sig-name descname"><span class="pre">requires_grad_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></span><a class="headerlink" href="#k2.ragged.Tensor.requires_grad_" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Change if autograd should record operations on this tensor: Set
+this tensor’s <a class="reference internal" href="#k2.ragged.Tensor.requires_grad" title="k2.ragged.Tensor.requires_grad"><code class="xref py py-attr docutils literal notranslate"><span class="pre">requires_grad</span></code></a> attribute <strong>in-place</strong>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If this tensor is not a float tensor, PyTorch will throw a
+RuntimeError exception.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>This method ends with an underscore, meaning it changes this tensor
+<strong>in-place</strong>.</p>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad</span>
+<span class="go">False</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">[ [ 1 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>requires_grad</strong> – If autograd should record operations on this tensor.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return this tensor.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.shape">
@@ -493,7 +650,43 @@ either <code class="docutils literal notranslate"><span class="pre">torch.int32<
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.sum">
 <span class="sig-name descname"><span class="pre">sum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">at::Tensor</span></span></span><a class="headerlink" href="#k2.ragged.Tensor.sum" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Compute the sum of sublists over the last axis of this tensor.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If a sublist is empty, the sum for it is the provided
+<code class="docutils literal notranslate"><span class="pre">initial_value</span></code>.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This operation supports autograd if this tensor is a float tensor,
+i.e., with dtype being torch.float32 or torch.float64.</p>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="s1">&#39;[ [[1 2] [] [5]]  [[10]] ]&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">[ [ [ 1 2 ] [ ] [ 5 ] ] [ [ 10 ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">grad</span>
+<span class="go">tensor([0., 0., 2., 3.])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">tensor([ 3.,  0.,  5., 10.], grad_fn=&lt;SumFunction&gt;&gt;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">tensor(40., grad_fn=&lt;SumBackward0&gt;)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>initial_value</strong> – This value is added to the sum of each sublist. So when
+a sublist is empty, its sum is this value.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a 1-D tensor with the same dtype of this tensor
+containing the computed sum.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.to">
@@ -547,12 +740,11 @@ Otherwise, a new tensor is returned.</p>
 <span class="go">torch.float64</span>
 </pre></div>
 </div>
-<dl class="simple">
-<dt>Caution::</dt><dd><p>Currently, only for dtypes torch.int32, torch.float32, and
-torch.float64 are implemented. We can support other types
-if needed.</p>
-</dd>
-</dl>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Currently, only support for dtypes <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code>, <code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">torch.float64</span></code> are implemented. We can support other types if needed.</p>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>dtype</strong> – The <cite>dtype</cite> this tensor should be converted to.</p>
@@ -566,7 +758,26 @@ if needed.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.Tensor.tot_size">
 <span class="sig-name descname"><span class="pre">tot_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.Tensor" title="_k2.ragged.Tensor"><span class="pre">_k2.ragged.Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#k2.ragged.Tensor.tot_size" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return the number of elements of an given axis. If axis is 0, it’s
+equivalent to the property <code class="docutils literal notranslate"><span class="pre">dim0</span></code>.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="s1">&#39;[ [1 2 3] [] [5 8 ] ]&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">tot_size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">tot_size</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">5</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="s1">&#39;[ [[1 2 3] [] [5 8]] [[] [1 5 9 10 -1] [] [] []] ]&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">tot_size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">tot_size</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">8</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">tot_size</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="go">10</span>
+</pre></div>
+</div>
+</dd></dl>
 
 </dd></dl>
 
