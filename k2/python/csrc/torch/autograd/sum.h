@@ -26,7 +26,6 @@
 #include "k2/csrc/ragged_ops.h"
 #include "k2/python/csrc/torch/ragged_any.h"
 #include "k2/python/csrc/torch/torch_util.h"
-#include "torch/extension.h"
 
 using namespace torch::autograd;
 

@@ -19,15 +19,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "k2/python/csrc/torch/discounted_cum_sum.h"
-
 #include "k2/csrc/context.h"
 #include "k2/csrc/device_guard.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/tensor_ops.h"
+#include "k2/python/csrc/torch/discounted_cum_sum.h"
 #include "k2/python/csrc/torch/torch_util.h"
-#include "torch/extension.h"
 
 namespace k2 {
 

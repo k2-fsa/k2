@@ -30,7 +30,6 @@
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/torch/ragged.h"
 #include "k2/python/csrc/torch/torch_util.h"
-#include "torch/extension.h"
 
 namespace k2 {
 template <typename T>
@@ -131,15 +130,21 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       },
       py::arg("axis"), py::arg("i"));
 
-  pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
-    DeviceGuard guard(self.Context());
-    return Equal(self, other);
-    }, py::arg("other"));
+  pyclass.def(
+      "__eq__",
+      [](const PyClass &self, const PyClass &other) -> bool {
+        DeviceGuard guard(self.Context());
+        return Equal(self, other);
+      },
+      py::arg("other"));
 
-  pyclass.def("__ne__", [](const PyClass &self, const PyClass &other) -> bool {
-    DeviceGuard guard(self.Context());
-    return !Equal(self, other);
-    }, py::arg("other"));
+  pyclass.def(
+      "__ne__",
+      [](const PyClass &self, const PyClass &other) -> bool {
+        DeviceGuard guard(self.Context());
+        return !Equal(self, other);
+      },
+      py::arg("other"));
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
     DeviceGuard guard(self.Context());
@@ -167,13 +172,13 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         // We use "row_ids" placeholder here to make it compatible for the
         // old format file.
         if (obj.NumAxes() == 2) {
-           return py::make_tuple(ToTorch(row_splits1), "row_ids1",
-                                 ToTorch(values));
+          return py::make_tuple(ToTorch(row_splits1), "row_ids1",
+                                ToTorch(values));
         } else {
-           Array1<int32_t> row_splits2 = obj.RowSplits(2);
-           return py::make_tuple(ToTorch(row_splits1), "row_ids1",
-                                 ToTorch(row_splits2), "row_ids2",
-                                 ToTorch(values));
+          Array1<int32_t> row_splits2 = obj.RowSplits(2);
+          return py::make_tuple(ToTorch(row_splits1), "row_ids1",
+                                ToTorch(row_splits2), "row_ids2",
+                                ToTorch(values));
         }
       },
       [](py::tuple t) {
@@ -192,8 +197,8 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
           Array1<int32_t> row_splits2 = FromTorch<int32_t>(row_splits2_tensor);
           torch::Tensor values_tensor = t[4].cast<torch::Tensor>();
           values = FromTorch<T>(values_tensor);
-          shape = RaggedShape3(&row_splits1, nullptr, -1,
-                               &row_splits2, nullptr, values.Dim());
+          shape = RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr,
+                               values.Dim());
         } else {
           K2_LOG(FATAL) << "Invalid size : " << t.size();
         }
@@ -330,15 +335,21 @@ static void PybindRaggedShape(py::module &m) {
     return ans;
   });
 
-  pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
-    DeviceGuard guard(self.Context());
-    return Equal(self, other);
-    }, py::arg("other"));
+  pyclass.def(
+      "__eq__",
+      [](const PyClass &self, const PyClass &other) -> bool {
+        DeviceGuard guard(self.Context());
+        return Equal(self, other);
+      },
+      py::arg("other"));
 
-  pyclass.def("__ne__", [](const PyClass &self, const PyClass &other) -> bool {
-    DeviceGuard guard(self.Context());
-    return !Equal(self, other);
-  }, py::arg("other"));
+  pyclass.def(
+      "__ne__",
+      [](const PyClass &self, const PyClass &other) -> bool {
+        DeviceGuard guard(self.Context());
+        return !Equal(self, other);
+      },
+      py::arg("other"));
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
     DeviceGuard guard(self.Context());

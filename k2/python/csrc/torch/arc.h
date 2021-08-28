@@ -23,7 +23,7 @@
 #ifndef K2_PYTHON_CSRC_TORCH_ARC_H_
 #define K2_PYTHON_CSRC_TORCH_ARC_H_
 
-#include "k2/python/csrc/k2.h"
+#include "k2/python/csrc/torch.h"
 
 void PybindArc(py::module &m);
 

@@ -36,7 +36,6 @@
 #include "k2/csrc/host_shim.h"
 #include "k2/python/csrc/torch/fsa.h"
 #include "k2/python/csrc/torch/torch_util.h"
-#include "torch/extension.h"
 
 namespace k2 {
 
@@ -109,17 +108,17 @@ static void PybindFsaUtil(py::module &m) {
   m.def(
       "fsa_to_str",
       [](Fsa &fsa, bool openfst = false,
-    std::vector<torch::Tensor> extra_labels = std::vector<torch::Tensor>(),
-    std::vector<Ragged<int32_t>> ragged_labels = std::vector<Ragged<int32_t>>())
-      -> std::string {
+         std::vector<torch::Tensor> extra_labels = std::vector<torch::Tensor>(),
+         std::vector<Ragged<int32_t>> ragged_labels =
+             std::vector<Ragged<int32_t>>()) -> std::string {
         DeviceGuard guard(fsa.Context());
         std::vector<Array1<int32_t>> extra_labels_arrays(extra_labels.size());
         for (size_t i = 0; i < extra_labels.size(); i++) {
           extra_labels_arrays[i] = FromTorch<int32_t>(extra_labels[i]);
         }
         return FsaToString(fsa, openfst, extra_labels.size(),
-                           extra_labels_arrays.data(),
-                           ragged_labels.size(), ragged_labels.data());
+                           extra_labels_arrays.data(), ragged_labels.size(),
+                           ragged_labels.data());
       },
       py::arg("fsa"), py::arg("openfst") = false,
       py::arg("extra_labels") = py::none(),
@@ -128,13 +127,13 @@ static void PybindFsaUtil(py::module &m) {
   m.def(
       "fsa_from_str",
       [](const std::string &s, int num_extra_labels = 0,
-         int num_ragged_labels = 0, bool openfst = false)
-       -> std::tuple<Fsa, torch::optional<torch::Tensor>,
-                     std::vector<Ragged<int32_t> > > {
+         int num_ragged_labels = 0,
+         bool openfst =
+             false) -> std::tuple<Fsa, torch::optional<torch::Tensor>,
+                                  std::vector<Ragged<int32_t>>> {
         Array2<int32_t> extra_labels;
-        std::vector<Ragged<int32_t> > ragged_labels(num_ragged_labels);
-        Fsa fsa = FsaFromString(s, openfst,
-                                num_extra_labels, &extra_labels,
+        std::vector<Ragged<int32_t>> ragged_labels(num_ragged_labels);
+        Fsa fsa = FsaFromString(s, openfst, num_extra_labels, &extra_labels,
                                 num_ragged_labels, ragged_labels.data());
         torch::optional<torch::Tensor> tensor;
         if (num_extra_labels != 0) tensor = ToTorch(extra_labels);
@@ -648,8 +647,8 @@ static void PybindRandomFsa(py::module &m) {
   m.def(
       "random_fsa_vec",
       [](int32_t min_num_fsas, int32_t max_num_fsas, bool acyclic,
-         int32_t max_symbol, int32_t min_num_arcs, int32_t max_num_arcs)
-      -> FsaVec {
+         int32_t max_symbol, int32_t min_num_arcs,
+         int32_t max_num_arcs) -> FsaVec {
         return RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
                             min_num_arcs, max_num_arcs);
       },

@@ -25,6 +25,7 @@
 
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/torch/any.h"
+#include "k2/python/csrc/torch/doc/any.h"
 #include "k2/python/csrc/torch/ragged_any.h"
 #include "k2/python/csrc/torch/torch_util.h"
 
@@ -45,14 +46,14 @@ void PybindRaggedAny(py::module &m) {
                   py::object dtype = py::none()) -> std::unique_ptr<RaggedAny> {
         return std::make_unique<RaggedAny>(data, dtype);
       }),
-      py::arg("data"), py::arg("dtype") = py::none());
+      py::arg("data"), py::arg("dtype") = py::none(), kRaggedAnyInitDataDoc);
 
   any.def(
       py::init([](const std::string &s,
                   py::object dtype = py::none()) -> std::unique_ptr<RaggedAny> {
         return std::make_unique<RaggedAny>(s, dtype);
       }),
-      py::arg("s"), py::arg("dtype") = py::none());
+      py::arg("s"), py::arg("dtype") = py::none(), kRaggedAnyInitStrDoc);
 
   any.def("__str__",
           [](const RaggedAny &self) -> std::string { return self.ToString(); });
@@ -67,26 +68,15 @@ void PybindRaggedAny(py::module &m) {
       },
       py::arg("i"));
 
-  // o is either torch.device or torch.dtype
-  any.def("to", [](const RaggedAny &self, py::object o) -> RaggedAny {
-    PyObject *ptr = o.ptr();
-    if (THPDevice_Check(ptr)) {
-      torch::Device device = reinterpret_cast<THPDevice *>(ptr)->device;
-      return self.To(device);
-    }
+  any.def("to",
+          static_cast<RaggedAny (RaggedAny::*)(torch::Device) const>(
+              &RaggedAny::To),
+          py::arg("device"), kRaggedAnyToDeviceDoc);
 
-    if (THPDtype_Check(ptr)) {
-      auto scalar_type = reinterpret_cast<THPDtype *>(ptr)->scalar_type;
-      return self.To(scalar_type);
-    }
-
-    K2_LOG(FATAL)
-        << "Expect an instance of torch.device or torch.dtype. Given: "
-        << py::str(o);
-
-    // Unreachable code
-    return {};
-  });
+  any.def("to",
+          static_cast<RaggedAny (RaggedAny::*)(torch::ScalarType) const>(
+              &RaggedAny::To),
+          py::arg("dtype"), kRaggedAnyToDtypeDoc);
 
   any.def("clone", [](const RaggedAny &self) -> RaggedAny {
     DeviceGuard guard(self.any_.Context());

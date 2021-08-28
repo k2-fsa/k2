@@ -24,8 +24,7 @@
 #define K2_PYTHON_CSRC_TORCH_RAGGED_ANY_H
 
 #include "k2/csrc/ragged.h"
-#include "k2/python/csrc/k2.h"
-#include "torch/extension.h"
+#include "k2/python/csrc/torch.h"
 
 namespace k2 {
 

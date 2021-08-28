@@ -26,7 +26,6 @@
 #include "k2/csrc/fsa.h"
 #include "k2/python/csrc/torch/arc.h"
 #include "k2/python/csrc/torch/torch_util.h"
-#include "torch/extension.h"
 
 namespace k2 {
 
