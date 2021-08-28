@@ -91,7 +91,7 @@ jobs:
           export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
           echo "PYTHONPATH: $PYTHONPATH"
           cd docs
-          python3 -m pip install ./requirements.txt
+          python3 -m pip install -r ./requirements.txt
           make html
           touch build/html/.nojekyll
 
