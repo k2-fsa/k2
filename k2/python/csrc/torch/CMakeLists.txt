@@ -12,6 +12,8 @@ set(torch_srcs
   ragged_any.cu
   ragged_ops.cu
   torch_util.cu
+
+  doc/doc.cu
 )
 
 set(torch_srcs_with_prefix)

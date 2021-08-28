@@ -119,10 +119,9 @@ torch.int32
 >>> b.dtype
 torch.float64
 
-Caution::
-  Currently, only for dtypes torch.int32, torch.float32, and
-  torch.float64 are implemented. We can support other types
-  if needed.
+Caution:
+  Currently, only support for dtypes ``torch.int32``, ``torch.float32``, and
+  ``torch.float64`` are implemented. We can support other types if needed.
 
 Args:
   dtype:
@@ -192,6 +191,224 @@ Return a copy of this tensor.
 [ [ 10 2 ] [ 3 ] ]
 >>> b
 [ [ 10 2 ] [ 3 ] ]
+)doc";
+
+static constexpr const char *kRaggedAnyEqDoc = R"doc(
+Compare two ragged tensors.
+
+Caution:
+  The two tensors MUST have the same dtype. Otherwise,
+  it throws.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1]])
+>>> b = a.clone()
+>>> a ==  b
+True
+>>> c = a.to(torch.float32)
+>>> try:
+...   c == b
+... except RuntimeError:
+...   print("raised exception")
+
+Args:
+  other:
+    The tensor to be compared.
+Returns:
+  Return True if the two tensors are equal.
+  Return False otherwise.
+)doc";
+
+static constexpr const char *kRaggedAnyNeDoc = R"doc(
+Compare two ragged tensors.
+
+Caution:
+  The two tensors MUST have the same dtype. Otherwise,
+  it throws.
+
+>>> import torch
+impor>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1, 2], [3]])
+>>> b = a.clone()
+>>> b != a
+False
+>>> c = k2r.Tensor([[1], [2], [3]])
+>>> c != a
+True
+
+Args:
+  other:
+    The tensor to be compared.
+Returns:
+  Return ``True`` if the two tensors are NOT equal.
+  Return ``False`` otherwise.
+)doc";
+
+static constexpr const char *kRaggedAnyRequiresGradPropDoc = R"doc(
+Return ``True`` if gradients need to be computed for this tensor.
+Return ``False`` otherwise.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1]], dtype=torch.float32)
+>>> a.requires_grad
+False
+>>> a.requires_grad = True
+>>> a.requires_grad
+True
+)doc";
+
+static constexpr const char *kRaggedAnyGradPropDoc = R"doc(
+This attribute is ``None`` by default. PyTorch will set it
+during ``backward()``.
+
+The attribute will contain the gradients computed and future
+calls to ``backward()`` will accumulate (add) gradients into it.
+
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1, 2], [3], [5, 6], []], dtype=torch.float32)
+>>> a.requires_grad_(True)
+[ [ 1 2 ] [ 3 ] [ 5 6 ] [ ] ]
+>>> b = a.sum()
+>>> b
+tensor([ 3.,  3., 11.,  0.], grad_fn=<SumFunction>>)
+>>> c = b * torch.arange(4)
+>>> c.sum().backward()
+>>> a.grad
+tensor([0., 0., 1., 2., 2.])
+)doc";
+
+static constexpr const char *kRaggedAnyRequiresGradMethodDoc = R"doc(
+Change if autograd should record operations on this tensor: Set
+this tensor's :attr:`requires_grad` attribute **in-place**.
+
+Note:
+  If this tensor is not a float tensor, PyTorch will throw a
+  RuntimeError exception.
+
+Caution:
+  This method ends with an underscore, meaning it changes this tensor
+  **in-place**.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1]], dtype=torch.float64)
+>>> a.requires_grad
+False
+>>> a.requires_grad_(True)
+[ [ 1 ] ]
+>>> a.requires_grad
+True
+
+Args:
+  requires_grad:
+    If autograd should record operations on this tensor.
+Returns:
+  Return this tensor.
+)doc";
+
+static constexpr const char *kRaggedAnySumDoc = R"doc(
+Compute the sum of sublists over the last axis of this tensor.
+
+Note:
+  If a sublist is empty, the sum for it is the provided
+  ``initial_value``.
+
+Note:
+  This operation supports autograd if this tensor is a float tensor,
+  i.e., with dtype being torch.float32 or torch.float64.
+
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor('[ [[1 2] [] [5]]  [[10]] ]', dtype=torch.float32)
+>>> a.requires_grad_(True)
+[ [ [ 1 2 ] [ ] [ 5 ] ] [ [ 10 ] ] ]
+>>> b = a.sum()
+>>> c = (b * torch.arange(4)).sum()
+>>> c.backward()
+>>> a.grad
+tensor([0., 0., 2., 3.])
+>>> b
+tensor([ 3.,  0.,  5., 10.], grad_fn=<SumFunction>>)
+>>> c
+tensor(40., grad_fn=<SumBackward0>)
+
+Args:
+  initial_value:
+    This value is added to the sum of each sublist. So when
+    a sublist is empty, its sum is this value.
+Returns:
+  Return a 1-D tensor with the same dtype of this tensor
+  containing the computed sum.
+)doc";
+
+static constexpr const char *kRaggedAnyNumelDoc = R"doc(
+Returns:
+  Return number of elements in this tensor. It equals to
+  `self.data.numel()`.
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1], [], [3, 4, 5, 6]])
+>>> a.numel()
+5
+>>> b = k2r.Tensor('[ [[1] [] []]  [[2 3]]]')
+>>> b.numel()
+3
+)doc";
+static constexpr const char *kRaggedAnyTotSizeDoc = R"doc(
+Return the number of elements of an given axis. If axis is 0, it's
+equivalent to the property ``dim0``.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor('[ [1 2 3] [] [5 8 ] ]')
+>>> a.tot_size(0)
+3
+>>> a.tot_size(1)
+5
+>>> import k2.ragged as k2r
+>>> b = k2r.Tensor('[ [[1 2 3] [] [5 8]] [[] [1 5 9 10 -1] [] [] []] ]')
+>>> b.tot_size(0)
+2
+>>> b.tot_size(1)
+8
+>>> b.tot_size(2)
+10
+)doc";
+
+static constexpr const char *kRaggedAnyGetStateDoc = R"doc(
+__getstate__(self: _k2.ragged.Tensor) -> tuple
+
+Requires a tensor with 2 axes or 3 axes. Other number
+of axes are not implemented yet.
+
+This method is to support ``pickle``, e.g., used by ``torch.save()``.
+You are not expected to call it by yourself.
+
+Returns:
+  If this tensor has 2 axes, return a tuple containing
+  (self.row_splits(1), "row_ids1", self.data).
+  If this tensor has 3 axes, return a tuple containing
+  (self.row_splits(1), "row_ids1", self.row_splits(1),
+  "row_ids2", self.data)
+
+Note:
+  "row_ids1" and "row_ids2" in the returned value is for
+  backward compatibility.
+"""
+)doc";
+
+static constexpr const char *kRaggedAnySetStateDoc = R"doc(
+__setstate__(self: _k2.ragged.Tensor, arg0: tuple) -> None
+
+Set the content of this class from ``arg0``.
+
+This method is to support ``pickle``, e.g., used by torch.load().
+You are not expected to call it by yourself.
+
+Args:
+  arg0:
+    It is the return value from the method ``__getstate__``.
 )doc";
 
 }  // namespace k2

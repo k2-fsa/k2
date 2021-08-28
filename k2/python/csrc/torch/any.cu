@@ -26,6 +26,7 @@
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/torch/any.h"
 #include "k2/python/csrc/torch/doc/any.h"
+#include "k2/python/csrc/torch/doc/doc.h"
 #include "k2/python/csrc/torch/ragged_any.h"
 #include "k2/python/csrc/torch/torch_util.h"
 
@@ -101,7 +102,7 @@ void PybindRaggedAny(py::module &m) {
         });
         return ans;
       },
-      py::arg("other"));
+      py::arg("other"), kRaggedAnyEqDoc);
 
   any.def(
       "__ne__",
@@ -115,17 +116,21 @@ void PybindRaggedAny(py::module &m) {
         });
         return ans;
       },
-      py::arg("other"));
+      py::arg("other"), kRaggedAnyNeDoc);
 
   any.def("requires_grad_", &RaggedAny::SetRequiresGrad,
-          py::arg("requires_grad") = true);
+          py::arg("requires_grad") = true, kRaggedAnyRequiresGradMethodDoc);
 
-  any.def("sum", &RaggedAny::Sum, py::arg("initial_value") = 0);
+  any.def("sum", &RaggedAny::Sum, py::arg("initial_value") = 0,
+          kRaggedAnySumDoc);
 
-  any.def("numel", [](RaggedAny &self) -> int32_t {
-    DeviceGuard guard(self.any_.Context());
-    return self.any_.NumElements();
-  });
+  any.def(
+      "numel",
+      [](RaggedAny &self) -> int32_t {
+        DeviceGuard guard(self.any_.Context());
+        return self.any_.NumElements();
+      },
+      kRaggedAnyNumelDoc);
 
   any.def(
       "tot_size",
@@ -133,7 +138,7 @@ void PybindRaggedAny(py::module &m) {
         DeviceGuard guard(self.any_.Context());
         return self.any_.TotSize(axis);
       },
-      py::arg("axis"));
+      py::arg("axis"), kRaggedAnyTotSizeDoc);
 
   any.def(py::pickle(
       [](const RaggedAny &self) -> py::tuple {
@@ -201,6 +206,8 @@ void PybindRaggedAny(py::module &m) {
         // Unreachable code
         return {};
       }));
+  SetMethodDoc(&any, "__getstate__", kRaggedAnyGetStateDoc);
+  SetMethodDoc(&any, "__setstate__", kRaggedAnySetStateDoc);
 
   //==================================================
   //      k2.ragged.Tensor properties
@@ -252,11 +259,13 @@ void PybindRaggedAny(py::module &m) {
       "shape", [](RaggedAny &self) -> RaggedShape { return self.any_.shape; });
 
   any.def_property_readonly(
-      "grad", [](RaggedAny &self) -> torch::optional<torch::Tensor> {
+      "grad",
+      [](RaggedAny &self) -> torch::optional<torch::Tensor> {
         if (!self.data_.defined()) return {};
 
         return self.Data().grad();
-      });
+      },
+      kRaggedAnyGradPropDoc);
 
   any.def_property(
       "requires_grad",
@@ -267,7 +276,8 @@ void PybindRaggedAny(py::module &m) {
       },
       [](RaggedAny &self, bool requires_grad) -> void {
         self.SetRequiresGrad(requires_grad);
-      });
+      },
+      kRaggedAnyRequiresGradPropDoc);
 
   any.def_property_readonly("is_cuda", [](RaggedAny &self) -> bool {
     return self.any_.Context()->GetDeviceType() == kCuda;
@@ -287,6 +297,7 @@ void PybindRaggedAny(py::module &m) {
   //      _k2.ragged.functions
   //--------------------------------------------------
 
+  // TODO: change the function name from "create_tensor" to "tensor"
   ragged.def(
       "create_tensor",
       [](py::list data, py::object dtype = py::none()) -> RaggedAny {
