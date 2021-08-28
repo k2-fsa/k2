@@ -1,0 +1,322 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Install using pip (k2-fsa.org) &mdash; k2 1.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Install using pip (pypi.org)" href="pip_pypi.html" />
+    <link rel="prev" title="Install using conda (Linux/macOS/Windows)" href="conda.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> k2
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Installation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="conda.html">Install using conda (Linux/macOS/Windows)</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Install using pip (k2-fsa.org)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pip_pypi.html">Install using pip (pypi.org)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="from_source.html">Install from source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="for_developers.html">For developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#reporting-issues">Reporting issues</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/index.html">Python API reference</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Installation</a> &raquo;</li>
+        
+      <li>Install using pip (k2-fsa.org)</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/installation/pip.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="install-using-pip-k2-fsa-org">
+<h1>Install using pip (k2-fsa.org)<a class="headerlink" href="#install-using-pip-k2-fsa-org" title="Permalink to this headline">¶</a></h1>
+<p>You can find a list of nightly pre-built
+wheel packages at <a class="reference external" href="https://k2-fsa.org/nightly/index.html">https://k2-fsa.org/nightly/index.html</a> with the following
+versions of Python, CUDA, and PyTorch.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><img alt="Supported python versions" src="../_images/pip_python-3.6_3.7_3.8-blue.svg" /></p></li>
+<li><p><img alt="Supported cuda versions" src="../_images/pip_cuda-10.1_10.2_11.0-orange.svg" /></p></li>
+<li><p><img alt="Supported pytorch versions" src="../_images/pip_pytorch-1.7.1-green.svg" /></p></li>
+</ul>
+</div></blockquote>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>We assume that you have installed cudatoolkit.
+If not, please install them before proceeding.</p>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>See also <a class="reference internal" href="conda.html#install-using-conda"><span class="std std-ref">Install using conda (Linux/macOS/Windows)</span></a>. It installs all the dependencies for you
+automagically. You don’t need to pre-install PyTorch and cudatoolkit when using
+<code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span></code>.</p>
+</div>
+<p>The following commands install k2 with different CUDA versions:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install k2 0.3.3 with CUDA 10.2 built on 20210509</span>
+<span class="c1">#</span>
+<span class="c1"># cu102 means CUDA 10.2</span>
+<span class="c1">#</span>
+pip install <span class="nv">k2</span><span class="o">==</span><span class="m">0</span>.3.3+cu102.dev20210509 -f https://k2-fsa.org/nightly/
+
+<span class="c1"># Install k2 0.3.3 with CUDA 11.0 built on 20210509</span>
+<span class="c1">#</span>
+<span class="c1"># cu110 means CUDA 11.0</span>
+<span class="c1">#</span>
+pip install <span class="nv">k2</span><span class="o">==</span><span class="m">0</span>.3.3+cu110.dev20210509 -f https://k2-fsa.org/nightly/
+
+<span class="c1"># Install k2 0.3.3 with CUDA 10.1 built on 20210509</span>
+<span class="c1">#</span>
+<span class="c1"># CAUTION: you don&#39;t need to specify cu101 since CUDA 10.1 is the default</span>
+<span class="c1"># CUDA version</span>
+<span class="c1">#</span>
+pip install <span class="nv">k2</span><span class="o">==</span><span class="m">0</span>.3.3.dev20210509 -f https://k2-fsa.org/nightly/
+
+<span class="c1">#</span>
+<span class="c1"># dev20210509 means that version is built on 2021.05.09</span>
+<span class="c1">#</span>
+<span class="c1"># Please always select the latest version. That is, the version</span>
+<span class="c1"># with the latest date.</span>
+</pre></div>
+</div>
+<p>The following is the log for installing k2:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install k2==0.3.3.dev20210509 -f https://k2-fsa.org/nightly/
+Looking in links: https://k2-fsa.org/nightly/
+Collecting k2==0.3.3.dev20210509
+  Downloading https://k2-fsa.org/nightly/whl/k2-0.3.3.dev20210509-cp38-cp38-linux_x86_64.whl (54.4 MB)
+     |________________________________| 54.4 MB 487 kB/s
+Requirement already satisfied: torch in ./py38/lib/python3.8/site-packages (from k2==0.3.3.dev20210509) (1.7.1+cu101)
+Requirement already satisfied: graphviz in ./py38/lib/python3.8/site-packages (from k2==0.3.3.dev20210509) (0.15)
+Requirement already satisfied: numpy in ./py38/lib/python3.8/site-packages (from torch-&gt;k2==0.3.3.dev20210509) (1.19.5)
+Requirement already satisfied: typing-extensions in ./py38/lib/python3.8/site-packages (from torch-&gt;k2==0.3.3.dev20210509) (3.7.4.3)
+Installing collected packages: k2
+Successfully installed k2-0.3.3.dev20210509
+WARNING: You are using pip version 21.0.1; however, version 21.1.1 is available.
+You should consider upgrading via the &#39;/xxx/bin/python3.8 -m pip install --upgrade pip&#39; command.
+</pre></div>
+</div>
+<p>To verify that k2 is installed successfully, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python3 -m k2.version
+/xxx/lib/python3.8/runpy.py:127: RuntimeWarning: &#39;k2.version&#39; found in sys.modules after import of package &#39;k2&#39;, but prior to execution of &#39;k2.version&#39;; this may result in unpredictable behaviour
+  warn(RuntimeWarning(msg))
+Collecting environment information...
+
+k2 version: 0.3.3
+Build type: Release
+Git SHA1: 8e2fa82dca767782351fec57ec187aa04015dcf2
+Git date: Thu May 6 18:55:15 2021
+Cuda used to build k2: 10.1
+cuDNN used to build k2: 8.0.2
+Python version used to build k2: 3.8
+OS used to build k2: Ubuntu 18.04.5 LTS
+CMake version: 3.20.2
+GCC version: 7.5.0
+CMAKE_CUDA_FLAGS:  -D_GLIBCXX_USE_CXX11_ABI=0  --expt-extended-lambda -gencode arch=compute_35,code=sm_35 --expt-extended-lambda -gencode arch=compute_50,code=sm_50 --expt-extended-lambda -gencode arch=compute_60,code=sm_60 --expt-extended-lambda -gencode arch=compute_61,code=sm_61 --expt-extended-lambda -gencode arch=compute_70,code=sm_70 --expt-extended-lambda -gencode arch=compute_75,code=sm_75 --compiler-options -Wall --compiler-options -Wno-unknown-pragmas
+CMAKE_CXX_FLAGS:  -D_GLIBCXX_USE_CXX11_ABI=0
+PyTorch version used to build k2: 1.7.1+cu101
+PyTorch is using Cuda: 10.1
+NVTX enabled: True
+Disable debug: True
+Sync kernels : False
+Disable checks: False
+</pre></div>
+</div>
+<p>Congratulations! You have installed k2 successfully.</p>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="pip_pypi.html" class="btn btn-neutral float-right" title="Install using pip (pypi.org)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="conda.html" class="btn btn-neutral float-left" title="Install using conda (Linux/macOS/Windows)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, k2 development team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

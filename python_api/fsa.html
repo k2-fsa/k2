@@ -1,0 +1,1448 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Fsa &mdash; k2 1.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="CTC Loss" href="ctc_loss.html" />
+    <link rel="prev" title="Python API reference" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> k2
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Python API reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Fsa</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#init">__init__</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#invalidate-cache">_invalidate_cache_</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#to-str">to_str</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#str">__str__</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-filler">get_filler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#draw">draw</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#setattr">__setattr__</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#num-arcs">num_arcs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#labels">labels</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#properties">properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#properties-str">properties_str</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#requires-grad">requires_grad</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#grad">grad</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#getattr">__getattr__</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#delattr">__delattr__</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-state-batches">_get_state_batches</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-dest-states">_get_dest_states</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-incoming-arcs">_get_incoming_arcs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-entering-arc-batches">_get_entering_arc_batches</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-leaving-arc-batches">_get_leaving_arc_batches</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-arc-cdf">_get_arc_cdf</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-forward-scores">_get_forward_scores</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">get_forward_scores</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-tot-scores">_get_tot_scores</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">get_tot_scores</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-backward-scores">_get_backward_scores</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">get_backward_scores</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-arc-post">_get_arc_post</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">get_arc_post</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-entering-arcs">_get_entering_arcs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5"><cite>requires_grad_</cite></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rename-tensor-attribute">rename_tensor_attribute</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#invert"><cite>invert_</cite></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">invert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#is-cpu">is_cpu</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#is-cuda">is_cuda</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#device">device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#getitem">__getitem__</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#arcs-as-tensor">arcs_as_tensor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#as-dict">as_dict</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#from-dict">from_dict</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#to">to</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#clone">clone</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#detach">detach</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#named-tensor-attr">named_tensor_attr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#named-non-tensor-attr">named_non_tensor_attr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#shape">shape</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#from-str">from_str</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#from-openfst">from_openfst</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#from-fsas">from_fsas</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#set-scores-stochastic"><cite>set_scores_stochastic_</cite></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#convert-attr-to-ragged"><cite>convert_attr_to_ragged_</cite></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ctc_loss.html">CTC Loss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dense_fsa.html">DenseFsaVec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html">Fsa Algorithms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symbol_table.html">SymbolTable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html">utils</a></li>
+<li class="toctree-l2"><a class="reference internal" href="version.html">version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ops.html">ops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html">ragged_ops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ragged_shape.html">ragged_shape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="_k2.html">_k2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tensor.html">k2.ragged</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Python API reference</a> &raquo;</li>
+        
+      <li>Fsa</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/python_api/fsa.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="fsa">
+<h1>Fsa<a class="headerlink" href="#fsa" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="init">
+<h2>__init__<a class="headerlink" href="#init" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.__init__">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arcs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aux_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L119-L229"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build an Fsa from a tensor with optional aux_labels.</p>
+<p>It is useful when loading an Fsa from file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tensor</strong> – <p>A torch tensor of dtype <cite>torch.int32</cite> with 4 columns.
+Each row represents an arc. Column 0 is the src_state,
+column 1 the dest_state, column 2 the label, and column
+3 the score.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Scores are floats and their binary pattern is
+<strong>reinterpreted</strong> as integers and saved in a tensor
+of dtype <cite>torch.int32</cite>.</p>
+</div>
+</p></li>
+<li><p><strong>aux_labels</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code>]) – Optional. If not None, it associates an aux_label with every arc,
+so it has as many rows as <cite>tensor</cite>. It is a 1-D tensor of dtype
+<cite>torch.int32</cite> or <cite>_k2.RaggedInt</cite> whose <cite>dim0()</cite> equals to the
+number of arcs.</p></li>
+<li><p><strong>properties</strong> – Tensor properties if known (should only be provided by
+internal code, as they are not checked; intended for use
+by <a class="reference internal" href="#k2.Fsa.clone" title="k2.Fsa.clone"><code class="xref py py-func docutils literal notranslate"><span class="pre">clone()</span></code></a>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An instance of Fsa.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="invalidate-cache">
+<h2>_invalidate_cache_<a class="headerlink" href="#invalidate-cache" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._invalidate_cache_">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_invalidate_cache_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scores_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L231-L262"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._invalidate_cache_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Intended for internal use only so its
+name begins with an underline.</p>
+<p>Also, it changes <cite>self</cite> in-place.</p>
+<p>Currently, it is used only when the <cite>scores</cite> field
+are re-assigned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>scores_only</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – It True, it invalidates only cached entries related
+to scores. If False, the whole cache is invalidated.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="to-str">
+<h2>to_str<a class="headerlink" href="#to-str" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.to_str">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">to_str</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">openfst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L264-L299"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.to_str" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="str">
+<h2>__str__<a class="headerlink" href="#str" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.__str__">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L301-L306"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__str__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a string representation of this object</p>
+<p>For visualization and debug only.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-filler">
+<h2>get_filler<a class="headerlink" href="#get-filler" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.get_filler">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">get_filler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attribute_name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L308-L330"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.get_filler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the filler value associated with attribute names.</p>
+<p>This is 0 unless otherwise specified, but you can override this by
+for example, doing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fsa</span><span class="o">.</span><span class="n">foo_filler</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</pre></div>
+</div>
+<p>which will mean the “filler” for attribute fsa.foo is -1; and this will
+get propagated when you do FSA operations, like any other non-tensor
+attribute.  The filler is the value that means “nothing is here” (like
+epsilon).</p>
+<dl class="simple">
+<dt>Caution::</dt><dd><p>you should use a value that is castable to float and back to integer
+without loss of precision, because currently the <cite>default_value</cite>
+parameter of <cite>index_select</cite> in ./ops.py is a float.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="draw">
+<h2>draw<a class="headerlink" href="#draw" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.draw">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L332-L370"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.draw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Render FSA as an image via graphviz, and return the Digraph object;
+and optionally save to file <cite>filename</cite>.
+<cite>filename</cite> must have a suffix that graphviz understands, such as
+<cite>pdf</cite>, <cite>svg</cite> or <cite>png</cite>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You need to install graphviz to use this function:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">graphviz</span>
+</pre></div>
+</div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – Filename to (optionally) save to, e.g. ‘foo.png’, ‘foo.svg’,
+‘foo.png’  (must have a suffix that graphviz understands).</p></li>
+<li><p><strong>title</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – Title to be displayed in image, e.g. ‘A simple FSA example’</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>Digraph</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="setattr">
+<h2>__setattr__<a class="headerlink" href="#setattr" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.__setattr__">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__setattr__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L372-L416"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__setattr__" title="Permalink to this definition">¶</a></dt>
+<dd><div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>We save a reference to <cite>value</cite>. If you need to change <cite>value</cite>
+afterwards, please consider passing a copy of it.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Name of the attribute.</p></li>
+<li><p><strong>value</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>) – Value of the attribute.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="num-arcs">
+<h2>num_arcs<a class="headerlink" href="#num-arcs" title="Permalink to this headline">¶</a></h2>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="k2.Fsa.num_arcs">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">num_arcs</span></span><a class="headerlink" href="#k2.Fsa.num_arcs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of arcs in this Fsa.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="labels">
+<h2>labels<a class="headerlink" href="#labels" title="Permalink to this headline">¶</a></h2>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="k2.Fsa.labels">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">labels</span></span><a class="headerlink" href="#k2.Fsa.labels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the labels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a 1-D <cite>torch.Tensor</cite> with dtype <cite>torch.int32</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="properties">
+<h2>properties<a class="headerlink" href="#properties" title="Permalink to this headline">¶</a></h2>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="k2.Fsa.properties">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">properties</span></span><a class="headerlink" href="#k2.Fsa.properties" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="properties-str">
+<h2>properties_str<a class="headerlink" href="#properties-str" title="Permalink to this headline">¶</a></h2>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="k2.Fsa.properties_str">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">properties_str</span></span><a class="headerlink" href="#k2.Fsa.properties_str" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="requires-grad">
+<h2>requires_grad<a class="headerlink" href="#requires-grad" title="Permalink to this headline">¶</a></h2>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="k2.Fsa.requires_grad">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">requires_grad</span></span><a class="headerlink" href="#k2.Fsa.requires_grad" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="grad">
+<h2>grad<a class="headerlink" href="#grad" title="Permalink to this headline">¶</a></h2>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="k2.Fsa.grad">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">grad</span></span><a class="headerlink" href="#k2.Fsa.grad" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="getattr">
+<h2>__getattr__<a class="headerlink" href="#getattr" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.__getattr__">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__getattr__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L486-L504"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__getattr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Note: for attributes that exist as properties, e.g.
+self.labels, self.properties, self.requires_grad, we won’t
+reach this code because Python checks the class dict before
+calling getattr.  The same is true for instance attributes
+such as self.{_tensor_attr,_non_tensor_attr,_cache,_properties}</p>
+<p>The ‘virtual’ members of this class are those in self._tensor_attr
+and self._non_tensor_attr.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="delattr">
+<h2>__delattr__<a class="headerlink" href="#delattr" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.__delattr__">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__delattr__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L506-L521"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__delattr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implement delattr(self, name).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-state-batches">
+<h2>_get_state_batches<a class="headerlink" href="#get-state-batches" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_state_batches">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_state_batches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L523-L531"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_state_batches" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get (and compute if necessary) cached property <cite>state_batches</cite>.</p>
+<p>For use by internal k2 code.  Used in many algorithms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-dest-states">
+<h2>_get_dest_states<a class="headerlink" href="#get-dest-states" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_dest_states">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_dest_states</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L533-L541"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_dest_states" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get (and compute if necessary) cached property self.dest_states.</p>
+<p>For use by internal k2 code, relates to best-path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-incoming-arcs">
+<h2>_get_incoming_arcs<a class="headerlink" href="#get-incoming-arcs" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_incoming_arcs">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_incoming_arcs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L543-L552"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_incoming_arcs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get (and compute if necessary) cached property self.incoming_arcs.</p>
+<p>For use by internal k2 code, relates to best-path</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-entering-arc-batches">
+<h2>_get_entering_arc_batches<a class="headerlink" href="#get-entering-arc-batches" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_entering_arc_batches">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_entering_arc_batches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L554-L566"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_entering_arc_batches" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get (and compute if necessary) cached property
+<cite>self.entering_arc_batches</cite>.</p>
+<p>For use by internal k2 code, used in many algorithms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-leaving-arc-batches">
+<h2>_get_leaving_arc_batches<a class="headerlink" href="#get-leaving-arc-batches" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_leaving_arc_batches">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_leaving_arc_batches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L568-L578"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_leaving_arc_batches" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get (and compute if necessary) cached property
+<cite>self.leaving_arc_batches</cite>.</p>
+<p>For use by internal k2 code, used in many algorithms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-arc-cdf">
+<h2>_get_arc_cdf<a class="headerlink" href="#get-arc-cdf" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_arc_cdf">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_arc_cdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_semiring</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L580-L592"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_arc_cdf" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-forward-scores">
+<h2>_get_forward_scores<a class="headerlink" href="#get-forward-scores" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_forward_scores">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_forward_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_semiring</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L594-L628"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_forward_scores" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get (and compute if necessary) cached property
+<cite>self.forward_scores_xxx_yyy</cite> (where xxx indicates float-type and
+yyy indicates semiring).</p>
+<p>For use by internal k2 code; returns the total score from start-state to
+each state.  Not differentiable; see <a class="reference internal" href="#k2.Fsa.get_forward_scores" title="k2.Fsa.get_forward_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_forward_scores()</span></code></a> which is
+the differentiable version.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to use <cite>double precision</cite> floating point.
+False to use <cite>single precision</cite>.</p></li>
+<li><p><strong>log_semiring</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to use log semiring (log-sum), false to use tropical (i.e. max
+on scores).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="id1">
+<h2>get_forward_scores<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.get_forward_scores">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">get_forward_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_semiring</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L630-L648"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.get_forward_scores" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute forward-scores, i.e. total weight (or best-path weight)
+from start state to each state.</p>
+<p>Supports autograd.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, use double precision.</p></li>
+<li><p><strong>log_semiring</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, use log semiring, else tropical.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A torch.Tensor with shape equal to (num_states,)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-tot-scores">
+<h2>_get_tot_scores<a class="headerlink" href="#get-tot-scores" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_tot_scores">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_tot_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_semiring</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L650-L678"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_tot_scores" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute total-scores (one per FSA) as the best-path score.</p>
+<p>This version is not differentiable; see also <a class="reference internal" href="#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_tot_scores()</span></code></a>
+which is differentiable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If True, use <cite>double precision</cite> floating point; false;
+else single precision.</p></li>
+<li><p><strong>log_semiring</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to use log semiring (log-sum), false to use tropical (i.e. max
+on scores).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="id2">
+<h2>get_tot_scores<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.get_tot_scores">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">get_tot_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_semiring</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L680-L697"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.get_tot_scores" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute total-scores (one per FSA) as the
+best-path score.</p>
+<p>This version is differentiable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to use <cite>double precision</cite> floating point;
+False to use <cite>single precision</cite>.</p></li>
+<li><p><strong>log_semiring</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to use log semiring (log-sum), false to use tropical (i.e. max
+on scores).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-backward-scores">
+<h2>_get_backward_scores<a class="headerlink" href="#get-backward-scores" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_backward_scores">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_backward_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_semiring</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L699-L736"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_backward_scores" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute backward-scores, i.e. total weight (or best-path weight)
+from each state to the final state.</p>
+<p>For internal k2 use. Not differentiable.</p>
+<p>See also <a class="reference internal" href="#k2.Fsa.get_backward_scores" title="k2.Fsa.get_backward_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_backward_scores()</span></code></a> which is differentiable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to use <cite>double precision</cite> floating point.
+False to use <cite>single precision</cite>.</p></li>
+<li><p><strong>log_semiring</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to use log semiring (log-sum), false to use tropical (i.e. max
+on scores).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A torch.Tensor with shape equal to (num_states,)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="id3">
+<h2>get_backward_scores<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.get_backward_scores">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">get_backward_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_semiring</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L738-L756"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.get_backward_scores" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute backward-scores, i.e. total weight (or best-path weight)
+from each state to the final state.</p>
+<p>Supports autograd.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, use double precision.</p></li>
+<li><p><strong>log_semiring</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, use log semiring, else tropical.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A torch.Tensor with shape equal to (num_states,)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-arc-post">
+<h2>_get_arc_post<a class="headerlink" href="#get-arc-post" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_arc_post">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_arc_post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_semiring</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L758-L792"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_arc_post" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute scores on arcs, representing log probabilities;
+with log_semiring=True you could call these log posteriors,
+but if log_semiring=False they can only be interpreted as the
+difference betwen the best-path score and the score of the
+best path that includes this arc.</p>
+<p>This version is not differentiable; see also <a class="reference internal" href="#k2.Fsa.get_arc_post" title="k2.Fsa.get_arc_post"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_arc_post()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, use double precision.</p></li>
+<li><p><strong>log_semiring</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, use log semiring, else tropical.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A torch.Tensor with shape equal to (num_arcs,)
+and non-positive elements.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="id4">
+<h2>get_arc_post<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.get_arc_post">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">get_arc_post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_semiring</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L794-L830"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.get_arc_post" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute scores on arcs, representing log probabilities;
+with log_semiring=True you could call these log posteriors,
+but if log_semiring=False they can only be interpreted as the
+difference between the best-path score and the score of the
+best path that includes this arc.
+This version is differentiable; see also <a class="reference internal" href="#k2.Fsa._get_arc_post" title="k2.Fsa._get_arc_post"><code class="xref py py-func docutils literal notranslate"><span class="pre">_get_arc_post()</span></code></a>.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Because of how the autograd mechanics works and the
+need to avoid circular references, this is not cached;
+it’s best to store it if you’ll need it multiple times.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, use double precision.</p></li>
+<li><p><strong>log_semiring</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, use log semiring, else tropical.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A torch.Tensor with shape equal to (num_arcs,)
+and non-positive elements.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-entering-arcs">
+<h2>_get_entering_arcs<a class="headerlink" href="#get-entering-arcs" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa._get_entering_arcs">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_get_entering_arcs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L832-L846"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._get_entering_arcs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute, for each state, the index of the best arc entering it.</p>
+<p>For internal k2 use.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to use <cite>double precision</cite> floating point.
+False to use <cite>single precision</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="id5">
+<h2><cite>requires_grad_</cite><a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.requires_grad_">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">requires_grad_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L848-L871"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.requires_grad_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Change if autograd should record operations on this FSA:</p>
+<p>Sets the <cite>scores</cite>’s requires_grad attribute in-place.</p>
+<p>Returns this FSA.</p>
+<p>You can test whether this object has the requires_grad property
+true or false by accessing <a class="reference internal" href="#k2.Fsa.requires_grad" title="k2.Fsa.requires_grad"><code class="xref py py-attr docutils literal notranslate"><span class="pre">requires_grad</span></code></a> (handled in
+<a class="reference internal" href="#k2.Fsa.__getattr__" title="k2.Fsa.__getattr__"><code class="xref py py-func docutils literal notranslate"><span class="pre">__getattr__()</span></code></a>).</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>This is an <strong>in-place</strong> operation as you can see that the function
+name ends with <cite>_</cite>.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>requires_grad</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If autograd should record operations on this FSA or not.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>This FSA itself.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="rename-tensor-attribute">
+<h2><a class="reference internal" href="#rename-tensor-attribute">rename_tensor_attribute</a><a class="headerlink" href="#rename-tensor-attribute" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.rename_tensor_attribute_">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">rename_tensor_attribute_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dest_name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L873-L922"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.rename_tensor_attribute_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rename a tensor attribute (or, as a special case ‘labels’),
+and also rename non-tensor attributes that are associated with it,
+i.e. that have it as a prefix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – The original name, exist as a tensor attribute, e.g. ‘aux_labels’,
+or, as a special case, equal ‘labels’; special attributes ‘labels’
+and ‘scores’ are allowed but won’t be deleted.</p></li>
+<li><p><strong>dest_name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – The new name, that we are renaming it to. If it already existed as
+a tensor attribute, it will be rewritten; and any previously
+existing non-tensor attributes that have this as a prefix will be
+deleted.  As a special case, may equal ‘labels’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Return <cite>self</cite>.</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Note::</dt><dd><p>It is OK if src_name and/or dest_name equals ‘labels’ or ‘scores’,
+but these special attributes won’t be deleted.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="invert">
+<h2><cite>invert_</cite><a class="headerlink" href="#invert" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.invert_">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">invert_</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L924-L975"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.invert_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Swap the <cite>labels</cite> and <cite>aux_labels</cite>.</p>
+<p>If there are symbol tables associated with <cite>labels</cite> and
+<cite>aux_labels</cite>, they are also swapped.</p>
+<p>It is an error if the FSA contains no <cite>aux_labels</cite>.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The function name ends with an underscore which means this
+is an <strong>in-place</strong> operation.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return <cite>self</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="id6">
+<h2>invert<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.invert">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L977-L988"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.invert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Swap the <cite>labels</cite> and <cite>aux_labels</cite>.</p>
+<p>If there are symbol tables associated with <cite>labels</cite> and
+<cite>aux_labels</cite>, they are also swapped.</p>
+<p>It is an error if the FSA contains no <cite>aux_labels</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a new Fsa.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="is-cpu">
+<h2>is_cpu<a class="headerlink" href="#is-cpu" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.is_cpu">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">is_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L990-L996"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.is_cpu" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return true if this FSA is on CPU.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>True if the FSA is on CPU; False otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="is-cuda">
+<h2>is_cuda<a class="headerlink" href="#is-cuda" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.is_cuda">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">is_cuda</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L998-L1004"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.is_cuda" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return true if this FSA is on GPU.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>True if the FSA is on GPU; False otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="device">
+<h2>device<a class="headerlink" href="#device" title="Permalink to this headline">¶</a></h2>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="k2.Fsa.device">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#k2.Fsa.device" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">device</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="getitem">
+<h2>__getitem__<a class="headerlink" href="#getitem" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.__getitem__">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1010-L1042"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__getitem__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the i-th FSA.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p><cite>self</cite> has to be an FsaVec, i.e. len(self.shape) == 3</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>i</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The i-th FSA to select. 0 &lt;= i &lt; self.arcs.dim0().</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The i-th FSA. Note it is a single FSA.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="arcs-as-tensor">
+<h2>arcs_as_tensor<a class="headerlink" href="#arcs-as-tensor" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.arcs_as_tensor">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">arcs_as_tensor</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1044-L1052"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.arcs_as_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the core part of the Fsa (the arcs) serialized to a Tensor
+of int32 type, with shape (num_arcs, 4); the floats are reinterpreted
+as int32 and will appear as garbage if printed.  This can be passed
+to the constructor, along with the aux_labels if present, to
+reconstruct this object.  A more convenient way to serialize a Tensor
+is to use <a class="reference internal" href="#k2.Fsa.as_dict" title="k2.Fsa.as_dict"><code class="xref py py-func docutils literal notranslate"><span class="pre">as_dict()</span></code></a> and <a class="reference internal" href="#k2.Fsa.from_dict" title="k2.Fsa.from_dict"><code class="xref py py-func docutils literal notranslate"><span class="pre">from_dict()</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="as-dict">
+<h2>as_dict<a class="headerlink" href="#as-dict" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.as_dict">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">as_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1054-L1073"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.as_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert this Fsa to a dict (probably for purposes of serialization
+, e.g., torch.save).</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p><cite>self.requires_grad</cite> attribute is not saved.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <cite>dict</cite> that can be used to reconstruct this FSA by using
+<cite>Fsa.from_dict</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="from-dict">
+<h2>from_dict<a class="headerlink" href="#from-dict" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.from_dict">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dict_in</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1075-L1082"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="to">
+<h2>to<a class="headerlink" href="#to" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.to">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1084-L1120"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.to" title="Permalink to this definition">¶</a></dt>
+<dd><p>Move the FSA onto a given device.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>device</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">device</span></code>]) – An instance of <cite>torch.device</cite> or a string that can be used to
+construct a <cite>torch.device</cite>, e.g., ‘cpu’, ‘cuda:0’.
+It supports only cpu and cuda devices.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Returns a new Fsa which is this object copied to the given device
+(or this object itself, if the device was the same)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="clone">
+<h2>clone<a class="headerlink" href="#clone" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.clone">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1122-L1150"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.clone" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an Fsa that is a clone of this one, i.e. a close approximation
+to what you’d get if you did .clone() on all its tensor members.
+Any non-tensor attributes are copied over.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="detach">
+<h2>detach<a class="headerlink" href="#detach" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.detach">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">detach</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1152-L1180"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.detach" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an Fsa that shares the underlying data with this one,
+except gradients are not tracked.
+Any non-tensor attributes are copied over.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="named-tensor-attr">
+<h2>named_tensor_attr<a class="headerlink" href="#named-tensor-attr" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.named_tensor_attr">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">named_tensor_attr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">include_scores</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1182-L1196"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.named_tensor_attr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an iterator over tensor attributes containing both
+the name of the attribute as well as the tensor value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tuple containing the name and the value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="named-non-tensor-attr">
+<h2>named_non_tensor_attr<a class="headerlink" href="#named-non-tensor-attr" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.named_non_tensor_attr">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">named_non_tensor_attr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1198-L1206"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.named_non_tensor_attr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an iterator over non-tensor attributes containing both
+the name of the attribute as well as the value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>]]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tuple containing the name and the value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="shape">
+<h2>shape<a class="headerlink" href="#shape" title="Permalink to this headline">¶</a></h2>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="k2.Fsa.shape">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#k2.Fsa.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns:
+<cite>(num_states, None)</cite> if this is an Fsa;
+<cite>(num_fsas, None, None)</cite> if this is an FsaVec.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="from-str">
+<h2>from_str<a class="headerlink" href="#from-str" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.from_str">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">from_str</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">acceptor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_aux_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aux_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ragged_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openfst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1222-L1302"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.from_str" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an Fsa from a string in the k2 or OpenFst format.
+(See also <a class="reference internal" href="#k2.Fsa.from_openfst" title="k2.Fsa.from_openfst"><code class="xref py py-func docutils literal notranslate"><span class="pre">from_openfst()</span></code></a>).</p>
+<p>The given string <cite>s</cite> consists of lines with the following format:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">src_state</span> <span class="n">dest_state</span> <span class="n">label</span> <span class="p">[</span><span class="n">aux_label1</span> <span class="n">aux_label2</span><span class="o">...</span><span class="p">]</span> <span class="p">[</span><span class="n">score</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The line for the final state consists of only one field:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">final_state</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Fields are separated by space(s), tab(s) or both. The <cite>score</cite>
+field is a float, while other fields are integers.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The first column has to be non-decreasing.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The final state has the largest state number. There is <strong>ONLY</strong>
+ONE final state. All arcs that are connected to the final state
+have label -1. If there are aux_labels, they are also -1 for
+arcs entering the final state.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>At most one of <cite>acceptor</cite>, <cite>num_aux_labels</cite>, and <cite>aux_label_names</cite>
+must be supplied; if none are supplied, acceptor format is assumed.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – The input string. Refer to the above comment for its format.</p></li>
+<li><p><strong>acceptor</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>]) – Set to true to denote acceptor format which is num_aux_labels == 0,
+or false to denote transducer format (i.e. num_aux_labels == 1
+with name ‘aux_labels’).</p></li>
+<li><p><strong>num_aux_labels</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]) – The number of auxiliary labels to expect on each line (in addition
+to the ‘acceptor’ label; is 1 for traditional transducers but can be
+any non-negative number.  The names of the aux_labels default to
+‘aux_labels’ then ‘aux_labels2’, ‘aux_labels3’ and so on.</p></li>
+<li><p><strong>aux_label_names</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]) – If provided, the length of this list dictates the number of
+aux_labels and this list dictates their names.</p></li>
+<li><p><strong>ragged_label_names</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – If provided, expect this number of ragged labels, in the order
+of this list.  It is advisable that this list be in
+alphabetical order, so that the format when we write back to
+a string will be unchanged.</p></li>
+<li><p><strong>openfst</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If true, will expect the OpenFST format (costs not scores, i.e.
+negated; final-probs rather than final-state specified).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="from-openfst">
+<h2>from_openfst<a class="headerlink" href="#from-openfst" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.from_openfst">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">from_openfst</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">acceptor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_aux_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aux_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ragged_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1304-L1362"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.from_openfst" title="Permalink to this definition">¶</a></dt>
+<dd><dl>
+<dt>Create an Fsa from a string in OpenFST format (or a slightly more</dt><dd><p>general format, if num_aux_labels &gt; 1). See also <a class="reference internal" href="#k2.Fsa.from_str" title="k2.Fsa.from_str"><code class="xref py py-func docutils literal notranslate"><span class="pre">from_str()</span></code></a>.</p>
+<p>The given string <cite>s</cite> consists of lines with the following format:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">src_state</span> <span class="n">dest_state</span> <span class="n">label</span> <span class="p">[</span><span class="n">aux_label1</span> <span class="n">aux_label2</span><span class="o">...</span><span class="p">]</span> <span class="p">[</span><span class="n">cost</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<p>(the cost defaults to 0.0 if not present).</p>
+<blockquote>
+<div><p>The line for the final state consists of two fields:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">final_state</span> <span class="p">[</span><span class="n">cost</span><span class="p">]</span>
+</pre></div>
+</div>
+<dl>
+<dt>Note:</dt><dd><p>Fields are separated by space(s), tab(s) or both. The <cite>cost</cite>
+field is a float, while other fields are integers.</p>
+<p>There might be multiple final states. Also, OpenFst may omit the cost
+if it is 0.0.</p>
+</dd>
+<dt>Caution:</dt><dd><p>We use <cite>cost</cite> here to indicate that its value will be negated so that
+we can get <cite>scores</cite>. That is, <cite>score = -1 * cost</cite>.</p>
+</dd>
+<dt>Note:</dt><dd><p>At most one of <cite>acceptor</cite>, <cite>num_aux_labels</cite>, and <cite>aux_label_names</cite>
+must be supplied; if none are supplied, acceptor format is assumed.</p>
+</dd>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>s:</dt><dd><p>The input string. Refer to the above comment for its format.</p>
+</dd>
+<dt>acceptor:</dt><dd><p>Set to true to denote acceptor format which is num_aux_labels == 0,
+or false to denote transducer format (i.e. num_aux_labels == 1
+with name ‘aux_labels’).</p>
+</dd>
+<dt>num_aux_labels:</dt><dd><p>The number of auxiliary labels to expect on each line (in addition
+to the ‘acceptor’ label; is 1 for traditional transducers but can be
+any non-negative number.</p>
+</dd>
+<dt>aux_label_names:</dt><dd><p>If provided, the length of this list dictates the number of
+aux_labels. By default the names are ‘aux_labels’, ‘aux_labels2’,
+‘aux_labels3’ and so on.</p>
+</dd>
+<dt>ragged_label_names:</dt><dd><p>If provided, expect this number of ragged labels, in the order
+of this list.  It is advisable that this list be in
+alphabetical order, so that the format when we write back to
+a string will be unchanged.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="from-fsas">
+<h2>from_fsas<a class="headerlink" href="#from-fsas" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.from_fsas">
+<em class="property"><span class="pre">static</span> </em><span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">from_fsas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1364-L1371"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.from_fsas" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an FsaVec from a list of FSAs.</p>
+<p>See also <a class="reference internal" href="utils.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a>. This function is just
+a wrapper of that function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="set-scores-stochastic">
+<h2><cite>set_scores_stochastic_</cite><a class="headerlink" href="#set-scores-stochastic" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.set_scores_stochastic_">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">set_scores_stochastic_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scores</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1373-L1397"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.set_scores_stochastic_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize the given <cite>scores</cite> and assign it to <cite>self.scores</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>scores</strong> – Tensor of scores of dtype torch.float32, and shape equal to
+<cite>self.scores.shape</cite> (one axis). Will be normalized so the
+sum, after exponentiating, of the scores leaving each state
+that has at least one arc leaving it is 1.</p>
+</dd>
+</dl>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The function name ends with an underline indicating this function
+will modify <cite>self</cite> <strong>in-place</strong>.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="convert-attr-to-ragged">
+<h2><cite>convert_attr_to_ragged_</cite><a class="headerlink" href="#convert-attr-to-ragged" title="Permalink to this headline">¶</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.Fsa.convert_attr_to_ragged_">
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">convert_attr_to_ragged_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1399-L1432"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.convert_attr_to_ragged_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert the attribute given by <cite>name</cite> from a 1-D torch.tensor
+to a k2.RaggedInt.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>This function ends with an underscore, meaning it changes the FSA
+<strong>in-place</strong>.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – The attribute name. This attribute is expected to be a 1-D tensor
+with dtype torch.int32.</p></li>
+<li><p><strong>remove_eps</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to remove 0s in the resulting ragged tensor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Return self.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="ctc_loss.html" class="btn btn-neutral float-right" title="CTC Loss" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Python API reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, k2 development team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

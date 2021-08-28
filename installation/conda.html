@@ -1,0 +1,496 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Install using conda (Linux/macOS/Windows) &mdash; k2 1.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Install using pip (k2-fsa.org)" href="pip.html" />
+    <link rel="prev" title="Installation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> k2
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Installation</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Install using conda (Linux/macOS/Windows)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#supported-versions">Supported versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#search-for-available-versions">Search for available versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#detailed-installation-instructions">Detailed installation instructions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="pip.html">Install using pip (k2-fsa.org)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pip_pypi.html">Install using pip (pypi.org)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="from_source.html">Install from source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="for_developers.html">For developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#reporting-issues">Reporting issues</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/index.html">Python API reference</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Installation</a> &raquo;</li>
+        
+      <li>Install using conda (Linux/macOS/Windows)</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/installation/conda.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="install-using-conda-linux-macos-windows">
+<span id="install-using-conda"></span><h1>Install using conda (Linux/macOS/Windows)<a class="headerlink" href="#install-using-conda-linux-macos-windows" title="Permalink to this headline">¶</a></h1>
+<p>All you need is the following line</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda install -c k2-fsa -c pytorch -c conda-forge k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.1 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
+</pre></div>
+</div>
+<p>to install the <strong>latest</strong> k2 with Python 3.8, CUDA 11.1, and PyTorch 1.8.1.</p>
+<p>You can change the versions of Python, CUDA, and PyTorch as you need.</p>
+<p>To Install a CPU version, use:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda install -c k2-fsa -c pytorch cpuonly k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
+</pre></div>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>If you are using macOS and encounter the following error while
+running <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">-m</span> <span class="pre">k2.version</span></code> after installation:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ImportError: dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/foo/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, <span class="m">2</span><span class="o">)</span>: Library not loaded: @rpath/libk2context.dylib
+  Referenced from: /Users/fangjun/software/miniconda3/envs/foo/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
+  Reason: image not found
+</pre></div>
+</div>
+<p>You can use:</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">DYLD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CONDA_PREFIX</span>/lib/python3.8/site-packages:<span class="nv">$DYLD_LIBRARY_PATH</span>
+python3 -m k2.version  <span class="c1"># now it should work</span>
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+<p>Read the following if you want to learn more.</p>
+<div class="section" id="supported-versions">
+<h2>Supported versions<a class="headerlink" href="#supported-versions" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p><img alt="Supported python versions" src="../_images/python-3.6_3.7_3.8-blue.svg" /></p></li>
+<li><p><img alt="Supported cuda versions" src="../_images/cuda-10.1_10.2_11.0_11.1-orange.svg" /></p></li>
+<li><p><img alt="Supported pytorch versions" src="../_images/pytorch-1.6.0_1.7.0_1.7.1_1.8.0_1.8.1-green.svg" /></p></li>
+</ul>
+<p>The conda package <code class="docutils literal notranslate"><span class="pre">k2</span></code> is available from the channel <code class="docutils literal notranslate"><span class="pre">k2-fsa</span></code>, so
+you have to use <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">k2-fsa</span></code> or <code class="docutils literal notranslate"><span class="pre">--channel</span> <span class="pre">k2-fsa</span></code> for <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span></code>.</p>
+<p>It is recommended to specify the versions of Python, CUDA, and PyTorch while installing k2.
+Supported versions are given in the above badges.</p>
+</div>
+<div class="section" id="search-for-available-versions">
+<h2>Search for available versions<a class="headerlink" href="#search-for-available-versions" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda search -c k2-fsa k2
+</pre></div>
+</div>
+<p>lists the available versions. An example output is given below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ conda search -c k2-fsa k2
+Loading channels: done
+# Name                       Version           Build  Channel
+k2                   0.3.3.dev20210509_cuda10.1 cuda10.1_py3.6_torch1.6.0  k2-fsa
+k2                   0.3.3.dev20210509_cuda10.1 cuda10.1_py3.6_torch1.7.0  k2-fsa
+k2                   0.3.3.dev20210509_cuda10.1 cuda10.1_py3.6_torch1.7.1  k2-fsa
+(lots of lines are omitted)
+k2                   0.3.3.dev20210510_cuda11.0 cuda11.0_py3.6_torch1.7.1  k2-fsa
+k2                   0.3.3.dev20210510_cuda11.1 cuda11.1_py3.6_torch1.8.0  k2-fsa
+k2                   0.3.3.dev20210510_cuda11.1 cuda11.1_py3.6_torch1.8.1  k2-fsa
+(lots of lines are omitted)
+</pre></div>
+</div>
+</div>
+<div class="section" id="detailed-installation-instructions">
+<h2>Detailed installation instructions<a class="headerlink" href="#detailed-installation-instructions" title="Permalink to this headline">¶</a></h2>
+<p>To install k2, let’s first create a virtual environment:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda create -n foo <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.7
+Collecting package metadata <span class="o">(</span>current_repodata.json<span class="o">)</span>: <span class="k">done</span>
+Solving environment: <span class="k">done</span>
+
+<span class="c1">## Package Plan ##</span>
+
+  environment location: /xxx/anaconda3/2020.11/envs/foo
+
+  added / updated specs:
+    - <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.7
+
+
+The following NEW packages will be INSTALLED:
+
+  _libgcc_mutex      pkgs/main/linux-64::_libgcc_mutex-0.1-main
+  ca-certificates    pkgs/main/linux-64::ca-certificates-2021.4.13-h06a4308_1
+  certifi            pkgs/main/linux-64::certifi-2020.12.5-py37h06a4308_0
+  ld_impl_linux-64   pkgs/main/linux-64::ld_impl_linux-64-2.33.1-h53a641e_7
+  libffi             pkgs/main/linux-64::libffi-3.3-he6710b0_2
+  libgcc-ng          pkgs/main/linux-64::libgcc-ng-9.1.0-hdf63c60_0
+  libstdcxx-ng       pkgs/main/linux-64::libstdcxx-ng-9.1.0-hdf63c60_0
+  ncurses            pkgs/main/linux-64::ncurses-6.2-he6710b0_1
+  openssl            pkgs/main/linux-64::openssl-1.1.1k-h27cfd23_0
+  pip                pkgs/main/linux-64::pip-21.0.1-py37h06a4308_0
+  python             pkgs/main/linux-64::python-3.7.10-hdb3f193_0
+  readline           pkgs/main/linux-64::readline-8.1-h27cfd23_0
+  setuptools         pkgs/main/linux-64::setuptools-52.0.0-py37h06a4308_0
+  sqlite             pkgs/main/linux-64::sqlite-3.35.4-hdfb4753_0
+  tk                 pkgs/main/linux-64::tk-8.6.10-hbc83047_0
+  wheel              pkgs/main/noarch::wheel-0.36.2-pyhd3eb1b0_0
+  xz                 pkgs/main/linux-64::xz-5.2.5-h7b6447c_0
+  zlib               pkgs/main/linux-64::zlib-1.2.11-h7b6447c_3
+
+
+Proceed <span class="o">([</span>y<span class="o">]</span>/n<span class="o">)</span>? y
+
+Preparing transaction: <span class="k">done</span>
+Verifying transaction: <span class="k">done</span>
+Executing transaction: <span class="k">done</span>
+<span class="c1">#</span>
+<span class="c1"># To activate this environment, use</span>
+<span class="c1">#</span>
+<span class="c1">#     $ conda activate foo</span>
+<span class="c1">#</span>
+<span class="c1"># To deactivate an active environment, use</span>
+<span class="c1">#</span>
+<span class="c1">#     $ conda deactivate</span>
+</pre></div>
+</div>
+<p>Second, activate the environment <code class="docutils literal notranslate"><span class="pre">foo</span></code> that we just created:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ conda activate foo
+(foo) $
+</pre></div>
+</div>
+<p>Third, determine the versions of Python, CUDA, and PyTorch you want to use.</p>
+<p>Assuming you want to use Python 3.8, CUDA 11.1, and PyTorch 1.8.1. Then you can use
+the following command to install k2:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>(foo) $ conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=11.1 pytorch=1.8.1
+</pre></div>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>You have to specify <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">k2-fsa</span> <span class="pre">-c</span> <span class="pre">pytorch</span> <span class="pre">-c</span> <span class="pre">conda-forge</span></code>. Otherwise, the installation will fail.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">k2-fsa</span></code> tells conda where to find <code class="docutils literal notranslate"><span class="pre">k2</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">pytorch</span></code> tells conda where to find <code class="docutils literal notranslate"><span class="pre">pytorch=1.8.1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">conda-forge</span></code> tells conda where to find <code class="docutils literal notranslate"><span class="pre">cudatoolkit=11.1</span></code></p></li>
+</ul>
+</div></blockquote>
+</div>
+<p>The output of the above command is:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span> $ conda install -c k2-fsa -c pytorch -c conda-forge k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.1 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
+Collecting package metadata <span class="o">(</span>current_repodata.json<span class="o">)</span>: <span class="k">done</span>
+Solving environment: <span class="k">done</span>
+
+<span class="c1">## Package Plan ##</span>
+
+  environment location: /xxx/anaconda3/2020.11/envs/foo
+
+  added / updated specs:
+    - <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.1
+    - k2
+    - <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+    - <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
+
+
+The following packages will be downloaded:
+
+    package                    <span class="p">|</span>            build
+    ---------------------------<span class="p">|</span>-----------------
+    cudatoolkit-11.1.1         <span class="p">|</span>       h6406543_8        <span class="m">1</span>.20 GB  conda-forge
+    k2-0.3.3.dev20210509_cuda11.1<span class="p">|</span>cuda11.1_py3.8_torch1.8.1        <span class="m">61</span>.4 MB  k2-fsa
+    pytorch-1.8.1              <span class="p">|</span>py3.8_cuda11.1_cudnn8.0.5_0        <span class="m">1</span>.27 GB  pytorch
+    ------------------------------------------------------------
+                                           Total:        <span class="m">2</span>.54 GB
+
+The following NEW packages will be INSTALLED:
+
+  _openmp_mutex      conda-forge/linux-64::_openmp_mutex-4.5-1_llvm
+  blas               pkgs/main/linux-64::blas-1.0-mkl
+  cudatoolkit        conda-forge/linux-64::cudatoolkit-11.1.1-h6406543_8
+  k2                 k2-fsa/linux-64::k2-0.3.3.dev20210509_cuda11.1-cuda11.1_py3.8_torch1.8.1
+  libuv              conda-forge/linux-64::libuv-1.41.0-h7f98852_0
+  llvm-openmp        conda-forge/linux-64::llvm-openmp-11.1.0-h4bd325d_1
+  mkl                conda-forge/linux-64::mkl-2020.4-h726a3e6_304
+  mkl-service        conda-forge/linux-64::mkl-service-2.3.0-py38h1e0a361_2
+  mkl_fft            conda-forge/linux-64::mkl_fft-1.3.0-py38h5c078b8_1
+  mkl_random         conda-forge/linux-64::mkl_random-1.2.0-py38hc5bc63f_1
+  ninja              conda-forge/linux-64::ninja-1.10.2-h4bd325d_0
+  numpy              pkgs/main/linux-64::numpy-1.19.2-py38h54aff64_0
+  numpy-base         pkgs/main/linux-64::numpy-base-1.19.2-py38hfa32c7d_0
+  python_abi         conda-forge/linux-64::python_abi-3.8-1_cp38
+  pytorch            pytorch/linux-64::pytorch-1.8.1-py3.8_cuda11.1_cudnn8.0.5_0
+  six                conda-forge/noarch::six-1.16.0-pyh6c4a22f_0
+  typing_extensions  conda-forge/noarch::typing_extensions-3.7.4.3-py_0
+
+The following packages will be UPDATED:
+
+  certifi            pkgs/main::certifi-2020.12.5-py37h06a~ --&gt; conda-forge::certifi-2020.12.5-py38h578d9bd_1
+  libgcc-ng           pkgs/main::libgcc-ng-9.1.0-hdf63c60_0 --&gt; conda-forge::libgcc-ng-9.3.0-h2828fa1_19
+  libstdcxx-ng       pkgs/main::libstdcxx-ng-9.1.0-hdf63c6~ --&gt; conda-forge::libstdcxx-ng-9.3.0-h6de172a_19
+  pip                pkgs/main/linux-64::pip-21.0.1-py37h0~ --&gt; conda-forge/noarch::pip-21.1.1-pyhd8ed1ab_0
+  python                                  <span class="m">3</span>.7.10-hdb3f193_0 --&gt; <span class="m">3</span>.8.8-hdb3f193_5
+
+The following packages will be SUPERSEDED by a higher-priority channel:
+
+  _libgcc_mutex           pkgs/main::_libgcc_mutex-0.1-main --&gt; conda-forge::_libgcc_mutex-0.1-conda_forge
+  ca-certificates    pkgs/main::ca-certificates-2021.4.13-~ --&gt; conda-forge::ca-certificates-2020.12.5-ha878542_0
+  openssl              pkgs/main::openssl-1.1.1k-h27cfd23_0 --&gt; conda-forge::openssl-1.1.1k-h7f98852_0
+  setuptools         pkgs/main::setuptools-52.0.0-py37h06a~ --&gt; conda-forge::setuptools-49.6.0-py38h578d9bd_3
+
+
+Proceed <span class="o">([</span>y<span class="o">]</span>/n<span class="o">)</span>? y
+
+
+Downloading and Extracting Packages
+k2-0.3.3.dev20210509 <span class="p">|</span> <span class="m">61</span>.4 MB   <span class="p">|</span> <span class="c1">############################################################################################ | 100%</span>
+pytorch-1.8.1        <span class="p">|</span> <span class="m">1</span>.27 GB   <span class="p">|</span> <span class="c1">############################################################################################ | 100%</span>
+cudatoolkit-11.1.1   <span class="p">|</span> <span class="m">1</span>.20 GB   <span class="p">|</span> <span class="c1">############################################################################################ | 100%</span>
+Preparing transaction: <span class="k">done</span>
+Verifying transaction: <span class="k">done</span>
+Executing transaction: - By downloading and using the CUDA Toolkit conda packages, you accept the terms and conditions of the CUDA End
+User License Agreement <span class="o">(</span>EULA<span class="o">)</span>: https://docs.nvidia.com/cuda/eula/index.html
+
+<span class="k">done</span>
+</pre></div>
+</div>
+<p>To verify that k2 is installed successfully, use:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span> $ python3 -m k2.version
+</pre></div>
+</div>
+<p>It should print something like the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span> $ python3 -m k2.version
+/xxx/anaconda3/2020.11/envs/foo/lib/python3.8/runpy.py:127: RuntimeWarning: <span class="s1">&#39;k2.version&#39;</span> found <span class="k">in</span> sys.modules after import of package <span class="s1">&#39;k2&#39;</span>, but prior to execution of <span class="s1">&#39;k2.version&#39;</span><span class="p">;</span> this may result <span class="k">in</span> unpredictable behaviour
+  warn<span class="o">(</span>RuntimeWarning<span class="o">(</span>msg<span class="o">))</span>
+Collecting environment information...
+
+k2 version: <span class="m">0</span>.3.3
+Build type: Release
+Git SHA1: 397b5b154d93b82eb58bc2eee11ca835b5aa138c
+Git date: Sun May <span class="m">9</span> <span class="m">06</span>:38:52 <span class="m">2021</span>
+Cuda used to build k2: <span class="m">11</span>.1
+cuDNN used to build k2: <span class="m">8</span>.0.5
+Python version used to build k2: <span class="m">3</span>.8
+OS used to build k2: Ubuntu <span class="m">16</span>.04.7 LTS
+CMake version: <span class="m">3</span>.18.4
+GCC version: <span class="m">5</span>.5.0
+CMAKE_CUDA_FLAGS:  --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_35,code<span class="o">=</span>sm_35 --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_50,code<span class="o">=</span>sm_50 --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_60,code<span class="o">=</span>sm_60 --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_61,code<span class="o">=</span>sm_61 --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_70,code<span class="o">=</span>sm_70 --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_75,code<span class="o">=</span>sm_75 -D_GLIBCXX_USE_CXX11_ABI<span class="o">=</span><span class="m">0</span> --compiler-options -Wall --compiler-options -Wno-unknown-pragmas
+CMAKE_CXX_FLAGS:  -D_GLIBCXX_USE_CXX11_ABI<span class="o">=</span><span class="m">0</span>
+PyTorch version used to build k2: <span class="m">1</span>.8.1
+PyTorch is using Cuda: <span class="m">11</span>.1
+NVTX enabled: True
+Disable debug: True
+Sync kernels : False
+Disable checks: False
+</pre></div>
+</div>
+<p>The following code verifies that you can create an example FSA with k2:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span> $ python3
+Python <span class="m">3</span>.8.8 <span class="o">(</span>default, Apr <span class="m">13</span> <span class="m">2021</span>, <span class="m">19</span>:58:26<span class="o">)</span>
+<span class="o">[</span>GCC <span class="m">7</span>.3.0<span class="o">]</span> :: Anaconda, Inc. on linux
+Type <span class="s2">&quot;help&quot;</span>, <span class="s2">&quot;copyright&quot;</span>, <span class="s2">&quot;credits&quot;</span> or <span class="s2">&quot;license&quot;</span> <span class="k">for</span> more information.
+&gt;&gt;&gt; import k2
+&gt;&gt;&gt; <span class="nv">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">... 0 1 -1 0.1</span>
+<span class="s1">... 1</span>
+<span class="s1">... &#39;&#39;&#39;</span>
+&gt;&gt;&gt; <span class="nv">fsa</span> <span class="o">=</span> k2.Fsa.from_str<span class="o">(</span>s<span class="o">)</span>
+&gt;&gt;&gt; fsa.draw<span class="o">(</span><span class="s1">&#39;hello.svg&#39;</span>, <span class="nv">title</span><span class="o">=</span><span class="s1">&#39;hello&#39;</span><span class="o">)</span>
+&lt;graphviz.dot.Digraph object at 0x7ff88b1ca610&gt;
+</pre></div>
+</div>
+<div class="figure align-center">
+<img alt="../_images/hello.svg" src="../_images/hello.svg" /></div>
+<p>Congratulations! You have installed k2 successfully.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="pip.html" class="btn btn-neutral float-right" title="Install using pip (k2-fsa.org)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, k2 development team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

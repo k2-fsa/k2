@@ -1,0 +1,293 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>ragged_shape &mdash; k2 1.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="_k2" href="_k2.html" />
+    <link rel="prev" title="ragged_ops" href="ragged_ops.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> k2
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Python API reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="fsa.html">Fsa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctc_loss.html">CTC Loss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dense_fsa.html">DenseFsaVec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html">Fsa Algorithms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symbol_table.html">SymbolTable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html">utils</a></li>
+<li class="toctree-l2"><a class="reference internal" href="version.html">version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ops.html">ops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html">ragged_ops</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">ragged_shape</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#create-ragged-shape2">create_ragged_shape2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#compose-ragged-shapes">compose_ragged_shapes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="_k2.html">_k2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tensor.html">k2.ragged</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Python API reference</a> &raquo;</li>
+        
+      <li>ragged_shape</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/python_api/ragged_shape.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="ragged-shape">
+<h1>ragged_shape<a class="headerlink" href="#ragged-shape" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="create-ragged-shape2">
+<h2>create_ragged_shape2<a class="headerlink" href="#create-ragged-shape2" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.create_ragged_shape2">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">create_ragged_shape2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row_splits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cached_tot_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ragged_shape.py#L12-L31"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.create_ragged_shape2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a RaggedShape from row_ids and/or row_splits vectors.  For
+the overall concepts, please see comments in k2/csrc/utils.h.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>row_splits</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – Optionally, a torch.Tensor with dtype=torch.int32 and one axis</p></li>
+<li><p><strong>row_ids</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – Optionally, a torch.Tensor with dtype=torch.int32 and one axis.</p></li>
+<li><p><strong>cached_tot_size</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]) – The number of elements (length of row_ids, even if row_ids
+is not provided); would be identical to the last element of row_splits,
+but can avoid a GPU to CPU transfer if known.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>an instance of _k2.RaggedShape, with ans.num_axes() == 2.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="compose-ragged-shapes">
+<h2>compose_ragged_shapes<a class="headerlink" href="#compose-ragged-shapes" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.compose_ragged_shapes">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">compose_ragged_shapes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ragged_shape.py#L34-L48"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.compose_ragged_shapes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compose two RaggedShape objects where a.num_elements() == b.dim0().</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a</strong> (<a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a>) – First shape to be composed</p></li>
+<li><p><strong>b</strong> (<a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a>) – First shape to be composed; b.dim0() must equal a.num_elements()</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>an instance of _k2.RaggedShape with
+<cite>ans.num_axes() == a.num_axes() + b.num_axes() - 1</cite>.
+May share metadata with a and b.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="_k2.html" class="btn btn-neutral float-right" title="_k2" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="ragged_ops.html" class="btn btn-neutral float-left" title="ragged_ops" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, k2 development team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

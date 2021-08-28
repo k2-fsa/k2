@@ -1,0 +1,437 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Fsa &mdash; k2 1.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Fsa algorithms" href="fsa_algo.html" />
+    <link rel="prev" title="Python tutorials" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> k2
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Python tutorials</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Fsa</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#a-single-fsa">A single FSA</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#visualization">Visualization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#symbol-table">Symbol table</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#auxiliary-labels">Auxiliary labels</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#auxiliary-symbol-table">Auxiliary symbol table</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#invert">invert</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#scores">scores</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#is-cpu">is_cpu</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#is-cuda">is_cuda</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#to">to</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#a-list-of-fsas-fsavec">A list of FSAs: FsaVec</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html">Fsa algorithms</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/index.html">Python API reference</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Python tutorials</a> &raquo;</li>
+        
+      <li>Fsa</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/python_tutorials/fsa.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="fsa">
+<h1>Fsa<a class="headerlink" href="#fsa" title="Permalink to this headline">¶</a></h1>
+<p>In this tutorial, we will show:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>How to create an FSA in k2</p></li>
+<li><p>How to create a 1-D vector of FSAs in k2</p></li>
+<li><p>Common methods of <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.Fsa</span></code></p></li>
+</ul>
+</div></blockquote>
+<div class="section" id="a-single-fsa">
+<h2>A single FSA<a class="headerlink" href="#a-single-fsa" title="Permalink to this headline">¶</a></h2>
+<p>The following code shows how to create an FSA in k2:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">  0 1 10 0.1</span>
+<span class="s1">  0 2 20 0.2</span>
+<span class="s1">  1 2 30 0.3</span>
+<span class="s1">  1 3 -1 0.4</span>
+<span class="s1">  2 3 -1 0.5</span>
+<span class="s1">  3</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Please refer to <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.from_str" title="k2.Fsa.from_str"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.from_str()</span></code></a> for the format of the string <cite>s</cite> that must have.</p>
+<div class="section" id="visualization">
+<h3>Visualization<a class="headerlink" href="#visualization" title="Permalink to this headline">¶</a></h3>
+<p>The resulting FSA can be visualized via the following two APIs:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><a class="reference internal" href="../python_api/utils.html#k2.to_dot" title="k2.to_dot"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.to_dot()</span></code></a></p></li>
+<li><p><a class="reference internal" href="../python_api/fsa.html#k2.Fsa.draw" title="k2.Fsa.draw"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.draw()</span></code></a></p></li>
+</ul>
+</div></blockquote>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>You have to install graphviz in order to use the above two APIs. It can be installed
+using the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">graphviz</span>
+</pre></div>
+</div>
+</div>
+<p>The return value of <a class="reference internal" href="../python_api/utils.html#k2.to_dot" title="k2.to_dot"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.to_dot()</span></code></a> can be visualized automagically in a jupyter notebook.
+<a class="reference internal" href="#to-dot-vis"><span class="std std-numref">Fig. 10</span></a> is a screenshot of invoking <a class="reference internal" href="../python_api/utils.html#k2.to_dot" title="k2.to_dot"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.to_dot()</span></code></a> for the above FSA.</p>
+<div class="figure align-center" id="id1" style="width: 600px">
+<span id="to-dot-vis"></span><img alt="Result of to_dot" src="../_images/to_dot.png" />
+<p class="caption"><span class="caption-number">Fig. 10 </span><span class="caption-text">Screenshot of running <a class="reference internal" href="../python_api/utils.html#k2.to_dot" title="k2.to_dot"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.to_dot()</span></code></a> in a jupyter notebook.</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
+</div>
+<p><a class="reference internal" href="../python_api/fsa.html#k2.Fsa.draw" title="k2.Fsa.draw"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.draw()</span></code></a> is able to save the resulting FSA to a file for offline visualization.
+Its return value can also be displayed in a jupyter notebook. A screenshot of running
+<a class="reference internal" href="../python_api/fsa.html#k2.Fsa.draw" title="k2.Fsa.draw"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.draw()</span></code></a> for the above FSA is shown in</p>
+<div class="figure align-center" id="id2" style="width: 600px">
+<span id="draw-vis"></span><img alt="Result of Fsa.draw" src="../_images/draw.png" />
+<p class="caption"><span class="caption-number">Fig. 11 </span><span class="caption-text">Screenshot of running <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.draw" title="k2.Fsa.draw"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.draw()</span></code></a> in a jupyter notebook.</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
+</div>
+<p>The generated <cite>fsa.svg</cite> is visualized in <a class="reference internal" href="#tutorial-fsa-svg"><span class="std std-numref">Fig. 12</span></a>.</p>
+<div class="figure align-center" id="id3" style="width: 600px">
+<span id="tutorial-fsa-svg"></span><img alt="fsa.svg" src="../_images/fsa.svg" /><p class="caption"><span class="caption-number">Fig. 12 </span><span class="caption-text">fsa.svg generated by <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.draw" title="k2.Fsa.draw"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.draw()</span></code></a>.</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></p>
+</div>
+</div>
+<div class="section" id="symbol-table">
+<h3>Symbol table<a class="headerlink" href="#symbol-table" title="Permalink to this headline">¶</a></h3>
+<p>You can also attach a symbol table to the above FSA:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sym_str</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">  a 10</span>
+<span class="s1">  b 20</span>
+<span class="s1">  c 30</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">labels_sym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">sym_str</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa_symbols.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;An FSA with symbol table&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The visualization result is given in <a class="reference internal" href="#tutorial-fsa-symbols"><span class="std std-numref">Fig. 13</span></a>.</p>
+<div class="figure align-center" id="id4" style="width: 600px">
+<span id="tutorial-fsa-symbols"></span><img alt="fsa_symbols.svg" src="../_images/fsa_symbols.svg" /><p class="caption"><span class="caption-number">Fig. 13 </span><span class="caption-text">Visualization of an FSA with a symbol table.</span><a class="headerlink" href="#id4" title="Permalink to this image">¶</a></p>
+</div>
+<p>To attach a symbol table to an FSA, just assign an instance of class <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.SymbolTable</span></code>
+to the <code class="docutils literal notranslate"><span class="pre">labels_sym</span></code> attribute of the FSA.</p>
+</div>
+<div class="section" id="auxiliary-labels">
+<h3>Auxiliary labels<a class="headerlink" href="#auxiliary-labels" title="Permalink to this headline">¶</a></h3>
+<p>You can also attach an integer attribute to every arc in the FSA. If the attribute
+name is <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code>, the resulting FSA is viewed as an FST in k2.</p>
+<p>An example is given below.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa_aux.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;An FSA with aux_labels&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="figure align-center" style="width: 600px">
+<img alt="fsa_aux.svg" src="../_images/fsa_aux.svg" /></div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>We require that <cite>aux_labels</cite> is either a <cite>torch.Tensor</cite> with dtype <cite>torch.int32</cite>
+or a ragged tensor of type <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.RaggedInt</span></code>.
+Also note that the <cite>aux_labels</cite> for arcs entering the final state are -1.</p>
+</div>
+</div>
+<div class="section" id="auxiliary-symbol-table">
+<h3>Auxiliary symbol table<a class="headerlink" href="#auxiliary-symbol-table" title="Permalink to this headline">¶</a></h3>
+<p>If an FSA is assigned an attribute with name <code class="docutils literal notranslate"><span class="pre">aux_labels_sym</span></code>,
+its <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code> is visualized with human readable strings instead of integer
+IDs (the same</p>
+<p>The following is an example.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">  A 10</span>
+<span class="s1">  B 30</span>
+<span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">aux_labels_sym</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa_aux_symbols.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;An FSA with aux_symbols&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="figure align-center" style="width: 600px">
+<img alt="fsa_aux_symbols.svg" src="../_images/fsa_aux_symbols.svg" /></div>
+</div>
+<div class="section" id="invert">
+<h3>invert<a class="headerlink" href="#invert" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">labels</span></code> and <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code> can be swapped using <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.invert" title="k2.Fsa.invert"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.invert()</span></code></a>
+or <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.invert_" title="k2.Fsa.invert_"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.invert_()</span></code></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fsa</span><span class="o">.</span><span class="n">invert_</span><span class="p">()</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa_invert.svg&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><cite>fsa_invert.svg</cite> is shown in <a class="reference internal" href="#tutorial-fsa-invert"><span class="std std-numref">Fig. 14</span></a>.</p>
+<div class="figure align-center" id="id5" style="width: 600px">
+<span id="tutorial-fsa-invert"></span><img alt="fsa_invert.svg" src="../_images/fsa_invert.svg" /><p class="caption"><span class="caption-number">Fig. 14 </span><span class="caption-text">Invert an FSA.</span><a class="headerlink" href="#id5" title="Permalink to this image">¶</a></p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>It is a convention in k2 that a method with name ending with an underscore
+changes the object in-place. <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.invert" title="k2.Fsa.invert"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.invert()</span></code></a> returns a new FSA,
+whereas <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.invert_" title="k2.Fsa.invert_"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.invert_()</span></code></a> modifies <cite>self</cite> in-place.</p>
+</div>
+</div>
+<div class="section" id="scores">
+<h3>scores<a class="headerlink" href="#scores" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">scores</span></code> is one of the most important attributes of an FSA. There
+is a score for every arc and <code class="docutils literal notranslate"><span class="pre">k2.Fsa.scores</span></code> returns the scores
+of an FSA in a 1-D <cite>torch.Tensor</cite> with dtype <cite>torch.float32</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">fsa</span><span class="o">.</span><span class="n">scores</span><span class="p">)</span>
+<span class="c1"># it prints:</span>
+<span class="c1">#   tensor([0.1000, 0.2000, 0.3000, 0.4000, 0.5000])</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="is-cpu">
+<h3>is_cpu<a class="headerlink" href="#is-cpu" title="Permalink to this headline">¶</a></h3>
+<p>k2 supports CPU as well as CUDA. You can tell whether an FSA is on CPU with
+<a class="reference internal" href="../python_api/fsa.html#k2.Fsa.is_cpu" title="k2.Fsa.is_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.is_cpu()</span></code></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">fsa</span><span class="o">.</span><span class="n">is_cpu</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>If <cite>fsa</cite> is on CPU, the above code prints <cite>True</cite>; otherwise, it prints <cite>False</cite>.</p>
+</div>
+<div class="section" id="is-cuda">
+<h3>is_cuda<a class="headerlink" href="#is-cuda" title="Permalink to this headline">¶</a></h3>
+<p>To test whether an FSA is on CUDA GPU or not, you can use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">fsa</span><span class="o">.</span><span class="n">is_cuda</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>If it prints <cite>True</cite>, the <cite>fsa</cite> is on a CUDA GPU; otherwise, it is on CPU.</p>
+</div>
+<div class="section" id="to">
+<h3>to<a class="headerlink" href="#to" title="Permalink to this headline">¶</a></h3>
+<p>An FSA can be moved among different devices with <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.to" title="k2.Fsa.to"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.to()</span></code></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">is_cpu</span><span class="p">()</span>
+
+<span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">device</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;cuda:1&#39;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">is_cuda</span><span class="p">()</span>
+
+<span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">device</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cuda&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that you can use <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.device" title="k2.Fsa.device"><code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.device</span></code></a> to get the device on which
+the current FSA resides.</p>
+</div>
+</div>
+<div class="section" id="a-list-of-fsas-fsavec">
+<h2>A list of FSAs: FsaVec<a class="headerlink" href="#a-list-of-fsas-fsavec" title="Permalink to this headline">¶</a></h2>
+<p>You can use <a class="reference internal" href="../python_api/utils.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> to create a FsaVec from a list of FSAs.
+For example,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">,</span> <span class="n">fsa</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Both <cite>FsaVec</cite> and <cite>FSA</cite> are represented by a single Python class <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.Fsa</span></code>.
+You can tell whether an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.Fsa</span></code> is a single FSA or a FsaVec
+from its property <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.shape" title="k2.Fsa.shape"><code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.shape</span></code></a>:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>For a single FSA, <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.shape" title="k2.Fsa.shape"><code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.shape</span></code></a> returns a tuple with two elements <cite>(num_states, None)</cite></p></li>
+<li><p>For a FsaVec, <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.shape" title="k2.Fsa.shape"><code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.shape</span></code></a> returns a tuple with three elements <cite>(num_fsas, None, None)</cite></p></li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="fsa_algo.html" class="btn btn-neutral float-right" title="Fsa algorithms" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Python tutorials" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, k2 development team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

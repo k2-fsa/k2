@@ -1,0 +1,975 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Core concepts in k2 &mdash; k2 1.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Python tutorials" href="../python_tutorials/index.html" />
+    <link rel="prev" title="For developers" href="../installation/for_developers.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> k2
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Core concepts in k2</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#a-simple-fsa-example">A simple FSA example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#attributes">Attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#semirings">Semirings</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tropical-semiring">Tropical semiring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#log-semiring">Log semiring</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#vectors-of-fsas">Vectors of FSAs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#autograd">Autograd</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#example-1-autograd-in-tropical-semiring">Example 1: Autograd in tropical semiring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-2-autograd-in-log-semiring">Example 2: Autograd in log semiring</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dense-fsa-vector">Dense fsa vector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ragged-arrays">Ragged arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/index.html">Python API reference</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Core concepts in k2</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/core_concepts/index.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="core-concepts-in-k2">
+<h1>Core concepts in k2<a class="headerlink" href="#core-concepts-in-k2" title="Permalink to this headline">¶</a></h1>
+<p>Please refer to <span id="id1">[<a class="reference internal" href="#id5" title="Mehryar Mohri. Finite-state transducers in language and speech processing. Computational linguistics, 23(2):269–311, 1997. URL: https://cs.nyu.edu/~mohri/pub/cl1.pdf.">Moh97</a>]</span>, <span id="id2">[<a class="reference internal" href="#id6" title="Mehryar Mohri, Fernando Pereira, and Michael Riley. Weighted finite-state transducers in speech recognition. Computer Speech &amp; Language, 16(1):69–88, 2002. URL: https://cs.nyu.edu/~mohri/postscript/csl01.pdf.">MPR02</a>]</span>, and
+<span id="id3">[<a class="reference internal" href="#id7" title="Mehryar Mohri, Fernando Pereira, and Michael Riley. Speech recognition with weighted finite-state transducers. In Springer Handbook of Speech Processing, pages 559–584. Springer, 2008. URL: https://wiki.eecs.yorku.ca/course_archive/2011-12/W/6328/_media/wfst-lvcsr.pdf.">MPR08</a>]</span> for an introduction about weighted finite state
+acceptor (WFSA) and weighted finite state transducer (WFST).</p>
+<p>We use FSA to indicate either WFSA or WFST in k2.</p>
+<div class="section" id="a-simple-fsa-example">
+<h2>A simple FSA example<a class="headerlink" href="#a-simple-fsa-example" title="Permalink to this headline">¶</a></h2>
+<p>A simple FSA is shown in <a class="reference internal" href="#a-simple-fsa"><span class="std std-numref">Fig. 1</span></a>.</p>
+<div class="figure align-center" id="id8" style="width: 600px">
+<span id="a-simple-fsa"></span><img alt="A simple FSA in k2" src="../_images/simple_fsa.svg" /><p class="caption"><span class="caption-number">Fig. 1 </span><span class="caption-text">A simple FSA in k2.</span><a class="headerlink" href="#id8" title="Permalink to this image">¶</a></p>
+</div>
+<ul class="simple">
+<li><p>It has three states: 0, 1, and 2. State 0 is the start state
+and state 2 is the final state.</p></li>
+<li><p>There are 2 arcs. The first arc is from state 0 to state 1
+with label 10 and score 0.1. The second arc is from state 1 to
+the final state 2 with label -1 and score 0.2.</p></li>
+</ul>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>We use arc weight and arc score interchangeably in k2.</p>
+</div>
+<p>The above FSA is created with the following code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 10 0.1</span>
+<span class="s1">1 2 -1 0.2</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;simple_fsa.svg&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We summarize the <strong>unique</strong> features of FSA in k2 in below:</p>
+<blockquote>
+<div><ul>
+<li><p>There is only one start state</p></li>
+<li><p>The start state is <strong>always</strong> 0</p></li>
+<li><p>All other states have a state number greater than 0</p></li>
+<li><p>There is only one final state</p></li>
+<li><p>The final state <strong>always</strong> has the <strong>largest</strong> state number</p></li>
+<li><p>Arcs entering the final state <strong>always</strong> have -1 as the label</p></li>
+<li><p>Arcs that do not enter the final state cannot have -1 as the label</p></li>
+<li><p>States have no scores</p></li>
+<li><p>All scores are on the arcs</p></li>
+<li><p>We store weights in the <strong>positive</strong> <code class="docutils literal notranslate"><span class="pre">sense</span></code> rather than as costs</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>We store them as log-probs rather than negative log-probs,
+and call them <code class="docutils literal notranslate"><span class="pre">&quot;scores&quot;</span></code> to indicate this.</p>
+<p>They can come directly from the output of a log-softmax layer.</p>
+</div>
+</li>
+</ul>
+</div></blockquote>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>Different from other frameworks, FSAs in k2 have only a single final state.</p>
+<p>If you want to convert an FSA from another framework to k2 that contains
+multiple final states, you can create an extra state and consider it as
+the super final state. For each final state in the FSA, add an arc to this
+super final state with label -1 and score equal to the final-weight of that
+final state. The resulting FSA will contain only a single final state.</p>
+<p>Similarly, if it contains multiple start states, you can add a super start
+state and set both the label and score of the arcs added from the super start
+state to the start state to 0.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>k2 supports conversion of FSAs from OpenFST. See <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.from_openfst" title="k2.Fsa.from_openfst"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.from_openfst()</span></code></a>.</p>
+</div>
+</div>
+<div class="section" id="attributes">
+<h2>Attributes<a class="headerlink" href="#attributes" title="Permalink to this headline">¶</a></h2>
+<p>Arbitrary attributes can be attached to the arcs of an FSA.
+For example, we can attach a tensor attribute to an FSA indicating
+the output label of arcs so that the FSA is converted to an FST.</p>
+<p>The attached attributes are <strong>automaticaly propagated</strong> through operations,
+with <code class="docutils literal notranslate"><span class="pre">autograd</span></code> if they are real-valued tensors.</p>
+<p>The following code converts the above simple acceptor to a transducer:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 10 0.1</span>
+<span class="s1">1 2 -1 0.2</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;simple_fst.svg&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The resulting FST is visualized in <a class="reference internal" href="#a-simple-fst"><span class="std std-numref">Fig. 2</span></a>.</p>
+<div class="figure align-center" id="id9" style="width: 600px">
+<span id="a-simple-fst"></span><img alt="A simple FST in k2" src="../_images/simple_fst.svg" /><p class="caption"><span class="caption-number">Fig. 2 </span><span class="caption-text">A simple FST in k2.</span><a class="headerlink" href="#id9" title="Permalink to this image">¶</a></p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>There are NO <strong>output labels</strong> in k2. Every arc has a label and you
+can attach arbitrary attributes with arbitrary name to it.</p>
+<p>If the attached attribute is an N-D tensor, its <code class="docutils literal notranslate"><span class="pre">shape[0]</span></code> has to
+equal the number of arcs in the FSA.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The visualization code handles the attributes <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code> specially.
+Other than this, <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code> is like any other attributes attached
+to the FSA.</p>
+</div>
+</div>
+<div class="section" id="semirings">
+<h2>Semirings<a class="headerlink" href="#semirings" title="Permalink to this headline">¶</a></h2>
+<p>In the FSA literature, generality is achieved through the concept
+of “semirings”. The two most common are the “tropical semiring”
+and “log semiring”. The way we will explain these is a little
+different from the literature because we are using the <strong>opposite</strong> sign.</p>
+<p>We won’t get into the formalism here, but it relates to what happens
+when you combine scores from multiple alternative paths.</p>
+<p>The two common semirings supported by k2 are:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>tropical semiring</strong>: take the maximum score (or minimum cost)</p></li>
+<li><p><strong>log semiring</strong>: log-add the scores (or the negatives of the costs).</p></li>
+</ul>
+</div></blockquote>
+<p>While k2 only supports these two operations for the core operations,
+the framework is designed to be flexible through the concept of
+“attributes” which make it possible to implement the kinds of
+things that are normally accomplished through exotic semirings
+such as the Gallic semiring.</p>
+<div class="section" id="tropical-semiring">
+<h3>Tropical semiring<a class="headerlink" href="#tropical-semiring" title="Permalink to this headline">¶</a></h3>
+<p>In tropical semirings, it takes the <strong>max</strong> score of alternative paths.</p>
+<p>For example, for the FSA in <a class="reference internal" href="#tropical"><span class="std std-numref">Fig. 3</span></a>:</p>
+<div class="figure align-center" id="id10" style="width: 600px">
+<span id="tropical"></span><img alt="An FSA with two alternative paths" src="../_images/fsa2.svg" /><p class="caption"><span class="caption-number">Fig. 3 </span><span class="caption-text">An FSA with two alternative paths to the final states.</span><a class="headerlink" href="#id10" title="Permalink to this image">¶</a></p>
+</div>
+<p>There are two paths from the start state to the final state:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Path 0: state 0 -&gt; state 1 -&gt; state 3, with score: 0.1 + 0 = 0.1</p></li>
+<li><p>Path 1: state 0 -&gt; state 2 -&gt; state 3, with score: 0.2 + 0 = 0.2</p></li>
+</ul>
+</div></blockquote>
+<p>So in the tropical semiring, we would consider that “total score” of
+this FSA is <code class="docutils literal notranslate"><span class="pre">max(0.1,</span> <span class="pre">0.2)</span> <span class="pre">==</span> <span class="pre">0.2</span></code>.</p>
+<p>In k2, you would use the following code to compute it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 10 0.1</span>
+<span class="s1">0 2 20 0.2</span>
+<span class="s1">1 3 -1 0</span>
+<span class="s1">2 3 -1 0</span>
+<span class="s1">3</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa2.svg&#39;</span><span class="p">)</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
+<span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">total_scores</span><span class="p">)</span>
+<span class="c1"># It prints: tensor([0.2000])</span>
+</pre></div>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.get_tot_scores()</span></code> takes a vector of FSAs as input,
+so we use <a class="reference internal" href="../python_api/utils.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> to turn an FSA into a vector of FSAs.</p>
+<p>Most operations in k2 take a vector of FSAs as input and process them
+in parallel.</p>
+</div>
+</div>
+<div class="section" id="log-semiring">
+<h3>Log semiring<a class="headerlink" href="#log-semiring" title="Permalink to this headline">¶</a></h3>
+<p>In log semirings, it takes the <strong>log_add</strong> score of alternative paths.</p>
+<p>For example, if there are two paths with score <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>, then the
+total score is <code class="docutils literal notranslate"><span class="pre">log(exp(a)</span> <span class="pre">+</span> <span class="pre">exp(b))</span></code>.</p>
+<p>Take the FSA in <a class="reference internal" href="#tropical"><span class="std std-numref">Fig. 3</span></a> as an example, the total score is
+<code class="docutils literal notranslate"><span class="pre">log(exp(0.1)</span> <span class="pre">+</span> <span class="pre">exp(0.2))</span> <span class="pre">=</span> <span class="pre">0.8444</span></code>.</p>
+<p>The code in k2 looks like:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 10 0.1</span>
+<span class="s1">0 2 20 0.2</span>
+<span class="s1">1 3 -1 0</span>
+<span class="s1">2 3 -1 0</span>
+<span class="s1">3</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
+<span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">total_scores</span><span class="p">)</span>
+<span class="c1"># It prints: tensor([0.8444])</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="vectors-of-fsas">
+<h2>Vectors of FSAs<a class="headerlink" href="#vectors-of-fsas" title="Permalink to this headline">¶</a></h2>
+<p>The Python class <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.Fsa</span></code> can represent either a single FSA
+or a 1-D vector of FSAs.</p>
+<p>Most operations in k2 are done on a vector of FSAs in parallel.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>In the documentation, we usually use <code class="docutils literal notranslate"><span class="pre">FsaVec</span></code> to represent
+a vector of FSAs. However, there is actually no Python class <code class="docutils literal notranslate"><span class="pre">FsaVec</span></code>,
+only <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.Fsa</span></code>.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="../python_api/utils.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> can create a FsaVec from a list of
+FSAs. and <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.__getitem__" title="k2.Fsa.__getitem__"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.__getitem__()</span></code></a> selects an FSA with specified
+index from a FsaVec.</p>
+</div>
+</div>
+<div class="section" id="autograd">
+<h2>Autograd<a class="headerlink" href="#autograd" title="Permalink to this headline">¶</a></h2>
+<p>Nearly all operations in k2 support autograd, which is compatible
+with PyTorch. It can be extended to support other frameworks as well,
+e.g., TensorFlow.</p>
+<p>Gradients are computed with respect to arc scores. We do not
+pose any constraints on where the arc scores can come from. For instance,
+they can be the output of some neural network or from
+some n-gram language models.</p>
+<p>Autograd is implemented by keeping track of the “source arcs” of arcs that
+are the output of an operation. Internally, it outputs an arc map, saying
+for each output arc, which input arc it corresponds to.</p>
+<p>For example, in composition an output arc would usually come from a pair
+of arcs, one in each input FSA.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>arc map and autograd are implementation details and are not visible to Python
+API users.</p>
+</div>
+<p>In the following we give two examples about autograd with the following FSA
+in the context of computing total scores with tropical semiring and log semiring.</p>
+<div class="figure align-center" id="id11" style="width: 600px">
+<span id="autograd-example"></span><img alt="An FSA for demonstrating autograd." src="../_images/autograd.svg" /><p class="caption"><span class="caption-number">Fig. 4 </span><span class="caption-text">An example FSA for demonstrating autograd in k2.</span><a class="headerlink" href="#id11" title="Permalink to this image">¶</a></p>
+</div>
+<p>Arc scores <code class="docutils literal notranslate"><span class="pre">a</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, <code class="docutils literal notranslate"><span class="pre">c</span></code>, and <code class="docutils literal notranslate"><span class="pre">d</span></code> are some numbers not known yet.
+They can come from the output of some neural network and their value depends
+on the internal parameters of the neural network which are updated
+by some gradient descent based algorithms.</p>
+<div class="section" id="example-1-autograd-in-tropical-semiring">
+<h3>Example 1: Autograd in tropical semiring<a class="headerlink" href="#example-1-autograd-in-tropical-semiring" title="Permalink to this headline">¶</a></h3>
+<p>The following code shows how to compute the best score of the shortest path for
+the FSA given in <a class="reference internal" href="#autograd-example"><span class="std std-numref">Fig. 4</span></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+
+<span class="n">nnet_output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="c1"># assume nnet_output is the output of some neural network</span>
+<span class="n">nnet_output</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 10 0</span>
+<span class="s1">0 2 20 0</span>
+<span class="s1">1 3 -1 0</span>
+<span class="s1">2 3 -1 0</span>
+<span class="s1">3</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">scores</span> <span class="o">=</span> <span class="n">nnet_output</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;autograd_tropical.svg&#39;</span><span class="p">)</span>
+<span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
+<span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa_vec</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">total_scores</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nnet_output</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
+<span class="c1"># It prints: tensor([0., 1., 0., 1.])</span>
+</pre></div>
+</div>
+<div class="figure align-center" id="id12" style="width: 600px">
+<img alt="An example FSA for autograd with tropical scores" src="../_images/autograd_tropical.svg" /><p class="caption"><span class="caption-number">Fig. 5 </span><span class="caption-text">Output of the above code: autograd_tropical.svg</span><a class="headerlink" href="#id12" title="Permalink to this image">¶</a></p>
+</div>
+<dl>
+<dt><strong>Explanation</strong>:</dt><dd><ul class="simple">
+<li><p>We assume that <code class="docutils literal notranslate"><span class="pre">nnet_output</span> <span class="pre">=</span> <span class="pre">torch.tensor([a,</span> <span class="pre">b,</span> <span class="pre">c,</span> <span class="pre">d])</span> <span class="pre">=</span> <span class="pre">torch.tensor([0.1,</span> <span class="pre">1,</span> <span class="pre">0.2,</span> <span class="pre">0.5])</span></code>
+and we set <code class="docutils literal notranslate"><span class="pre">nnet_output.requires_grad_(True)</span></code> to simulate that it comes from the output of
+some neural network.</p></li>
+<li><p>Arc 0: state 0 -&gt; state 1, with score 0.1</p></li>
+<li><p>Arc 1: state 0 -&gt; state 2, with score 1</p></li>
+<li><p>Arc 2: state 1 -&gt; state 3, with score 0.2</p></li>
+<li><p>Arc 3: state 2 -&gt; state 3, witch score 0.5</p></li>
+<li><p>Score of path 0: arc 0 -&gt; arc 2 is 0.1 + 0.2 = 0.3</p></li>
+<li><p>Score of path 1: arc 1 -&gt; arc 3 is 1 + 0.5 = 1.5</p></li>
+<li><p>The best path consists of arc 1 and arc 3.</p></li>
+<li><p>The best score is <code class="docutils literal notranslate"><span class="pre">s</span> <span class="pre">=</span> <span class="pre">b</span> <span class="pre">+</span> <span class="pre">d</span> <span class="pre">=</span> <span class="pre">1.5</span></code></p></li>
+</ul>
+<p>So it is quite straightforward to compute the gradients
+of the <cite>best score</cite> <code class="docutils literal notranslate"><span class="pre">s</span></code> with respect to <code class="docutils literal notranslate"><span class="pre">a</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, <code class="docutils literal notranslate"><span class="pre">c</span></code> and <code class="docutils literal notranslate"><span class="pre">d</span></code>.</p>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}\frac{\partial s}{\partial a} = 0\\\frac{\partial s}{\partial b} = \frac{\partial (b + d)}{\partial b} = 1\\\frac{\partial s}{\partial c} = 0\\\frac{\partial s}{\partial d} = \frac{\partial (b + d)}{\partial d} = 1\end{aligned}\end{align} \]</div>
+<p>Therefore, the gradient of <code class="docutils literal notranslate"><span class="pre">nnet_output</span></code> is <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1,</span> <span class="pre">0,</span> <span class="pre">1]</span></code>.</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="example-2-autograd-in-log-semiring">
+<h3>Example 2: Autograd in log semiring<a class="headerlink" href="#example-2-autograd-in-log-semiring" title="Permalink to this headline">¶</a></h3>
+<p>For the log semiring, we just change:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa_vec</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa_vec</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For completeness and ease of reference, we repost the code below.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+
+<span class="n">nnet_output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="c1"># assume nnet_output is the output of some neural network</span>
+<span class="n">nnet_output</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 10 0</span>
+<span class="s1">0 2 20 0</span>
+<span class="s1">1 3 -1 0</span>
+<span class="s1">2 3 -1 0</span>
+<span class="s1">3</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">scores</span> <span class="o">=</span> <span class="n">nnet_output</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;autograd_log.svg&#39;</span><span class="p">)</span>
+<span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
+<span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa_vec</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">total_scores</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nnet_output</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
+<span class="c1"># It prints: tensor([0.2315, 0.7685, 0.2315, 0.7685])</span>
+</pre></div>
+</div>
+<dl>
+<dt><strong>Explanation</strong>:</dt><dd><blockquote>
+<div><p>In log semiring, the total score <code class="docutils literal notranslate"><span class="pre">s</span></code> is computed using <code class="docutils literal notranslate"><span class="pre">log_add</span></code>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}s &amp;= \log(\mathrm{e}^{a + c} + \mathrm{e}^{b + d})\\
+\frac{\partial s}{\partial a} = \frac{\mathrm{e}^{a + c}}{\mathrm{e^{a+c}} + \mathrm{e}^{b+d}} &amp;= \frac{\mathrm{e}^{0.3}}{\mathrm{e}^{0.3} + \mathrm{e}^{1.5}} = 0.2315\\
+\frac{\partial s}{\partial b} = \frac{\mathrm{e}^{b + d}}{\mathrm{e^{a+c}} + \mathrm{e}^{b+d}} &amp;= \frac{\mathrm{e}^{1.3}}{\mathrm{e}^{0.3} + \mathrm{e}^{1.5}} = 0.7685\\
+\frac{\partial s}{\partial c} = \frac{\mathrm{e}^{a + c}}{\mathrm{e^{a+c}} + \mathrm{e}^{b+d}} &amp;= \frac{\mathrm{e}^{0.3}}{\mathrm{e}^{0.3} + \mathrm{e}^{1.5}} = 0.2315\\
+\frac{\partial s}{\partial d} = \frac{\mathrm{e}^{b + d}}{\mathrm{e^{a+c}} + \mathrm{e}^{b+d}} &amp;= \frac{\mathrm{e}^{1.3}}{\mathrm{e}^{0.3} + \mathrm{e}^{1.5}} = 0.7685\end{split}\]</div>
+</div></blockquote>
+<p>Therefore, the gradient of <code class="docutils literal notranslate"><span class="pre">nnet_output</span></code> is <code class="docutils literal notranslate"><span class="pre">[0.2315,</span> <span class="pre">0.7685,</span> <span class="pre">0.2315,</span> <span class="pre">0.7685]</span></code>.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The example FSA is fairly simple and its main purpose is to demostrate how to
+use autograd in k2.</p>
+<p>All of this happens automagically.</p>
+</div>
+</div>
+</div>
+<div class="section" id="dense-fsa-vector">
+<h2>Dense fsa vector<a class="headerlink" href="#dense-fsa-vector" title="Permalink to this headline">¶</a></h2>
+<p>We have mentioned that gradients are computed with respect to arc scores
+and arc scores may come from the output of some neural network.</p>
+<p>This brings up the question:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>How to convert the output of a neural network to an FSA?
+</pre></div>
+</div>
+<p>To answer this question, we need to identify:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>What are the states?</p></li>
+<li><p>What are the arcs ?</p>
+<ul>
+<li><p>source state</p></li>
+<li><p>destination state</p></li>
+<li><p>label</p></li>
+<li><p>score</p></li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
+<p>Let’s assume a neural network predicts the pseudo probabilities
+for three symbols:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>blank <span class="math notranslate nohighlight">\(\sqcup\)</span></p></li>
+<li><p>letter O</p></li>
+<li><p>letter K</p></li>
+</ul>
+</div></blockquote>
+<p>At frame 0, suppose the last layer <strong>log-softmax</strong> of the network produces
+the following output:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 29%" />
+<col style="width: 29%" />
+<col style="width: 29%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td></td>
+<td><p><span class="math notranslate nohighlight">\(\sqcup\)</span></p></td>
+<td><p>O</p></td>
+<td><p>K</p></td>
+</tr>
+<tr class="row-even"><td><p>frame 0</p></td>
+<td><p>log(0.60) = -0.51</p></td>
+<td><p>log(0.30) = -1.20</p></td>
+<td><p>log(0.10) = -2.30</p></td>
+</tr>
+</tbody>
+</table>
+<p>We would convert it to an FSA shown in <a class="reference internal" href="#dense-fsa-vec-frame-0"><span class="std std-numref">Fig. 6</span></a>.</p>
+<div class="figure align-center" id="id13" style="width: 600px">
+<span id="dense-fsa-vec-frame-0"></span><img alt="FSA for frame 0" src="../_images/dense_fsa_vec_frame_0.svg" /><p class="caption"><span class="caption-number">Fig. 6 </span><span class="caption-text">Convert output for frame 0 to an FSA in k2.</span><a class="headerlink" href="#id13" title="Permalink to this image">¶</a></p>
+</div>
+<dl class="simple">
+<dt><strong>Explanation</strong>:</dt><dd><ul class="simple">
+<li><p>The resulting FSA has 3 states</p></li>
+<li><p>State 0 has 3 leaving arcs pointing to state 1 with scores
+from the network output at frame 0</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In other frameworks, the resulting FSA has only two states, i.e., state 1
+is the final state. In k2, however, we require that arcs entering the
+final state have label -1 on them. Therefore, the FSA has 3 states in k2.</p>
+</div>
+<p>At frame 1, the network may produce the following output:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 29%" />
+<col style="width: 29%" />
+<col style="width: 29%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td></td>
+<td><p><span class="math notranslate nohighlight">\(\sqcup\)</span></p></td>
+<td><p>O</p></td>
+<td><p>K</p></td>
+</tr>
+<tr class="row-even"><td><p>frame 0</p></td>
+<td><p>log(0.60) = -0.51</p></td>
+<td><p>log(0.30) = -1.20</p></td>
+<td><p>log(0.10) = -2.30</p></td>
+</tr>
+<tr class="row-odd"><td><p>frame 1</p></td>
+<td><p>log(0.25) = -1.39</p></td>
+<td><p>log(0.15) = -1.90</p></td>
+<td><p>log(0.60) = -0.51</p></td>
+</tr>
+</tbody>
+</table>
+<p>The corresponding FSA is visualized in <a class="reference internal" href="#dense-fsa-vec-frame-01"><span class="std std-numref">Fig. 7</span></a>.</p>
+<div class="figure align-center" id="id14" style="width: 600px">
+<span id="dense-fsa-vec-frame-01"></span><img alt="FSA for frame 0 and frame 1" src="../_images/dense_fsa_vec_frame_01.svg" /><p class="caption"><span class="caption-number">Fig. 7 </span><span class="caption-text">Convert outputs for frame 0 and frame 1 to an FSA in k2.</span><a class="headerlink" href="#id14" title="Permalink to this image">¶</a></p>
+</div>
+<dl class="simple">
+<dt><strong>Explanation</strong>:</dt><dd><ul class="simple">
+<li><p>State 1 has 3 leaving arcs pointing to state 2 with scores
+from the network output at frame 1</p></li>
+<li><p>The arcs from state 0 to state 1 remain the same</p></li>
+</ul>
+</dd>
+<dt>A short summary:</dt><dd><p>The two examples shown in the above demonstrate how to construct
+an FSA from the output of a neural network with one frame and two frames.
+It is straightforward to extend it to N frames.</p>
+</dd>
+</dl>
+<p>In practice, some frames in the output are just paddings and k2 supports
+constructing an FSA from a subset of frames from the output by specifying:
+the start frame index and number of frames (i.e., duration).</p>
+<p>The meaning of <code class="docutils literal notranslate"><span class="pre">dense</span></code> in the name <code class="docutils literal notranslate"><span class="pre">dense</span> <span class="pre">fsa</span> <span class="pre">vector</span></code> is that for every
+frame in the network output, there exist as many arcs as the dimension
+of the output between two states in the resulting FSA.</p>
+<p>Since the structure of the resulting FSA is quite regular, k2 only saves
+a 2-D tensor containing the scores and interprets it as an FSA on the fly
+when needed.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>Can you figure out the number of states and arcs of the resulting FSA
+from a 2-D tensor containing scores with <code class="docutils literal notranslate"><span class="pre">m</span></code> rows and <code class="docutils literal notranslate"><span class="pre">n</span></code> columns?</p>
+</div>
+<p>To construct a vector of dense FSAs,  you can either:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Extract multiple subsets from the network output and construct
+a dense FSA for each of them</p></li>
+<li><p>Change the network to produce a batch of outputs and construct a dense
+FSA for each output in the batch</p></li>
+</ul>
+</div></blockquote>
+<p>Please refer to the constructor of <a class="reference internal" href="../python_api/dense_fsa.html#k2.DenseFsaVec.__init__" title="k2.DenseFsaVec.__init__"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.DenseFsaVec.__init__()</span></code></a>
+to gain more insight.</p>
+</div>
+<div class="section" id="ragged-arrays">
+<h2>Ragged arrays<a class="headerlink" href="#ragged-arrays" title="Permalink to this headline">¶</a></h2>
+<p>Ragged arrays are the <strong>core</strong> data structures in k2 designed
+by us <cite>independently</cite>. We were later told that TensorFlow
+was using the same ideas
+(See <a class="reference external" href="https://www.tensorflow.org/guide/ragged_tensor">tf.ragged</a>).</p>
+<p>Before describing what ragged arrays are. Let us first revisit how
+compressed sparse row matrices
+(<a class="reference external" href="https://en.wikipedia.org/wiki/Sparse_matrix#Compressed_sparse_row_(CSR,_CRS_or_Yale_format)">CSR matrices</a>)
+are represented.</p>
+<p>For the <a class="reference external" href="https://en.wikipedia.org/wiki/Sparse_matrix#Compressed_sparse_row_(CSR,_CRS_or_Yale_format)">following matrix</a>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{pmatrix}
+5 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 8 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 3 &amp; 0 \\
+0 &amp; 6 &amp; 0 &amp; 0 \\
+\end{pmatrix}\end{split}\]</div>
+<p>It can be represented by 3 arrays in CSR format:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>values      = [5, 8, 3, 6]</cite></p></li>
+<li><p><cite>col_indexes = [0, 1, 2, 1]</cite></p></li>
+<li><p><cite>row_indexes = [0, 1, 2, 3, 4]</cite></p></li>
+</ul>
+</div></blockquote>
+<p>where <cite>values</cite> contains the non-zero entries of the matrix (row-by-row).
+<cite>col_indexes</cite> contains the column indexes of the non-zero entries in <cite>values</cite>.</p>
+<p>For instance:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>values[0] = 5</cite> belongs to column 0, so <cite>col_indexes[0] = 0</cite></p></li>
+<li><p><cite>values[1] = 8</cite> belongs to column 1, so <cite>col_indexes[1] = 1</cite></p></li>
+<li><p><cite>values[3] = 6</cite> belongs to column 1, so <cite>col_indexes[3] = 1</cite></p></li>
+</ul>
+</div></blockquote>
+<p>Note that <cite>values</cite> and <cite>col_indexes</cite> have the same number of elements.</p>
+<p>The most interesting part is <cite>row_indexes</cite>. It is <strong>NOT</strong> the row indexes
+of the non-zero entries in <cite>values</cite>. Instead, it encodes the index in <cite>values</cite>
+and <cite>col_indexes</cite> where the given row starts.</p>
+<ul>
+<li><p><cite>row_indexes[0] = 0</cite>, so the entries for row 0 start at index 0 in <cite>values</cite></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>values[0] = 5</cite> is the first entry for row 0</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><cite>row_indexes[1] = 1</cite>, so the entries for row 1 start at index 1 in <cite>values</cite></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>values[1] = 8</cite> is the first entry for row 1</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><cite>row_indexes[2] = 2</cite>, so the entries for row 2 start at index 2 in <cite>values</cite></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>values[2] = 3</cite> is the first entry for row 2</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><cite>row_indexes[3] = 3</cite>, so the entries for row 3 start at index 3 in <cite>values</cite></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>values[3] = 6</cite> is the first entry for row 3</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Why is <cite>row_indexes[4] = 4</cite>?</p>
+</div>
+<p><cite>row_indexes[3]</cite> specifies where row 3 starts, whereas <cite>row_indexes[4]</cite> indicates
+where row 3 ends.</p>
+<p>The above matrix contains one non-zero entries for each row. Let us see a more
+general matrix:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{pmatrix}
+10 &amp; 20 &amp;  0 &amp;  0 &amp;  0 &amp;  0 \\
+ 0 &amp; 30 &amp;  0 &amp; 40 &amp;  0 &amp;  0 \\
+ 0 &amp;  0 &amp; 50 &amp; 60 &amp; 70 &amp;  0 \\
+ 0 &amp;  0 &amp;  0 &amp;  0 &amp;  0 &amp; 80 \\
+\end{pmatrix}\end{split}\]</div>
+<p>The 3 arrays for the above matrix in CSR format look like:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>values      = [10, 20, 30, 40, 50, 60, 70, 80]</cite></p></li>
+<li><p><cite>col_indexes = [ 0,  1,  1,  3,  2,  3,  4, 5]</cite></p></li>
+<li><p><cite>row_indexes = [0, 2, 4, 7, 8]</cite></p></li>
+</ul>
+</div></blockquote>
+<dl class="simple">
+<dt><strong>Explanation</strong>:</dt><dd><ul class="simple">
+<li><p><cite>values</cite> contains the non-zero entries of the matrix</p></li>
+<li><p><cite>values[0] = 10</cite> belongs to column 0, so <cite>col_indexes[0] = 0</cite></p></li>
+<li><p><cite>values[7] = 80</cite> belongs to column 5, so <cite>col_indexes[7] = 5</cite></p></li>
+<li><p>The first entry of row 0 is 10 which is the index 0 in <cite>values</cite>, so <cite>row_indexes[0] = 0</cite></p></li>
+<li><p>The first entry of row 1 is 30 which is the index 2 in <cite>values</cite>, so <cite>row_indexes[1] = 2</cite></p></li>
+<li><p>The first entry of row 2 is 50 which is the index 4 in <cite>values</cite>, so <cite>row_indexes[2] = 4</cite></p></li>
+<li><p>The first entry of row 3 is 80 which is the index 7 in <cite>values</cite>, so <cite>row_indexes[3] = 7</cite></p></li>
+<li><p>Row 3 contains only 1 element, so <cite>row_indexes[4] = row_indexes[3] + 1 = 8</cite></p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>We summarize the characteristics of <code class="docutils literal notranslate"><span class="pre">row_indexes</span></code> below:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>It is non-decreasing</p></li>
+<li><p>Its first entry is 0</p></li>
+<li><p>Its last entry denotes the number of non-zero entries in the matrix</p></li>
+<li><p>Its size is <cite>num_rows + 1</cite></p></li>
+<li><p><cite>row_indexes[i+1] - row_indexes[i]</cite> gives the number of non-zero entries in row i</p></li>
+<li><p>Row <cite>i</cite> contains all zeros if <cite>row_indexes[i+1] == row_indexes[i]</cite></p></li>
+</ul>
+</div></blockquote>
+</div>
+<p>Now we come back to ragged arrays in k2.</p>
+<p>In k2, <cite>row_indexes</cite> is called <cite>row_splits</cite>, compatible with TensorFlow’s <cite>RaggedTensor</cite>.</p>
+<p>For the following FSA:</p>
+<div class="figure align-center" id="id15" style="width: 600px">
+<span id="ragged1"></span><img alt="A simple FSA" src="../_images/ragged.svg" /><p class="caption"><span class="caption-number">Fig. 8 </span><span class="caption-text">An example FSA.</span><a class="headerlink" href="#id15" title="Permalink to this image">¶</a></p>
+</div>
+<p>It is represented in k2 by two arrays:</p>
+<blockquote>
+<div><ul>
+<li><p><cite>values = [arc0, arc1, arc2, arc3, arc4, arc5, arc6]</cite></p></li>
+<li><p><cite>row_splits = [0, 3, 4, 6, 7, 7]</cite></p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Here <cite>arc0</cite> is an instance of C++ class <code class="docutils literal notranslate"><span class="pre">Arc</span></code>.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<p><cite>values</cite> saves all of the arcs ordered by state numbers in the FSA.</p>
+<p><cite>row_splits[i]</cite> specifies the where arcs of state <cite>i</cite> begin in the array <cite>values</cite>.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>row_splits[0] = 0</cite>, the arcs of state 0 begin at index 0 in <cite>values</cite></p></li>
+<li><p><cite>row_splits[1] = 3</cite>, the arcs of state 1 begin at index 3 in <cite>values</cite></p></li>
+<li><p><cite>row_splits[2] = 4</cite>, the arcs of state 2 begin at index 4 in <cite>values</cite></p></li>
+<li><p><cite>row_splits[3] = 6</cite>, the arcs of state 3 begin at index 6 in <cite>values</cite></p></li>
+<li><p><cite>row_splits</cite> contains 6 entries, so the number of states is <cite>6 - 1 = 5</cite></p></li>
+<li><p>The last entry of <cite>row_splits</cite> is 7, so there are 7 arcs in the FSA</p></li>
+<li><p><cite>row_splits[1] - row_splits[0] = 3</cite>, so state 0 has 3 arcs</p></li>
+<li><p><cite>row_splits[2] - row_splits[1] = 1</cite>, so state 1 has 1 arc</p></li>
+<li><p><cite>row_splits[3] - row_splits[2] = 2</cite>, so state 2 has 2 arcs</p></li>
+<li><p><cite>row_splits[4] - row_splits[3] = 1</cite>, so state 3 has 1 arc</p></li>
+<li><p><cite>row_splits[5] - row_splits[4] = 0</cite>, so state 4 has no arcs at all</p></li>
+</ul>
+</div></blockquote>
+<dl class="simple">
+<dt><strong>Question</strong></dt><dd><p>To which state does arc <cite>i</cite> belong?</p>
+</dd>
+</dl>
+<p>The above question can be answered in <cite>O(n)</cite> time, where <cite>n</cite> is the number of states,
+by iterating over <cite>row_splits</cite>.</p>
+<p>In <cite>k2</cite>, an extra array called <cite>row_ids</cite> is provided to implement such tasks in <cite>O(1)</cite>
+time. For arc <cite>i</cite>, <cite>row_ids[i]</cite> tells the state number to which this arc belongs.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p><cite>row_ids</cite> and <cite>row_splits</cite> contain <strong>nearly</strong> the same information.
+<cite>row_ids</cite> is provided to make some operations faster.</p>
+</div>
+<p>Next we show how to represent an FsaVec with a ragged array in k2. Assume that
+the FsaVec contains two FSAs, one given in <a class="reference internal" href="#ragged1"><span class="std std-numref">Fig. 8</span></a> and the other is shown
+in <a class="reference internal" href="#ragged2"><span class="std std-numref">Fig. 9</span></a>:</p>
+<div class="figure align-center" id="id16" style="width: 600px">
+<span id="ragged2"></span><img alt="A simple FSA" src="../_images/ragged2.svg" /><p class="caption"><span class="caption-number">Fig. 9 </span><span class="caption-text">The second FSA in the FsaVec.</span><a class="headerlink" href="#id16" title="Permalink to this image">¶</a></p>
+</div>
+<p>The <cite>values</cite> array is: <cite>[arc0, arc1, arc2, arc3, arc4, arc5, arc6, arc7, arc8, arc9, arc10]</cite>.</p>
+<p>There are two <cite>row_splits</cite> arrays:</p>
+<blockquote>
+<div><ul>
+<li><p><cite>row_splits1</cite> is <cite>[0, 5, 9]</cite></p>
+<ul class="simple">
+<li><p><cite>row_splits1[0]</cite> indicates the index into <cite>row_splits2</cite> where the state of FSA 0 begins</p></li>
+<li><p><cite>row_splits1[1]</cite> indicates the index into <cite>row_splits2</cite> where the state of FSA 1 begins</p></li>
+<li><p><cite>row_splits1[2] - row_splits1[1]</cite> is the number of states in FSA 1, which is 4</p></li>
+<li><p><cite>row_splits1[1] - row_splits1[0]</cite> is the number of states in FSA 0, which is 5</p></li>
+<li><p>The last entry in <cite>row_splits1</cite> is 9, so there are 9 states in total in the FsaVec</p></li>
+<li><p>The size of <cite>row_splits1</cite> is 3, so there are <cite>3 - 1 = 2</cite> FSAs in the FsaVec</p></li>
+</ul>
+</li>
+<li><p><cite>row_splits2</cite> is <cite>[0, 3, 4, 6, 7, 7, 8, 10, 11, 11]</cite></p>
+<ul>
+<li><p>Since <cite>row_splits1[0] = 0</cite> and <cite>row_splits1[1] = 5</cite>, <cite>row_splits2[0]</cite> to <cite>row_splits2[5]</cite>
+represent the information of FSA 0</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>row_splits2[0]</cite> is 0, indicating the arcs of state 0 in FSA 0 begin at index 0 in <cite>values</cite></p></li>
+<li><p><cite>row_splits2[1]</cite> is 3, indicating the arcs of state 1 in FSA 0 begin at index 3 in <cite>values</cite></p></li>
+<li><p><cite>row_splits2[4]</cite> is 7, indicating the arcs of state 4 in FSA 0 begin at index 7 in <cite>values</cite></p></li>
+<li><p><cite>row_splits2[5] - row_splits2[4] = 7 - 7</cite> is 0, indicating the number of arcs of state 4 in FSA 0 is 0</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Since <cite>row_splits1[1] = 5</cite> and <cite>row_splits1[2] = 9</cite>, <cite>row_splits2[5]</cite> to <cite>row_splits2[9]</cite>
+represent the information of FSA 1</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>row_splits2[5]</cite> is 7, indicating the arcs of state 0 in FSA 1 begin at index 7 in <cite>values</cite></p></li>
+<li><p><cite>row_splits2[6]</cite> is 8, indicating the arcs of state 1 in FSA 1 begin at index 8 in <cite>values</cite></p></li>
+<li><p><cite>row_splits2[7]</cite> is 10, indicating the arcs of state 2 in FSA 1 begin at index 10 in <cite>values</cite></p></li>
+<li><p><cite>row_splits2[9] - row_splits2[8] = 11 - 11</cite> is 0, indicating the number of arcs of state 3 in FSA 1 is 0</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
+<dl class="simple">
+<dt><strong>Summary</strong></dt><dd><ul class="simple">
+<li><p>FSA and FsaVec are represented as ragged arrays in k2</p></li>
+<li><p>With ragged arrays, it’s straightforward to get the following
+information with no loops:</p>
+<ul>
+<li><p>Number of states in the FSA</p></li>
+<li><p>Number of arcs in the FSA</p></li>
+<li><p>Number of arcs of a certain state in the FSA</p></li>
+<li><p>To which state arc <cite>i</cite> belongs</p></li>
+</ul>
+</li>
+</ul>
+</dd>
+</dl>
+</div>
+<div class="section" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<p id="id4"><dl class="citation">
+<dt class="label" id="id5"><span class="brackets"><a class="fn-backref" href="#id1">Moh97</a></span></dt>
+<dd><p>Mehryar Mohri. Finite-state transducers in language and speech processing. <em>Computational linguistics</em>, 23(2):269–311, 1997. URL: <a class="reference external" href="https://cs.nyu.edu/~mohri/pub/cl1.pdf">https://cs.nyu.edu/~mohri/pub/cl1.pdf</a>.</p>
+</dd>
+<dt class="label" id="id6"><span class="brackets"><a class="fn-backref" href="#id2">MPR02</a></span></dt>
+<dd><p>Mehryar Mohri, Fernando Pereira, and Michael Riley. Weighted finite-state transducers in speech recognition. <em>Computer Speech &amp; Language</em>, 16(1):69–88, 2002. URL: <a class="reference external" href="https://cs.nyu.edu/~mohri/postscript/csl01.pdf">https://cs.nyu.edu/~mohri/postscript/csl01.pdf</a>.</p>
+</dd>
+<dt class="label" id="id7"><span class="brackets"><a class="fn-backref" href="#id3">MPR08</a></span></dt>
+<dd><p>Mehryar Mohri, Fernando Pereira, and Michael Riley. Speech recognition with weighted finite-state transducers. In <em>Springer Handbook of Speech Processing</em>, pages 559–584. Springer, 2008. URL: <a class="reference external" href="https://wiki.eecs.yorku.ca/course_archive/2011-12/W/6328/_media/wfst-lvcsr.pdf">https://wiki.eecs.yorku.ca/course_archive/2011-12/W/6328/_media/wfst-lvcsr.pdf</a>.</p>
+</dd>
+</dl>
+</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../python_tutorials/index.html" class="btn btn-neutral float-right" title="Python tutorials" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../installation/for_developers.html" class="btn btn-neutral float-left" title="For developers" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, k2 development team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

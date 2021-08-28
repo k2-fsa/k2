@@ -1,0 +1,676 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Fsa algorithms &mdash; k2 1.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Python API reference" href="../python_api/index.html" />
+    <link rel="prev" title="Fsa" href="fsa.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> k2
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Python tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="fsa.html">Fsa</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Fsa algorithms</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#invert">invert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#arc-sort">arc_sort</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#intersect">intersect</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#connect">connect</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-forward-scores">get_forward_scores</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#log-semiring-true">log_semiring==True</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#log-semiring-false">log_semiring==False</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#get-tot-scores">get_tot_scores</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/index.html">Python API reference</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Python tutorials</a> &raquo;</li>
+        
+      <li>Fsa algorithms</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/python_tutorials/fsa_algo.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="fsa-algorithms">
+<h1>Fsa algorithms<a class="headerlink" href="#fsa-algorithms" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial describes algorithms supported by k2.
+Most of the algorithms support both CPU and CUDA.
+A few of them support only CPU, which is documented
+explicitly in the corresponding documentation.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>All algorithms support FsaVec. A few of them also
+support single FSAs.</p>
+</div>
+<div class="section" id="invert">
+<h2>invert<a class="headerlink" href="#invert" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="../python_api/fsa_algo.html#k2.invert" title="k2.invert"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.invert()</span></code></a> swaps the <code class="docutils literal notranslate"><span class="pre">labels</span></code> and <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code> of a <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.Fsa</span></code>.</p>
+<p>The following is an example swapping the <code class="docutils literal notranslate"><span class="pre">labels</span></code> and <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code> of an FSA.</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-number">Listing 1 </span><span class="caption-text">Example code for <a class="reference internal" href="../python_api/fsa_algo.html#k2.invert" title="k2.invert"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.invert()</span></code></a></span><a class="headerlink" href="#id1" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 2 10 0.1</span>
+<span class="s1">1 2 -1 -1 0.2</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">inverted_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="n">fsa</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;before_invert.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;before invert&#39;</span><span class="p">)</span>
+<span class="n">inverted_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;after_invert.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;after invert&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Its outputs are given below:</p>
+<div class="figure align-center" style="width: 600px">
+<img alt="before_invert" src="../_images/before_invert.svg" /></div>
+<div class="figure align-center" style="width: 600px">
+<img alt="after_invert" src="../_images/after_invert.svg" /></div>
+<p>When <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code> is a ragged tensor, new arcs will be added after the invert.</p>
+<p>The following code applies <a class="reference internal" href="../python_api/fsa_algo.html#k2.invert" title="k2.invert"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.invert()</span></code></a> to an FSA
+with ragged tensors as <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code>.</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-number">Listing 2 </span><span class="caption-text"><a class="reference internal" href="../python_api/fsa_algo.html#k2.invert" title="k2.invert"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.invert()</span></code></a> for FSAs with ragged tensors as <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code></span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 2 0.1</span>
+<span class="s1">1 2 -1 0.2</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">RaggedInt</span><span class="p">(</span><span class="s1">&#39;[ [10 20] [-1] ]&#39;</span><span class="p">)</span>
+<span class="n">inverted_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="n">fsa</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;before_invert_aux.svg&#39;</span><span class="p">,</span>
+         <span class="n">title</span><span class="o">=</span><span class="s1">&#39;before invert with ragged tensors as aux_labels&#39;</span><span class="p">)</span>
+<span class="n">inverted_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;after_invert_aux.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;after invert&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="figure align-center" style="width: 600px">
+<img alt="before_invert_aux" src="../_images/before_invert_aux.svg" /></div>
+<div class="figure align-center" id="id3" style="width: 600px">
+<img alt="after_invert_aux" src="../_images/after_invert_aux.svg" /><p class="caption"><span class="caption-number">Fig. 15 </span><span class="caption-text">Example of <a class="reference internal" href="../python_api/fsa_algo.html#k2.invert" title="k2.invert"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.invert()</span></code></a> for FSAs with ragged tensors as <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code>.</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../python_api/fsa_algo.html#k2.invert" title="k2.invert"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.invert()</span></code></a> supports CUDA as well as CPU.</p></li>
+<li><p>autograd is also supported.</p></li>
+<li><p>Its input can be either a single FSA or a FsaVec.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="arc-sort">
+<h2>arc_sort<a class="headerlink" href="#arc-sort" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="../python_api/fsa_algo.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> and <a class="reference internal" href="../python_api/fsa_algo.html#k2.compose" title="k2.compose"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.compose()</span></code></a> require two
+arc-sorted inputs. You can use <a class="reference internal" href="../python_api/fsa_algo.html#k2.arc_sort" title="k2.arc_sort"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.arc_sort()</span></code></a> to convert
+an unsorted FSA/FsaVec into a sorted FSA/FsaVec.</p>
+<p>An FSA is sorted if for each state, its leaving arcs are sorted
+by <code class="docutils literal notranslate"><span class="pre">labels</span></code> in ascending order. If there is a tie, destination
+states are used for sorting.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Arcs entering the final state have label -1. During sorting,
+-1 is reinterpreted as an unsigned number. Internally, all
+labels are reinterpreted as unsigned numbers during sorting.</p>
+</div>
+<p>An example of <a class="reference internal" href="../python_api/fsa_algo.html#k2.arc_sort" title="k2.arc_sort"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.arc_sort()</span></code></a> is given below.</p>
+<div class="literal-block-wrapper docutils container" id="id4">
+<div class="code-block-caption"><span class="caption-number">Listing 3 </span><span class="caption-text"><a class="reference internal" href="../python_api/fsa_algo.html#k2.arc_sort" title="k2.arc_sort"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.arc_sort()</span></code></a> example</span><a class="headerlink" href="#id4" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 2 -1  0.0</span>
+<span class="s1">0 1 2 0.2</span>
+<span class="s1">0 1 1 0.3</span>
+<span class="s1">1 2 -1 0.4</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">sorted_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">arc_sort</span><span class="p">(</span><span class="n">fsa</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;before_sort.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;before sort&#39;</span><span class="p">)</span>
+<span class="n">sorted_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;after_sort.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;after sort&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="figure align-center" style="width: 600px">
+<img alt="before_sort" src="../_images/before_sort.svg" /></div>
+<div class="figure align-center" style="width: 600px">
+<img alt="after_sort" src="../_images/after_sort.svg" /></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../python_api/fsa_algo.html#k2.arc_sort" title="k2.arc_sort"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.arc_sort()</span></code></a> supports CUDA as well as CPU.</p></li>
+<li><p>autograd is also supported.</p></li>
+<li><p>Its input can be either a single FSA or a FsaVec.</p></li>
+</ul>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>Inside <a class="reference internal" href="../python_api/fsa_algo.html#k2.arc_sort" title="k2.arc_sort"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.arc_sort()</span></code></a> it checks whether the input
+FSA is sorted or not. If the input is already sorted, it
+is returned directly. Otherwise, a new sorted FSA is returned.</p>
+</div>
+</div>
+<div class="section" id="intersect">
+<h2>intersect<a class="headerlink" href="#intersect" title="Permalink to this headline">¶</a></h2>
+<p>The following is an example of <a class="reference internal" href="../python_api/fsa_algo.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a>.</p>
+<div class="literal-block-wrapper docutils container" id="id5">
+<div class="code-block-caption"><span class="caption-number">Listing 4 </span><span class="caption-text">Example code for <a class="reference internal" href="../python_api/fsa_algo.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a></span><a class="headerlink" href="#id5" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s1</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 0 0.1</span>
+<span class="s1">0 1 1 0.2</span>
+<span class="s1">1 1 2 0.3</span>
+<span class="s1">1 2 -1 0.4</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">s2</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 1 1</span>
+<span class="s1">0 1 2 2</span>
+<span class="s1">1 2 -1 3</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">a_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span>
+<span class="n">b_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span>
+<span class="n">c_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">intersect</span><span class="p">(</span><span class="n">a_fsa</span><span class="p">,</span> <span class="n">b_fsa</span><span class="p">)</span>
+
+<span class="n">a_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;a_fsa_intersect.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;a_fsa&#39;</span><span class="p">)</span>
+<span class="n">b_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;b_fsa_intersect.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;b_fsa&#39;</span><span class="p">)</span>
+<span class="n">c_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;c_fsa_intersect.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;c_fsa&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The outputs are shown below</p>
+<div class="figure align-center" style="width: 600px">
+<img alt="a_fsa" src="../_images/a_fsa_intersect.svg" /></div>
+<div class="figure align-center" style="width: 600px">
+<img alt="b_fsa" src="../_images/b_fsa_intersect.svg" /></div>
+<div class="figure align-center" style="width: 600px">
+<img alt="c_fsa" src="../_images/c_fsa_intersect.svg" /></div>
+<p><a class="reference internal" href="../python_api/fsa_algo.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> has an optional argument <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span></code>.
+Its default value is <cite>True</cite>. If it is set to <cite>False</cite>, then the label <cite>0</cite>
+is treated as a normal label. The following is an example setting
+<code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span></code> to <cite>False</cite>.</p>
+<div class="literal-block-wrapper docutils container" id="id6">
+<div class="code-block-caption"><span class="caption-number">Listing 5 </span><span class="caption-text">Example code for <a class="reference internal" href="../python_api/fsa_algo.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially=False</span></code></span><a class="headerlink" href="#id6" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s1</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 0 0.1</span>
+<span class="s1">0 1 1 0.2</span>
+<span class="s1">1 1 2 0.3</span>
+<span class="s1">1 2 -1 0.4</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">s2</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 1 1</span>
+<span class="s1">0 1 2 2</span>
+<span class="s1">1 2 -1 3</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">a_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span>
+<span class="n">b_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span>
+<span class="n">c_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">intersect</span><span class="p">(</span><span class="n">a_fsa</span><span class="p">,</span> <span class="n">b_fsa</span><span class="p">,</span> <span class="n">treat_epsilons_specially</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">a_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;a_fsa_intersect2.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;a_fsa&#39;</span><span class="p">)</span>
+<span class="n">b_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;b_fsa_intersect2.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;b_fsa&#39;</span><span class="p">)</span>
+<span class="n">c_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;c_fsa_intersect2.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;c_fsa&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The outputs are shown below</p>
+<div class="figure align-center" style="width: 600px">
+<img alt="a_fsa" src="../_images/a_fsa_intersect2.svg" /></div>
+<div class="figure align-center" style="width: 600px">
+<img alt="b_fsa" src="../_images/b_fsa_intersect2.svg" /></div>
+<div class="figure align-center" id="id7" style="width: 600px">
+<img alt="c_fsa" src="../_images/c_fsa_intersect2.svg" /><p class="caption"><span class="caption-number">Fig. 16 </span><span class="caption-text">Note that <code class="docutils literal notranslate"><span class="pre">c_fsa</span></code> contains a single path
+when <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span></code> is <cite>False</cite>.</span><a class="headerlink" href="#id7" title="Permalink to this image">¶</a></p>
+</div>
+<p><a class="reference internal" href="../python_api/fsa_algo.html#k2.add_epsilon_self_loops" title="k2.add_epsilon_self_loops"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.add_epsilon_self_loops()</span></code></a> can be used to add epsilon self loops
+to an FSA when <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span></code> is <cite>False</cite> but you
+want to treat them specially. The following is an example
+using <a class="reference internal" href="../python_api/fsa_algo.html#k2.add_epsilon_self_loops" title="k2.add_epsilon_self_loops"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.add_epsilon_self_loops()</span></code></a> with
+<code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span> <span class="pre">==</span> <span class="pre">False</span></code>.</p>
+<div class="literal-block-wrapper docutils container" id="id8">
+<div class="code-block-caption"><span class="caption-number">Listing 6 </span><span class="caption-text"><a class="reference internal" href="../python_api/fsa_algo.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially=False</span></code> and <a class="reference internal" href="../python_api/fsa_algo.html#k2.add_epsilon_self_loops" title="k2.add_epsilon_self_loops"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.add_epsilon_self_loops()</span></code></a></span><a class="headerlink" href="#id8" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s1</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 0 0.1</span>
+<span class="s1">0 1 1 0.2</span>
+<span class="s1">1 1 2 0.3</span>
+<span class="s1">1 2 -1 0.4</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">s2</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 1 1</span>
+<span class="s1">0 1 2 2</span>
+<span class="s1">1 2 -1 3</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">a_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span>
+<span class="n">b_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span>
+<span class="n">b_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">add_epsilon_self_loops</span><span class="p">(</span><span class="n">b_fsa</span><span class="p">)</span>
+<span class="n">c_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">intersect</span><span class="p">(</span><span class="n">a_fsa</span><span class="p">,</span> <span class="n">b_fsa</span><span class="p">,</span> <span class="n">treat_epsilons_specially</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">a_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;a_fsa_intersect3.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;a_fsa&#39;</span><span class="p">)</span>
+<span class="n">b_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;b_fsa_intersect3.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;b_fsa&#39;</span><span class="p">)</span>
+<span class="n">c_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;c_fsa_intersect3.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;c_fsa&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="figure align-center" style="width: 600px">
+<img alt="a_fsa" src="../_images/a_fsa_intersect3.svg" /></div>
+<div class="figure align-center" style="width: 600px">
+<img alt="b_fsa" src="../_images/b_fsa_intersect3.svg" /></div>
+<div class="figure align-center" id="id9" style="width: 600px">
+<img alt="c_fsa" src="../_images/c_fsa_intersect3.svg" /><p class="caption"><span class="caption-number">Fig. 17 </span><span class="caption-text">Note that <code class="docutils literal notranslate"><span class="pre">c_fsa</span></code> contains two paths
+even if <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span></code> is <cite>False</cite>
+since we have added epsilon self loops to <cite>b_fsa</cite>.</span><a class="headerlink" href="#id9" title="Permalink to this image">¶</a></p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../python_api/fsa_algo.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> supports <strong>ONLY</strong> CPU</p></li>
+<li><p>autograd is also supported.</p></li>
+<li><p>Its input can be either a single FSA or a FsaVec.</p></li>
+<li><p>The input FSAs have to be arc sorted.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="connect">
+<h2>connect<a class="headerlink" href="#connect" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="../python_api/fsa_algo.html#k2.connect" title="k2.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.connect()</span></code></a> removes states that are neither
+accessible nor co-accessible.
+It is often used after <a class="reference internal" href="../python_api/fsa_algo.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> or <a class="reference internal" href="../python_api/fsa_algo.html#k2.compose" title="k2.compose"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.compose()</span></code></a>.</p>
+<p>The following is an example.</p>
+<div class="literal-block-wrapper docutils container" id="id10">
+<div class="code-block-caption"><span class="caption-number">Listing 7 </span><span class="caption-text"><a class="reference internal" href="../python_api/fsa_algo.html#k2.connect" title="k2.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.connect()</span></code></a> example</span><a class="headerlink" href="#id10" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s1</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 0 1 0.1</span>
+<span class="s1">0 1 2 0.2</span>
+<span class="s1">1 2 -1 0.3</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">s2</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 1 1</span>
+<span class="s1">0 1 2 2</span>
+<span class="s1">1 2 -1 3</span>
+<span class="s1">2</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">a_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span>
+<span class="n">b_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span>
+<span class="n">c_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">intersect</span><span class="p">(</span><span class="n">a_fsa</span><span class="p">,</span> <span class="n">b_fsa</span><span class="p">)</span>
+<span class="n">connected</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">c_fsa</span><span class="p">)</span>
+<span class="n">a_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;a_fsa_1.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;a_fsa&#39;</span><span class="p">)</span>
+<span class="n">b_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;b_fsa_1.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;b_fsa&#39;</span><span class="p">)</span>
+<span class="n">c_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;before_connect.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;intersect(a_fsa, b_fsa)&#39;</span><span class="p">)</span>
+<span class="n">connected</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;after_connect.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;after connect&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="figure align-center" style="width: 600px">
+<img alt="a_fsa_1" src="../_images/a_fsa_1.svg" /></div>
+<div class="figure align-center" style="width: 600px">
+<img alt="b_fsa_1" src="../_images/b_fsa_1.svg" /></div>
+<div class="figure align-center" style="width: 600px">
+<img alt="before_connect" src="../_images/before_connect.svg" /></div>
+<div class="figure align-center" style="width: 600px">
+<img alt="after_connect" src="../_images/after_connect.svg" /></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../python_api/fsa_algo.html#k2.connect" title="k2.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.connect()</span></code></a> supports <strong>ONLY</strong> CPU</p></li>
+<li><p>autograd is also supported.</p></li>
+<li><p>Its input can be either a single FSA or a FsaVec.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="get-forward-scores">
+<span id="get-forward-scores-example"></span><h2>get_forward_scores<a class="headerlink" href="#get-forward-scores" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="../python_api/fsa.html#k2.Fsa.get_forward_scores" title="k2.Fsa.get_forward_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_forward_scores()</span></code></a> computes and returns forward scores per state
+(like alphas in <a class="reference external" href="https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm#Forward_procedure">Baum-Welch</a>)
+or forward best-path scores if <code class="docutils literal notranslate"><span class="pre">log_semiring</span></code> is <cite>False</cite>.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Arc scores are in log scale.</p>
+</div>
+<p>We will use the following code as an example to demonstrate how <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.get_forward_scores" title="k2.Fsa.get_forward_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_forward_scores()</span></code></a>
+works in k2.</p>
+<div class="literal-block-wrapper docutils container" id="id11">
+<div class="code-block-caption"><span class="caption-number">Listing 8 </span><span class="caption-text"><a class="reference internal" href="../python_api/fsa.html#k2.Fsa.get_forward_scores" title="k2.Fsa.get_forward_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_forward_scores()</span></code></a> example</span><a class="headerlink" href="#id11" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 1 1.2</span>
+<span class="s1">0 1 3 0.8</span>
+<span class="s1">0 2 2 0.5</span>
+<span class="s1">1 2 5 0.1</span>
+<span class="s1">1 3 -1 0.6</span>
+<span class="s1">2 3 -1 0.4</span>
+<span class="s1">3</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;get_forward_scores.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;get_forward_scores example&#39;</span><span class="p">)</span>
+<span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
+<span class="n">log_semiring</span> <span class="o">=</span> <span class="n">fsa_vec</span><span class="o">.</span><span class="n">get_forward_scores</span><span class="p">(</span><span class="n">use_double_scores</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                          <span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">tropical_semiring</span> <span class="o">=</span> <span class="n">fsa_vec</span><span class="o">.</span><span class="n">get_forward_scores</span><span class="p">(</span><span class="n">use_double_scores</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                               <span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;get_forward_scores for log semiring:&#39;</span><span class="p">,</span> <span class="n">log_semiring</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;get_forward_scores for tropical semiring:&#39;</span><span class="p">,</span> <span class="n">tropical_semiring</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="figure align-center" style="width: 600px">
+<img alt="get_forward_scores" src="../_images/get_forward_scores.svg" /></div>
+<p>The outputs are:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">get_forward_scores</span> <span class="k">for</span> <span class="n">log</span> <span class="n">semiring</span><span class="p">:</span> <span class="n">tensor</span><span class="p">([</span><span class="mf">0.0000</span><span class="p">,</span> <span class="mf">1.7130</span><span class="p">,</span> <span class="mf">2.0513</span><span class="p">,</span> <span class="mf">3.0777</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<span class="n">get_forward_scores</span> <span class="k">for</span> <span class="n">tropical</span> <span class="n">semiring</span><span class="p">:</span> <span class="n">tensor</span><span class="p">([</span><span class="mf">0.0000</span><span class="p">,</span> <span class="mf">1.2000</span><span class="p">,</span> <span class="mf">1.3000</span><span class="p">,</span> <span class="mf">1.8000</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="../python_api/fsa.html#k2.Fsa.get_forward_scores" title="k2.Fsa.get_forward_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_forward_scores()</span></code></a> has two arguments:</p>
+<blockquote>
+<div><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">use_double_scores</span></code></p>
+<p>When it is <cite>True</cite>, double precision floats are used in the computation  and
+the returned tensor has dtype <cite>torch.float64</cite>; when it is <cite>False</cite>, the computation
+uses single precision floats and returned tensor’s dtype is <cite>torch.float32</cite>.</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log_semiring</span></code></p>
+<p>When it is <cite>True</cite>, this function combines path scores with <cite>LogAdd</cite>, e.g., <span class="math notranslate nohighlight">\(\log(e^a + e^b)\)</span>.
+When it is <cite>False</cite>, path scores are combined with <span class="math notranslate nohighlight">\(\max(a, b)\)</span></p>
+</li>
+</ul>
+</div></blockquote>
+<p>The following two subsections illustrate step by step how to obtain the above printed results.
+For ease of reference, we use <span class="math notranslate nohighlight">\(f_i\)</span> to denote the forward score of state <span class="math notranslate nohighlight">\(i\)</span>.</p>
+<div class="section" id="log-semiring-true">
+<h3>log_semiring==True<a class="headerlink" href="#log-semiring-true" title="Permalink to this headline">¶</a></h3>
+<p>It uses <cite>LogAdd</cite> to combine path scores.</p>
+<ol class="arabic simple">
+<li><p>State 0 is the start state and <span class="math notranslate nohighlight">\(f_0\)</span> is defined to be 0.</p></li>
+<li><p><span class="math notranslate nohighlight">\(f_1\)</span> is computed with the following formula:</p></li>
+</ol>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[f_1 = \log(e^{f_0 + 1.2} + e^{f_0 + 0.8}) = \log(e^{1.2} + e^{0.8}) = 1.7130\]</div>
+<p>where 1.2 is the score of one of the two arcs from state 0 to state 1; 0.8 is the score of
+the other arc from state 0 to state 1.</p>
+</div></blockquote>
+<ol class="arabic" start="3">
+<li><p><span class="math notranslate nohighlight">\(f_2\)</span> is computed by:</p>
+<div class="math notranslate nohighlight">
+\[f_2 = \log(e^{f_0 + 0.5} + e^{f_1 + 0.1}) = \log(e^{0.5} + e^{1.8130}) = 2.0513\]</div>
+</li>
+<li><p><span class="math notranslate nohighlight">\(f_3\)</span> can be computed from <span class="math notranslate nohighlight">\(f_1\)</span> and <span class="math notranslate nohighlight">\(f_2\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[f_3 = \log(e^{f_1 + 0.6} + e^{f_2 + 0.4}) = \log(e^{2.3130} + e^{2.4513}) = 3.0777\]</div>
+</li>
+</ol>
+</div>
+<div class="section" id="log-semiring-false">
+<h3>log_semiring==False<a class="headerlink" href="#log-semiring-false" title="Permalink to this headline">¶</a></h3>
+<p>It uses <cite>max</cite> to combine path scores.</p>
+<ol class="arabic simple">
+<li><p>State 0 is the start state and <span class="math notranslate nohighlight">\(f_0\)</span> is defined to be 0</p></li>
+<li><p><span class="math notranslate nohighlight">\(f_1 = \max(f_0 + 1.2, f_0 + 0.8) = \max(1.2, 0.8) = 1.2\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(f_2 = \max(f_0 + 0.5, f_1 + 0.1) = \max(0.5, 1.3) = 1.3\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(f_3 = \max(f_1 + 0.6, f_2 + 0.4) = \max(1.8, 1.7) = 1.8\)</span></p></li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../python_api/fsa.html#k2.Fsa.get_forward_scores" title="k2.Fsa.get_forward_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_forward_scores()</span></code></a> supports CUDA as well as CPU.</p></li>
+<li><p>autograd is also supported.</p></li>
+<li><p>It supports only FsaVec.</p></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="get-tot-scores">
+<h2>get_tot_scores<a class="headerlink" href="#get-tot-scores" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="../python_api/fsa.html#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code></a> computes and returns forward scores of the final state of each FSA.
+Refer to <a class="reference internal" href="#get-forward-scores-example"><span class="std std-ref">get_forward_scores</span></a> for how to compute forward scores.</p>
+<p>The following is an example of <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code></a>.</p>
+<div class="literal-block-wrapper docutils container" id="id12">
+<div class="code-block-caption"><span class="caption-number">Listing 9 </span><span class="caption-text"><a class="reference internal" href="../python_api/fsa.html#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code></a> example</span><a class="headerlink" href="#id12" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 1 1.2</span>
+<span class="s1">0 1 3 0.8</span>
+<span class="s1">0 2 2 0.5</span>
+<span class="s1">1 2 5 0.1</span>
+<span class="s1">1 3 -1 0.6</span>
+<span class="s1">2 3 -1 0.4</span>
+<span class="s1">3</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;get_tot_scores.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;get_tot_scores example&#39;</span><span class="p">)</span>
+<span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
+<span class="n">log_semiring</span> <span class="o">=</span> <span class="n">fsa_vec</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">use_double_scores</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                      <span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">tropical_semiring</span> <span class="o">=</span> <span class="n">fsa_vec</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">use_double_scores</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                           <span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;get_tot_scores for log semiring:&#39;</span><span class="p">,</span> <span class="n">log_semiring</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;get_tot_scores for tropical semiring:&#39;</span><span class="p">,</span> <span class="n">tropical_semiring</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="figure align-center" style="width: 600px">
+<img alt="get_tot_scores" src="../_images/get_tot_scores.svg" /></div>
+<p>It prints:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">get_tot_scores</span> <span class="k">for</span> <span class="n">log</span> <span class="n">semiring</span><span class="p">:</span> <span class="n">tensor</span><span class="p">([</span><span class="mf">3.0777</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<span class="n">get_tot_scores</span> <span class="k">for</span> <span class="n">tropical</span> <span class="n">semiring</span><span class="p">:</span> <span class="n">tensor</span><span class="p">([</span><span class="mf">1.8000</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../python_api/fsa.html#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code></a> supports CUDA as well as CPU.</p></li>
+<li><p>autograd is also supported.</p></li>
+<li><p>It supports only FsaVec.</p></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../python_api/index.html" class="btn btn-neutral float-right" title="Python API reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="fsa.html" class="btn btn-neutral float-left" title="Fsa" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, k2 development team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

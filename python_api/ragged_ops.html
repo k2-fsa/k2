@@ -1,0 +1,706 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>ragged_ops &mdash; k2 1.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ragged_shape" href="ragged_shape.html" />
+    <link rel="prev" title="ops" href="ops.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> k2
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Python API reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="fsa.html">Fsa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctc_loss.html">CTC Loss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dense_fsa.html">DenseFsaVec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html">Fsa Algorithms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symbol_table.html">SymbolTable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html">utils</a></li>
+<li class="toctree-l2"><a class="reference internal" href="version.html">version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ops.html">ops</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">ragged_ops</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#index">index</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-values-leq">remove_values_leq</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-values-eq">remove_values_eq</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-axis">remove_axis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#to-list">to_list</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pad">pad</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sum-per-sublist">sum_per_sublist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cat">cat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#create-ragged2">create_ragged2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-layer">get_layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#unique-sequences">unique_sequences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#regular-ragged-shape">regular_ragged_shape</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#argmax-per-sublist">argmax_per_sublist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#max-per-sublist">max_per_sublist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sort-sublist">sort_sublist</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ragged_shape.html">ragged_shape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="_k2.html">_k2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tensor.html">k2.ragged</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Python API reference</a> &raquo;</li>
+        
+      <li>ragged_ops</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/python_api/ragged_ops.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="ragged-ops">
+<h1>ragged_ops<a class="headerlink" href="#ragged-ops" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="index">
+<h2>index<a class="headerlink" href="#index" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.index">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indexes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_value_indexes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L35-L75"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Indexing operation on ragged tensor, returns src[indexes], where
+the elements of <cite>indexes</cite> are interpreted as indexes into axis <cite>axis</cite> of
+<cite>src</cite>.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p><cite>indexes</cite> is a 1-D tensor and <cite>indexes.dtype == torch.int32</cite>.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedArc</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>, <a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a>]) – Source ragged tensor or ragged shape to index.</p></li>
+<li><p><strong>axis</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The axis to be indexed. Must satisfy 0 &lt;= axis &lt; src.num_axes()</p></li>
+<li><p><strong>indexes</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – Array of indexes, which will be interpreted as indexes into axis <cite>axis</cite>
+of <cite>src</cite>, i.e. with 0 &lt;= indexes[i] &lt; src.tot_size(axis).
+Note that if <cite>axis</cite> is 0, then -1 is also a valid entry in <cite>index</cite>.</p></li>
+<li><p><strong>need_value_indexes</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If true, it will return a torch.Tensor containing the indexes into
+<cite>src.values()</cite> that <cite>ans.values()</cite> has,
+as in <cite>ans.values() = src.values()[value_indexes]</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><cite>ans</cite> of type <cite>_k2.RaggedArc</cite> or <cite>_k2.RaggedInt</cite> (same as the type
+of <cite>src</cite>).</p></li>
+<li><p>None if <cite>need_value_indexes</cite> is False; a 1-D torch.tensor of
+dtype <cite>torch.int32</cite> containing the indexes into <cite>src.values()</cite> that
+<cite>ans.values()</cite> has.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Return a tuple containing</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="remove-values-leq">
+<h2>remove_values_leq<a class="headerlink" href="#remove-values-leq" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.remove_values_leq">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">remove_values_leq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L78-L90"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.remove_values_leq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove values less than or equal to <cite>cutoff</cite> from a ragged tensor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>) – The source ragged tensor.</p></li>
+<li><p><strong>cutoff</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The threshold. Elements less than or equal to this threshold is removed
+from <cite>src</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A new ragged tensor whose elements are all <strong>greater than</strong> <cite>cutoff</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="remove-values-eq">
+<h2>remove_values_eq<a class="headerlink" href="#remove-values-eq" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.remove_values_eq">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">remove_values_eq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L93-L105"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.remove_values_eq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove values equal to <cite>target</cite> from a ragged tensor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>) – The source ragged tensor.</p></li>
+<li><p><strong>target</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The target value. Elements whose value equal to <cite>target</cite> are removed
+from <cite>src</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A new ragged tensor whose elements do <strong>not equal to</strong> <cite>target</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="remove-axis">
+<h2>remove_axis<a class="headerlink" href="#remove-axis" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.remove_axis">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">remove_axis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L108-L126"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.remove_axis" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove an axis from a ragged tensor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>, <a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a>]) – The source ragged tensor or ragged shape. Must have <cite>num_axes() &gt; 2</cite>.</p></li>
+<li><p><strong>axis</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The axis to remove.  If src is a _k2.RaggedShape it must satisfy
+<cite>0 &lt;= axis &lt; src.num_axes()</cite>;
+otherwise it must satisfy <cite>0 &lt;= axis &lt; src.num_axes() - 1</cite> (we can’t
+remove the last axis in this case as the dimension of the values
+would change).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A new ragged tensor with one fewer axis than <cite>src</cite>.
+The vector of <cite>ans.tot_sizes()</cite> will be the same as <cite>src.tot_sizes()</cite>,
+but with element <cite>axis</cite> removed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="to-list">
+<h2>to_list<a class="headerlink" href="#to-list" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.to_list">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">to_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L129-L139"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.to_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Turn a ragged tensor of ints into a List of Lists [of Lists..] of ints.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>src</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>) – The source ragged tensor.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A list of list of ints containing the same elements and structure
+as <cite>src</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="pad">
+<h2>pad<a class="headerlink" href="#pad" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.pad">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">pad</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'constant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L142-L175"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.pad" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pad a ragged tensor to a torch tensor.</p>
+<p>For example, if <cite>src</cite> has the following values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span> <span class="p">[</span><span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span><span class="p">]</span> <span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="p">[</span><span class="mi">5</span> <span class="mi">6</span> <span class="mi">7</span> <span class="mi">8</span><span class="p">]</span> <span class="p">]</span>
+</pre></div>
+</div>
+<p>Then it returns a 2-D tensor as follows if value is 0 and
+mode is <cite>constant</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">]])</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedFloat</span></code>]) – The source ragged tensor, MUST have <cite>num_axes() == 2</cite>.</p></li>
+<li><p><strong>mode</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code>[‘constant’, ‘replicate’]) – Valid values are: <cite>constant</cite>, <cite>replicate</cite>. If it is <cite>constant</cite>, the
+given <cite>value</cite> is used for filling. If it is <cite>replicate</cite>,
+the last entry in a list is used for filling. If a list is empty,
+then the given <cite>value</cite> is also used for filling.</p></li>
+<li><p><strong>value</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]) – The filling value.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A 2-D torch.Tensor whose dtype is torch.int32 if the input is
+_k2.RaggedInt tensor or torch.float32 if the input is _k2.RaggedFloat
+tensor. The tensor returned is on the same device as <cite>src</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="sum-per-sublist">
+<h2>sum_per_sublist<a class="headerlink" href="#sum-per-sublist" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.sum_per_sublist">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">sum_per_sublist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L178-L199"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.sum_per_sublist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the sum of each sublist.</p>
+<p>For example, if <cite>src</cite> has the following values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span> <span class="p">[</span><span class="n">a</span> <span class="n">b</span><span class="p">]</span> <span class="p">[</span><span class="n">h</span> <span class="n">j</span> <span class="n">k</span><span class="p">]</span> <span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="p">]</span>
+</pre></div>
+</div>
+<p>Then it returns a 1-D tensor with 3 entries:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>entry 0: a + b + initial_value</p></li>
+<li><p>entry 1: h + j + k + initial_value</p></li>
+<li><p>entry 2: m + initial_value</p></li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>src</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedFloat</span></code>) – A ragged float tensor. Note that the sum is performed on the last axis.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Return a 1-D torch.Tensor with dtype torch.float32. Its <cite>numel</cite> equals to
+<cite>src.tot_size(src.num_axes() - 2)</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="cat">
+<h2>cat<a class="headerlink" href="#cat" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.cat">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">cat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">srcs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L202-L214"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.cat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concatenate a list of <code class="xref py py-class docutils literal notranslate"><span class="pre">_k2.RaggedInt</span></code> along a given axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>srcs</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]) – The input.</p></li>
+<li><p><strong>axis</strong> – It can be either 0 or 1.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A single ragged tensor.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="create-ragged2">
+<h2>create_ragged2<a class="headerlink" href="#create-ragged2" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.create_ragged2">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">create_ragged2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vecs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L217-L227"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.create_ragged2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a Ragged with 2 axes.
+:type vecs: <code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]], <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]]
+:param vecs: Input of a list of list</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedFloat</span></code>]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A single ragged array.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="get-layer">
+<h2>get_layer<a class="headerlink" href="#get-layer" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.get_layer">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">get_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L230-L243"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.get_layer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a <cite>sub-shape</cite> of <cite>src</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a>) – Source RaggedShape.</p></li>
+<li><p><strong>layer</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Layer that is desired, from <cite>0 .. src.num_axes() - 2</cite> (inclusive).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>This returned shape will have <cite>num_axes() == 2</cite>, the minimal case of
+a RaggedShape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="unique-sequences">
+<h2>unique_sequences<a class="headerlink" href="#unique-sequences" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.unique_sequences">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">unique_sequences</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_num_repeats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L246-L305"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.unique_sequences" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove repeated sequences.</p>
+<p>If <cite>src</cite> has two axes, this will return the unique sub-lists (in a possibly
+different order, but without repeats).  If <cite>src</cite> has 3 axes, it will
+do the above but separately for each index on axis 0; if more than 3 axes,
+the earliest axes will be ignored.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>It does not completely guarantee that all unique sequences will be
+present in the output, as it relies on a hash and ignores collisions.
+If several sequences have the same hash, only one of them is kept, even
+if the actual content in the sequence is different.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Even if there are no repeated sequences, the output may be different
+from <cite>src</cite>. That is, <cite>new2old_indexes</cite> may NOT be an identity map even if
+nothing was removed.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>) – The input ragged tensor. Must have <cite>src.num_axes() == 2</cite>
+or <cite>src_num_axes() == 3</cite></p></li>
+<li><p><strong>need_num_repeats</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If True, it also returns the number of repeats of each sequence.</p></li>
+<li><p><strong>need_new2old_indexes</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – <p>If true, it returns an extra 1-D tensor <cite>new2old_indexes</cite>.
+If <cite>src</cite> has 2 axes, this tensor contains <cite>src_idx0</cite>;
+if <cite>src</cite> has 3 axes, this tensor contains <cite>src_idx01</cite>.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>For repeated sublists, only one of them is kept.
+The choice of which one to keep is <strong>deterministic</strong> and
+is an implementation detail.</p>
+</div>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>ans: A ragged tensor with the same number of axes as <cite>src</cite> and possibly
+fewer elements due to removing repeated sequences on the last axis
+(and with the last-but-one indexes possibly in a different order).</p></li>
+<li><p>num_repeats: A tensor containing number of repeats of each returned
+sequence if <cite>need_num_repeats</cite> is True; it is None otherwise. If it is
+not None, num_repeats.num_axes() is always 2. If ans.num_axes() is 2,
+then num_repeats.dim0() == 1 and
+num_repeats.num_elements() == ans.dim0().
+If ans.num_axes() is 3, then num_repeats.dim0() == ans.dim0() and
+num_repeats.num_elements() == ans.tot_size(1).</p></li>
+<li><p>new2old_indexes: A 1-D tensor whose i-th element specifies the
+input sublist that the i-th output sublist corresponds to.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Returns a tuple containing</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="regular-ragged-shape">
+<h2>regular_ragged_shape<a class="headerlink" href="#regular-ragged-shape" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.regular_ragged_shape">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">regular_ragged_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim1</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L308-L325"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.regular_ragged_shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a RaggedShape with dim0() == dim0 and tot_size(1) == dim0 * dim1.</p>
+<p>Require dim0 &gt;= 0 and dim1 &gt;= 0.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The returned ragged shape is on CPU. You can use its <cite>to</cite> method to move
+it to GPU.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dim0</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – It equals to ans.dim0()</p></li>
+<li><p><strong>dim1</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – It equals to ans.tot_size(1) / dim0</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Return a ragged shape with 2 axes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="argmax-per-sublist">
+<h2>argmax_per_sublist<a class="headerlink" href="#argmax-per-sublist" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.argmax_per_sublist">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">argmax_per_sublist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">3.4028234663852886e+38</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L328-L343"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.argmax_per_sublist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the argmax per sublist for a ragged tensor.</p>
+<p>The argmax is computed on the last axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedFloat</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]) – The input ragged tensor.</p></li>
+<li><p><strong>initial_value</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – The initial value used to compute the argmax.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Return a 1-D tensor with dtype torch.int32.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="max-per-sublist">
+<h2>max_per_sublist<a class="headerlink" href="#max-per-sublist" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.max_per_sublist">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">max_per_sublist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">3.4028234663852886e+38</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L346-L364"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.max_per_sublist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the max per sublist for a ragged tensor (including
+<cite>initial_value</cite> in the maximum)</p>
+<p>The max is computed on the last layer, ignoring other layers, so it’s
+as if you removed other layers first.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedFloat</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]) – The input ragged tensor.</p></li>
+<li><p><strong>initial_value</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – The initial value that is included with the elements of each
+sub-list when computing the maximum.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Return a 1-D tensor with dtype torch.int32.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="sort-sublist">
+<h2>sort_sublist<a class="headerlink" href="#sort-sublist" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ragged.sort_sublist">
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">sort_sublist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descending</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L367-L388"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.sort_sublist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sort a ragged tensor <strong>in-place</strong>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>in_out</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedFloat</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]) – The ragged tensor to be sorted. The sort operation is applied to
+the last axis. Caution: It is sorted <strong>in-place</strong>.</p></li>
+<li><p><strong>descending</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to sort in descending order. False to sort in ascending order.</p></li>
+<li><p><strong>need_new2old_indexes</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If True, also returns a 1-D tensor, which contains the indexes mapping
+from the sorted elements to the unsorted elements. We can use
+<cite>in_out.clone().values()[ans_tensor]</cite> to get a sorted tensor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>If <cite>need_new2old_indexes</cite> is False, returns None. Otherwise, returns
+a 1-D tensor of dtype torch.int32.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="ragged_shape.html" class="btn btn-neutral float-right" title="ragged_shape" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="ops.html" class="btn btn-neutral float-left" title="ops" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, k2 development team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

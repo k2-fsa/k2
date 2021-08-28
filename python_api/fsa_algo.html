@@ -1,0 +1,1250 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Fsa Algorithms &mdash; k2 1.6 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="SymbolTable" href="symbol_table.html" />
+    <link rel="prev" title="DenseFsaVec" href="dense_fsa.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> k2
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Python API reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="fsa.html">Fsa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctc_loss.html">CTC Loss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dense_fsa.html">DenseFsaVec</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Fsa Algorithms</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#add-epsilon-self-loops">add_epsilon_self_loops</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#arc-sort">arc_sort</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#closure">closure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#compose">compose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#connect">connect</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ctc-graph">ctc_graph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ctc-topo">ctc_topo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#determinize">determinize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#expand-ragged-attributes">expand_ragged_attributes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#intersect">intersect</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#intersect-device">intersect_device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#intersect-dense">intersect_dense</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#intersect-dense-pruned">intersect_dense_pruned</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#invert">invert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#linear-fsa">linear_fsa</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#linear-fst">linear_fst</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#prune-on-arc-post">prune_on_arc_post</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#random-paths">random_paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-epsilon">remove_epsilon</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-epsilon-and-add-self-loops">remove_epsilon_and_add_self_loops</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-epsilon-self-loops">remove_epsilon_self_loops</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#replace-fsa">replace_fsa</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#shortest-path">shortest_path</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#top-sort">top_sort</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#union">union</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symbol_table.html">SymbolTable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html">utils</a></li>
+<li class="toctree-l2"><a class="reference internal" href="version.html">version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ops.html">ops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html">ragged_ops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ragged_shape.html">ragged_shape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="_k2.html">_k2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tensor.html">k2.ragged</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Python API reference</a> &raquo;</li>
+        
+      <li>Fsa Algorithms</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/python_api/fsa_algo.rst" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="fsa-algorithms">
+<h1>Fsa Algorithms<a class="headerlink" href="#fsa-algorithms" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="add-epsilon-self-loops">
+<h2>add_epsilon_self_loops<a class="headerlink" href="#add-epsilon-self-loops" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.add_epsilon_self_loops">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">add_epsilon_self_loops</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L481-L512"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.add_epsilon_self_loops" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add epsilon self-loops to an Fsa or FsaVec.</p>
+<p>This is required when composing using a composition method that does not
+treat epsilons specially, if the other FSA has epsilons in it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA. It can be either a single FSA or an FsaVec.</p></li>
+<li><p><strong>ret_arc_map</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If False, return the resulting Fsa.
+If True, return an extra arc map.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>If ret_arc_map is False, return an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code> that has an
+epsilon self-loop on every non-final state.
+If ret_arc_map is True, it returns an extra arc_map. arc_map[i] is the
+arc index in the input <cite>fsa</cite> that corresponds to the i-th arc in the
+resulting Fsa. arc_map[i] is -1 if the i-th arc in the resulting Fsa
+has no counterpart in the input <cite>fsa</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="arc-sort">
+<h2>arc_sort<a class="headerlink" href="#arc-sort" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.arc_sort">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">arc_sort</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L412-L453"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.arc_sort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sort arcs of every state.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Arcs are sorted by labels first, and then by dest states.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>If the input <cite>fsa</cite> is already arc sorted, we return it directly.
+Otherwise, a new sorted fsa is returned.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA.</p></li>
+<li><p><strong>ret_arc_map</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to return an extra arc_map (a 1-D tensor with dtype being
+torch.int32). arc_map[i] is the arc index in the input <cite>fsa</cite> that
+corresponds to the i-th arc in the output Fsa.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>If ret_arc_map is False, return the sorted FSA. It is the same as the
+input <cite>fsa</cite> if the input <cite>fsa</cite> is arc sorted. Otherwise, a new sorted
+fsa is returned and the input <cite>fsa</cite> is NOT modified.
+If ret_arc_map is True, an extra arc map is also returned.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="closure">
+<h2>closure<a class="headerlink" href="#closure" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.closure">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">closure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L657-L712"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.closure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the Kleene closure of the input FSA.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA. It has to be a single FSA. That is,
+len(fsa.shape) == 2.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The resulting FSA which is the Kleene closure of the input FSA.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="compose">
+<h2>compose<a class="headerlink" href="#compose" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.compose">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">compose</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">treat_epsilons_specially</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inner_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L297-L379"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.compose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the composition of two FSAs.</p>
+<p>When <cite>treat_epsilons_specially</cite> is True, this function works only on CPU.
+When <cite>treat_epsilons_specially</cite> is False and both <cite>a_fsa</cite> and <cite>b_fsa</cite>
+are on GPU, then this function works on GPU; in this case, the two
+input FSAs do not need to be arc sorted.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><cite>a_fsa.aux_labels</cite> is required to be defined and it can be either
+a <cite>torch.Tensor</cite> or a ragged tensor of type <cite>k2.RaggedInt</cite>.
+If it is a ragged tensor, then it requires that a_fsa.requires_grad is
+False.</p>
+<p>For both FSAs, the <cite>aux_labels</cite> attribute is interpreted as output labels,
+(olabels), and the composition involves matching the olabels of a_fsa with
+the ilabels of b_fsa.  This is implemented by intersecting the inverse of
+a_fsa (a_fsa_inv) with b_fsa, then replacing the ilabels of the result
+with the original ilabels on a_fsa which are now the aux_labels of
+a_fsa_inv.  If <cite>b_fsa.aux_labels</cite> is not defined, <cite>b_fsa</cite> is treated as an
+acceptor (as in OpenFST), i.e. its olabels and ilabels are assumed to be
+the same.</p>
+</div>
+<p>Refer to <a class="reference internal" href="#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> for how we assign the attributes of the
+output FSA.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a_fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The first input FSA. It can be either a single FSA or an FsaVec.</p></li>
+<li><p><strong>b_fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The second input FSA. it can be either a single FSA or an FsaVec.</p></li>
+<li><p><strong>treat_epsilons_specially</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – <dl class="simple">
+<dt>If True, epsilons will be treated as epsilon, meaning epsilon arcs can</dt><dd><p>match with an implicit epsilon self-loop.
+If False, epsilons will be treated as real, normal symbols (to have
+them treated as epsilons in this case you may have to add epsilon
+self-loops to whichever of the inputs is naturally epsilon-free).</p>
+</dd>
+<dt>inner_labels:</dt><dd><p>If specified (and if a_fsa has <cite>aux_labels</cite>), the labels that we matched
+on, which would normally be discarded, will instead be copied to
+this attribute name.</p>
+</dd>
+</dl>
+</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p><cite>b_fsa</cite> has to be arc sorted if the function runs on CPU.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The result of composing a_fsa and b_fsa. <cite>len(out_fsa.shape)</cite> is 2
+if and only if the two input FSAs are single FSAs;
+otherwise, <cite>len(out_fsa.shape)</cite> is 3.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="connect">
+<h2>connect<a class="headerlink" href="#connect" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.connect">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L382-L409"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connect an FSA.</p>
+<p>Removes states that are neither accessible nor co-accessible.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A state is not accessible if it is not reachable from the start state.
+A state is not co-accessible if it cannot reach the final state.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>If the input FSA is already connected, it is returned directly.
+Otherwise, a new connected FSA is returned.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA to be connected.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>An FSA that is connected.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="ctc-graph">
+<h2>ctc_graph<a class="headerlink" href="#ctc-graph" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ctc_graph">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">ctc_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L980-L1035"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ctc_graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct ctc graphs from symbols.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The scores of arcs in the returned FSA are all 0.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbols</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]], <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]) – <p>It can be one of the following types:</p>
+<blockquote>
+<div><ul>
+<li><p>A list of list-of-integers, e..g, <cite>[ [1, 2], [1, 2, 3] ]</cite></p></li>
+<li><p>An instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.RaggedInt</span></code>. Must have <cite>num_axes() == 2</cite>.</p></li>
+</ul>
+</div></blockquote>
+</p></li>
+<li><p><strong>standard</strong> – Option to specify the type of CTC topology: “standard” or “simplified”,
+where the “standard” one makes the blank mandatory between a pair of
+identical symbols. Default True.</p></li>
+<li><p><strong>device</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">device</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code>]) – Optional. It can be either a string (e.g., ‘cpu’, ‘cuda:0’) or a
+torch.device.
+If it is None, then the returned FSA is on CPU. It has to be None
+if <cite>symbols</cite> is an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.RaggedInt</span></code>, the returned
+FSA will on the same device as <cite>k2.RaggedInt</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>An FsaVec containing the returned ctc graphs, with “Dim0()” the same as
+“len(symbols)”(List[List[int]]) or “Dim0()”(k2.RaggedInt)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="ctc-topo">
+<h2>ctc_topo<a class="headerlink" href="#ctc-topo" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.ctc_topo">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">ctc_topo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1038-L1083"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ctc_topo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a CTC topology.</p>
+<p>A token which appears once on the right side (i.e. olabels) may
+appear multiple times on the left side (ilabels), possibly with
+epsilons in between.
+When 0 appears on the left side, it represents the blank symbol;
+when it appears on the right side, it indicates an epsilon. That
+is, 0 has two meanings here.</p>
+<p>A standard CTC topology is the conventional one, where there
+is a mandatory blank between two repeated neighboring symbols.
+A non-standard, i.e., modified CTC topology, imposes no such constraint.</p>
+<p>See <a class="reference external" href="https://github.com/k2-fsa/k2/issues/746#issuecomment-856421616">https://github.com/k2-fsa/k2/issues/746#issuecomment-856421616</a>
+and <a class="reference external" href="https://github.com/k2-fsa/snowfall/pull/209">https://github.com/k2-fsa/snowfall/pull/209</a>
+for more details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>max_token</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The maximum token ID (inclusive). We assume that token IDs
+are contiguous (from 1 to <cite>max_token</cite>). 0 represents blank.</p></li>
+<li><p><strong>modified</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If False, create a standard CTC topology. Otherwise, create a
+modified CTC topology.</p></li>
+<li><p><strong>device</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">device</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code>]) – Optional. It can be either a string (e.g., ‘cpu’,
+‘cuda:0’) or a torch.device.
+If it is None, then the returned FSA is on CPU.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Return either a standard or a modified CTC topology as an FSA
+depending on whether <cite>standard</cite> is True or False.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="determinize">
+<h2>determinize<a class="headerlink" href="#determinize" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.determinize">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">determinize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">fsa</span></em>, <em class="sig-param"><span class="pre">weight_pushing_type=&lt;DeterminizeWeightPushingType.kNoWeightPushing:</span> <span class="pre">2&gt;</span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L606-L654"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.determinize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determinize the input Fsa.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<ul class="simple">
+<li><p>It only works on for CPU.</p></li>
+<li><p>Any weight_pushing_type value other than kNoWeightPushing causes
+the ‘arc_derivs’ to not accurately reflect the real derivatives,
+although this will not matter as long as the derivatives ultimately
+derive from FSA operations such as getting total scores or
+arc posteriors, which are insensitive to pushing.</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA. It can be either a single FSA or an FsaVec.
+Must be connected. It’s also expected to be epsilon-free,
+but this is not checked; in any case,
+epsilon will be treated as a normal symbol.</p></li>
+<li><p><strong>weight_pushing_type</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">DeterminizeWeightPushingType</span></code>) – <p>An enum value that determines what kind of weight pushing is desired,
+default kNoWeightPushing.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>kTropicalWeightPushing:</dt><dd><p>use tropical semiring (actually, max on scores) for weight pushing.</p>
+</dd>
+<dt>kLogWeightPushing:</dt><dd><p>use log semiring (actually, log-sum on score) for weight pushing</p>
+</dd>
+<dt>kNoWeightPushing:</dt><dd><p>do no weight pushing; this will cause some delay in scores being
+emitted, and the weights created in this way will correspond
+exactly to those that would be produced by the arc_derivs.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>For decoding graph creation, we recommend kLogSumWeightPushing.</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The resulting Fsa, it’s equivalent to the input <cite>fsa</cite> under
+tropical semiring but will be deterministic.
+It will be the same as the input <cite>fsa</cite> if the input
+<cite>fsa</cite> has property kFsaPropertiesArcSortedAndDeterministic.
+Otherwise, a new deterministic fsa is returned and the
+input <cite>fsa</cite> is NOT modified.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="expand-ragged-attributes">
+<h2>expand_ragged_attributes<a class="headerlink" href="#expand-ragged-attributes" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.expand_ragged_attributes">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">expand_ragged_attributes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ragged_attribute_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L836-L927"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.expand_ragged_attributes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Turn ragged labels attached to this FSA into linear (Tensor) labels,
+expanding arcs into sequences of arcs as necessary to achieve this.
+Supports autograd.  If <cite>fsas</cite> had no ragged attributes, returns <cite>fsas</cite>
+itself.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>This function will ensure that for final-arcs in the returned
+fsa, the corresponding labels for all ragged attributes are -1; it will
+add an extra arc at the end is necessary to ensure this, if the
+original ragged attributes did not have -1 as their final element on
+final-arcs (note: our intention is that -1’s on final arcs, like filler
+symbols, are removed when making attributes ragged; this is what
+fsa_from_unary_function_ragged() does if remove_filler==True (the
+default).</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fsas</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The source Fsa</p></li>
+<li><p><strong>ret_arc_map</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If true, will return a pair (new_fsas, arc_map)
+with <cite>arc_map</cite> a tensor of int32 that maps from arcs in the
+result to arcs in <cite>fsas</cite>, with -1’s for newly created arcs.
+If false, just returns new_fsas.</p></li>
+<li><p><strong>ragged_attribute_names</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]) – If specified, just this list of ragged
+attributes will be expanded to linear tensor attributes, and
+the rest will stay ragged.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="intersect">
+<h2>intersect<a class="headerlink" href="#intersect" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.intersect">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">intersect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">treat_epsilons_specially</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_maps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L213-L294"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.intersect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the intersection of two FSAs.</p>
+<p>When <cite>treat_epsilons_specially</cite> is True, this function works only on CPU.
+When <cite>treat_epsilons_specially</cite> is False and both <cite>a_fsa</cite> and <cite>b_fsa</cite>
+are on GPU, then this function works on GPU; in this case, the two
+input FSAs do not need to be arc sorted.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a_fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The first input FSA. It can be either a single FSA or an FsaVec.</p></li>
+<li><p><strong>b_fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The second input FSA. it can be either a single FSA or an FsaVec.
+If both a_fsa and b_fsa are FsaVec, they must contain the same
+number of FSAs.</p></li>
+<li><p><strong>treat_epsilons_specially</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If True, epsilons will be treated as epsilon, meaning epsilon arcs can
+match with an implicit epsilon self-loop.
+If False, epsilons will be treated as real, normal symbols (to have
+them treated as epsilons in this case you may have to add epsilon
+self-loops to whichever of the inputs is naturally epsilon-free).</p></li>
+<li><p><strong>ret_arc_maps</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – <p>If False, return the resulting Fsa. If True, return a tuple
+containing three entries:</p>
+<blockquote>
+<div><ul>
+<li><p>the resulting Fsa</p></li>
+<li><p>a_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+a_arc_map[i] is the arc index in a_fsa that corresponds
+to the i-th arc in the resulting Fsa. a_arc_map[i] is -1
+if the i-th arc in the resulting Fsa has no corresponding
+arc in a_fsa.</p></li>
+<li><p>b_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+b_arc_map[i] is the arc index in b_fsa that corresponds
+to the i-th arc in the resulting Fsa. b_arc_map[i] is -1
+if the i-th arc in the resulting Fsa has no corresponding
+arc in b_fsa.</p></li>
+</ul>
+</div></blockquote>
+</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The two input FSAs MUST be arc sorted if <cite>treat_epsilons_specially</cite>
+is True.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The rules for assigning the attributes of the output Fsa are as follows:</p>
+<ul class="simple">
+<li><p>(1) For attributes where only one source (a_fsa or b_fsa) has that
+attribute: Copy via arc_map, or use zero if arc_map has -1. This rule
+works for both floating point and integer attributes.</p></li>
+<li><p>(2) For attributes where both sources (a_fsa and b_fsa) have that
+attribute: For floating point attributes: sum via arc_maps, or use zero
+if arc_map has -1. For integer attributes, it’s not supported for now
+(the attributes will be discarded and will not be kept in the output
+FSA).</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>If ret_arc_maps is False, return the result of intersecting a_fsa and
+b_fsa. len(out_fsa.shape) is 2 if and only if the two input FSAs are
+single FSAs; otherwise, len(out_fsa.shape) is 3.
+If ret_arc_maps is True, it returns additionally two arc_maps:
+a_arc_map and b_arc_map.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="intersect-device">
+<h2>intersect_device<a class="headerlink" href="#intersect-device" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.intersect_device">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">intersect_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_to_a_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sorted_match_a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_maps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L135-L210"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.intersect_device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the intersection of two FsaVecs treating epsilons
+as real, normal symbols.</p>
+<p>This function supports both CPU and GPU. But it is very slow on CPU.
+That’s why this function name ends with <cite>_device</cite>. It is intended for GPU.
+See <a class="reference internal" href="#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> which is a more general interface
+(it will call the same underlying code, IntersectDevice(), if
+the inputs are on GPU and a_fsas is arc-sorted).</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Epsilons are treated as real, normal symbols.</p>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>The two inputs do not need to be arc-sorted.</p>
+</div>
+<p>Refer to <a class="reference internal" href="#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> for how we assign the attributes of the
+output FsaVec.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a_fsas</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – An FsaVec (must have 3 axes, i.e., <cite>len(a_fsas.shape) == 3</cite>.</p></li>
+<li><p><strong>b_fsas</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – An FsaVec (must have 3 axes) on the same device as <cite>a_fsas</cite>.</p></li>
+<li><p><strong>b_to_a_map</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – <p>A 1-D torch.Tensor with dtype torch.int32 on the same device
+as <cite>a_fsas</cite>. Map from FSA-id in <cite>b_fsas</cite> to the corresponding
+FSA-id in <cite>a_fsas</cite> that we want to compose it with.
+E.g. might be an identity map, or all-to-zero, or something the
+user chooses.</p>
+<dl class="simple">
+<dt>Requires</dt><dd><ul>
+<li><p><cite>b_to_a_map.shape[0] == b_fsas.shape[0]</cite></p></li>
+<li><p><cite>0 &lt;= b_to_a_map[i] &lt; a_fsas.shape[0]</cite></p></li>
+</ul>
+</dd>
+</dl>
+</p></li>
+<li><p><strong>ret_arc_maps</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – <p>If False, return the resulting Fsa. If True, return a tuple
+containing three entries:</p>
+<blockquote>
+<div><ul>
+<li><p>the resulting Fsa</p></li>
+<li><p>a_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+a_arc_map[i] is the arc index in a_fsas that corresponds
+to the i-th arc in the resulting Fsa. a_arc_map[i] is -1
+if the i-th arc in the resulting Fsa has no corresponding
+arc in a_fsas.</p></li>
+<li><p>b_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+b_arc_map[i] is the arc index in b_fsas that corresponds
+to the i-th arc in the resulting Fsa. b_arc_map[i] is -1
+if the i-th arc in the resulting Fsa has no corresponding
+arc in b_fsas.</p></li>
+</ul>
+</div></blockquote>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>If ret_arc_maps is False, return intersected FsaVec;
+will satisfy <cite>ans.shape == b_fsas.shape</cite>.
+If ret_arc_maps is True, it returns additionally two arc maps:
+a_arc_map and b_arc_map.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="intersect-dense">
+<h2>intersect_dense<a class="headerlink" href="#intersect-dense" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.intersect_dense">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">intersect_dense</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_to_b_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seqframe_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/autograd.py#L749-L813"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.intersect_dense" title="Permalink to this definition">¶</a></dt>
+<dd><p>Intersect array of FSAs on CPU/GPU.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p><cite>a_fsas</cite> MUST be arc sorted.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a_fsas</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – Input FsaVec, i.e., <cite>decoding graphs</cite>, one per sequence. It might just
+be a linear sequence of phones, or might be something more complicated.
+Must have <cite>a_fsas.shape[0] == b_fsas.dim0()</cite> if <cite>a_to_b_map</cite> is None.
+Otherwise, must have <cite>a_fsas.shape[0] == a_to_b_map.shape[0]</cite></p></li>
+<li><p><strong>b_fsas</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">DenseFsaVec</span></code>) – Input FSAs that correspond to neural network output.</p></li>
+<li><p><strong>output_beam</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Beam to prune output, similar to lattice-beam in Kaldi.  Relative
+to best path of output.</p></li>
+<li><p><strong>a_to_b_map</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – Maps from FSA-index in a to FSA-index in b to use for it.
+If None, then we expect the number of FSAs in a_fsas to equal
+b_fsas.dim0().  If set, then it should be a Tensor with ndim=1
+and dtype=torch.int32, with a_to_b_map.shape[0] equal to the
+number of FSAs in a_fsas (i.e. a_fsas.shape[0] if
+len(a_fsas.shape) == 3, else 1); and elements 0 &lt;= i &lt; b_fsas.dim0().</p></li>
+<li><p><strong>seqframe_idx_name</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – If set (e.g. to ‘seqframe’), an attribute in the output will be created
+that encodes the sequence-index and the frame-index within that
+sequence; this is equivalent to a row-index into b_fsas.values,
+or, equivalently, an element in b_fsas.shape.</p></li>
+<li><p><strong>frame_idx_name</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – If set (e.g. to ‘frame’, an attribute in the output will be created
+that contains the frame-index within the corresponding sequence.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The result of the intersection (pruned to <cite>output_beam</cite>; this pruning
+is exact, it uses forward and backward scores.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="intersect-dense-pruned">
+<h2>intersect_dense_pruned<a class="headerlink" href="#intersect-dense-pruned" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.intersect_dense_pruned">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">intersect_dense_pruned</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_active_states</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_active_states</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seqframe_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/autograd.py#L672-L746"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.intersect_dense_pruned" title="Permalink to this definition">¶</a></dt>
+<dd><p>Intersect array of FSAs on CPU/GPU.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p><cite>a_fsas</cite> MUST be arc sorted.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a_fsas</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – Input FsaVec, i.e., <cite>decoding graphs</cite>, one per sequence. It might just
+be a linear sequence of phones, or might be something more complicated.
+Must have either <cite>a_fsas.shape[0] == b_fsas.dim0()</cite>, or
+<cite>a_fsas.shape[0] == 1</cite> in which case the graph is shared.</p></li>
+<li><p><strong>b_fsas</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">DenseFsaVec</span></code>) – Input FSAs that correspond to neural network output.</p></li>
+<li><p><strong>search_beam</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Decoding beam, e.g. 20.  Smaller is faster, larger is more exact
+(less pruning). This is the default value; it may be modified by
+<cite>min_active_states</cite> and <cite>max_active_states</cite>.</p></li>
+<li><p><strong>output_beam</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Beam to prune output, similar to lattice-beam in Kaldi.  Relative
+to best path of output.</p></li>
+<li><p><strong>min_active_states</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Minimum number of FSA states that are allowed to be active on any given
+frame for any given intersection/composition task. This is advisory,
+in that it will try not to have fewer than this number active.
+Set it to zero if there is no constraint.</p></li>
+<li><p><strong>max_active_states</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Maximum number of FSA states that are allowed to be active on any given
+frame for any given intersection/composition task. This is advisory,
+in that it will try not to exceed that but may not always succeed.
+You can use a very large number if no constraint is needed.</p></li>
+<li><p><strong>seqframe_idx_name</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – If set (e.g. to ‘seqframe’), an attribute in the output will be created
+that encodes the sequence-index and the frame-index within that
+sequence; this is equivalent to a row-index into b_fsas.values,
+or, equivalently, an element in b_fsas.shape.</p></li>
+<li><p><strong>frame_idx_name</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – If set (e.g. to ‘frame’, an attribute in the output will be created
+that contains the frame-index within the corresponding sequence.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The result of the intersection.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="invert">
+<h2>invert<a class="headerlink" href="#invert" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.invert">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L715-L749"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.invert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invert an FST, swapping the labels in the FSA with the auxiliary labels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA. It can be either a single FSA or an FsaVec.</p></li>
+<li><p><strong>ret_arc_map</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to return an extra arc map, which is a 1-D tensor with dtype
+torch.int32. The returned arc_map[i] is the arc index in the input
+fsa that corresponds to the i-th arc in the returned fsa. arc_map[i]
+is -1 if the i-th arc in the returned fsa has no counterpart in the
+input fsa.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>If ret_arc_map is False, return the inverted Fsa, it’s top-sorted if
+<cite>fsa</cite> is top-sorted.
+If ret_arc_map is True, return an extra arc map.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="linear-fsa">
+<h2>linear_fsa<a class="headerlink" href="#linear-fsa" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.linear_fsa">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">linear_fsa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L39-L79"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.linear_fsa" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct an linear FSA from labels.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The scores of arcs in the returned FSA are all 0.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>labels</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]], <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]) – <p>It can be one of the following types:</p>
+<blockquote>
+<div><ul>
+<li><p>A list of integers, e.g., <cite>[1, 2, 3]</cite></p></li>
+<li><p>A list of list-of-integers, e..g, <cite>[ [1, 2], [1, 2, 3] ]</cite></p></li>
+<li><p>An instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.RaggedInt</span></code>. Must have <cite>num_axes() == 2</cite>.</p></li>
+</ul>
+</div></blockquote>
+</p></li>
+<li><p><strong>device</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">device</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code>]) – Optional. It can be either a string (e.g., ‘cpu’,
+‘cuda:0’) or a torch.device.
+If it is None, then the returned FSA is on CPU. It has to be None
+if <cite>labels</cite> is an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.RaggedInt</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>If <cite>labels</cite> is a list of integers, return an FSA</p></li>
+<li><p>If <cite>labels</cite> is a list of list-of-integers, return an FsaVec</p></li>
+<li><p>If <cite>labels</cite> is an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.RaggedInt</span></code>, return an FsaVec</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="linear-fst">
+<h2>linear_fst<a class="headerlink" href="#linear-fst" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.linear_fst">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">linear_fst</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aux_labels</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L82-L111"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.linear_fst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a linear FST from labels and its corresponding
+auxiliary labels.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The scores of arcs in the returned FST are all 0.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>labels</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]]]) – A list of integers or a list of list of integers.</p></li>
+<li><p><strong>aux_labels</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]]]) – A list of integers or a list of list of integers.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>An FST if the labels is a list of integers.
+A vector of FSTs (FsaVec) if the input is a list of list of integers.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="prune-on-arc-post">
+<h2>prune_on_arc_post<a class="headerlink" href="#prune-on-arc-post" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.prune_on_arc_post">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">prune_on_arc_post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_prob</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L803-L833"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.prune_on_arc_post" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove arcs whose posteriors are less than the given threshold.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fsas</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – An FsaVec. Must have 3 axes.</p></li>
+<li><p><strong>threshold_prob</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Arcs whose posteriors are less than this value are removed.
+.. note:: 0 &lt; threshold_prob &lt; 1</p></li>
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to use double precision during computation; False to use
+single precision.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Return a pruned FsaVec.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="random-paths">
+<h2>random_paths<a class="headerlink" href="#random-paths" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.random_paths">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">random_paths</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_paths</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L752-L800"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.random_paths" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute pseudo-random paths through the FSAs in this vector of FSAs
+(this object must have 3 axes, <cite>self.arcs.num_axes() == 3</cite>)</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>It does not support autograd.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Do not be confused by the function name. There is no
+randomness at all, thus no <cite>seed</cite>. It uses a deterministic algorithm
+internally, similar to arithmetic coding
+(see <a class="reference external" href="https://en.wikipedia.org/wiki/Arithmetic_coding">https://en.wikipedia.org/wiki/Arithmetic_coding</a>).</p>
+<p>Look into the C++ implementation code for more details.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fsas</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – A FsaVec, i.e., <cite>len(fsas.shape) == 3</cite></p></li>
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If true, do computation with double-precision,
+else float (single-precision)</p></li>
+<li><p><strong>num_paths</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Number of paths requested through each FSA. FSAs that have no successful
+paths will have zero paths returned.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>[fsa][path][arc_pos]; the final
+sub-lists (indexed with arc_pos) are sequences of arcs starting from the
+start state and terminating in the final state. The values are arc_idx012,
+i.e. arc indexes.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Returns a k2.RaggedInt with 3 axes</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="remove-epsilon">
+<h2>remove_epsilon<a class="headerlink" href="#remove-epsilon" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.remove_epsilon">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">remove_epsilon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L537-L569"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.remove_epsilon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove epsilons (symbol zero) in the input Fsa.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – <p>The input FSA. It can be either a single FSA or an FsaVec.
+Works either for CPU or GPU, but the algorithm is different.
+We can only use the CPU algorithm if the input is top-sorted,
+and the GPU algorithm, while it works for CPU, may not be
+very fast.</p>
+<p><cite>fsa</cite> must be free of epsilon loops that have score
+greater than 0.</p>
+</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The resulting Fsa is equivalent to the input <cite>fsa</cite> under the
+tropical semiring but will be epsilon-free.  Any linear tensor
+attributes, such as ‘aux_labels’, will have been turned into
+ragged labels after removing fillers (i.e. labels whose
+value equals fsa.XXX_filler if the attribute name is XXX),
+counting -1’s on final-arcs as fillers even if the filler
+value for that attribute is not -1.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="remove-epsilon-and-add-self-loops">
+<h2>remove_epsilon_and_add_self_loops<a class="headerlink" href="#remove-epsilon-and-add-self-loops" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.remove_epsilon_and_add_self_loops">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">remove_epsilon_and_add_self_loops</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_filler</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L578-L603"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.remove_epsilon_and_add_self_loops" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove epsilons (symbol zero) in the input Fsa, and then add
+epsilon self-loops to all states in the input Fsa (usually as
+a preparation for intersection with treat_epsilons_specially=0).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA. It can be either a single FSA or an FsaVec.</p></li>
+<li><p><strong>remove_filler</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If true, we will remove any <cite>filler values</cite> of attributes when
+converting linear to ragged attributes.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The resulting Fsa.   See <a class="reference internal" href="#k2.remove_epsilon" title="k2.remove_epsilon"><code class="xref py py-func docutils literal notranslate"><span class="pre">remove_epsilon()</span></code></a> for details.
+The only epsilons will be epsilon self-loops on all states.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="remove-epsilon-self-loops">
+<h2>remove_epsilon_self_loops<a class="headerlink" href="#remove-epsilon-self-loops" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.remove_epsilon_self_loops">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">remove_epsilon_self_loops</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L515-L534"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.remove_epsilon_self_loops" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove epsilon self-loops of an Fsa or an FsaVec.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Unlike <a class="reference internal" href="#k2.remove_epsilon" title="k2.remove_epsilon"><code class="xref py py-func docutils literal notranslate"><span class="pre">remove_epsilon()</span></code></a>, this funciton removes only
+epsilon self-loops.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA. It can be either a single FSA or an FsaVec.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>An instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code> that has no epsilon self-loops on every
+non-final state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="replace-fsa">
+<h2>replace_fsa<a class="headerlink" href="#replace-fsa" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.replace_fsa">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">replace_fsa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol_begin_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L930-L977"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.replace_fsa" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replace arcs in index FSA with the corresponding fsas in a vector of
+FSAs(src). For arcs in <cite>index</cite> with label
+<cite>symbol_range_begin &lt;= label &lt; symbol_range_begin + src.Dim0()</cite> will be
+replaced with fsa indexed <cite>label - symbol_begin_range</cite> in <cite>src</cite>.
+The destination state of the arc in <cite>index</cite> is identified with the
+<cite>final-state</cite> of the corresponding FSA in <cite>src</cite>, and the arc in <cite>index</cite>
+will become an epsilon arc leading to a new state in the output that is
+a copy of the start-state of the corresponding FSA in <cite>src</cite>. Arcs with
+labels outside this range are just copied. Labels on final-arcs in <cite>src</cite>
+(Which will be -1) would be set to 0(epsilon) in the result fsa.</p>
+<dl class="simple">
+<dt>Caution: Attributes of the result inherits from <cite>index</cite> and <cite>src</cite> via</dt><dd><p><cite>arc_map_index</cite> and <cite>arc_map_src</cite>, But if there are attributes
+with same name, only the attributes with dtype <cite>torch.float32</cite>
+are supported, the other kinds of attributes are discarded.
+See docs in <cite>fsa_from_binary_function_tensor</cite> for details.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – Fsa that we’ll be inserting into the result, MUST have 3 axes.</p></li>
+<li><p><strong>index</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The Fsa that is to be replaced, It can be a single FSA or a vector of
+FSAs.</p></li>
+<li><p><strong>symbol_range_begin</strong> – Beginning of the range of symbols that are to be replaced with Fsas.</p></li>
+<li><p><strong>ret_arc_map</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if true, will return a tuple
+(new_fsas, arc_map_index, arc_map_src) with <cite>arc_map_index</cite> and
+<cite>arc_map_src</cite> tensors of int32 that maps from arcs in the result to
+arcs in <cite>index</cite> and <cite>src</cite> , with -1’s for the arcs not mapped.
+If false, just returns new_fsas.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="shortest-path">
+<h2>shortest_path<a class="headerlink" href="#shortest-path" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.shortest_path">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">shortest_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L456-L478"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.shortest_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the shortest paths as linear FSAs from the start state
+to the final state in the tropical semiring.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It uses the opposite sign. That is, It uses <cite>max</cite> instead of <cite>min</cite>.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA. It can be either a single FSA or an FsaVec.</p></li>
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – False to use float, i.e., single precision floating point, for scores.
+True to use double.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>FsaVec, it contains the best paths as linear FSAs</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="top-sort">
+<h2>top_sort<a class="headerlink" href="#top-sort" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.top_sort">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">top_sort</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L114-L132"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.top_sort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sort an FSA topologically.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It returns a new FSA. The input FSA is NOT changed.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA to be sorted. It can be either a single FSA
+or a vector of FSAs.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>It returns a single FSA if the input is a single FSA; it returns
+a vector of FSAs if the input is a vector of FSAs.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="union">
+<h2>union<a class="headerlink" href="#union" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.union">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">union</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/autograd.py#L816-L833"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.union" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the union of a FsaVec.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>We require that every fsa in fsas is non-empty, i.e.,
+contains at least two states</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fsas</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – A FsaVec. That is, len(fsas.shape) == 3.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A single Fsa that is the union of the input fsas.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="symbol_table.html" class="btn btn-neutral float-right" title="SymbolTable" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="dense_fsa.html" class="btn btn-neutral float-left" title="DenseFsaVec" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, k2 development team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
