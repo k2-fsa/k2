@@ -1,5 +1,5 @@
 /**
- * @brief python wrapper for Ragged<Any>
+ * @brief python wrapper for k2 2.0
  *
  * @copyright
  * Copyright      2021  Xiaomi Corp.  (authors: Fangjun Kuang)
@@ -20,14 +20,21 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_ANY_H_
-#define K2_PYTHON_CSRC_TORCH_ANY_H_
-
-#include "k2/python/csrc/torch.h"
+#include "k2/python/csrc/torch/v2/any.h"
+#include "k2/python/csrc/torch/v2/k2.h"
+#include "k2/python/csrc/torch/v2/ragged_shape.h"
 
 namespace k2 {
 
-void PybindRaggedAny(py::module &m);
+void PybindV2(py::module &m) {
+  py::module ragged = m.def_submodule(
+      "ragged", "Sub module containing operations for ragged tensors in k2");
+
+  PybindRaggedShape(ragged);
+
+  m.attr("RaggedShape") = ragged.attr("Shape");  // TODO: remove it
+
+  PybindRaggedAny(ragged);
+}
 
 }  // namespace k2
-#endif  // K2_PYTHON_CSRC_TORCH_ANY_H_

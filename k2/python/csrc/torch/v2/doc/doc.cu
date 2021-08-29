@@ -1,6 +1,6 @@
 
 
-#include "k2/python/csrc/torch/doc/doc.h"
+#include "k2/python/csrc/torch/v2/doc/doc.h"
 
 namespace k2 {
 

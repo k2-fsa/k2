@@ -426,6 +426,6 @@ static void PybindRaggedShapeUtils(py::module &m) {
 
 void PybindRagged(py::module &m) {
   k2::PybindRaggedImpl(m);
-  k2::PybindRaggedShape(m);
+  // k2::PybindRaggedShape(m);
   k2::PybindRaggedShapeUtils(m);
 }

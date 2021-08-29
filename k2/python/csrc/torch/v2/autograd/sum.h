@@ -20,12 +20,12 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_AUTOGRAD_SUM_H
-#define K2_PYTHON_CSRC_TORCH_AUTOGRAD_SUM_H
+#ifndef K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_SUM_H
+#define K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_SUM_H
 
 #include "k2/csrc/ragged_ops.h"
-#include "k2/python/csrc/torch/ragged_any.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
 
 using namespace torch::autograd;
 
@@ -110,4 +110,4 @@ class SumFunction : public torch::autograd::Function<SumFunction> {
 
 }  // namespace k2
 
-#endif  // K2_PYTHON_CSRC_TORCH_AUTOGRAD_SUM_H
+#endif  // K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_SUM_H

@@ -1,7 +1,7 @@
 
 
-#ifndef K2_PYTHON_CSRC_TORCH_DOC_ANY_H_
-#define K2_PYTHON_CSRC_TORCH_DOC_ANY_H_
+#ifndef K2_PYTHON_CSRC_TORCH_V2_DOC_ANY_H_
+#define K2_PYTHON_CSRC_TORCH_V2_DOC_ANY_H_
 
 namespace k2 {
 
@@ -198,7 +198,7 @@ Compare two ragged tensors.
 
 Caution:
   The two tensors MUST have the same dtype. Otherwise,
-  it throws.
+  it throws an exception.
 
 >>> import torch
 >>> import k2.ragged as k2r
@@ -225,10 +225,10 @@ Compare two ragged tensors.
 
 Caution:
   The two tensors MUST have the same dtype. Otherwise,
-  it throws.
+  it throws an exception.
 
 >>> import torch
-impor>>> import k2.ragged as k2r
+>>> import k2.ragged as k2r
 >>> a = k2r.Tensor([[1, 2], [3]])
 >>> b = a.clone()
 >>> b != a
@@ -411,6 +411,103 @@ Args:
     It is the return value from the method ``__getstate__``.
 )doc";
 
+static constexpr const char *kRaggedAnyDtypeDoc = R"doc(
+Return the dtype of this tensor.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1], []])
+>>> a.dtype
+torch.int32
+>>> a = a.to(torch.float32)
+>>> a.dtype
+torch.float32
+>>> b = k2r.Tensor([[3]], dtype=torch.float64)
+>>> b.dtype
+torch.float64
+)doc";
+
+static constexpr const char *kRaggedAnyDeviceDoc = R"doc(
+Return the device of this tensor.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1]])
+>>> a.device
+device(type='cpu')
+>>> b = a.to(torch.device('cuda', 0))
+>>> b.device
+device(type='cuda', index=0)
+>>> b.device == torch.device('cuda:0')
+)doc";
+
+static constexpr const char *kRaggedAnyDataDoc = R"doc(
+Return the underlying memory as a 1-D tensor.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1, 2], [], [5], [], [8, 9, 10]])
+>>> a.data
+tensor([ 1,  2,  5,  8,  9, 10], dtype=torch.int32)
+>>> isinstance(a.data, torch.Tensor)
+True
+>>> a.data[0] = -1
+>>> a
+[ [ -1 2 ] [ ] [ 5 ] [ ] [ 8 9 10 ] ]
+>>> a.data[3] = -3
+>>> a
+[ [ -1 2 ] [ ] [ 5 ] [ ] [ -3 9 10 ] ]
+>>> a.data[2] = -2
+>>> a
+[ [ -1 2 ] [ ] [ -2 ] [ ] [ -3 9 10 ] ]
+)doc";
+
+static constexpr const char *kRaggedAnyIsCudaDoc = R"doc(
+Returns:
+  Return ``True`` if the tensor is stored on the GPU, ``False``
+  otherwise.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([[1]])
+>>> a.is_cuda
+False
+>>> b = a.to(torch.device('cuda', 0))
+>>> b.is_cuda
+True
+)doc";
+
+static constexpr const char *kRaggedAnyNumAxesDoc = R"doc(
+Return the number of axes of this tensor.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor('[ [] [] [] [] ]')
+>>> a.num_axes
+2
+>>> b = k2r.Tensor('[ [[] []] [[]] ]')
+>>> b.num_axes
+3
+>>> c = k24.Tensor('[ [ [[] [1]] [[3 4] []] ]  [ [[1]] [[2] [3 4]] ] ]')
+>>> c.num_axes
+4
+
+Returns:
+  Return number of axes of this tensor, which is at least 2.
+)doc";
+
+static constexpr const char *kRaggedAnyDim0Doc = R"doc(
+Return number of sublists at axis 0.
+
+>>> import k2.ragged as k2r
+>>> a = k2r.Tensor([ [1, 2], [3], [], [], [] ])
+>>> a.dim0
+5
+>>> b = k2r.Tensor('[ [[]] [[] []]]')
+>>> b.dim0
+2
+)doc";
+
 }  // namespace k2
 
-#endif  // K2_PYTHON_CSRC_TORCH_DOC_ANY_H_
+#endif  // K2_PYTHON_CSRC_TORCH_V2_DOC_ANY_H_

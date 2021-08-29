@@ -20,9 +20,9 @@
  * limitations under the License.
  */
 
-#include "k2/python/csrc/torch/autograd/sum.h"
-#include "k2/python/csrc/torch/ragged_any.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/autograd/sum.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
 

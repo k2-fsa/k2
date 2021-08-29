@@ -24,19 +24,16 @@
 #include <vector>
 
 #include "k2/csrc/ragged.h"
-#include "k2/python/csrc/torch/any.h"
-#include "k2/python/csrc/torch/doc/any.h"
-#include "k2/python/csrc/torch/doc/doc.h"
-#include "k2/python/csrc/torch/ragged_any.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/any.h"
+#include "k2/python/csrc/torch/v2/doc/any.h"
+#include "k2/python/csrc/torch/v2/doc/doc.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
 
 void PybindRaggedAny(py::module &m) {
-  py::module ragged = m.def_submodule(
-      "ragged", "Sub module containing operations for ragged tensors in k2");
-
-  py::class_<RaggedAny> any(ragged, "Tensor");
+  py::class_<RaggedAny> any(m, "Tensor");
 
   //==================================================
   //      k2.ragged.Tensor methods
@@ -213,47 +210,55 @@ void PybindRaggedAny(py::module &m) {
   //      k2.ragged.Tensor properties
   //--------------------------------------------------
 
-  any.def_property_readonly("dtype", [](const RaggedAny &self) -> py::object {
-    Dtype t = self.any_.GetDtype();
-    auto torch = py::module::import("torch");
-    switch (t) {
-      case kFloatDtype:
-        return torch.attr("float32");
-      case kDoubleDtype:
-        return torch.attr("float64");
-      case kInt32Dtype:
-        return torch.attr("int32");
-      default:
-        K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
-    }
+  any.def_property_readonly(
+      "dtype",
+      [](const RaggedAny &self) -> py::object {
+        Dtype t = self.any_.GetDtype();
+        auto torch = py::module::import("torch");
+        switch (t) {
+          case kFloatDtype:
+            return torch.attr("float32");
+          case kDoubleDtype:
+            return torch.attr("float64");
+          case kInt32Dtype:
+            return torch.attr("int32");
+          default:
+            K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
+        }
 
-    // Unreachable code
-    return py::none();
-  });
+        // Unreachable code
+        return py::none();
+      },
+      kRaggedAnyDtypeDoc);
 
-  any.def_property_readonly("device", [](const RaggedAny &self) -> py::object {
-    DeviceType d = self.any_.Context()->GetDeviceType();
-    torch::DeviceType device_type = ToTorchDeviceType(d);
+  any.def_property_readonly(
+      "device",
+      [](const RaggedAny &self) -> py::object {
+        DeviceType d = self.any_.Context()->GetDeviceType();
+        torch::DeviceType device_type = ToTorchDeviceType(d);
 
-    torch::Device device(device_type, self.any_.Context()->GetDeviceId());
+        torch::Device device(device_type, self.any_.Context()->GetDeviceId());
 
-    PyObject *ptr = THPDevice_New(device);
-    py::handle h(ptr);
+        PyObject *ptr = THPDevice_New(device);
 
-    // takes ownership
-    return py::reinterpret_steal<py::object>(h);
-  });
+        // takes ownership
+        return py::reinterpret_steal<py::object>(ptr);
+      },
+      kRaggedAnyDeviceDoc);
 
   // Return the underlying memory of this tensor.
   // No data is copied. Memory is shared.
-  any.def_property_readonly("data", [](RaggedAny &self) -> torch::Tensor {
-    Dtype t = self.any_.GetDtype();
-    FOR_REAL_AND_INT32_TYPES(
-        t, T, { return ToTorch(self.any_.values.Specialize<T>()); });
+  any.def_property_readonly(
+      "data",
+      [](RaggedAny &self) -> torch::Tensor {
+        Dtype t = self.any_.GetDtype();
+        FOR_REAL_AND_INT32_TYPES(
+            t, T, { return ToTorch(self.any_.values.Specialize<T>()); });
 
-    // Unreachable code
-    return {};
-  });
+        // Unreachable code
+        return {};
+      },
+      kRaggedAnyDataDoc);
 
   any.def_property_readonly(
       "shape", [](RaggedAny &self) -> RaggedShape { return self.any_.shape; });
@@ -279,26 +284,30 @@ void PybindRaggedAny(py::module &m) {
       },
       kRaggedAnyRequiresGradPropDoc);
 
-  any.def_property_readonly("is_cuda", [](RaggedAny &self) -> bool {
-    return self.any_.Context()->GetDeviceType() == kCuda;
-  });
+  any.def_property_readonly(
+      "is_cuda",
+      [](RaggedAny &self) -> bool {
+        return self.any_.Context()->GetDeviceType() == kCuda;
+      },
+      kRaggedAnyIsCudaDoc);
 
   // NumAxes() does not access GPU memory
-  any.def_property_readonly("num_axes", [](const RaggedAny &self) -> int32_t {
-    return self.any_.NumAxes();
-  });
+  any.def_property_readonly(
+      "num_axes",
+      [](const RaggedAny &self) -> int32_t { return self.any_.NumAxes(); },
+      kRaggedAnyNumAxesDoc);
 
   // Dim0() does not access GPU memory
-  any.def_property_readonly("dim0", [](const RaggedAny &self) -> int32_t {
-    return self.any_.Dim0();
-  });
+  any.def_property_readonly(
+      "dim0", [](const RaggedAny &self) -> int32_t { return self.any_.Dim0(); },
+      kRaggedAnyDim0Doc);
 
   //==================================================
   //      _k2.ragged.functions
   //--------------------------------------------------
 
   // TODO: change the function name from "create_tensor" to "tensor"
-  ragged.def(
+  m.def(
       "create_tensor",
       [](py::list data, py::object dtype = py::none()) -> RaggedAny {
         return RaggedAny(data, dtype);

@@ -20,8 +20,8 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_RAGGED_ANY_H
-#define K2_PYTHON_CSRC_TORCH_RAGGED_ANY_H
+#ifndef K2_PYTHON_CSRC_TORCH_RAGGED_V2_ANY_H
+#define K2_PYTHON_CSRC_TORCH_RAGGED_V2_ANY_H
 
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/torch.h"
@@ -159,4 +159,4 @@ struct RaggedAny {
 
 }  // namespace k2
 
-#endif  // K2_PYTHON_CSRC_TORCH_RAGGED_ANY_H
+#endif  // K2_PYTHON_CSRC_TORCH_RAGGED_V2_ANY_H

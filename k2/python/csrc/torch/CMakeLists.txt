@@ -1,6 +1,5 @@
 # please keep the list sorted
 set(torch_srcs
-  any.cu
   arc.cu
   discounted_cum_sum.cu
   fsa.cu
@@ -9,11 +8,14 @@ set(torch_srcs
   index_select.cu
   nbest.cu
   ragged.cu
-  ragged_any.cu
   ragged_ops.cu
   torch_util.cu
 
-  doc/doc.cu
+  v2/k2.cu
+  v2/any.cu
+  v2/doc/doc.cu
+  v2/ragged_any.cu
+  v2/ragged_shape.cu
 )
 
 set(torch_srcs_with_prefix)

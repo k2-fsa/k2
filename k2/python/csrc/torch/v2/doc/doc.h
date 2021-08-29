@@ -1,7 +1,7 @@
 
 
-#ifndef K2_PYTHON_CSRC_TORCH_DOC_DOC_H_
-#define K2_PYTHON_CSRC_TORCH_DOC_DOC_H_
+#ifndef K2_PYTHON_CSRC_TORCH_V2_DOC_DOC_H_
+#define K2_PYTHON_CSRC_TORCH_V2_DOC_DOC_H_
 #include "k2/python/csrc/torch.h"
 
 namespace k2 {
@@ -16,4 +16,4 @@ void SetMethodDoc(py::object *cls, const char *name, const char *doc);
 
 }  // namespace k2
 
-#endif  // K2_PYTHON_CSRC_TORCH_DOC_DOC_H_
+#endif  // K2_PYTHON_CSRC_TORCH_V2_DOC_DOC_H_
