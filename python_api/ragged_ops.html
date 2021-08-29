@@ -216,7 +216,7 @@ the elements of <cite>indexes</cite> are interpreted as indexes into axis <cite>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>src</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedArc</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>, <a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a>]) – Source ragged tensor or ragged shape to index.</p></li>
+<li><p><strong>src</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedArc</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>, <a class="reference internal" href="tensor.html#k2.ragged.Shape" title="_k2.ragged.Shape"><code class="xref py py-class docutils literal notranslate"><span class="pre">Shape</span></code></a>]) – Source ragged tensor or ragged shape to index.</p></li>
 <li><p><strong>axis</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The axis to be indexed. Must satisfy 0 &lt;= axis &lt; src.num_axes()</p></li>
 <li><p><strong>indexes</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – Array of indexes, which will be interpreted as indexes into axis <cite>axis</cite>
 of <cite>src</cite>, i.e. with 0 &lt;= indexes[i] &lt; src.tot_size(axis).
@@ -300,7 +300,7 @@ from <cite>src</cite>.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>src</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>, <a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a>]) – The source ragged tensor or ragged shape. Must have <cite>num_axes() &gt; 2</cite>.</p></li>
+<li><p><strong>src</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>, <a class="reference internal" href="tensor.html#k2.ragged.Shape" title="_k2.ragged.Shape"><code class="xref py py-class docutils literal notranslate"><span class="pre">Shape</span></code></a>]) – The source ragged tensor or ragged shape. Must have <cite>num_axes() &gt; 2</cite>.</p></li>
 <li><p><strong>axis</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The axis to remove.  If src is a _k2.RaggedShape it must satisfy
 <cite>0 &lt;= axis &lt; src.num_axes()</cite>;
 otherwise it must satisfy <cite>0 &lt;= axis &lt; src.num_axes() - 1</cite> (we can’t
@@ -465,12 +465,12 @@ tensor. The tensor returned is on the same device as <cite>src</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>src</strong> (<a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a>) – Source RaggedShape.</p></li>
+<li><p><strong>src</strong> (<a class="reference internal" href="tensor.html#k2.ragged.Shape" title="_k2.ragged.Shape"><code class="xref py py-class docutils literal notranslate"><span class="pre">Shape</span></code></a>) – Source RaggedShape.</p></li>
 <li><p><strong>layer</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Layer that is desired, from <cite>0 .. src.num_axes() - 2</cite> (inclusive).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a></p>
+<dd class="field-even"><p><a class="reference internal" href="tensor.html#k2.ragged.Shape" title="_k2.ragged.Shape"><code class="xref py py-class docutils literal notranslate"><span class="pre">Shape</span></code></a></p>
 </dd>
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>This returned shape will have <cite>num_axes() == 2</cite>, the minimal case of
@@ -565,7 +565,7 @@ it to GPU.</p>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference internal" href="_k2.html#k2.RaggedShape" title="_k2.RaggedShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code></a></p>
+<dd class="field-even"><p><a class="reference internal" href="tensor.html#k2.ragged.Shape" title="_k2.ragged.Shape"><code class="xref py py-class docutils literal notranslate"><span class="pre">Shape</span></code></a></p>
 </dd>
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Return a ragged shape with 2 axes.</p>

@@ -18,3 +18,10 @@ Tensor
 .. autoclass:: k2.ragged.Tensor
   :members:
   :special-members:
+
+Shape
+-----
+
+.. autoclass:: k2.ragged.Shape
+  :members:
+  :special-members:
