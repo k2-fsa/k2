@@ -1,5 +1,5 @@
 /**
- * @brief python wrapper for k2 2.0
+ * @brief python wrapper for Ragged<Arc>
  *
  * @copyright
  * Copyright      2021  Xiaomi Corp.  (authors: Fangjun Kuang)
@@ -20,24 +20,14 @@
  * limitations under the License.
  */
 
-#include "k2/python/csrc/torch/v2/any.h"
-#include "k2/python/csrc/torch/v2/fsa.h"
-#include "k2/python/csrc/torch/v2/k2.h"
-#include "k2/python/csrc/torch/v2/ragged_shape.h"
+#ifndef K2_PYTHON_CSRC_TORCH_V2_FSA__H_
+#define K2_PYTHON_CSRC_TORCH_V2_FSA__H_
+
+#include "k2/python/csrc/torch.h"
 
 namespace k2 {
 
-void PybindV2(py::module &m) {
-  py::module ragged = m.def_submodule(
-      "ragged", "Sub module containing operations for ragged tensors in k2");
-
-  PybindRaggedShape(ragged);
-
-  m.attr("RaggedShape") = ragged.attr("Shape");  // TODO: remove it
-
-  PybindRaggedAny(ragged);
-  PybindRaggedArc(ragged);
-  m.attr("RaggedArc") = ragged.attr("Fsa");  // TODO: remove it
-}
+void PybindRaggedArc(py::module &m);
 
 }  // namespace k2
+#endif  // K2_PYTHON_CSRC_TORCH_V2_FSA__H_

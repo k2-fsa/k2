@@ -31,13 +31,13 @@ namespace k2 {
 // RaggedAny is introduced to support backward propagations on
 // Ragged<Any> since there has to be a tensor involved during backprob
 struct RaggedAny {
-  Ragged<Any> any_;
-  torch::Tensor data_;  // shares the underlying memory with any_.values
+  Ragged<Any> any;
+  torch::Tensor data;  // shares the underlying memory with any.values
 
   // The default constructor initializes an invalid ragged tensor.
   RaggedAny() = default;
 
-  explicit RaggedAny(const Ragged<Any> &any) : any_(any) {}
+  explicit RaggedAny(const Ragged<Any> &any) : any(any) {}
 
   /* Create a ragged tensor from its string representation.
 
@@ -67,27 +67,26 @@ struct RaggedAny {
   RaggedAny(py::list data, py::object dtype = py::none());
 
   // share Ragged<Any> with other
-  RaggedAny(const RaggedAny &other) : any_(other.any_) {}
+  RaggedAny(const RaggedAny &other) : any(other.any) {}
 
   // share Ragged<Any> with other
   RaggedAny &operator=(const RaggedAny &other) {
-    any_ = other.any_;
+    any = other.any;
     return *this;
   }
 
-  RaggedAny(RaggedAny &&other) { any_ = std::move(other.any_); }
+  RaggedAny(RaggedAny &&other) { any = std::move(other.any); }
 
   RaggedAny &operator=(RaggedAny &&other) {
-    if (&other != this) any_ = std::move(other.any_);
+    if (&other != this) any = std::move(other.any);
     return *this;
   }
 
-  // Populate `this->data_` and return it
+  // Populate `this->data` and return it
   const torch::Tensor &Data() const;
 
   /* Convert a ragged tensor to a string.
 
-     @param any The input ragged tensor.
      @return Return a string representation of the ragged tensor.
    */
   std::string ToString() const;

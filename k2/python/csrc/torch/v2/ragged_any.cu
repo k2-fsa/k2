@@ -35,11 +35,11 @@ RaggedAny::RaggedAny(const std::string &s, py::object dtype) {
   if (dtype.is_none()) {
     try {
       // we try int first, if it fails, use float
-      any_ = Ragged<int32_t>(s).Generic();
+      any = Ragged<int32_t>(s).Generic();
       return;
     } catch (const std::exception &) {
       // we try int first, if it fails, use float
-      any_ = Ragged<int32_t>(s).Generic();
+      any = Ragged<int32_t>(s).Generic();
     }
   }
 
@@ -48,7 +48,7 @@ RaggedAny::RaggedAny(const std::string &s, py::object dtype) {
   Dtype t = ScalarTypeToDtype(scalar_type);
 
   FOR_REAL_AND_INT32_TYPES(t, T, {
-    any_ = Ragged<T>(s).Generic();
+    any = Ragged<T>(s).Generic();
     return;
   });
 
@@ -67,11 +67,11 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
     try {
       // we try int first, if it fails, use float
       auto vecs = data.cast<std::vector<std::vector<int>>>();
-      any_ = CreateRagged2(vecs).Generic();
+      any = CreateRagged2(vecs).Generic();
       return;
     } catch (const std::exception &) {
       auto vecs = data.cast<std::vector<std::vector<float>>>();
-      any_ = CreateRagged2(vecs).Generic();
+      any = CreateRagged2(vecs).Generic();
       return;
     }
   }
@@ -82,7 +82,7 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
 
   FOR_REAL_AND_INT32_TYPES(t, T, {
     auto vecs = data.cast<std::vector<std::vector<T>>>();
-    any_ = CreateRagged2(vecs).Generic();
+    any = CreateRagged2(vecs).Generic();
     return;
   });
 
@@ -92,32 +92,32 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
 }
 
 const torch::Tensor &RaggedAny::Data() const {
-  if (!data_.defined()) {
-    Dtype t = any_.GetDtype();
+  if (!data.defined()) {
+    Dtype t = any.GetDtype();
     FOR_REAL_AND_INT32_TYPES(t, T, {
-      const_cast<RaggedAny *>(this)->data_ =
-          ToTorch((const_cast<RaggedAny *>(this)->any_).Specialize<T>().values);
+      const_cast<RaggedAny *>(this)->data =
+          ToTorch((const_cast<RaggedAny *>(this)->any).Specialize<T>().values);
     });
   }
-  return data_;
+  return data;
 }
 
 std::string RaggedAny::ToString() const {
   std::ostringstream os;
-  Dtype t = any_.GetDtype();
-  FOR_REAL_AND_INT32_TYPES(t, T, { os << any_.Specialize<T>(); });
+  Dtype t = any.GetDtype();
+  FOR_REAL_AND_INT32_TYPES(t, T, { os << any.Specialize<T>(); });
   return os.str();
 }
 
 RaggedAny RaggedAny::To(torch::Device device) const {
-  ContextPtr context = any_.Context();
+  ContextPtr context = any.Context();
   if (device.is_cpu()) {
     // CPU -> CPU
     if (context->GetDeviceType() == kCpu) return *this;
 
     // CUDA -> CPU
     DeviceGuard guard(context);
-    return RaggedAny(any_.To(GetCpuContext()));
+    return RaggedAny(any.To(GetCpuContext()));
   }
 
   K2_CHECK(device.is_cuda()) << device.str();
@@ -132,23 +132,22 @@ RaggedAny RaggedAny::To(torch::Device device) const {
   // CPU to CUDA
   // or from one GPU to another GPU
   DeviceGuard guard(device_index);
-  return RaggedAny(any_.To(GetCudaContext(device_index)));
+  return RaggedAny(any.To(GetCudaContext(device_index)));
 }
 
 RaggedAny RaggedAny::To(torch::ScalarType scalar_type) const {
-  Dtype d = any_.GetDtype();
+  Dtype d = any.GetDtype();
 
   switch (scalar_type) {
     case torch::kFloat:
-      FOR_REAL_AND_INT32_TYPES(d, T, {
-        return RaggedAny(any_.Specialize<T>().ToFloat().Generic());
-      });
+      FOR_REAL_AND_INT32_TYPES(
+          d, T, { return RaggedAny(any.Specialize<T>().ToFloat().Generic()); });
     case torch::kInt:
       FOR_REAL_AND_INT32_TYPES(
-          d, T, { return RaggedAny(any_.Specialize<T>().ToInt().Generic()); });
+          d, T, { return RaggedAny(any.Specialize<T>().ToInt().Generic()); });
     case torch::kDouble:
       FOR_REAL_AND_INT32_TYPES(d, T, {
-        return RaggedAny(any_.Specialize<T>().ToDouble().Generic());
+        return RaggedAny(any.Specialize<T>().ToDouble().Generic());
       });
     default:
       K2_LOG(FATAL) << "Unsupported scalar type: "
@@ -159,9 +158,9 @@ RaggedAny RaggedAny::To(torch::ScalarType scalar_type) const {
 }
 
 RaggedAny RaggedAny::Clone() const {
-  Dtype t = any_.GetDtype();
+  Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(
-      t, T, { return RaggedAny(any_.Specialize<T>().Clone().Generic()); });
+      t, T, { return RaggedAny(any.Specialize<T>().Clone().Generic()); });
 
   // Unreachable code
   return {};
@@ -175,14 +174,14 @@ RaggedAny &RaggedAny::SetRequiresGrad(bool requires_grad /*=true*/) {
 }
 
 torch::Tensor RaggedAny::Sum(float initial_value /*=0*/) const {
-  DeviceGuard guard(any_.Context());
+  DeviceGuard guard(any.Context());
   return SumFunction::apply(*this, Data(), initial_value);
 }
 
 RaggedAny RaggedAny::Index(int32_t axis, int32_t i) const {
   K2_CHECK_EQ(axis, 0) << "Support only axis == 0 right now";
 
-  return RaggedAny(any_.Index(axis, i));
+  return RaggedAny(any.Index(axis, i));
 }
 
 }  // namespace k2
