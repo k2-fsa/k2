@@ -320,21 +320,6 @@ static void PybindIndex(py::module &m) {
       py::arg("need_value_indexes") = true);
 }
 
-static void PybindRegularRaggedShape(py::module &m) {
-  // TODO(fangjun): pass a torch.device to specify the context
-  //
-  // As a workaround, the user can use
-  // _k2.regular_ragged_shape(...).to(torch.device)
-  // to move it to a given device
-  m.def(
-      "regular_ragged_shape",
-      [](int32_t dim0, int32_t dim1) -> RaggedShape {
-        ContextPtr c = GetCpuContext();
-        return RegularRaggedShape(c, dim0, dim1);
-      },
-      py::arg("dim0"), py::arg("dim1"));
-}
-
 template <typename T>
 static void PybindArgMaxPerSublist(py::module &m) {
   m.def(
@@ -427,7 +412,6 @@ void PybindRaggedOps(py::module &m) {
   PybindRaggedArange<int32_t>(m, "ragged_int_arange");
   PybindRaggedIntToList(m, "ragged_int_to_list");
   PybindRaggedRemoveAxis<int32_t>(m);
-  PybindRegularRaggedShape(m);
   PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
   PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
   PybindSortSublists<float>(m);

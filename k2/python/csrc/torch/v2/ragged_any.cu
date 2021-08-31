@@ -216,7 +216,7 @@ RaggedAny RaggedAny::RemoveValuesEq(float target) /*const*/ {
   });
 }
 
-torch::Tensor RaggedAny::ArgMaxPerSublist(py::object initial_value) /*const*/ {
+torch::Tensor RaggedAny::ArgMax(py::object initial_value) /*const*/ {
   K2_CHECK((bool)initial_value);
   K2_CHECK(!initial_value.is_none());
 
@@ -229,14 +229,13 @@ torch::Tensor RaggedAny::ArgMaxPerSublist(py::object initial_value) /*const*/ {
 
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
-    k2::ArgMaxPerSublist<T>(any.Specialize<T>(), initial_value.cast<T>(),
-                            &indexes);
+    ArgMaxPerSublist<T>(any.Specialize<T>(), initial_value.cast<T>(), &indexes);
   });
 
   return ToTorch(indexes);
 }
 
-torch::Tensor RaggedAny::MaxPerSublist(py::object initial_value) /*const*/ {
+torch::Tensor RaggedAny::Max(py::object initial_value) /*const*/ {
   K2_CHECK((bool)initial_value);
   K2_CHECK(!initial_value.is_none());
 
@@ -250,15 +249,14 @@ torch::Tensor RaggedAny::MaxPerSublist(py::object initial_value) /*const*/ {
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
     Array1<T> max_values(any.Context(), num_rows);
-    k2::MaxPerSublist<T>(any.Specialize<T>(), initial_value.cast<T>(),
-                         &max_values);
+    MaxPerSublist<T>(any.Specialize<T>(), initial_value.cast<T>(), &max_values);
     return ToTorch(max_values);
   });
   // Unreachable code
   return {};
 }
 
-torch::Tensor RaggedAny::MinPerSublist(py::object initial_value) /*const*/ {
+torch::Tensor RaggedAny::Min(py::object initial_value) /*const*/ {
   K2_CHECK((bool)initial_value);
   K2_CHECK(!initial_value.is_none());
 
@@ -272,8 +270,7 @@ torch::Tensor RaggedAny::MinPerSublist(py::object initial_value) /*const*/ {
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
     Array1<T> min_values(any.Context(), num_rows);
-    k2::MinPerSublist<T>(any.Specialize<T>(), initial_value.cast<T>(),
-                         &min_values);
+    MinPerSublist<T>(any.Specialize<T>(), initial_value.cast<T>(), &min_values);
     return ToTorch(min_values);
   });
   // Unreachable code
@@ -301,18 +298,43 @@ RaggedAny RaggedAny::Cat(const std::vector<RaggedAny> &srcs, int32_t axis) {
   return {};
 }
 
-RaggedAny RaggedAny::NormalizePerSublist(bool use_log) /*const*/ {
+std::tuple<RaggedAny, torch::optional<RaggedAny>,
+           torch::optional<torch::Tensor>>
+RaggedAny::Unique(bool need_num_repeats /*= false*/,
+                  bool need_new2old_indexes /*= false*/) {
+  DeviceGuard guard(any.Context());
+
+  Dtype t = any.GetDtype();
+  K2_CHECK_EQ(t, kInt32Dtype) << "Unsupported dtype: " << TraitsOf(t).Name();
+
+  Ragged<int32_t> num_repeats;
+  Array1<int32_t> new2old_indexes;
+  Ragged<int32_t> ans = UniqueSequences(
+      any.Specialize<int32_t>(), need_num_repeats ? &num_repeats : nullptr,
+      need_new2old_indexes ? &new2old_indexes : nullptr);
+
+  torch::optional<RaggedAny> num_repeats_tensor;
+  if (need_num_repeats) num_repeats_tensor = RaggedAny(num_repeats.Generic());
+
+  torch::optional<torch::Tensor> new2old_indexes_tensor;
+  if (need_new2old_indexes) new2old_indexes_tensor = ToTorch(new2old_indexes);
+
+  return std::make_tuple(RaggedAny(ans.Generic()), num_repeats_tensor,
+                         new2old_indexes_tensor);
+}
+
+RaggedAny RaggedAny::Normalize(bool use_log) /*const*/ {
   DeviceGuard guard(any.Context());
   Dtype t = any.GetDtype();
 
   if (t == kFloatDtype) {
     return RaggedAny(
-        k2::NormalizePerSublist(any.Specialize<float>(), use_log).Generic());
+        NormalizePerSublist(any.Specialize<float>(), use_log).Generic());
   }
 
   if (t == kDoubleDtype) {
     return RaggedAny(
-        k2::NormalizePerSublist(any.Specialize<double>(), use_log).Generic());
+        NormalizePerSublist(any.Specialize<double>(), use_log).Generic());
   }
 
   K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
@@ -377,7 +399,7 @@ py::list RaggedAny::ToList() /*const*/ {
   return py::none();
 }
 
-torch::optional<torch::Tensor> RaggedAny::SortSublists(
+torch::optional<torch::Tensor> RaggedAny::Sort(
     bool descending /*= false*/, bool need_new2old_indexes /*= false*/) {
   DeviceGuard guard(any.Context());
   Dtype t = any.GetDtype();
@@ -390,11 +412,11 @@ torch::optional<torch::Tensor> RaggedAny::SortSublists(
 
   FOR_REAL_AND_INT32_TYPES(t, T, {
     if (descending) {
-      k2::SortSublists<T, GreaterThan<T>>(
+      SortSublists<T, GreaterThan<T>>(
           &any.Specialize<T>(), need_new2old_indexes ? &new2old : nullptr);
     } else {
-      k2::SortSublists<T, LessThan<T>>(
-          &any.Specialize<T>(), need_new2old_indexes ? &new2old : nullptr);
+      SortSublists<T, LessThan<T>>(&any.Specialize<T>(),
+                                   need_new2old_indexes ? &new2old : nullptr);
     }
   });
 

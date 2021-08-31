@@ -30,7 +30,7 @@
 namespace k2 {
 
 void PybindRaggedShape(py::module &m) {
-  py::class_<RaggedShape> shape(m, "Shape");
+  py::class_<RaggedShape> shape(m, "RaggedShape");
 
   // Construct a ragged shape from a string, e.g.,
   // [ [x x] [x] [] ]
@@ -167,6 +167,44 @@ void PybindRaggedShape(py::module &m) {
         return py::reinterpret_steal<py::object>(ptr);
       },
       kRaggedShapeDeviceDoc);
+
+  shape.def_static(
+      "regular_ragged_shape",
+      [](int32_t dim0, int32_t dim1) -> RaggedShape {
+        ContextPtr c = GetCpuContext();
+        return RegularRaggedShape(c, dim0, dim1);
+      },
+      py::arg("dim0"), py::arg("dim1"));
+
+  m.attr("regular_ragged_shape") = shape.attr("regular_ragged_shape");
+
+  shape.def("get_layer",
+            [](const RaggedShape &self, int32_t layer) -> RaggedShape {
+              return GetLayer(self, layer);
+            });
+
+  // return a pair:
+  //  - ans (RaggedShape)
+  //  - value_indexes (optional)
+  //
+  shape.def(
+      "index",
+      [](RaggedShape &self, int32_t axis, torch::Tensor indexes,
+         bool need_value_indexes =
+             true) -> std::pair<RaggedShape, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(self.Context());
+        Array1<int32_t> indexes_array = FromTorch<int32_t>(indexes);
+        Array1<int32_t> value_indexes;
+        RaggedShape ans = Index(self, axis, indexes_array,
+                                need_value_indexes ? &value_indexes : nullptr);
+
+        torch::optional<torch::Tensor> value_indexes_tensor;
+        if (need_value_indexes) value_indexes_tensor = ToTorch(value_indexes);
+
+        return std::make_pair(ans, value_indexes_tensor);
+      },
+      py::arg("axis"), py::arg("indexes"),
+      py::arg("need_value_indexes") = true);
 }
 
 }  // namespace k2

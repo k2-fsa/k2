@@ -160,19 +160,23 @@ struct RaggedAny {
   RaggedAny RemoveValuesEq(float target) /*const*/;
 
   // Wrapper for k2::ArgMaxPerSublist
-  torch::Tensor ArgMaxPerSublist(py::object initial_value) /*const*/;
+  torch::Tensor ArgMax(py::object initial_value) /*const*/;
 
   // Wrapper for k2::MaxPerSublist
-  torch::Tensor MaxPerSublist(py::object initial_value) /*const*/;
+  torch::Tensor Max(py::object initial_value) /*const*/;
 
   // Wrapper for k2::MinPerSublist
-  torch::Tensor MinPerSublist(py::object initial_value) /*const*/;
+  torch::Tensor Min(py::object initial_value) /*const*/;
 
   // Wrapper for k2::Cat
   static RaggedAny Cat(const std::vector<RaggedAny> &srcs, int32_t axis);
 
+  std::tuple<RaggedAny, torch::optional<RaggedAny>,
+             torch::optional<torch::Tensor>>
+  Unique(bool need_num_repeats = false, bool need_new2old_indexes = false);
+
   // Wrapper for k2::NormalizePerSublist
-  RaggedAny NormalizePerSublist(bool use_log) /*const*/;
+  RaggedAny Normalize(bool use_log) /*const*/;
 
   // Wrapper for k2::PadRagged
   torch::Tensor Pad(const std::string &mode,
@@ -181,8 +185,8 @@ struct RaggedAny {
   py::list ToList() /*const*/;
 
   // Wrapper for k2::SortSublists
-  torch::optional<torch::Tensor> SortSublists(
-      bool descending = false, bool need_new2old_indexes = false);
+  torch::optional<torch::Tensor> Sort(bool descending = false,
+                                      bool need_new2old_indexes = false);
 };
 
 }  // namespace k2

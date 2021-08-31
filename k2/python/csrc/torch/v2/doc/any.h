@@ -10,17 +10,17 @@ Create a ragged tensor with two axes.
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([ [1, 2], [5], [], [9] ])
+>>> a = k2r.RaggedTensor([ [1, 2], [5], [], [9] ])
 >>> a
 [ [ 1 2 ] [ 5 ] [ ] [ 9 ] ]
 >>> a.dtype
 torch.int32
->>> b = k2r.Tensor([ [1, 3.0], [] ])
+>>> b = k2r.RaggedTensor([ [1, 3.0], [] ])
 >>> b
 [ [ 1 3 ] [ ] ]
 >>> b.dtype
 torch.float32
->>> c = k2r.Tensor([ [1] ], dtype=torch.float64)
+>>> c = k2r.RaggedTensor([ [1] ], dtype=torch.float64)
 >>> c
 [ [ 1 ] ]
 >>> c.dtype
@@ -44,18 +44,18 @@ An example string for a 2-axis ragged tensor is given below::
 
 An example string for a 3-axis ragged tensor is given below::
 
-    [ [[1] [2 3]]  [[2] [] [3, 4,]] ]
+    [ [[1] [2 3]]  [[2] [] [3 4]] ]
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor('[ [1] [] [3 4] ]')
+>>> a = k2r.RaggedTensor('[ [1] [] [3 4] ]')
 >>> a
 [ [ 1 ] [ ] [ 3 4 ] ]
 >>> a.num_axes
 2
 >>> a.dtype
 torch.int32
->>> b = k2r.Tensor('[ [[] [3]]  [[10]] ]', dtype=torch.float32)
+>>> b = k2r.RaggedTensor('[ [[] [3]]  [[10]] ]', dtype=torch.float32)
 >>> b
 [ [ [ ] [ 3 ] ] [ [ 10 ] ] ]
 >>> b.dtype
@@ -87,7 +87,7 @@ Note:
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1], [2, 3]])
+>>> a = k2r.RaggedTensor([[1], [2, 3]])
 >>> a.device
 device(type='cpu')
 >>> b = a.to(torch.device('cuda', 0))
@@ -112,7 +112,7 @@ Note:
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1], [2, 3, 5]])
+>>> a = k2r.RaggedTensor([[1], [2, 3, 5]])
 >>> a.dtype
 torch.int32
 >>> b = a.to(torch.float64)
@@ -120,8 +120,8 @@ torch.int32
 torch.float64
 
 Caution:
-  Currently, only support for dtypes ``torch.int32``, ``torch.float32``, and
-  ``torch.float64`` are implemented. We can support other types if needed.
+  Currently, only support dtypes ``torch.int32``, ``torch.float32``, and
+  ``torch.float64``. We can support other types if needed.
 
 Args:
   dtype:
@@ -136,7 +136,7 @@ Return a string representation of this tensor.
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1], [2, 3], []])
+>>> a = k2r.RaggedTensor([[1], [2, 3], []])
 >>> a
 [ [ 1 ] [ 2 3 ] [ ] ]
 >>> str(a)
@@ -154,7 +154,7 @@ Note:
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor('[ [[1 3] [] [9]]  [[8]] ]')
+>>> a = k2r.RaggedTensor('[ [[1 3] [] [9]]  [[8]] ]')
 >>> a
 [ [ [ 1 3 ] [ ] [ 9 ] ] [ [ 8 ] ] ]
 >>> a[0]
@@ -174,7 +174,7 @@ Return a copy of this tensor.
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1, 2], [3]])
+>>> a = k2r.RaggedTensor([[1, 2], [3]])
 >>> b = a
 >>> c = a.clone()
 >>> a
@@ -202,7 +202,7 @@ Caution:
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1]])
+>>> a = k2r.RaggedTensor([[1]])
 >>> b = a.clone()
 >>> a ==  b
 True
@@ -229,11 +229,11 @@ Caution:
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1, 2], [3]])
+>>> a = k2r.RaggedTensor([[1, 2], [3]])
 >>> b = a.clone()
 >>> b != a
 False
->>> c = k2r.Tensor([[1], [2], [3]])
+>>> c = k2r.RaggedTensor([[1], [2], [3]])
 >>> c != a
 True
 
@@ -251,7 +251,7 @@ Return ``False`` otherwise.
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1]], dtype=torch.float32)
+>>> a = k2r.RaggedTensor([[1]], dtype=torch.float32)
 >>> a.requires_grad
 False
 >>> a.requires_grad = True
@@ -267,7 +267,7 @@ The attribute will contain the gradients computed and future
 calls to ``backward()`` will accumulate (add) gradients into it.
 
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1, 2], [3], [5, 6], []], dtype=torch.float32)
+>>> a = k2r.RaggedTensor([[1, 2], [3], [5, 6], []], dtype=torch.float32)
 >>> a.requires_grad_(True)
 [ [ 1 2 ] [ 3 ] [ 5 6 ] [ ] ]
 >>> b = a.sum()
@@ -293,7 +293,7 @@ Caution:
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1]], dtype=torch.float64)
+>>> a = k2r.RaggedTensor([[1]], dtype=torch.float64)
 >>> a.requires_grad
 False
 >>> a.requires_grad_(True)
@@ -320,7 +320,7 @@ Note:
   i.e., with dtype being torch.float32 or torch.float64.
 
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor('[ [[1 2] [] [5]]  [[10]] ]', dtype=torch.float32)
+>>> a = k2r.RaggedTensor('[ [[1 2] [] [5]]  [[10]] ]', dtype=torch.float32)
 >>> a.requires_grad_(True)
 [ [ [ 1 2 ] [ ] [ 5 ] ] [ [ 10 ] ] ]
 >>> b = a.sum()
@@ -348,10 +348,10 @@ Returns:
   `self.data.numel()`.
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1], [], [3, 4, 5, 6]])
+>>> a = k2r.RaggedTensor([[1], [], [3, 4, 5, 6]])
 >>> a.numel()
 5
->>> b = k2r.Tensor('[ [[1] [] []]  [[2 3]]]')
+>>> b = k2r.RaggedTensor('[ [[1] [] []]  [[2 3]]]')
 >>> b.numel()
 3
 )doc";
@@ -361,13 +361,13 @@ equivalent to the property ``dim0``.
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor('[ [1 2 3] [] [5 8 ] ]')
+>>> a = k2r.RaggedTensor('[ [1 2 3] [] [5 8 ] ]')
 >>> a.tot_size(0)
 3
 >>> a.tot_size(1)
 5
 >>> import k2.ragged as k2r
->>> b = k2r.Tensor('[ [[1 2 3] [] [5 8]] [[] [1 5 9 10 -1] [] [] []] ]')
+>>> b = k2r.RaggedTensor('[ [[1 2 3] [] [5 8]] [[] [1 5 9 10 -1] [] [] []] ]')
 >>> b.tot_size(0)
 2
 >>> b.tot_size(1)
@@ -416,13 +416,13 @@ Return the dtype of this tensor.
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1], []])
+>>> a = k2r.RaggedTensor([[1], []])
 >>> a.dtype
 torch.int32
 >>> a = a.to(torch.float32)
 >>> a.dtype
 torch.float32
->>> b = k2r.Tensor([[3]], dtype=torch.float64)
+>>> b = k2r.RaggedTensor([[3]], dtype=torch.float64)
 >>> b.dtype
 torch.float64
 )doc";
@@ -432,7 +432,7 @@ Return the device of this tensor.
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1]])
+>>> a = k2r.RaggedTensor([[1]])
 >>> a.device
 device(type='cpu')
 >>> b = a.to(torch.device('cuda', 0))
@@ -446,7 +446,7 @@ Return the underlying memory as a 1-D tensor.
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1, 2], [], [5], [], [8, 9, 10]])
+>>> a = k2r.RaggedTensor([[1, 2], [], [5], [], [8, 9, 10]])
 >>> a.data
 tensor([ 1,  2,  5,  8,  9, 10], dtype=torch.int32)
 >>> isinstance(a.data, torch.Tensor)
@@ -469,7 +469,7 @@ Returns:
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([[1]])
+>>> a = k2r.RaggedTensor([[1]])
 >>> a.is_cuda
 False
 >>> b = a.to(torch.device('cuda', 0))
@@ -482,10 +482,10 @@ Return the number of axes of this tensor.
 
 >>> import torch
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor('[ [] [] [] [] ]')
+>>> a = k2r.RaggedTensor('[ [] [] [] [] ]')
 >>> a.num_axes
 2
->>> b = k2r.Tensor('[ [[] []] [[]] ]')
+>>> b = k2r.RaggedTensor('[ [[] []] [[]] ]')
 >>> b.num_axes
 3
 >>> c = k24.Tensor('[ [ [[] [1]] [[3 4] []] ]  [ [[1]] [[2] [3 4]] ] ]')
@@ -500,10 +500,10 @@ static constexpr const char *kRaggedAnyDim0Doc = R"doc(
 Return number of sublists at axis 0.
 
 >>> import k2.ragged as k2r
->>> a = k2r.Tensor([ [1, 2], [3], [], [], [] ])
+>>> a = k2r.RaggedTensor([ [1, 2], [3], [], [], [] ])
 >>> a.dim0
 5
->>> b = k2r.Tensor('[ [[]] [[] []]]')
+>>> b = k2r.RaggedTensor('[ [[]] [[] []]]')
 >>> b.dim0
 2
 )doc";

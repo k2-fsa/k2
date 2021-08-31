@@ -33,7 +33,7 @@
 namespace k2 {
 
 void PybindRaggedAny(py::module &m) {
-  py::class_<RaggedAny> any(m, "Tensor");
+  py::class_<RaggedAny> any(m, "RaggedTensor");
 
   //==================================================
   //      k2.ragged.Tensor methods
@@ -210,23 +210,21 @@ void PybindRaggedAny(py::module &m) {
           py::arg("end"));
   any.def("remove_values_leq", &RaggedAny::RemoveValuesLeq, py::arg("cutoff"));
   any.def("remove_values_eq", &RaggedAny::RemoveValuesEq, py::arg("target"));
-  any.def("argmax_per_sublist", &RaggedAny::ArgMaxPerSublist,
-          py::arg("initial_value"));
-  any.def("max_per_sublist", &RaggedAny::MaxPerSublist,
-          py::arg("initial_value"));
-  any.def("min_per_sublist", &RaggedAny::MinPerSublist,
-          py::arg("initial_value"));
+  any.def("argmax", &RaggedAny::ArgMax, py::arg("initial_value"));
+  any.def("max", &RaggedAny::Max, py::arg("initial_value"));
+  any.def("min", &RaggedAny::Min, py::arg("initial_value"));
 
   any.def_static("cat", &RaggedAny::Cat, py::arg("srcs"), py::arg("axis"));
   m.attr("cat") = any.attr("cat");
 
-  any.def("normalize_per_sublist", &RaggedAny::NormalizePerSublist,
-          py::arg("use_log"));
+  any.def("unique", &RaggedAny::Unique, py::arg("need_num_repeats") = false,
+          py::arg("need_new2old_indexes") = false);
+
+  any.def("normalize", &RaggedAny::Normalize, py::arg("use_log"));
 
   any.def("pad", &RaggedAny::Pad, py::arg("mode"), py::arg("padding_value"));
   any.def("tolist", &RaggedAny::ToList);
-  any.def("sort_sublists", &RaggedAny::SortSublists,
-          py::arg("descending") = false,
+  any.def("sort", &RaggedAny::Sort, py::arg("descending") = false,
           py::arg("need_new2old_indexes") = false);
 
   //==================================================
@@ -332,14 +330,14 @@ void PybindRaggedAny(py::module &m) {
 
   // TODO: change the function name from "create_tensor" to "tensor"
   m.def(
-      "create_tensor",
+      "create_ragged_tensor",
       [](py::list data, py::object dtype = py::none()) -> RaggedAny {
         return RaggedAny(data, dtype);
       },
       py::arg("data"), py::arg("dtype") = py::none(), kRaggedAnyInitDataDoc);
 
   m.def(
-      "create_tensor",
+      "create_ragged_tensor",
       [](const std::string &s, py::object dtype = py::none()) -> RaggedAny {
         return RaggedAny(s, dtype);
       },
