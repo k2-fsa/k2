@@ -15,6 +15,4 @@ Python API reference
    version
    ops
    ragged_ops
-   ragged_shape
-   _k2
-   tensor
+   ragged_tensor
