@@ -31,13 +31,18 @@ namespace k2 {
 // RaggedAny is introduced to support backward propagations on
 // Ragged<Any> since there has to be a tensor involved during backprob
 struct RaggedAny {
-  Ragged<Any> any_;
-  torch::Tensor data_;  // shares the underlying memory with any_.values
+  Ragged<Any> any;
+  torch::Tensor data;  // shares the underlying memory with any.values
 
   // The default constructor initializes an invalid ragged tensor.
   RaggedAny() = default;
 
-  explicit RaggedAny(const Ragged<Any> &any) : any_(any) {}
+  RaggedAny(const RaggedAny &) = default;
+  RaggedAny &operator=(const RaggedAny &) = default;
+  RaggedAny(RaggedAny &&) = default;
+  RaggedAny &operator=(RaggedAny &&) = default;
+
+  explicit RaggedAny(const Ragged<Any> &any) : any(any) {}
 
   /* Create a ragged tensor from its string representation.
 
@@ -66,28 +71,11 @@ struct RaggedAny {
    */
   RaggedAny(py::list data, py::object dtype = py::none());
 
-  // share Ragged<Any> with other
-  RaggedAny(const RaggedAny &other) : any_(other.any_) {}
-
-  // share Ragged<Any> with other
-  RaggedAny &operator=(const RaggedAny &other) {
-    any_ = other.any_;
-    return *this;
-  }
-
-  RaggedAny(RaggedAny &&other) { any_ = std::move(other.any_); }
-
-  RaggedAny &operator=(RaggedAny &&other) {
-    if (&other != this) any_ = std::move(other.any_);
-    return *this;
-  }
-
-  // Populate `this->data_` and return it
+  // Populate `this->data` and return it
   const torch::Tensor &Data() const;
 
   /* Convert a ragged tensor to a string.
 
-     @param any The input ragged tensor.
      @return Return a string representation of the ragged tensor.
    */
   std::string ToString() const;
@@ -155,6 +143,46 @@ struct RaggedAny {
      It shares data with "this" tensor.
    */
   RaggedAny Index(int32_t axis, int32_t i) const;
+
+  /* A wrapper around k2::RemoveAxis. See its doc in
+     k2/csrc/ragged_ops.h
+   */
+  RaggedAny RemoveAxis(int32_t axis) /*const*/;
+
+  /* A wrapper for k2::RaggedArage. See its doc for help.
+   */
+  RaggedAny Arange(int32_t axis, int32_t begin, int32_t end) /*const*/;
+
+  // Wrapper for k2::RemoveValuesLeq()
+  RaggedAny RemoveValuesLeq(float cutoff) /*const*/;
+
+  // Wrapper for k2::RemoveValuesEq()
+  RaggedAny RemoveValuesEq(float target) /*const*/;
+
+  // Wrapper for k2::ArgMaxPerSublist
+  torch::Tensor ArgMaxPerSublist(py::object initial_value) /*const*/;
+
+  // Wrapper for k2::MaxPerSublist
+  torch::Tensor MaxPerSublist(py::object initial_value) /*const*/;
+
+  // Wrapper for k2::MinPerSublist
+  torch::Tensor MinPerSublist(py::object initial_value) /*const*/;
+
+  // Wrapper for k2::Cat
+  static RaggedAny Cat(const std::vector<RaggedAny> &srcs, int32_t axis);
+
+  // Wrapper for k2::NormalizePerSublist
+  RaggedAny NormalizePerSublist(bool use_log) /*const*/;
+
+  // Wrapper for k2::PadRagged
+  torch::Tensor Pad(const std::string &mode,
+                    py::object padding_value) /*const*/;
+
+  py::list ToList() /*const*/;
+
+  // Wrapper for k2::SortSublists
+  torch::optional<torch::Tensor> SortSublists(
+      bool descending = false, bool need_new2old_indexes = false);
 };
 
 }  // namespace k2

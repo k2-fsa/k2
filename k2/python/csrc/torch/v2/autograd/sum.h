@@ -41,7 +41,7 @@ class SumFunction : public torch::autograd::Function<SumFunction> {
 
      @param ragged The input RaggedAny
      @param dummy  Its purpose is to make autograd to track the operations on
-                   the input `ragged`. It is the same as `ragged.data_`.
+                   the input `ragged`. It is the same as `ragged.data`.
      @param initial_value This value is added to the sum of each sublist,
                           so when a sublist is empty, its sum is this value.
 
@@ -50,21 +50,20 @@ class SumFunction : public torch::autograd::Function<SumFunction> {
    */
   static torch::Tensor forward(AutogradContext *ctx, const RaggedAny &ragged,
                                torch::Tensor /*dummy*/, float initial_value) {
-    ctx->saved_data["n"] = ragged.any_.values.Dim();
+    ctx->saved_data["n"] = ragged.any.values.Dim();
 
-    int32_t num_axes = ragged.any_.NumAxes();
+    int32_t num_axes = ragged.any.NumAxes();
 
     torch::Tensor row_ids =
-        ToTorch(const_cast<RaggedAny &>(ragged).any_.RowIds(num_axes - 1));
+        ToTorch(const_cast<RaggedAny &>(ragged).any.RowIds(num_axes - 1));
 
     ctx->save_for_backward({row_ids});
 
-    Dtype t = ragged.any_.GetDtype();
+    Dtype t = ragged.any.GetDtype();
 
     FOR_REAL_AND_INT32_TYPES(t, T, {
-      Array1<T> values(ragged.any_.Context(),
-                       ragged.any_.TotSize(num_axes - 2));
-      SumPerSublist<T>(ragged.any_.Specialize<T>(), initial_value, &values);
+      Array1<T> values(ragged.any.Context(), ragged.any.TotSize(num_axes - 2));
+      SumPerSublist<T>(ragged.any.Specialize<T>(), initial_value, &values);
       return ToTorch(values);
     });
 

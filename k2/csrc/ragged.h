@@ -342,11 +342,18 @@ struct Ragged {
 
   // Defined in ragged_ops_inl.h
   // This will crash if T == Any.
-  explicit Ragged(const std::string &src) {
+  explicit Ragged(const std::string &src, bool throw_on_failure = false) {
     std::istringstream is(src);
     is >> *this >> std::ws;
-    if (!is.eof() || is.fail())
-      K2_LOG(FATAL) << "Failed to construct Ragged array from string: " << src;
+    if (!is.eof() || is.fail()) {
+      std::ostringstream os;
+      os << "Failed to construct Ragged array from string: " << src;
+      if (throw_on_failure) {
+        throw std::runtime_error(os.str());
+      } else {
+        K2_LOG(FATAL) << os.str();
+      }
+    }
   }
 
   // Construct from context and string.  This uses delegating constructors,

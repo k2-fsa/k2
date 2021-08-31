@@ -11,9 +11,9 @@ set(torch_srcs
   ragged_ops.cu
   torch_util.cu
 
-  v2/k2.cu
   v2/any.cu
   v2/doc/doc.cu
+  v2/k2.cu
   v2/ragged_any.cu
   v2/ragged_shape.cu
 )
