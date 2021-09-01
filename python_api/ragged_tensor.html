@@ -195,7 +195,11 @@
 <ol class="arabic simple">
 <li><p>create_ragged_tensor(data: list, dtype: object = None) -&gt; _k2.ragged.RaggedTensor</p></li>
 </ol>
-<p>Create a ragged tensor with two axes.</p>
+<p>Create a ragged tensor with arbitrary number of axes.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A ragged tensor has at least two axes.</p>
+</div>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">9</span><span class="p">]</span> <span class="p">])</span>
@@ -213,6 +217,11 @@
 <span class="go">[ [ 1 ] ]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">dtype</span>
 <span class="go">torch.float64</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">]]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
+<span class="go">[ [ [ 1 ] [ 2 3 ] ] [ [ 4 ] [ 5 ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">3</span>
 </pre></div>
 </div>
 <dl class="field-list simple">
@@ -381,7 +390,11 @@ Overloaded function.</p>
 <ol class="arabic simple">
 <li><p>__init__(self: _k2.ragged.RaggedTensor, data: list, dtype: object = None) -&gt; None</p></li>
 </ol>
-<p>Create a ragged tensor with two axes.</p>
+<p>Create a ragged tensor with arbitrary number of axes.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A ragged tensor has at least two axes.</p>
+</div>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">9</span><span class="p">]</span> <span class="p">])</span>
@@ -399,6 +412,11 @@ Overloaded function.</p>
 <span class="go">[ [ 1 ] ]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">dtype</span>
 <span class="go">torch.float64</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">]]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
+<span class="go">[ [ [ 1 ] [ 2 3 ] ] [ [ 4 ] [ 5 ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">3</span>
 </pre></div>
 </div>
 <dl class="field-list simple">
@@ -675,6 +693,22 @@ calls to <code class="docutils literal notranslate"><span class="pre">backward()
 </pre></div>
 </div>
 </dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.ragged.RaggedTensor.index">
+<span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#k2.ragged.RaggedTensor.index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overloaded function.</p>
+<ol class="arabic simple">
+<li><p>index(self: _k2.ragged.RaggedTensor, indexes: _k2.ragged.RaggedTensor, remove_axis: bool = True) -&gt; _k2.ragged.RaggedTensor</p></li>
+<li><p>index(self: _k2.ragged.RaggedTensor, indexes: at::Tensor, axis: int, need_value_indexes: bool = False) -&gt; Tuple[_k2.ragged.RaggedTensor, Optional[at::Tensor]]</p></li>
+<li><p>index(self: _k2.ragged.RaggedTensor, src: at::Tensor) -&gt; _k2.ragged.RaggedTensor</p></li>
+</ol>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.ragged.RaggedTensor.index_and_sum">
+<span class="sig-name descname"><span class="pre">index_and_sum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">self:</span> <span class="pre">_k2.ragged.RaggedTensor</span></em>, <em class="sig-param"><span class="pre">src:</span> <span class="pre">at::Tensor</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">at::Tensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.index_and_sum" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.is_cuda">
