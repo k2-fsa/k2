@@ -70,6 +70,24 @@ void PybindRaggedAny(py::module &m) {
       },
       py::arg("i"), kRaggedAnyGetItemDoc);
 
+  any.def("index",
+          static_cast<RaggedAny (RaggedAny::*)(RaggedAny &, bool)>(
+              &RaggedAny::Index),
+          py::arg("indexes"), py::arg("remove_axis") = true);
+
+  any.def("index",
+          static_cast<std::pair<RaggedAny, torch::optional<torch::Tensor>> (
+              RaggedAny::*)(torch::Tensor, int32_t, bool)>(&RaggedAny::Index),
+          py::arg("indexes"), py::arg("axis"),
+          py::arg("need_value_indexes") = false);
+
+  any.def(
+      "index",
+      static_cast<RaggedAny (RaggedAny::*)(torch::Tensor)>(&RaggedAny::Index),
+      py::arg("src"));
+
+  any.def("index_and_sum", &RaggedAny::IndexAndSum, py::arg("src"));
+
   any.def("to",
           static_cast<RaggedAny (RaggedAny::*)(torch::Device) const>(
               &RaggedAny::To),

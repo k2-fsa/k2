@@ -28,8 +28,8 @@
 
 namespace k2 {
 
-// RaggedAny is introduced to support backward propagations on
-// Ragged<Any> since there has to be a tensor involved during backprob
+// RaggedAny is introduced to support backward props on
+// Ragged<Any> since there has to be a tensor involved during backprop
 struct RaggedAny {
   Ragged<Any> any;
   torch::Tensor data;  // shares the underlying memory with any.values
@@ -58,12 +58,12 @@ struct RaggedAny {
 
   /* Create a ragged tensor with two axes.
 
-     @param data a list-of-list
+     @param data A python list-of lists.
      @param dtype An instance of torch.dtype. If it is None,
                   the data type is inferred from the input `data`,
                   which will either be torch.int32 or torch.float32.
 
-     @TODO To support `data` with arbitrary number of axes.
+     @note It supports `data` with number of axes >= 2.
 
      @CAUTION Currently supported dtypes are torch.float32, torch.float64,
      and torch.int32. To support torch.int64 and other dtypes, we can
@@ -187,6 +187,15 @@ struct RaggedAny {
   // Wrapper for k2::SortSublists
   torch::optional<torch::Tensor> Sort(bool descending = false,
                                       bool need_new2old_indexes = false);
+
+  RaggedAny Index(RaggedAny &indexes, bool remove_axis = true) /*const*/;
+
+  std::pair<RaggedAny, torch::optional<torch::Tensor>> Index(
+      torch::Tensor indexes, int32_t axis,
+      bool need_value_indexes = false) /*const*/;
+
+  RaggedAny Index(torch::Tensor src) /*const*/;
+  torch::Tensor IndexAndSum(torch::Tensor src) /*const*/;
 };
 
 }  // namespace k2

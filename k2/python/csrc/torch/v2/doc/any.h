@@ -6,7 +6,10 @@
 namespace k2 {
 
 static constexpr const char *kRaggedAnyInitDataDoc = R"doc(
-Create a ragged tensor with two axes.
+Create a ragged tensor with arbitrary number of axes.
+
+Note:
+  A ragged tensor has at least two axes.
 
 >>> import torch
 >>> import k2.ragged as k2r
@@ -25,6 +28,11 @@ torch.float32
 [ [ 1 ] ]
 >>> c.dtype
 torch.float64
+>>> d = k2r.RaggedTensor([ [[1], [2, 3]], [[4], [5]]])
+>>> d
+[ [ [ 1 ] [ 2 3 ] ] [ [ 4 ] [ 5 ] ] ]
+>>> d.num_axes
+3
 
 Args:
   data:

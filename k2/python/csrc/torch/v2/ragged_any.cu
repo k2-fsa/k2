@@ -27,6 +27,65 @@
 
 namespace k2 {
 
+template <typename T>
+static void RaggedAnyFromListIter(py::list data, int32_t *cur_level,
+                                  std::vector<std::vector<int32_t>> *row_splits,
+                                  std::vector<T> *elems) {
+  *cur_level += 1;
+  if (*cur_level > row_splits->size()) {
+    row_splits->resize(*cur_level, std::vector<int32_t>(1, 0));
+  }
+
+  if (py::isinstance<py::list>(data[0])) {
+    for (auto &d : data) {
+      if (!py::isinstance<py::list>(d)) {
+        throw std::runtime_error("Expect an instance of list");
+      }
+      RaggedAnyFromListIter(d.cast<py::list>(), cur_level, row_splits, elems);
+    }
+  } else {
+    if (static_cast<size_t>(*cur_level) != row_splits->size()) {
+      throw std::runtime_error("Expect a [");
+    }
+    auto tmp = data.cast<std::vector<T>>();
+    elems->insert(elems->end(), tmp.begin(), tmp.end());
+  }
+
+  *cur_level -= 1;
+
+  (*row_splits)[*cur_level].push_back(
+      (*cur_level + 1 >= (int32_t)row_splits->size())
+          ? static_cast<int32_t>(elems->size())
+          : ((*row_splits)[*cur_level + 1].size() - 1));
+}
+
+template <typename T>
+static Ragged<T> RaggedAnyFromList(py::list data) {
+  std::vector<std::vector<int32_t>> row_splits;
+  std::vector<T> elems;
+  int32_t cur_level = 0;
+  for (auto &d : data) {
+    if (!py::isinstance<py::list>(d)) {
+      throw std::runtime_error("Expect a list");
+    }
+    RaggedAnyFromListIter(d.cast<py::list>(), &cur_level, &row_splits, &elems);
+  }
+
+  std::vector<RaggedShapeLayer> axes(row_splits.size());
+  ContextPtr c = GetCpuContext();
+  for (size_t i = 0; i < row_splits.size(); ++i) {
+    axes[i].row_splits = Array1<int32_t>(c, row_splits[i]);
+    axes[i].cached_tot_size = -1;
+  }
+  Ragged<T> ans;
+  ans.shape = RaggedShape(axes);
+  ans.values = Array1<T>(c, elems);
+  if (ans.values.Dim() != ans.shape.NumElements()) {
+    throw std::runtime_error("Invalid format of a ragged tensor");
+  }
+  return ans;
+}
+
 RaggedAny::RaggedAny(const std::string &s, py::object dtype) {
   if (!dtype.is_none() && !THPDtype_Check(dtype.ptr())) {
     K2_LOG(FATAL) << "Expect an instance of torch.dtype. "
@@ -68,12 +127,10 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
   if (dtype.is_none()) {
     try {
       // we try int first, if it fails, use float
-      auto vecs = data.cast<std::vector<std::vector<int>>>();
-      any = CreateRagged2(vecs).Generic();
+      any = RaggedAnyFromList<int32_t>(data).Generic();
       return;
     } catch (const std::exception &) {
-      auto vecs = data.cast<std::vector<std::vector<float>>>();
-      any = CreateRagged2(vecs).Generic();
+      any = RaggedAnyFromList<float>(data).Generic();
       return;
     }
   }
@@ -83,8 +140,7 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
   Dtype t = ScalarTypeToDtype(scalar_type);
 
   FOR_REAL_AND_INT32_TYPES(t, T, {
-    auto vecs = data.cast<std::vector<std::vector<T>>>();
-    any = CreateRagged2(vecs).Generic();
+    any = RaggedAnyFromList<T>(data).Generic();
     return;
   });
 
@@ -423,6 +479,76 @@ torch::optional<torch::Tensor> RaggedAny::Sort(
   torch::optional<torch::Tensor> ans;
   if (need_new2old_indexes) ans = ToTorch(new2old);
   return ans;
+}
+
+RaggedAny RaggedAny::Index(RaggedAny &indexes,
+                           bool remove_axis /* = true*/) /*const*/ {
+  K2_CHECK_EQ(indexes.any.GetDtype(), kInt32Dtype)
+      << "Unsupported dtype: " << TraitsOf(indexes.any.GetDtype()).Name();
+
+  DeviceGuard guard(any.Context());
+
+  Dtype t = any.GetDtype();
+  FOR_REAL_AND_INT32_TYPES(t, T, {
+    return RaggedAny(k2::Index<T>(any.Specialize<T>(),
+                                  indexes.any.Specialize<int32_t>(),
+                                  remove_axis)
+                         .Generic());
+  });
+
+  // Unreachable code
+  return {};
+}
+
+std::pair<RaggedAny, torch::optional<torch::Tensor>> RaggedAny::Index(
+    torch::Tensor indexes, int32_t axis,
+    bool need_value_indexes /*= false*/) /*const*/ {
+  DeviceGuard guard(any.Context());
+
+  Array1<int32_t> indexes_array = FromTorch<int32_t>(indexes);
+
+  Array1<int32_t> value_indexes;
+  torch::optional<torch::Tensor> value_indexes_tensor;
+
+  Dtype t = any.GetDtype();
+
+  FOR_REAL_AND_INT32_TYPES(t, T, {
+    Ragged<T> ans = k2::Index<T>(any.Specialize<T>(), axis, indexes_array,
+                                 need_value_indexes ? &value_indexes : nullptr);
+
+    if (need_value_indexes) value_indexes_tensor = ToTorch(value_indexes);
+
+    return std::make_pair(RaggedAny(ans.Generic()), value_indexes_tensor);
+  });
+
+  // Unreachable code
+  return {};
+}
+
+RaggedAny RaggedAny::Index(torch::Tensor src) /*const*/ {
+  Dtype t = any.GetDtype();
+  K2_CHECK_EQ(t, kInt32Dtype) << "Unsupported dtype: " << TraitsOf(t).Name();
+
+  K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
+
+  DeviceGuard guard(any.Context());
+  Array1<int32_t> src_array = FromTorch<int32_t>(src);
+  return RaggedAny(k2::Index(src_array, any.Specialize<int32_t>()).Generic());
+}
+
+torch::Tensor RaggedAny::IndexAndSum(torch::Tensor src) /*const*/ {
+  Dtype t = any.GetDtype();
+  K2_CHECK_EQ(t, kInt32Dtype) << "Unsupported dtype: " << TraitsOf(t).Name();
+
+  K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
+
+  DeviceGuard guard(any.Context());
+  Array1<float> src_array = FromTorch<float>(src);
+  Ragged<float> ragged =
+      k2::Index<float>(src_array, any.Specialize<int32_t>(), 0);
+  Array1<float> ans_array(ragged.Context(), ragged.Dim0());
+  SumPerSublist<float>(ragged, 0, &ans_array);
+  return ToTorch(ans_array);
 }
 
 }  // namespace k2
