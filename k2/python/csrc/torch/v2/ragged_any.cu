@@ -36,7 +36,7 @@ static void RaggedAnyFromListIter(py::list data, int32_t *cur_level,
     row_splits->resize(*cur_level, std::vector<int32_t>(1, 0));
   }
 
-  if (py::isinstance<py::list>(data[0])) {
+  if (data.size() > 0 && py::isinstance<py::list>(data[0])) {
     for (auto &d : data) {
       if (!py::isinstance<py::list>(d)) {
         throw std::runtime_error("Expect an instance of list");
@@ -69,6 +69,12 @@ static Ragged<T> RaggedAnyFromList(py::list data) {
       throw std::runtime_error("Expect a list");
     }
     RaggedAnyFromListIter(d.cast<py::list>(), &cur_level, &row_splits, &elems);
+  }
+
+  if (row_splits.empty()) {
+    // Assume 2 axes even though the num-axes is ambiguous from the input "[ ]"
+    // row_splits is [ 0 ].
+    row_splits.push_back(std::vector<int32_t>(1, 0));
   }
 
   std::vector<RaggedShapeLayer> axes(row_splits.size());
