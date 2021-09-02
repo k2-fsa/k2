@@ -94,6 +94,11 @@ void PybindRaggedAny(py::module &m) {
           py::arg("device"), kRaggedAnyToDeviceDoc);
 
   any.def("to",
+          static_cast<RaggedAny (RaggedAny::*)(const std::string &) const>(
+              &RaggedAny::To),
+          py::arg("device"), kRaggedAnyToDeviceStrDoc);
+
+  any.def("to",
           static_cast<RaggedAny (RaggedAny::*)(torch::ScalarType) const>(
               &RaggedAny::To),
           py::arg("dtype"), kRaggedAnyToDtypeDoc);
@@ -223,27 +228,42 @@ void PybindRaggedAny(py::module &m) {
   SetMethodDoc(&any, "__getstate__", kRaggedAnyGetStateDoc);
   SetMethodDoc(&any, "__setstate__", kRaggedAnySetStateDoc);
 
-  any.def("remove_axis", &RaggedAny::RemoveAxis, py::arg("axis"));
-  any.def("arange", &RaggedAny::Arange, py::arg("axis"), py::arg("begin"),
-          py::arg("end"));
-  any.def("remove_values_leq", &RaggedAny::RemoveValuesLeq, py::arg("cutoff"));
-  any.def("remove_values_eq", &RaggedAny::RemoveValuesEq, py::arg("target"));
-  any.def("argmax", &RaggedAny::ArgMax, py::arg("initial_value"));
-  any.def("max", &RaggedAny::Max, py::arg("initial_value"));
-  any.def("min", &RaggedAny::Min, py::arg("initial_value"));
+  any.def("remove_axis", &RaggedAny::RemoveAxis, py::arg("axis"),
+          kRaggedAnyRemoveAxisDoc);
 
-  any.def_static("cat", &RaggedAny::Cat, py::arg("srcs"), py::arg("axis"));
+  any.def("arange", &RaggedAny::Arange, py::arg("axis"), py::arg("begin"),
+          py::arg("end"), kRaggedAnyArangeDoc);
+
+  any.def("remove_values_leq", &RaggedAny::RemoveValuesLeq, py::arg("cutoff"),
+          kRaggedAnyRemoveValuesLeqDoc);
+
+  any.def("remove_values_eq", &RaggedAny::RemoveValuesEq, py::arg("target"),
+          kRaggedAnyRemoveValuesEqDoc);
+
+  any.def("argmax", &RaggedAny::ArgMax, py::arg("initial_value"),
+          kRaggedAnyArgMaxDoc);
+
+  any.def("max", &RaggedAny::Max, py::arg("initial_value"), kRaggedAnyMaxDoc);
+
+  any.def("min", &RaggedAny::Min, py::arg("initial_value"), kRaggedAnyMinDoc);
+
+  any.def_static("cat", &RaggedAny::Cat, py::arg("srcs"), py::arg("axis"),
+                 kRaggedCatDoc);
   m.attr("cat") = any.attr("cat");
 
   any.def("unique", &RaggedAny::Unique, py::arg("need_num_repeats") = false,
-          py::arg("need_new2old_indexes") = false);
+          py::arg("need_new2old_indexes") = false, kRaggedAnyUniqueDoc);
 
-  any.def("normalize", &RaggedAny::Normalize, py::arg("use_log"));
+  any.def("normalize", &RaggedAny::Normalize, py::arg("use_log"),
+          kRaggedAnyNormalizeDoc);
 
-  any.def("pad", &RaggedAny::Pad, py::arg("mode"), py::arg("padding_value"));
-  any.def("tolist", &RaggedAny::ToList);
-  any.def("sort", &RaggedAny::Sort, py::arg("descending") = false,
-          py::arg("need_new2old_indexes") = false);
+  any.def("pad", &RaggedAny::Pad, py::arg("mode"), py::arg("padding_value"),
+          kRaggedAnyPadDoc);
+
+  any.def("tolist", &RaggedAny::ToList, kRaggedAnyToListDoc);
+
+  any.def("sort_", &RaggedAny::Sort, py::arg("descending") = false,
+          py::arg("need_new2old_indexes") = false, kRaggedAnySortDoc);
 
   //==================================================
   //      k2.ragged.Tensor properties

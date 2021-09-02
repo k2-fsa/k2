@@ -28,13 +28,18 @@
 
 namespace k2 {
 
-// RaggedAny is introduced to support backward props on
-// Ragged<Any> since there has to be a tensor involved during backprop
+/** RaggedAny is introduced to support backward propagation on
+ Ragged<Any> since there has to be a tensor involved during backward
+ propagations.
+
+ Ragged<Any> unifies Ragged<int32_t>, Ragged<float>, and Ragged<double>
+ so that Python only sees Ragged<Any>.
+*/
 struct RaggedAny {
   Ragged<Any> any;
-  torch::Tensor data;  // shares the underlying memory with any.values
+  torch::Tensor data;  //!< shares the underlying memory with any.values
 
-  // The default constructor initializes an invalid ragged tensor.
+  /// The default constructor initializes an invalid ragged tensor.
   RaggedAny() = default;
 
   RaggedAny(const RaggedAny &) = default;
@@ -44,39 +49,43 @@ struct RaggedAny {
 
   explicit RaggedAny(const Ragged<Any> &any) : any(any) {}
 
-  /* Create a ragged tensor from its string representation.
+  /** Create a ragged tensor from its string representation.
 
-     An example string with 3 axes is::
+      An example string with 3 axes is::
 
       [ [[1 2] [3] []]   [[1] [10] [20 30]] ]
 
-     @param s  The string representation of this ragged tensor.
-     @param dtype  An instance of torch.dtype. Support only torch.float32,
-                   torch.float64, and torch.int32 for now.
-   */
-  RaggedAny(const std::string &s, py::object dtype);
+     @param s  The string representation of a ragged tensor.
+     @param dtype  An instance of `torch.dtype`. Supported dtypes are:
+                   `torch.float32`, `torch.float64`, and
+                   `torch.int32`. If it is `None`, the dtype is
+                   inferred from the given string.  It first tries
+                   to use `torch.int32`. If it fails, it will switch
+                   to `torch.float32`.
 
-  /* Create a ragged tensor with two axes.
+     @note We can support other dtypes if needed.
+   */
+  RaggedAny(const std::string &s, py::object dtype = py::none());
+
+  /** Create a ragged tensor from a list of sublist(s).
 
      @param data A python list-of lists.
-     @param dtype An instance of torch.dtype. If it is None,
+     @param dtype An instance of `torch.dtype`. If it is `None`,
                   the data type is inferred from the input `data`,
                   which will either be torch.int32 or torch.float32.
+                  Supported dtypes are: `torch.int32`, torch.`float32`,
+                  and `torch.float64`.
 
      @note It supports `data` with number of axes >= 2.
-
-     @CAUTION Currently supported dtypes are torch.float32, torch.float64,
-     and torch.int32. To support torch.int64 and other dtypes, we can
-     add a new macro to replace `FOR_REAL_AND_INT32_TYPES`.
    */
   RaggedAny(py::list data, py::object dtype = py::none());
 
-  // Populate `this->data` and return it
+  /// Populate `this->data` and return it
   const torch::Tensor &Data() const;
 
-  /* Convert a ragged tensor to a string.
+  /** Convert a ragged tensor to a string.
 
-     @return Return a string representation of the ragged tensor.
+     @return Return a string representation of this tensor.
    */
   std::string ToString() const;
 
@@ -93,6 +102,19 @@ struct RaggedAny {
    */
   RaggedAny To(torch::Device device) const;
 
+  /** Move this tensor to a given device.
+*
+    Note: If the this tensor is already on the given device, itself
+    is returned. Otherwise, a copy of the this tensor moved to the given
+    device is returned.
+
+    @param device A string representation of a device, e.g.,
+                  "cpu", "cuda:0", "cuda:1", etc.
+
+    @return Return a ragged tensor on the given device.
+   */
+  RaggedAny To(const std::string &device) const;
+
   /* Convert a ragged tensor to given scalar type.
 
      Note: If the this tensor is already of the given type, itself
@@ -105,23 +127,23 @@ struct RaggedAny {
    */
   RaggedAny To(torch::ScalarType scalar_type) const;
 
-  // Return a copy of this ragged tensor
+  /// Return a copy of this ragged tensor
   RaggedAny Clone() const;
 
-  /* Enable/Disable requires_grad of this tensor
+  /** Enable/Disable requires_grad of this tensor
 
-     @param requires_grad True to requires grad for this tensors.
+     @param requires_grad True to require grad for this tensors.
                           False to not require grad.
 
-     @note If this is NOT a float tenors and requires_grad is True,
-     it throws a RuntimeError exception.
+     @note If this is NOT a float tenor and requires_grad is `True`,
+     PyTorch will throw a RuntimeError exception.
    */
   RaggedAny &SetRequiresGrad(bool requires_grad = true);
 
-  /* Compute the sum over the last axis of the ragged tensor.
+  /** Compute the sum over the last axis of the ragged tensor.
 
      @note It supports autograd if the dtype of this tensor is
-     torch.float32 or torch.flaot64.
+     `torch.float32` or `torch.float64`.
 
      @param initial_value  This value is added to the sum of each
      sub-list. If a sublist is empty, the sum of it is just initial_value.
@@ -130,7 +152,7 @@ struct RaggedAny {
    */
   torch::Tensor Sum(float initial_value = 0) const;
 
-  /* Index of a ragged tensor (supporting axis==0 at present).
+  /** Index of a ragged tensor (supporting only axis==0 at present).
 
      It requires that the ragged tensor has at least 3 axes.
 
@@ -144,7 +166,7 @@ struct RaggedAny {
    */
   RaggedAny Index(int32_t axis, int32_t i) const;
 
-  /* A wrapper around k2::RemoveAxis. See its doc in
+  /** A wrapper around k2::RemoveAxis. See its doc in
      k2/csrc/ragged_ops.h
    */
   RaggedAny RemoveAxis(int32_t axis) /*const*/;
@@ -154,10 +176,10 @@ struct RaggedAny {
   RaggedAny Arange(int32_t axis, int32_t begin, int32_t end) /*const*/;
 
   // Wrapper for k2::RemoveValuesLeq()
-  RaggedAny RemoveValuesLeq(float cutoff) /*const*/;
+  RaggedAny RemoveValuesLeq(py::object cutoff) /*const*/;
 
   // Wrapper for k2::RemoveValuesEq()
-  RaggedAny RemoveValuesEq(float target) /*const*/;
+  RaggedAny RemoveValuesEq(py::object target) /*const*/;
 
   // Wrapper for k2::ArgMaxPerSublist
   torch::Tensor ArgMax(py::object initial_value) /*const*/;

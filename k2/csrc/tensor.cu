@@ -156,9 +156,17 @@ Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
   impl_->shape = shape;
   impl_->data = region;
   impl_->byte_offset = byte_offset;
-  K2_CHECK_GE(int64_t(impl_->byte_offset) + begin_elem * element_size, 0);
+  K2_CHECK_GE(int64_t(impl_->byte_offset) + begin_elem * element_size, 0)
+      << "impl_->byte_offset: " << int64_t(impl_->byte_offset) << ", "
+      << "begin_elem: " << begin_elem << ", "
+      << "element_size: " << element_size;
+
   K2_CHECK_LE(int64_t(impl_->byte_offset) + end_elem * element_size,
-              int64_t(impl_->data->num_bytes));
+              int64_t(impl_->data->num_bytes))
+      << "impl_->byte_offset: " << int64_t(impl_->byte_offset) << ", "
+      << "end_elem: " << end_elem << ", "
+      << "element_size: " << element_size << ", "
+      << "impl_->data->num_bytes: " << int64_t(impl_->data->num_bytes);
 }
 
 Tensor Tensor::Index(int32_t axis, int32_t index) const {

@@ -11,6 +11,9 @@ Create a ragged tensor with arbitrary number of axes.
 Note:
   A ragged tensor has at least two axes.
 
+Hint:
+  The returned tensor is on CPU.
+
 >>> import torch
 >>> import k2.ragged as k2r
 >>> a = k2r.RaggedTensor([ [1, 2], [5], [], [9] ])
@@ -28,19 +31,30 @@ torch.float32
 [ [ 1 ] ]
 >>> c.dtype
 torch.float64
->>> d = k2r.RaggedTensor([ [[1], [2, 3]], [[4], [5]]])
+>>> d = k2r.RaggedTensor([ [[1], [2, 3]], [[4], []] ])
 >>> d
-[ [ [ 1 ] [ 2 3 ] ] [ [ 4 ] [ 5 ] ] ]
+[ [ [ 1 ] [ 2 3 ] ] [ [ 4 ] [ ] ] ]
 >>> d.num_axes
 3
+>>> e = k2r.RaggedTensor([])
+>>> e
+[ ]
+>>> e.num_axes
+2
+>>> e.shape.row_splits(1)
+tensor([0], dtype=torch.int32)
+>>> e.shape.row_ids(1)
+tensor([], dtype=torch.int32)
 
 Args:
   data:
-    A list-of-list of integers or real numbers.
+    A list-of sublist(s) of integers or real numbers.
+    It can have arbitrary number of axes (at least two).
   dtype:
     Optional. If None, it infers the dtype from ``data``
     automatically, which is either ``torch.int32`` or
-    ``torch.float32``.
+    ``torch.float32``. Supported dtypes are: ``torch.int32``,
+    ``torch.float32``, and ``torch.float64``.
 )doc";
 
 static constexpr const char *kRaggedAnyInitStrDoc = R"doc(
@@ -52,7 +66,10 @@ An example string for a 2-axis ragged tensor is given below::
 
 An example string for a 3-axis ragged tensor is given below::
 
-    [ [[1] [2 3]]  [[2] [] [3 4]] ]
+    [ [[1]] [[]] ]
+
+Hint:
+  The returned tensor is on CPU.
 
 >>> import torch
 >>> import k2.ragged as k2r
@@ -70,6 +87,9 @@ torch.int32
 torch.float32
 >>> b.num_axes
 3
+>>> c = k2r.RaggedTensor('[[1.]]')
+>>> c.dtype
+torch.float32
 
 Note:
   Number of spaces in ``s`` does not affect the result.
@@ -77,11 +97,12 @@ Note:
 
 Args:
   s:
-    A string representation of the tensor.
+    A string representation of a ragged tensor.
   dtype:
     The desired dtype of the tensor. If it is ``None``, it tries
-    to infer the correct dtype from `s`, which is assumed to be
-    either ``torch.int32`` or ``torch.float32``.
+    to infer the correct dtype from ``s``, which is assumed to be
+    either ``torch.int32`` or ``torch.float32``. Supported dtypes are:
+    ``torch.int32``, ``torch.float32``, and ``torch.float64``.
 
 )doc";
 
@@ -89,8 +110,8 @@ static constexpr const char *kRaggedAnyToDeviceDoc = R"doc(
 Transfer this tensor to a given device.
 
 Note:
-  If `self` is already on the specified device, return a
-  ragged tensor sharing the underlying memory with `self`.
+  If ``self`` is already on the specified device, return a
+  ragged tensor sharing the underlying memory with ``self``.
   Otherwise, a new tensor is returned.
 
 >>> import torch
@@ -110,12 +131,45 @@ Returns:
   Return a tensor on the given device.
 )doc";
 
+static constexpr const char *kRaggedAnyToDeviceStrDoc = R"doc(
+Transfer this tensor to a given device.
+
+Note:
+  If ``self`` is already on the specified device, return a
+  ragged tensor sharing the underlying memory with ``self``.
+  Otherwise, a new tensor is returned.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([[1]])
+>>> a.device
+device(type='cpu')
+>>> b = a.to('cuda:0')
+>>> b.device
+device(type='cuda', index=0)
+>>> c = b.to('cpu')
+>>> c.device
+device(type='cpu')
+>>> d = c.to('cuda:1')
+>>> d.device
+device(type='cuda', index=1)
+
+Args:
+  device:
+    The target device to move this tensor.
+    Note: The device is represented as a string.
+    Valid strings are: "cpu", "cuda:0", "cuda:1", etc.
+
+Returns:
+  Return a tensor on the given device.
+)doc";
+
 static constexpr const char *kRaggedAnyToDtypeDoc = R"doc(
 Convert this tensor to a specific dtype.
 
 Note:
-  If `self` is already of the specified `dtype`, return
-  a ragged tensor sharing the underlying memory with `self`.
+  If ``self`` is already of the specified `dtype`, return
+  a ragged tensor sharing the underlying memory with ``self``.
   Otherwise, a new tensor is returned.
 
 >>> import torch
@@ -224,8 +278,8 @@ Args:
   other:
     The tensor to be compared.
 Returns:
-  Return True if the two tensors are equal.
-  Return False otherwise.
+  Return ``True`` if the two tensors are equal.
+  Return ``False`` otherwise.
 )doc";
 
 static constexpr const char *kRaggedAnyNeDoc = R"doc(
@@ -353,7 +407,7 @@ Returns:
 static constexpr const char *kRaggedAnyNumelDoc = R"doc(
 Returns:
   Return number of elements in this tensor. It equals to
-  `self.data.numel()`.
+  ``self.data.numel()``.
 >>> import torch
 >>> import k2.ragged as k2r
 >>> a = k2r.RaggedTensor([[1], [], [3, 4, 5, 6]])
@@ -514,6 +568,561 @@ Return number of sublists at axis 0.
 >>> b = k2r.RaggedTensor('[ [[]] [[] []]]')
 >>> b.dim0
 2
+)doc";
+
+static constexpr const char *kRaggedAnyRemoveAxisDoc = R"doc(
+Remove an axis; if it is not the first or last axis, this is done by appending
+lists (effectively the axis is combined with the following axis).  If it is the
+last axis it is just removed and the number of elements may be changed.
+
+Caution:
+  The tensor has to have more than two axes.
+
+**Example 1**:
+
+  >>> import k2.ragged as k2r
+  >>> a = k2r.RaggedTensor([ [[1], [], [0, -1]], [[], [2, 3], []], [[0]], [[]] ])
+  >>> a
+  [ [ [ 1 ] [ ] [ 0 -1 ] ] [ [ ] [ 2 3 ] [ ] ] [ [ 0 ] ] [ [ ] ] ]
+  >>> a.num_axes
+  3
+  >>> b = a.remove_axis(0)
+  >>> b
+  [ [ 1 ] [ ] [ 0 -1 ] [ ] [ 2 3 ] [ ] [ 0 ] [ ] ]
+  >>> c = a.remove_axis(1)
+  >>> c
+  [ [ 1 0 -1 ] [ 2 3 ] [ 0 ] [ ] ]
+
+**Example 2**:
+
+  >>> a = k2r.RaggedTensor([ [[[1], [], [2]]], [[[3, 4], [], [5, 6], []]], [[[], [0]]] ])
+  >>> a.num_axes
+  4
+  >>> a
+  [ [ [ [ 1 ] [ ] [ 2 ] ] ] [ [ [ 3 4 ] [ ] [ 5 6 ] [ ] ] ] [ [ [ ] [ 0 ] ] ] ]
+  >>> b = a.remove_axis(0)
+  >>> b
+  [ [ [ 1 ] [ ] [ 2 ] ] [ [ 3 4 ] [ ] [ 5 6 ] [ ] ] [ [ ] [ 0 ] ] ]
+  >>> c = a.remove_axis(1)
+  >>> c
+  [ [ [ 1 ] [ ] [ 2 ] ] [ [ 3 4 ] [ ] [ 5 6 ] [ ] ] [ [ ] [ 0 ] ] ]
+  >>> d = a.remove_axis(2)
+  >>> d
+  [ [ [ 1 2 ] ] [ [ 3 4 5 6 ] ] [ [ 0 ] ] ]
+
+Args:
+  axis:
+    The axis to move.
+Returns:
+  Return a ragged tensor with one fewer axes.
+)doc";
+
+static constexpr const char *kRaggedAnyArangeDoc = R"doc(
+Return a sub-range of ``self`` containing indexes ``begin``
+through ``end - 1`` axis ``axis`` of ``self``.
+
+The ``axis`` argument may be confusing; its behavior is equivalent to:
+
+.. code-block:: c++
+
+  for (int i = 0; i < axis; i++) self = self.RemoveAxis(0)
+  return Arange(self, 0, begin, end)
+
+Caution:
+  The returned tensor shares the underlying memory with ``self``.
+
+**Example 1**
+
+  >>> import k2.ragged as k2r
+  >>> a = k2r.RaggedTensor([ [[1], [], [2]], [[], [4, 5], []], [[], [1]], [[]] ])
+  >>> a
+  [ [ [ 1 ] [ ] [ 2 ] ] [ [ ] [ 4 5 ] [ ] ] [ [ ] [ 1 ] ] [ [ ] ] ]
+  >>> a.num_axes
+  3
+  >>> b = a.arange(axis=0, begin=1, end=3)
+  >>> b
+  [ [ [ ] [ 4 5 ] [ ] ] [ [ ] [ 1 ] ] ]
+  >>> b.num_axes
+  3
+  >>> c = a.arange(axis=0, begin=1, end=2)
+  >>> c
+  [ [ [ ] [ 4 5 ] [ ] ] ]
+  >>> c.num_axes
+  3
+  >>> d = a.arange(axis=1, begin=0, end=4)
+  >>> d
+  [ [ 1 ] [ ] [ 2 ] [ ] ]
+  >>> d.num_axes
+  2
+  >>> e = a.arange(axis=1, begin=2, end=5)
+  >>> e
+  [ [ 2 ] [ ] [ 4 5 ] ]
+  >>> e.num_axes
+  2
+
+**Example 2**
+
+  >>> a = k2r.RaggedTensor([ [[[], [1], [2, 3]],[[5, 8], [], [9]]], [[[10], [0], []]], [[[], [], [1]]] ])
+  >>> a.num_axes
+  4
+  >>> b = a.arange(axis=0, begin=0, end=2)
+  >>> b
+  [ [ [ [ ] [ 1 ] [ 2 3 ] ] [ [ 5 8 ] [ ] [ 9 ] ] ] [ [ [ 10 ] [ 0 ] [ ] ] ] ]
+  >>> b.num_axes
+  4
+  >>> c = a.arange(axis=1, begin=1, end=3)
+  >>> c
+  [ [ [ 5 8 ] [ ] [ 9 ] ] [ [ 10 ] [ 0 ] [ ] ] ]
+  >>> c.num_axes
+  3
+  >>> d = a.arange(axis=2, begin=0, end=5)
+  >>> d
+  [ [ ] [ 1 ] [ 2 3 ] [ 5 8 ] [ ] ]
+  >>> d.num_axes
+  2
+
+**Example 3**
+
+  >>> a = k2r.RaggedTensor([[0], [1], [2], [], [3]])
+  >>> a
+  [ [ 0 ] [ 1 ] [ 2 ] [ ] [ 3 ] ]
+  >>> a.num_axes
+  2
+  >>> b = a.arange(axis=0, begin=1, end=4)
+  >>> b
+  [ [ 1 ] [ 2 ] [ ] ]
+  >>> b.data[0] = -1
+  >>> a
+  [ [ 0 ] [ -1 ] [ 2 ] [ ] [ 3 ] ]
+
+Args:
+  axis:
+    The axis from which ``begin`` and ``end`` correspond to.
+  begin:
+    The beginning of the range (inclusive).
+  end:
+    The end of the range (exclusive).
+
+)doc";
+
+static constexpr const char *kRaggedAnyRemoveValuesEqDoc = R"doc(
+Returns a ragged tensor after removing all 'values' that equal a provided
+target.  Leaves all layers of the shape except for the last one unaffected.
+
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([[1, 2, 3, 0, 3, 2], [], [3, 2, 3], [3]])
+>>> b = a.remove_values_eq(3)
+>>> b
+[ [ 1 2 0 2 ] [ ] [ 2 ] [ ] ]
+>>> c = a.remove_values_eq(2)
+>>> c
+[ [ 1 3 0 3 ] [ ] [ 3 3 ] [ 3 ] ]
+
+Args:
+  target:
+    The target value to delete.
+Return:
+  Return a tensor whose values don't contain the ``target``.
+)doc";
+
+static constexpr const char *kRaggedAnyRemoveValuesLeqDoc = R"doc(
+Returns a ragged tensor after removing all 'values' that are
+equal to or less than a provided cutoff.
+Leaves all layers of the shape except for the last one unaffected.
+
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([[1, 2, 3, 0, 3, 2], [], [3, 2, 3], [3]])
+>>> b = a.remove_values_leq(3)
+>>> b
+[ [ ] [ ] [ ] [ ] ]
+>>> c = a.remove_values_leq(2)
+>>> c
+[ [ 3 3 ] [ ] [ 3 3 ] [ 3 ] ]
+>>> d = a.remove_values_leq(1)
+>>> d
+[ [ 2 3 3 2 ] [ ] [ 3 2 3 ] [ 3 ] ]
+
+Args:
+  cutoff:
+    Values less than or equal to this ``cutoff`` are deleted.
+Return:
+  Return a tensor whose values are all above ``cutoff``.
+)doc";
+
+static constexpr const char *kRaggedAnyArgMaxDoc = R"doc(
+Return a tensor containing maximum value indexes within each sub-list along the
+last axis of ``self``, i.e. the max taken over the last axis, The index is -1
+if the sub-list was empty or all values in the sub-list are less
+than ``initial_value``.
+
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([ [3, -1], [], [], [] ])
+>>> b = a.argmax(initial_value=0)
+>>> b
+tensor([ 0, -1, -1, -1], dtype=torch.int32)
+>>> c = k2r.RaggedTensor([ [3, 0, 2, 5, 1], [], [1, 3, 8, 2, 0] ])
+>>> d = c.argmax(initial_value=0)
+>>> d
+tensor([ 3, -1,  7], dtype=torch.int32)
+>>> c.data[3], c.data[7]
+(tensor(5, dtype=torch.int32), tensor(8, dtype=torch.int32))
+>>> c.argmax(initial_value=6)
+tensor([-1, -1,  7], dtype=torch.int32)
+>>> c.to('cuda:0').argmax(0)
+tensor([ 3, -1,  7], device='cuda:0', dtype=torch.int32)
+>>> import torch
+>>> c.to(torch.float32).argmax(0)
+tensor([ 3, -1,  7], dtype=torch.int32)
+
+Args:
+  initial_value:
+    A base value to compare. If values in a sublist are all less
+    than this value, then the ``argmax`` of this sublist is -1.
+    If a sublist is empty, the ``argmax`` of it is also -1.
+
+Returns:
+  Return a 1-D ``torch.int32`` tensor. It is on the same device
+  as ``self``.
+)doc";
+
+static constexpr const char *kRaggedAnyMaxDoc = R"doc(
+Return a tensor containing the maximum of each sub-list along the last
+axis of ``self``. The max is taken over the last axis or ``initial_value``,
+whichever was larger.
+
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([ [[1, 3, 0], [2, 5, -1, 1, 3], [], []], [[1, 8, 9, 2], [], [2, 4, 6, 8]] ])
+>>> a.max(initial_value=-10)
+tensor([  3,   5, -10, -10,   9, -10,   8], dtype=torch.int32)
+>>> a.max(initial_value=7)
+tensor([7, 7, 7, 7, 9, 7, 8], dtype=torch.int32)
+>>> import torch
+>>> a.to(torch.float32).max(-3)
+tensor([ 3.,  5., -3., -3.,  9., -3.,  8.])
+>>> a.to('cuda:0').max(-2)
+tensor([ 3,  5, -2, -2,  9, -2,  8], device='cuda:0', dtype=torch.int32)
+
+Args:
+  initial_value:
+   The base value to compare. If values in a sublist are all less
+   than this value, then the max of this sublist is ``initial_value``.
+   If a sublist is empty, its max is also ``initial_value``.
+
+Returns:
+  Return 1-D tensor containing the max value of each sublist.
+  It shares the same dtype and device with ``self``.
+)doc";
+
+static constexpr const char *kRaggedAnyMinDoc = R"doc(
+Return a tensor containing the minimum of each sub-list along the last
+axis of ``self``. The min is taken over the last axis or ``initial_value``,
+whichever was smaller.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([ [[1, 3, 0], [2, 5, -1, 1, 3], [], []], [[1, 8, 9, 2], [], [2, 4, 6, 8]] ], dtype=torch.float32)
+>>> a.min(initial_value=float('inf'))
+tensor([ 0., -1., inf, inf,  1., inf,  2.])
+>>> a.min(100)
+tensor([  0.,  -1., 100., 100.,   1., 100.,   2.])
+>>> a.to(torch.int32).min(20)
+tensor([ 0, -1, 20, 20,  1, 20,  2], dtype=torch.int32)
+>>> a.to('cuda:0').min(15)
+tensor([ 0., -1., 15., 15.,  1., 15.,  2.], device='cuda:0')
+
+Args:
+  initial_value:
+   The base value to compare. If values in a sublist are all larger
+   than this value, then the minimum of this sublist is ``initial_value``.
+   If a sublist is empty, its minimum is also ``initial_value``.
+
+Returns:
+  Return 1-D tensor containing the minimum of each sublist.
+  It shares the same dtype and device with ``self``.
+)doc";
+
+static constexpr const char *kRaggedCatDoc = R"doc(
+Concatenate a list of ragged tensor over a specified axis.
+
+Hint:
+  This is a static method.
+
+**Example 1**
+
+  >>> import k2.ragged as k2r
+  >>> a = k2r.RaggedTensor([[1], [], [2, 3]])
+  >>> k2r.cat([a, a], axis=0)
+  [ [ 1 ] [ ] [ 2 3 ] [ 1 ] [ ] [ 2 3 ] ]
+  >>> k2r.cat((a, a), axis=1)
+  [ [ 1 1 ] [ ] [ 2 3 2 3 ] ]
+
+**Example 2**
+
+  >>> import k2.ragged as k2r
+  >>> a = k2r.RaggedTensor([[1, 3], [], [5, 8], [], [9]])
+  >>> b = k2r.RaggedTensor([[0], [1, 8], [], [-1], [10]])
+  >>> c = k2r.cat([a, b], axis=0)
+  >>> c
+  [ [ 1 3 ] [ ] [ 5 8 ] [ ] [ 9 ] [ 0 ] [ 1 8 ] [ ] [ -1 ] [ 10 ] ]
+  >>> c.num_axes
+  2
+  >>> d = k2r.cat([a, b], axis=1)
+  >>> d
+  [ [ 1 3 0 ] [ 1 8 ] [ 5 8 ] [ -1 ] [ 9 10 ] ]
+  >>> d.num_axes
+  2
+  >>> k2r.RaggedTensor.cat([a, b], axis=1)
+  [ [ 1 3 0 ] [ 1 8 ] [ 5 8 ] [ -1 ] [ 9 10 ] ]
+  >>> k2r.cat((b, a), axis=0)
+  [ [ 0 ] [ 1 8 ] [ ] [ -1 ] [ 10 ] [ 1 3 ] [ ] [ 5 8 ] [ ] [ 9 ] ]
+
+Args:
+  srcs:
+    A list of ragged tensors to concatenate. They **MUST** all
+    have the same dtype and on the same device.
+  axis:
+    Only 0 and 1 are supported right now. If it is 1, then
+    ``srcs[i].dim0`` must all have the same value.
+
+Return:
+  Return a concatenated tensor.
+)doc";
+
+static constexpr const char *kRaggedAnyUniqueDoc = R"doc(
+If ``self`` has two axes, this will return the unique sub-lists
+(in a possibly different order, but without repeats).
+If ``self`` has 3 axes, it will do the above but separately for each
+index on axis 0; if more than 3 axes, the earliest axes will be ignored.
+
+Caution:
+  It does not completely guarantee that all unique sequences will be
+  present in the output, as it relies on hashing and ignores collisions.
+  If several sequences have the same hash, only one of them is kept, even
+  if the actual content in the sequence is different.
+
+Caution:
+  Even if there are no repeated sequences, the output may be different
+  from ``self``. That is, `new2old_indexes` may NOT be an identity map even
+  if nothing was removed.
+
+**Example 1**
+
+  >>> import k2.ragged as k2r
+  >>> a = k2r.RaggedTensor([[3, 1], [3], [1], [1], [3, 1], [2]])
+  >>> a.unique()
+  ([ [ 1 ] [ 2 ] [ 3 ] [ 3 1 ] ], None, None)
+  >>> a.unique(need_num_repeats=True, need_new2old_indexes=True)
+  ([ [ 1 ] [ 2 ] [ 3 ] [ 3 1 ] ], [ [ 2 1 1 2 ] ], tensor([2, 5, 1, 0], dtype=torch.int32))
+  >>> a.unique(need_num_repeats=True)
+  ([ [ 1 ] [ 2 ] [ 3 ] [ 3 1 ] ], [ [ 2 1 1 2 ] ], None)
+  >>> a.unique(need_new2old_indexes=True)
+  ([ [ 1 ] [ 2 ] [ 3 ] [ 3 1 ] ], None, tensor([2, 5, 1, 0], dtype=torch.int32))
+
+**Example 2**
+
+  >>> import k2.ragged as k2r
+  >>> a = k2r.RaggedTensor([[[1, 2], [2, 1], [1, 2], [1, 2]], [[3], [2], [0, 1], [2]], [[], [2, 3], [], [3]] ])
+  >>> a.unique()
+  ([ [ [ 1 2 ] [ 2 1 ] ] [ [ 2 ] [ 3 ] [ 0 1 ] ] [ [ ] [ 3 ] [ 2 3 ] ] ], None, None)
+  >>> a.unique(need_num_repeats=True, need_new2old_indexes=True)
+  ([ [ [ 1 2 ] [ 2 1 ] ] [ [ 2 ] [ 3 ] [ 0 1 ] ] [ [ ] [ 3 ] [ 2 3 ] ] ], [ [ 3 1 ] [ 2 1 1 ] [ 2 1 1 ] ], tensor([ 0,  1,  5,  4,  6,  8, 11,  9], dtype=torch.int32))
+  >>> a.unique(need_num_repeats=True)
+  ([ [ [ 1 2 ] [ 2 1 ] ] [ [ 2 ] [ 3 ] [ 0 1 ] ] [ [ ] [ 3 ] [ 2 3 ] ] ], [ [ 3 1 ] [ 2 1 1 ] [ 2 1 1 ] ], None)
+  >>> a.unique(need_new2old_indexes=True)
+  ([ [ [ 1 2 ] [ 2 1 ] ] [ [ 2 ] [ 3 ] [ 0 1 ] ] [ [ ] [ 3 ] [ 2 3 ] ] ], None, tensor([ 0,  1,  5,  4,  6,  8, 11,  9], dtype=torch.int32))
+
+**Example 3**
+
+  >>> import k2.ragged as k2r
+  >>> a = k2r.RaggedTensor([[1], [3], [2]])
+  >>> a.unique(True, True)
+  ([ [ 1 ] [ 2 ] [ 3 ] ], [ [ 1 1 1 ] ], tensor([0, 2, 1], dtype=torch.int32))
+
+
+Args:
+  need_num_repeats:
+    If True, it also returns the number of repeats of each sequence.
+  need_new2old_indexes:
+    If true, it returns an extra 1-D tensor `new2old_indexes`.
+    If `src` has 2 axes, this tensor contains `src_idx0`;
+    if `src` has 3 axes, this tensor contains `src_idx01`.
+
+    Caution:
+      For repeated sublists, only one of them is kept.
+      The choice of which one to keep is **deterministic** and
+      is an implementation detail.
+
+Returns:
+  Returns a tuple containing:
+
+    - ans: A ragged tensor with the same number of axes as ``self`` and possibly
+      fewer elements due to removing repeated sequences on the last axis
+      (and with the last-but-one indexes possibly in a different order).
+
+    - num_repeats: A tensor containing number of repeats of each returned
+      sequence if ``need_num_repeats`` is True; it is ``None`` otherwise.
+      If it is not ``None``, ``num_repeats.num_axes`` is always 2.
+      If ``ans.num_axes`` is 2, then ``num_repeats.dim0 == 1`` and
+      ``num_repeats.numel() == ans.dim0``.
+      If ``ans.num_axes`` is 3, then ``num_repeats.dim0 == ans.dim0`` and
+      ``num_repeats.numel() == ans.tot_size(1)``.
+
+    - new2old_indexes: A 1-D tensor whose i-th element specifies the
+      input sublist that the i-th output sublist corresponds to.
+
+)doc";
+
+static constexpr const char *kRaggedAnyNormalizeDoc = R"doc(
+Normalize a ragged tensor over the last axis.
+
+If ``use_log`` is ``True``, the normalization per sublist is done as follows:
+
+    1. Compute the log sum per sublist
+    2. Subtract the log sum computed above from the sublist and return
+    it
+
+If ``use_log`` is ``False``, the normalization per sublist is done as follows:
+
+    1. Compute the sum per sublist
+    2. Divide the sublist by the above sum and return the resulting sublist
+
+Note:
+  If a sublist contains 3 elements ``[a, b, c]``, then the log sum
+  is defined as::
+
+    s = log(exp(a) + exp(b) + exp(c))
+
+  The resulting sublist looks like below if ``use_log`` is ``True``::
+
+    [a - s, b - s, c - s]
+
+  If ``use_log`` is ``False``, the resulting sublist looks like::
+
+    [a/(a+b+c), b/(a+b+c), c/(a+b+c)]
+
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([[0.1, 0.3], [], [1], [0.2, 0.8]])
+>>> a.normalize(use_log=False)
+[ [ 0.25 0.75 ] [ ] [ 1 ] [ 0.2 0.8 ] ]
+>>> a.normalize(use_log=True)
+[ [ -0.798139 -0.598139 ] [ ] [ 0 ] [ -1.03749 -0.437488 ] ]
+>>> b = k2r.RaggedTensor([ [[0.1, 0.3], []], [[1], [0.2, 0.8]] ])
+>>> b.normalize(use_log=False)
+[ [ [ 0.25 0.75 ] [ ] ] [ [ 1 ] [ 0.2 0.8 ] ] ]
+>>> b.normalize(use_log=True)
+[ [ [ -0.798139 -0.598139 ] [ ] ] [ [ 0 ] [ -1.03749 -0.437488 ] ] ]
+>>> a.num_axes
+2
+>>> b.num_axes
+3
+>>> import torch
+>>> (torch.tensor([0.1, 0.3]).exp() / torch.tensor([0.1, 0.3]).exp().sum()).log()
+tensor([-0.7981, -0.5981])
+
+Args:
+  use_log:
+    It indicates which kind of normalization to be applied.
+Returns:
+  Returns a 1-D tensor, sharing the same dtype and device with ``self``.
+)doc";
+
+static constexpr const char *kRaggedAnyPadDoc = R"doc(
+Pad a ragged tensor with 2-axes to a 2-D torch tensor.
+
+For example, if ``self`` has the following values::
+
+    [ [1 2 3] [4] [5 6 7 8] ]
+
+Then it returns a 2-D tensor as follows if ``padding_value`` is 0 and
+mode is ``constant``::
+
+    tensor([[1, 2, 3, 0],
+            [4, 0, 0, 0],
+            [5, 6, 7, 8]])
+
+Caution:
+  It requires that ``self.num_axes == 2``.
+
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([[1], [], [2, 3], [5, 8, 9, 8, 2]])
+>>> a.pad(mode='constant', padding_value=-1)
+tensor([[ 1, -1, -1, -1, -1],
+        [-1, -1, -1, -1, -1],
+        [ 2,  3, -1, -1, -1],
+        [ 5,  8,  9,  8,  2]], dtype=torch.int32)
+>>> a.pad(mode='replicate', padding_value=-1)
+tensor([[ 1,  1,  1,  1,  1],
+        [-1, -1, -1, -1, -1],
+        [ 2,  3,  3,  3,  3],
+        [ 5,  8,  9,  8,  2]], dtype=torch.int32)
+
+Args:
+  mode:
+    Valid values are: ``constant``, ``replicate``. If it is
+    ``constant``, the given ``padding_value`` is used for filling.
+    If it is ``replicate``, the last entry in a list is used for filling.
+    If a list is empty, then the given `padding_value` is also used for filling.
+  padding_value:
+    The filling value.
+
+Returns:
+  A 2-D torch tensor, sharing the same dtype and device with ``self``.
+)doc";
+
+static constexpr const char *kRaggedAnyToListDoc = R"doc(
+Turn a ragged tensor into a list of lists [of lists..].
+
+Hint:
+  You can pass the returned list to the constructor of :class:`RaggedTensor`.
+
+>>> a = k2r.RaggedTensor([ [[], [1, 2], [3], []], [[5, 6, 7]], [[], [0, 2, 3], [], []]])
+>>> a.tolist()
+[[[], [1, 2], [3], []], [[5, 6, 7]], [[], [0, 2, 3], [], []]]
+>>> b = k2r.RaggedTensor(a.tolist())
+>>> a == b
+True
+>>> c = k2r.RaggedTensor([[1.], [2.], [], [3.25, 2.5]])
+>>> c.tolist()
+[[1.0], [2.0], [], [3.25, 2.5]]
+
+Returns:
+   A list of list of lists [of lists ...] containing the same elements
+   and structure as ``self``.
+)doc";
+
+static constexpr const char *kRaggedAnySortDoc = R"doc(
+Sort a ragged tensor over the last axis **in-place**.
+
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([ [1, 3, 0], [2, 5, 3], [], [1, 3, 0.] ])
+>>> a_clone = a.clone()
+>>> b = a.sort_(descending=True, need_new2old_indexes=True)
+>>> b
+tensor([1, 0, 2, 4, 5, 3, 7, 6, 8], dtype=torch.int32)
+>>> a
+[ [ 3 1 0 ] [ 5 3 2 ] [ ] [ 3 1 0 ] ]
+>>> a_clone.data[b.long()]
+tensor([3., 1., 0., 5., 3., 2., 3., 1., 0.])
+>>> a_clone = a.clone()
+>>> c = a.sort_(descending=False, need_new2old_indexes=True)
+>>> c
+tensor([2, 1, 0, 5, 4, 3, 8, 7, 6], dtype=torch.int32)
+>>> a
+[ [ 0 1 3 ] [ 2 3 5 ] [ ] [ 0 1 3 ] ]
+>>> a_clone.data[c.long()]
+tensor([0., 1., 3., 2., 3., 5., 0., 1., 3.])
+
+Args:
+  descending:
+    ``True`` to sort in **descending** order.
+    ``False`` to sort in **ascending** order.
+  need_new2old_indexes:
+    If ``True``, also returns a 1-D tensor, containing the indexes mapping
+    from the sorted elements to the unsorted elements. We can use
+    ``self.clone().data[returned_tensor]`` to get a sorted tensor.
+Returns:
+  If ``need_new2old_indexes`` is False, returns None. Otherwise, returns
+  a 1-D tensor of dtype ``torch.int32``.
 )doc";
 
 }  // namespace k2

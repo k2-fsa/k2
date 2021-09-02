@@ -27,24 +27,50 @@
 
 namespace k2 {
 
+/** One iteration of RaggedAnyFromList.
+
+  @param data It is a list or a list-of sublist(s).
+  @param cur_level It is the level of a sublist. The root has a level 0.
+  @param deepest_level values appear at this level.
+  @param row_splits  It contains row_splits of different levels, indexed
+                     by `cur_level`.
+  @param elems  It contains the elements read so far.
+ */
 template <typename T>
 static void RaggedAnyFromListIter(py::list data, int32_t *cur_level,
+                                  int32_t *deepest_level,
                                   std::vector<std::vector<int32_t>> *row_splits,
                                   std::vector<T> *elems) {
+  // We encounter a new sublist, so increase the level number
   *cur_level += 1;
-  if (*cur_level > row_splits->size()) {
+
+  if (static_cast<size_t>(*cur_level) > row_splits->size()) {
+    // This is a deeper level that has not been seen, so
+    // we need to allocate a row_split for this level
     row_splits->resize(*cur_level, std::vector<int32_t>(1, 0));
   }
 
   if (data.size() > 0 && py::isinstance<py::list>(data[0])) {
+    // If `data` is not empty and it contains sublist
     for (auto &d : data) {
       if (!py::isinstance<py::list>(d)) {
         throw std::runtime_error("Expect an instance of list");
       }
-      RaggedAnyFromListIter(d.cast<py::list>(), cur_level, row_splits, elems);
+      RaggedAnyFromListIter(d.cast<py::list>(), cur_level, deepest_level,
+                            row_splits, elems);
     }
   } else {
+    if (*deepest_level == -1) {
+      *deepest_level = *cur_level;
+    } else if (*deepest_level != *cur_level) {
+      // Handle the case for [ [], [[1]] ]
+      throw std::runtime_error("Make sure sublists are properly nested");
+    }
     if (static_cast<size_t>(*cur_level) != row_splits->size()) {
+      // Handle cases like the following string:
+      // [ [[1]], [2, 3] ]
+      // The sublist [2, 3] should be [[2, 3]], i.e., has the same
+      // level as [[1]]
       throw std::runtime_error("Expect a [");
     }
     auto tmp = data.cast<std::vector<T>>();
@@ -59,29 +85,37 @@ static void RaggedAnyFromListIter(py::list data, int32_t *cur_level,
           : ((*row_splits)[*cur_level + 1].size() - 1));
 }
 
+/** Construct a Ragged<T> from a list of sublist(s) of integers
+   or real numbers.
+
+  @param data  A list of sublist(s).
+  @return Return a Ragged<T> constructed from the given `data`.
+ */
 template <typename T>
 static Ragged<T> RaggedAnyFromList(py::list data) {
   std::vector<std::vector<int32_t>> row_splits;
   std::vector<T> elems;
   int32_t cur_level = 0;
+  int32_t deepest_level = -1;  // values appear at this level
   for (auto &d : data) {
     if (!py::isinstance<py::list>(d)) {
       throw std::runtime_error("Expect a list");
     }
-    RaggedAnyFromListIter(d.cast<py::list>(), &cur_level, &row_splits, &elems);
+    RaggedAnyFromListIter(d.cast<py::list>(), &cur_level, &deepest_level,
+                          &row_splits, &elems);
   }
 
   if (row_splits.empty()) {
-    // Assume 2 axes even though the num-axes is ambiguous from the input "[ ]"
+    // Assume 2 axes even though the num-axes is ambiguous from the input `[ ]`
     // row_splits is [ 0 ].
     row_splits.push_back(std::vector<int32_t>(1, 0));
   }
 
   std::vector<RaggedShapeLayer> axes(row_splits.size());
   ContextPtr c = GetCpuContext();
-  for (size_t i = 0; i < row_splits.size(); ++i) {
+  for (size_t i = 0; i != row_splits.size(); ++i) {
     axes[i].row_splits = Array1<int32_t>(c, row_splits[i]);
-    axes[i].cached_tot_size = -1;
+    axes[i].cached_tot_size = row_splits[i].back();
   }
   Ragged<T> ans;
   ans.shape = RaggedShape(axes);
@@ -92,7 +126,7 @@ static Ragged<T> RaggedAnyFromList(py::list data) {
   return ans;
 }
 
-RaggedAny::RaggedAny(const std::string &s, py::object dtype) {
+RaggedAny::RaggedAny(const std::string &s, py::object dtype /*=py::none()*/) {
   if (!dtype.is_none() && !THPDtype_Check(dtype.ptr())) {
     K2_LOG(FATAL) << "Expect an instance of torch.dtype. "
                   << "Given: " << py::str(dtype);
@@ -100,11 +134,12 @@ RaggedAny::RaggedAny(const std::string &s, py::object dtype) {
 
   if (dtype.is_none()) {
     try {
-      // we try int first, if it fails, use float
+      // We try int first, if it fails, use float
       any = Ragged<int32_t>(s, /*throw_on_failure*/ true).Generic();
       return;
     } catch (const std::runtime_error &) {
-      // we try int first, if it fails, use float
+      // Use float. If it fails again, another exception
+      // is thrown and it is propagated to the user
       any = Ragged<float>(s).Generic();
       return;
     }
@@ -132,10 +167,12 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
 
   if (dtype.is_none()) {
     try {
-      // we try int first, if it fails, use float
+      // We try int first; if it fails, use float
       any = RaggedAnyFromList<int32_t>(data).Generic();
       return;
     } catch (const std::exception &) {
+      // Use float. If it fails again, another exception
+      // is thrown and it is propagated to the user
       any = RaggedAnyFromList<float>(data).Generic();
       return;
     }
@@ -199,6 +236,11 @@ RaggedAny RaggedAny::To(torch::Device device) const {
   return RaggedAny(any.To(GetCudaContext(device_index)));
 }
 
+RaggedAny RaggedAny::To(const std::string &device) const {
+  torch::Device d(device);
+  return this->To(d);
+}
+
 RaggedAny RaggedAny::To(torch::ScalarType scalar_type) const {
   Dtype d = any.GetDtype();
 
@@ -222,6 +264,7 @@ RaggedAny RaggedAny::To(torch::ScalarType scalar_type) const {
 }
 
 RaggedAny RaggedAny::Clone() const {
+  DeviceGuard guard(any.Context());
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(
       t, T, { return RaggedAny(any.Specialize<T>().Clone().Generic()); });
@@ -260,22 +303,28 @@ RaggedAny RaggedAny::Arange(int32_t axis, int32_t begin,
   return RaggedAny(k2::Arange(any, axis, begin, end));
 }
 
-RaggedAny RaggedAny::RemoveValuesLeq(float cutoff) /*const*/ {
+RaggedAny RaggedAny::RemoveValuesLeq(py::object cutoff) /*const*/ {
   DeviceGuard guard(any.Context());
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
     return RaggedAny(
-        k2::RemoveValuesLeq<T>(any.Specialize<T>(), cutoff).Generic());
+        k2::RemoveValuesLeq<T>(any.Specialize<T>(), cutoff.cast<T>())
+            .Generic());
   });
+
+  // Unreachable code
+  return {};
 }
 
-RaggedAny RaggedAny::RemoveValuesEq(float target) /*const*/ {
+RaggedAny RaggedAny::RemoveValuesEq(py::object target) /*const*/ {
   DeviceGuard guard(any.Context());
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
     return RaggedAny(
-        k2::RemoveValuesEq<T>(any.Specialize<T>(), target).Generic());
+        k2::RemoveValuesEq<T>(any.Specialize<T>(), target.cast<T>()).Generic());
   });
+  // Unreachable code
+  return {};
 }
 
 torch::Tensor RaggedAny::ArgMax(py::object initial_value) /*const*/ {

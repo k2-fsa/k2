@@ -1,7 +1,6 @@
 # please sort imported functions alphabetically
 from .autograd import normalize_scores
 from .ops import argmax_per_sublist
-from .ops import cat
 from .ops import create_ragged2
 from .ops import get_layer
 from .ops import index
@@ -23,3 +22,4 @@ from .tensor import RaggedFloat
 
 from _k2.ragged import RaggedTensor
 from _k2.ragged import create_ragged_tensor
+from _k2.ragged import cat
