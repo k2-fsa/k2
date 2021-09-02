@@ -416,20 +416,52 @@ tensor. The tensor returned is on the same device as <cite>src</cite>.</p>
 <h2>cat<a class="headerlink" href="#cat" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ragged.cat">
-<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">cat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">srcs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L202-L214"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.cat" title="Permalink to this definition">¶</a></dt>
-<dd><p>Concatenate a list of <code class="xref py py-class docutils literal notranslate"><span class="pre">_k2.RaggedInt</span></code> along a given axis.</p>
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">cat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">srcs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="ragged_tensor.html#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ragged_tensor.html#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></span><a class="headerlink" href="#k2.ragged.cat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concatenate a list of ragged tensor over a specified axis.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>This is a static method.</p>
+</div>
+<p><strong>Example 1</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">k2r</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="go">[ [ 1 ] [ ] [ 2 3 ] [ 1 ] [ ] [ 2 3 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">k2r</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">[ [ 1 1 ] [ ] [ 2 3 2 3 ] ]</span>
+</pre></div>
+</div>
+<p><strong>Example 2</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">9</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">10</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">[ [ 1 3 ] [ ] [ 5 8 ] [ ] [ 9 ] [ 0 ] [ 1 8 ] [ ] [ -1 ] [ 10 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
+<span class="go">[ [ 1 3 0 ] [ 1 8 ] [ 5 8 ] [ -1 ] [ 9 10 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">[ [ 1 3 0 ] [ 1 8 ] [ 5 8 ] [ -1 ] [ 9 10 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">k2r</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="go">[ [ 0 ] [ 1 8 ] [ ] [ -1 ] [ 10 ] [ 1 3 ] [ ] [ 5 8 ] [ ] [ 9 ] ]</span>
+</pre></div>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>srcs</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]) – The input.</p></li>
-<li><p><strong>axis</strong> – It can be either 0 or 1.</p></li>
+<li><p><strong>srcs</strong> – A list of ragged tensors to concatenate. They <strong>MUST</strong> all
+have the same dtype and on the same device.</p></li>
+<li><p><strong>axis</strong> – Only 0 and 1 are supported right now. If it is 1, then
+<code class="docutils literal notranslate"><span class="pre">srcs[i].dim0</span></code> must all have the same value.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
-</dd>
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>A single ragged tensor.</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a concatenated tensor.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -439,7 +471,7 @@ tensor. The tensor returned is on the same device as <cite>src</cite>.</p>
 <h2>create_ragged2<a class="headerlink" href="#create-ragged2" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ragged.create_ragged2">
-<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">create_ragged2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vecs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L217-L227"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.create_ragged2" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">create_ragged2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vecs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L201-L211"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.create_ragged2" title="Permalink to this definition">¶</a></dt>
 <dd><p>Construct a Ragged with 2 axes.
 :type vecs: <code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]], <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]]
 :param vecs: Input of a list of list</p>
@@ -458,7 +490,7 @@ tensor. The tensor returned is on the same device as <cite>src</cite>.</p>
 <h2>get_layer<a class="headerlink" href="#get-layer" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ragged.get_layer">
-<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">get_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L230-L243"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.get_layer" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">get_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L214-L227"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.get_layer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a <cite>sub-shape</cite> of <cite>src</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -482,7 +514,7 @@ a RaggedShape.</p>
 <h2>unique_sequences<a class="headerlink" href="#unique-sequences" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ragged.unique_sequences">
-<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">unique_sequences</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_num_repeats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L246-L305"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.unique_sequences" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">unique_sequences</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_num_repeats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L230-L289"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.unique_sequences" title="Permalink to this definition">¶</a></dt>
 <dd><p>Remove repeated sequences.</p>
 <p>If <cite>src</cite> has two axes, this will return the unique sub-lists (in a possibly
 different order, but without repeats).  If <cite>src</cite> has 3 axes, it will
@@ -547,7 +579,7 @@ input sublist that the i-th output sublist corresponds to.</p></li>
 <h2>regular_ragged_shape<a class="headerlink" href="#regular-ragged-shape" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ragged.regular_ragged_shape">
-<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">regular_ragged_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim1</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L308-L325"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.regular_ragged_shape" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">regular_ragged_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim1</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L292-L309"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.regular_ragged_shape" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a RaggedShape with dim0() == dim0 and tot_size(1) == dim0 * dim1.</p>
 <p>Require dim0 &gt;= 0 and dim1 &gt;= 0.</p>
 <div class="admonition caution">
@@ -576,7 +608,7 @@ it to GPU.</p>
 <h2>argmax_per_sublist<a class="headerlink" href="#argmax-per-sublist" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ragged.argmax_per_sublist">
-<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">argmax_per_sublist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">3.4028234663852886e+38</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L328-L343"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.argmax_per_sublist" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">argmax_per_sublist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">3.4028234663852886e+38</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L312-L327"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.argmax_per_sublist" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute the argmax per sublist for a ragged tensor.</p>
 <p>The argmax is computed on the last axis.</p>
 <dl class="field-list simple">
@@ -600,7 +632,7 @@ it to GPU.</p>
 <h2>max_per_sublist<a class="headerlink" href="#max-per-sublist" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ragged.max_per_sublist">
-<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">max_per_sublist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">3.4028234663852886e+38</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L346-L364"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.max_per_sublist" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">max_per_sublist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">3.4028234663852886e+38</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L330-L348"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.max_per_sublist" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute the max per sublist for a ragged tensor (including
 <cite>initial_value</cite> in the maximum)</p>
 <p>The max is computed on the last layer, ignoring other layers, so it’s
@@ -627,7 +659,7 @@ sub-list when computing the maximum.</p></li>
 <h2>sort_sublist<a class="headerlink" href="#sort-sublist" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ragged.sort_sublist">
-<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">sort_sublist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descending</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L367-L388"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.sort_sublist" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">sort_sublist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descending</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ragged/ops.py#L351-L372"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ragged.sort_sublist" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sort a ragged tensor <strong>in-place</strong>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>

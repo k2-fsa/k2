@@ -200,6 +200,10 @@
 <p class="admonition-title">Note</p>
 <p>A ragged tensor has at least two axes.</p>
 </div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>The returned tensor is on CPU.</p>
+</div>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">9</span><span class="p">]</span> <span class="p">])</span>
@@ -217,20 +221,31 @@
 <span class="go">[ [ 1 ] ]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">dtype</span>
 <span class="go">torch.float64</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">]]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">4</span><span class="p">],</span> <span class="p">[]]</span> <span class="p">])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
-<span class="go">[ [ [ 1 ] [ 2 3 ] ] [ [ 4 ] [ 5 ] ] ]</span>
+<span class="go">[ [ [ 1 ] [ 2 3 ] ] [ [ 4 ] [ ] ] ]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">num_axes</span>
 <span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span>
+<span class="go">[ ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span><span class="o">.</span><span class="n">shape</span><span class="o">.</span><span class="n">row_splits</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">tensor([0], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span><span class="o">.</span><span class="n">shape</span><span class="o">.</span><span class="n">row_ids</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">tensor([], dtype=torch.int32)</span>
 </pre></div>
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> – A list-of-list of integers or real numbers.</p></li>
+<li><p><strong>data</strong> – A list-of sublist(s) of integers or real numbers.
+It can have arbitrary number of axes (at least two).</p></li>
 <li><p><strong>dtype</strong> – Optional. If None, it infers the dtype from <code class="docutils literal notranslate"><span class="pre">data</span></code>
 automatically, which is either <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code> or
-<code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>.</p></li>
+<code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>. Supported dtypes are: <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code>,
+<code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>, and <code class="docutils literal notranslate"><span class="pre">torch.float64</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -243,8 +258,12 @@ automatically, which is either <code class="docutils literal notranslate"><span 
 </pre></div>
 </div>
 <p>An example string for a 3-axis ragged tensor is given below:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span> <span class="p">[[</span><span class="mi">1</span><span class="p">]</span> <span class="p">[</span><span class="mi">2</span> <span class="mi">3</span><span class="p">]]</span>  <span class="p">[[</span><span class="mi">2</span><span class="p">]</span> <span class="p">[]</span> <span class="p">[</span><span class="mi">3</span> <span class="mi">4</span><span class="p">]]</span> <span class="p">]</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span> <span class="p">[[</span><span class="mi">1</span><span class="p">]]</span> <span class="p">[[]]</span> <span class="p">]</span>
 </pre></div>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>The returned tensor is on CPU.</p>
 </div>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
@@ -262,6 +281,9 @@ automatically, which is either <code class="docutils literal notranslate"><span 
 <span class="go">torch.float32</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">num_axes</span>
 <span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">(</span><span class="s1">&#39;[[1.]]&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">dtype</span>
+<span class="go">torch.float32</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -272,10 +294,11 @@ Of course, numbers have to be separated by at least one space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>s</strong> – A string representation of the tensor.</p></li>
+<li><p><strong>s</strong> – A string representation of a ragged tensor.</p></li>
 <li><p><strong>dtype</strong> – The desired dtype of the tensor. If it is <code class="docutils literal notranslate"><span class="pre">None</span></code>, it tries
-to infer the correct dtype from <cite>s</cite>, which is assumed to be
-either <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code> or <code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>.</p></li>
+to infer the correct dtype from <code class="docutils literal notranslate"><span class="pre">s</span></code>, which is assumed to be
+either <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code> or <code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>. Supported dtypes are:
+<code class="docutils literal notranslate"><span class="pre">torch.int32</span></code>, <code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>, and <code class="docutils literal notranslate"><span class="pre">torch.float64</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -314,8 +337,8 @@ it throws an exception.</p>
 <dd class="field-odd"><p><strong>other</strong> – The tensor to be compared.</p>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Return True if the two tensors are equal.
-Return False otherwise.</p>
+<dd class="field-even"><p>Return <code class="docutils literal notranslate"><span class="pre">True</span></code> if the two tensors are equal.
+Return <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -395,6 +418,10 @@ Overloaded function.</p>
 <p class="admonition-title">Note</p>
 <p>A ragged tensor has at least two axes.</p>
 </div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>The returned tensor is on CPU.</p>
+</div>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">9</span><span class="p">]</span> <span class="p">])</span>
@@ -412,20 +439,31 @@ Overloaded function.</p>
 <span class="go">[ [ 1 ] ]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">dtype</span>
 <span class="go">torch.float64</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">]]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">4</span><span class="p">],</span> <span class="p">[]]</span> <span class="p">])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
-<span class="go">[ [ [ 1 ] [ 2 3 ] ] [ [ 4 ] [ 5 ] ] ]</span>
+<span class="go">[ [ [ 1 ] [ 2 3 ] ] [ [ 4 ] [ ] ] ]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">num_axes</span>
 <span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span>
+<span class="go">[ ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span><span class="o">.</span><span class="n">shape</span><span class="o">.</span><span class="n">row_splits</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">tensor([0], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span><span class="o">.</span><span class="n">shape</span><span class="o">.</span><span class="n">row_ids</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">tensor([], dtype=torch.int32)</span>
 </pre></div>
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> – A list-of-list of integers or real numbers.</p></li>
+<li><p><strong>data</strong> – A list-of sublist(s) of integers or real numbers.
+It can have arbitrary number of axes (at least two).</p></li>
 <li><p><strong>dtype</strong> – Optional. If None, it infers the dtype from <code class="docutils literal notranslate"><span class="pre">data</span></code>
 automatically, which is either <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code> or
-<code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>.</p></li>
+<code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>. Supported dtypes are: <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code>,
+<code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>, and <code class="docutils literal notranslate"><span class="pre">torch.float64</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -438,8 +476,12 @@ automatically, which is either <code class="docutils literal notranslate"><span 
 </pre></div>
 </div>
 <p>An example string for a 3-axis ragged tensor is given below:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span> <span class="p">[[</span><span class="mi">1</span><span class="p">]</span> <span class="p">[</span><span class="mi">2</span> <span class="mi">3</span><span class="p">]]</span>  <span class="p">[[</span><span class="mi">2</span><span class="p">]</span> <span class="p">[]</span> <span class="p">[</span><span class="mi">3</span> <span class="mi">4</span><span class="p">]]</span> <span class="p">]</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span> <span class="p">[[</span><span class="mi">1</span><span class="p">]]</span> <span class="p">[[]]</span> <span class="p">]</span>
 </pre></div>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>The returned tensor is on CPU.</p>
 </div>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
@@ -457,6 +499,9 @@ automatically, which is either <code class="docutils literal notranslate"><span 
 <span class="go">torch.float32</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">num_axes</span>
 <span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">(</span><span class="s1">&#39;[[1.]]&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">dtype</span>
+<span class="go">torch.float32</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -467,10 +512,11 @@ Of course, numbers have to be separated by at least one space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>s</strong> – A string representation of the tensor.</p></li>
+<li><p><strong>s</strong> – A string representation of a ragged tensor.</p></li>
 <li><p><strong>dtype</strong> – The desired dtype of the tensor. If it is <code class="docutils literal notranslate"><span class="pre">None</span></code>, it tries
-to infer the correct dtype from <cite>s</cite>, which is assumed to be
-either <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code> or <code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>.</p></li>
+to infer the correct dtype from <code class="docutils literal notranslate"><span class="pre">s</span></code>, which is assumed to be
+either <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code> or <code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>. Supported dtypes are:
+<code class="docutils literal notranslate"><span class="pre">torch.int32</span></code>, <code class="docutils literal notranslate"><span class="pre">torch.float32</span></code>, and <code class="docutils literal notranslate"><span class="pre">torch.float64</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -558,17 +604,183 @@ You are not expected to call it by yourself.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.arange">
 <span class="sig-name descname"><span class="pre">arange</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">begin</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.arange" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return a sub-range of <code class="docutils literal notranslate"><span class="pre">self</span></code> containing indexes <code class="docutils literal notranslate"><span class="pre">begin</span></code>
+through <code class="docutils literal notranslate"><span class="pre">end</span> <span class="pre">-</span> <span class="pre">1</span></code> axis <code class="docutils literal notranslate"><span class="pre">axis</span></code> of <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">axis</span></code> argument may be confusing; its behavior is equivalent to:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">axis</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="n">self</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">self</span><span class="p">.</span><span class="n">RemoveAxis</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w"></span>
+<span class="k">return</span><span class="w"> </span><span class="n">Arange</span><span class="p">(</span><span class="n">self</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">begin</span><span class="p">,</span><span class="w"> </span><span class="n">end</span><span class="p">)</span><span class="w"></span>
+</pre></div>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The returned tensor shares the underlying memory with <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+</div>
+<p><strong>Example 1</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">]],</span> <span class="p">[[],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[]],</span> <span class="p">[[],</span> <span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="p">[[]]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span>
+<span class="go">[ [ [ 1 ] [ ] [ 2 ] ] [ [ ] [ 4 5 ] [ ] ] [ [ ] [ 1 ] ] [ [ ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">begin</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">[ [ [ ] [ 4 5 ] [ ] ] [ [ ] [ 1 ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">begin</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">[ [ [ ] [ 4 5 ] [ ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">begin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
+<span class="go">[ [ 1 ] [ ] [ 2 ] [ ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">begin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span>
+<span class="go">[ [ 2 ] [ ] [ 4 5 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">e</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+</pre></div>
+</div>
+<p><strong>Example 2</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[[],</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],[[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">9</span><span class="p">]]],</span> <span class="p">[[[</span><span class="mi">10</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">[]]],</span> <span class="p">[[[],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">1</span><span class="p">]]]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">4</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">begin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">[ [ [ [ ] [ 1 ] [ 2 3 ] ] [ [ 5 8 ] [ ] [ 9 ] ] ] [ [ [ 10 ] [ 0 ] [ ] ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">4</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">begin</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">[ [ [ 5 8 ] [ ] [ 9 ] ] [ [ 10 ] [ 0 ] [ ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">begin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
+<span class="go">[ [ ] [ 1 ] [ 2 3 ] [ 5 8 ] [ ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+</pre></div>
+</div>
+<p><strong>Example 3</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">3</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span>
+<span class="go">[ [ 0 ] [ 1 ] [ 2 ] [ ] [ 3 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">begin</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">[ [ 1 ] [ 2 ] [ ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span>
+<span class="go">[ [ 0 ] [ -1 ] [ 2 ] [ ] [ 3 ] ]</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>axis</strong> – The axis from which <code class="docutils literal notranslate"><span class="pre">begin</span></code> and <code class="docutils literal notranslate"><span class="pre">end</span></code> correspond to.</p></li>
+<li><p><strong>begin</strong> – The beginning of the range (inclusive).</p></li>
+<li><p><strong>end</strong> – The end of the range (exclusive).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.argmax">
 <span class="sig-name descname"><span class="pre">argmax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">at::Tensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.argmax" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return a tensor containing maximum value indexes within each sub-list along the
+last axis of <code class="docutils literal notranslate"><span class="pre">self</span></code>, i.e. the max taken over the last axis, The index is -1
+if the sub-list was empty or all values in the sub-list are less
+than <code class="docutils literal notranslate"><span class="pre">initial_value</span></code>.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">initial_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">tensor([ 0, -1, -1, -1], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">initial_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
+<span class="go">tensor([ 3, -1,  7], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">c</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span>
+<span class="go">(tensor(5, dtype=torch.int32), tensor(8, dtype=torch.int32))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">initial_value</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+<span class="go">tensor([-1, -1,  7], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;cuda:0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="go">tensor([ 3, -1,  7], device=&#39;cuda:0&#39;, dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="go">tensor([ 3, -1,  7], dtype=torch.int32)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>initial_value</strong> – A base value to compare. If values in a sublist are all less
+than this value, then the <code class="docutils literal notranslate"><span class="pre">argmax</span></code> of this sublist is -1.
+If a sublist is empty, the <code class="docutils literal notranslate"><span class="pre">argmax</span></code> of it is also -1.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a 1-D <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code> tensor. It is on the same device
+as <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.cat">
 <em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">cat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">srcs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.cat" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Concatenate a list of ragged tensor over a specified axis.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>This is a static method.</p>
+</div>
+<p><strong>Example 1</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">k2r</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="go">[ [ 1 ] [ ] [ 2 3 ] [ 1 ] [ ] [ 2 3 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">k2r</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">[ [ 1 1 ] [ ] [ 2 3 2 3 ] ]</span>
+</pre></div>
+</div>
+<p><strong>Example 2</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">9</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">10</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">[ [ 1 3 ] [ ] [ 5 8 ] [ ] [ 9 ] [ 0 ] [ 1 8 ] [ ] [ -1 ] [ 10 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
+<span class="go">[ [ 1 3 0 ] [ 1 8 ] [ 5 8 ] [ -1 ] [ 9 10 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">[ [ 1 3 0 ] [ 1 8 ] [ 5 8 ] [ -1 ] [ 9 10 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">k2r</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="go">[ [ 0 ] [ 1 8 ] [ ] [ -1 ] [ 10 ] [ 1 3 ] [ ] [ 5 8 ] [ ] [ 9 ] ]</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>srcs</strong> – A list of ragged tensors to concatenate. They <strong>MUST</strong> all
+have the same dtype and on the same device.</p></li>
+<li><p><strong>axis</strong> – Only 0 and 1 are supported right now. If it is 1, then
+<code class="docutils literal notranslate"><span class="pre">srcs[i].dim0</span></code> must all have the same value.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a concatenated tensor.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.clone">
@@ -734,17 +946,131 @@ otherwise.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.max">
 <span class="sig-name descname"><span class="pre">max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">at::Tensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.max" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return a tensor containing the maximum of each sub-list along the last
+axis of <code class="docutils literal notranslate"><span class="pre">self</span></code>. The max is taken over the last axis or <code class="docutils literal notranslate"><span class="pre">initial_value</span></code>,
+whichever was larger.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[]],</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">]]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">initial_value</span><span class="o">=-</span><span class="mi">10</span><span class="p">)</span>
+<span class="go">tensor([  3,   5, -10, -10,   9, -10,   8], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">initial_value</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+<span class="go">tensor([7, 7, 7, 7, 9, 7, 8], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">)</span>
+<span class="go">tensor([ 3.,  5., -3., -3.,  9., -3.,  8.])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;cuda:0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+<span class="go">tensor([ 3,  5, -2, -2,  9, -2,  8], device=&#39;cuda:0&#39;, dtype=torch.int32)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>initial_value</strong> – The base value to compare. If values in a sublist are all less
+than this value, then the max of this sublist is <code class="docutils literal notranslate"><span class="pre">initial_value</span></code>.
+If a sublist is empty, its max is also <code class="docutils literal notranslate"><span class="pre">initial_value</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return 1-D tensor containing the max value of each sublist.
+It shares the same dtype and device with <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.min">
 <span class="sig-name descname"><span class="pre">min</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">at::Tensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.min" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return a tensor containing the minimum of each sub-list along the last
+axis of <code class="docutils literal notranslate"><span class="pre">self</span></code>. The min is taken over the last axis or <code class="docutils literal notranslate"><span class="pre">initial_value</span></code>,
+whichever was smaller.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[]],</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">]]</span> <span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">initial_value</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+<span class="go">tensor([ 0., -1., inf, inf,  1., inf,  2.])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+<span class="go">tensor([  0.,  -1., 100., 100.,   1., 100.,   2.])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+<span class="go">tensor([ 0, -1, 20, 20,  1, 20,  2], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;cuda:0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+<span class="go">tensor([ 0., -1., 15., 15.,  1., 15.,  2.], device=&#39;cuda:0&#39;)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>initial_value</strong> – The base value to compare. If values in a sublist are all larger
+than this value, then the minimum of this sublist is <code class="docutils literal notranslate"><span class="pre">initial_value</span></code>.
+If a sublist is empty, its minimum is also <code class="docutils literal notranslate"><span class="pre">initial_value</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return 1-D tensor containing the minimum of each sublist.
+It shares the same dtype and device with <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.normalize">
 <span class="sig-name descname"><span class="pre">normalize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_log</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.normalize" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Normalize a ragged tensor over the last axis.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">use_log</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>, the normalization per sublist is done as follows:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Compute the log sum per sublist</p></li>
+</ol>
+<p>2. Subtract the log sum computed above from the sublist and return
+it</p>
+</div></blockquote>
+<p>If <code class="docutils literal notranslate"><span class="pre">use_log</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, the normalization per sublist is done as follows:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Compute the sum per sublist</p></li>
+<li><p>Divide the sublist by the above sum and return the resulting sublist</p></li>
+</ol>
+</div></blockquote>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If a sublist contains 3 elements <code class="docutils literal notranslate"><span class="pre">[a,</span> <span class="pre">b,</span> <span class="pre">c]</span></code>, then the log sum
+is defined as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="n">log</span><span class="p">(</span><span class="n">exp</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="n">exp</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="n">exp</span><span class="p">(</span><span class="n">c</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The resulting sublist looks like below if <code class="docutils literal notranslate"><span class="pre">use_log</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">a</span> <span class="o">-</span> <span class="n">s</span><span class="p">,</span> <span class="n">b</span> <span class="o">-</span> <span class="n">s</span><span class="p">,</span> <span class="n">c</span> <span class="o">-</span> <span class="n">s</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>If <code class="docutils literal notranslate"><span class="pre">use_log</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, the resulting sublist looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">a</span><span class="o">/</span><span class="p">(</span><span class="n">a</span><span class="o">+</span><span class="n">b</span><span class="o">+</span><span class="n">c</span><span class="p">),</span> <span class="n">b</span><span class="o">/</span><span class="p">(</span><span class="n">a</span><span class="o">+</span><span class="n">b</span><span class="o">+</span><span class="n">c</span><span class="p">),</span> <span class="n">c</span><span class="o">/</span><span class="p">(</span><span class="n">a</span><span class="o">+</span><span class="n">b</span><span class="o">+</span><span class="n">c</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">use_log</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="go">[ [ 0.25 0.75 ] [ ] [ 1 ] [ 0.2 0.8 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">use_log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">[ [ -0.798139 -0.598139 ] [ ] [ 0 ] [ -1.03749 -0.437488 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span> <span class="p">[]],</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">]]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">use_log</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="go">[ [ [ 0.25 0.75 ] [ ] ] [ [ 1 ] [ 0.2 0.8 ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">use_log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">[ [ [ -0.798139 -0.598139 ] [ ] ] [ [ 0 ] [ -1.03749 -0.437488 ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">])</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">])</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>
+<span class="go">tensor([-0.7981, -0.5981])</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>use_log</strong> – It indicates which kind of normalization to be applied.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns a 1-D tensor, sharing the same dtype and device with <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.num_axes">
@@ -776,7 +1102,7 @@ otherwise.</p>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Return number of elements in this tensor. It equals to
-<cite>self.data.numel()</cite>.</p>
+<code class="docutils literal notranslate"><span class="pre">self.data.numel()</span></code>.</p>
 </dd>
 </dl>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
@@ -794,22 +1120,157 @@ otherwise.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.pad">
 <span class="sig-name descname"><span class="pre">pad</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding_value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">at::Tensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.pad" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Pad a ragged tensor with 2-axes to a 2-D torch tensor.</p>
+<p>For example, if <code class="docutils literal notranslate"><span class="pre">self</span></code> has the following values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span> <span class="p">[</span><span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span><span class="p">]</span> <span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="p">[</span><span class="mi">5</span> <span class="mi">6</span> <span class="mi">7</span> <span class="mi">8</span><span class="p">]</span> <span class="p">]</span>
+</pre></div>
+</div>
+<p>Then it returns a 2-D tensor as follows if <code class="docutils literal notranslate"><span class="pre">padding_value</span></code> is 0 and
+mode is <code class="docutils literal notranslate"><span class="pre">constant</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">]])</span>
+</pre></div>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>It requires that <code class="docutils literal notranslate"><span class="pre">self.num_axes</span> <span class="pre">==</span> <span class="pre">2</span></code>.</p>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">2</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span> <span class="n">padding_value</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">tensor([[ 1, -1, -1, -1, -1],</span>
+<span class="go">        [-1, -1, -1, -1, -1],</span>
+<span class="go">        [ 2,  3, -1, -1, -1],</span>
+<span class="go">        [ 5,  8,  9,  8,  2]], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;replicate&#39;</span><span class="p">,</span> <span class="n">padding_value</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">tensor([[ 1,  1,  1,  1,  1],</span>
+<span class="go">        [-1, -1, -1, -1, -1],</span>
+<span class="go">        [ 2,  3,  3,  3,  3],</span>
+<span class="go">        [ 5,  8,  9,  8,  2]], dtype=torch.int32)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mode</strong> – Valid values are: <code class="docutils literal notranslate"><span class="pre">constant</span></code>, <code class="docutils literal notranslate"><span class="pre">replicate</span></code>. If it is
+<code class="docutils literal notranslate"><span class="pre">constant</span></code>, the given <code class="docutils literal notranslate"><span class="pre">padding_value</span></code> is used for filling.
+If it is <code class="docutils literal notranslate"><span class="pre">replicate</span></code>, the last entry in a list is used for filling.
+If a list is empty, then the given <cite>padding_value</cite> is also used for filling.</p></li>
+<li><p><strong>padding_value</strong> – The filling value.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A 2-D torch tensor, sharing the same dtype and device with <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.remove_axis">
 <span class="sig-name descname"><span class="pre">remove_axis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.remove_axis" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Remove an axis; if it is not the first or last axis, this is done by appending
+lists (effectively the axis is combined with the following axis).  If it is the
+last axis it is just removed and the number of elements may be changed.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>The tensor has to have more than two axes.</p>
+</div>
+<p><strong>Example 1</strong>:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]],</span> <span class="p">[[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[]],</span> <span class="p">[[</span><span class="mi">0</span><span class="p">]],</span> <span class="p">[[]]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span>
+<span class="go">[ [ [ 1 ] [ ] [ 0 -1 ] ] [ [ ] [ 2 3 ] [ ] ] [ [ 0 ] ] [ [ ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">remove_axis</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">[ [ 1 ] [ ] [ 0 -1 ] [ ] [ 2 3 ] [ ] [ 0 ] [ ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">remove_axis</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">[ [ 1 0 -1 ] [ 2 3 ] [ 0 ] [ ] ]</span>
+</pre></div>
+</div>
+<p><strong>Example 2</strong>:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">]]],</span> <span class="p">[[[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[]]],</span> <span class="p">[[[],</span> <span class="p">[</span><span class="mi">0</span><span class="p">]]]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">num_axes</span>
+<span class="go">4</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span>
+<span class="go">[ [ [ [ 1 ] [ ] [ 2 ] ] ] [ [ [ 3 4 ] [ ] [ 5 6 ] [ ] ] ] [ [ [ ] [ 0 ] ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">remove_axis</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">[ [ [ 1 ] [ ] [ 2 ] ] [ [ 3 4 ] [ ] [ 5 6 ] [ ] ] [ [ ] [ 0 ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">remove_axis</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">[ [ [ 1 ] [ ] [ 2 ] ] [ [ 3 4 ] [ ] [ 5 6 ] [ ] ] [ [ ] [ 0 ] ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">remove_axis</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
+<span class="go">[ [ [ 1 2 ] ] [ [ 3 4 5 6 ] ] [ [ 0 ] ] ]</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>axis</strong> – The axis to move.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a ragged tensor with one fewer axes.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.remove_values_eq">
-<span class="sig-name descname"><span class="pre">remove_values_eq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.remove_values_eq" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">remove_values_eq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.remove_values_eq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a ragged tensor after removing all ‘values’ that equal a provided
+target.  Leaves all layers of the shape except for the last one unaffected.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">remove_values_eq</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">[ [ 1 2 0 2 ] [ ] [ 2 ] [ ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">remove_values_eq</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">[ [ 1 3 0 3 ] [ ] [ 3 3 ] [ 3 ] ]</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>target</strong> – The target value to delete.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a tensor whose values don’t contain the <code class="docutils literal notranslate"><span class="pre">target</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.remove_values_leq">
-<span class="sig-name descname"><span class="pre">remove_values_leq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.remove_values_leq" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">remove_values_leq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.remove_values_leq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a ragged tensor after removing all ‘values’ that are
+equal to or less than a provided cutoff.
+Leaves all layers of the shape except for the last one unaffected.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">remove_values_leq</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">[ [ ] [ ] [ ] [ ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">remove_values_leq</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">[ [ 3 3 ] [ ] [ 3 3 ] [ 3 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">remove_values_leq</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span>
+<span class="go">[ [ 2 3 3 2 ] [ ] [ 3 2 3 ] [ 3 ] ]</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>cutoff</strong> – Values less than or equal to this <code class="docutils literal notranslate"><span class="pre">cutoff</span></code> are deleted.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a tensor whose values are all above <code class="docutils literal notranslate"><span class="pre">cutoff</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.requires_grad">
@@ -871,9 +1332,45 @@ RuntimeError exception.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="k2.ragged.RaggedTensor.sort">
-<span class="sig-name descname"><span class="pre">sort</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">descending</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional[at::Tensor]</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.sort" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="k2.ragged.RaggedTensor.sort_">
+<span class="sig-name descname"><span class="pre">sort_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">descending</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional[at::Tensor]</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.sort_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sort a ragged tensor over the last axis <strong>in-place</strong>.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a_clone</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">sort_</span><span class="p">(</span><span class="n">descending</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">need_new2old_indexes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">tensor([1, 0, 2, 4, 5, 3, 7, 6, 8], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span>
+<span class="go">[ [ 3 1 0 ] [ 5 3 2 ] [ ] [ 3 1 0 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a_clone</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">b</span><span class="o">.</span><span class="n">long</span><span class="p">()]</span>
+<span class="go">tensor([3., 1., 0., 5., 3., 2., 3., 1., 0.])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a_clone</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">sort_</span><span class="p">(</span><span class="n">descending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">need_new2old_indexes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">tensor([2, 1, 0, 5, 4, 3, 8, 7, 6], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span>
+<span class="go">[ [ 0 1 3 ] [ 2 3 5 ] [ ] [ 0 1 3 ] ]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a_clone</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">long</span><span class="p">()]</span>
+<span class="go">tensor([0., 1., 3., 2., 3., 5., 0., 1., 3.])</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>descending</strong> – <code class="docutils literal notranslate"><span class="pre">True</span></code> to sort in <strong>descending</strong> order.
+<code class="docutils literal notranslate"><span class="pre">False</span></code> to sort in <strong>ascending</strong> order.</p></li>
+<li><p><strong>need_new2old_indexes</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, also returns a 1-D tensor, containing the indexes mapping
+from the sorted elements to the unsorted elements. We can use
+<code class="docutils literal notranslate"><span class="pre">self.clone().data[returned_tensor]</span></code> to get a sorted tensor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>If <code class="docutils literal notranslate"><span class="pre">need_new2old_indexes</span></code> is False, returns None. Otherwise, returns
+a 1-D tensor of dtype <code class="docutils literal notranslate"><span class="pre">torch.int32</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.sum">
@@ -926,8 +1423,8 @@ containing the computed sum.</p>
 <p>Transfer this tensor to a given device.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>If <cite>self</cite> is already on the specified device, return a
-ragged tensor sharing the underlying memory with <cite>self</cite>.
+<p>If <code class="docutils literal notranslate"><span class="pre">self</span></code> is already on the specified device, return a
+ragged tensor sharing the underlying memory with <code class="docutils literal notranslate"><span class="pre">self</span></code>.
 Otherwise, a new tensor is returned.</p>
 </div>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
@@ -949,13 +1446,49 @@ Otherwise, a new tensor is returned.</p>
 </dd>
 </dl>
 <ol class="arabic simple" start="2">
+<li><p>to(self: _k2.ragged.RaggedTensor, device: str) -&gt; _k2.ragged.RaggedTensor</p></li>
+</ol>
+<p>Transfer this tensor to a given device.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">self</span></code> is already on the specified device, return a
+ragged tensor sharing the underlying memory with <code class="docutils literal notranslate"><span class="pre">self</span></code>.
+Otherwise, a new tensor is returned.</p>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">device</span>
+<span class="go">device(type=&#39;cpu&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;cuda:0&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="o">.</span><span class="n">device</span>
+<span class="go">device(type=&#39;cuda&#39;, index=0)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">device</span>
+<span class="go">device(type=&#39;cpu&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;cuda:1&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">device</span>
+<span class="go">device(type=&#39;cuda&#39;, index=1)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>device</strong> – The target device to move this tensor.
+Note: The device is represented as a string.
+Valid strings are: “cpu”, “cuda:0”, “cuda:1”, etc.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a tensor on the given device.</p>
+</dd>
+</dl>
+<ol class="arabic simple" start="3">
 <li><p>to(self: _k2.ragged.RaggedTensor, dtype: torch::dtype) -&gt; _k2.ragged.RaggedTensor</p></li>
 </ol>
 <p>Convert this tensor to a specific dtype.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>If <cite>self</cite> is already of the specified <cite>dtype</cite>, return
-a ragged tensor sharing the underlying memory with <cite>self</cite>.
+<p>If <code class="docutils literal notranslate"><span class="pre">self</span></code> is already of the specified <cite>dtype</cite>, return
+a ragged tensor sharing the underlying memory with <code class="docutils literal notranslate"><span class="pre">self</span></code>.
 Otherwise, a new tensor is returned.</p>
 </div>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
@@ -986,7 +1519,29 @@ Otherwise, a new tensor is returned.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.tolist">
 <span class="sig-name descname"><span class="pre">tolist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.tolist" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Turn a ragged tensor into a list of lists [of lists..].</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>You can pass the returned list to the constructor of <a class="reference internal" href="#k2.ragged.RaggedTensor" title="k2.ragged.RaggedTensor"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedTensor</span></code></a>.</p>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="p">[]],</span> <span class="p">[[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">]],</span> <span class="p">[[],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[]]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="go">[[[], [1, 2], [3], []], [[5, 6, 7]], [[], [0, 2, 3], [], []]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">==</span> <span class="n">b</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mf">1.</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mf">3.25</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="go">[[1.0], [2.0], [], [3.25, 2.5]]</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A list of list of lists [of lists …] containing the same elements
+and structure as <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.tot_size">
@@ -1015,7 +1570,94 @@ equivalent to the property <code class="docutils literal notranslate"><span clas
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.unique">
 <span class="sig-name descname"><span class="pre">unique</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><span class="pre">_k2.ragged.RaggedTensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_num_repeats</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple[_k2.ragged.RaggedTensor,</span> <span class="pre">Optional[_k2.ragged.RaggedTensor],</span> <span class="pre">Optional[at::Tensor]]</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.unique" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>If <code class="docutils literal notranslate"><span class="pre">self</span></code> has two axes, this will return the unique sub-lists
+(in a possibly different order, but without repeats).
+If <code class="docutils literal notranslate"><span class="pre">self</span></code> has 3 axes, it will do the above but separately for each
+index on axis 0; if more than 3 axes, the earliest axes will be ignored.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>It does not completely guarantee that all unique sequences will be
+present in the output, as it relies on hashing and ignores collisions.
+If several sequences have the same hash, only one of them is kept, even
+if the actual content in the sequence is different.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Even if there are no repeated sequences, the output may be different
+from <code class="docutils literal notranslate"><span class="pre">self</span></code>. That is, <cite>new2old_indexes</cite> may NOT be an identity map even
+if nothing was removed.</p>
+</div>
+<p><strong>Example 1</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+<span class="go">([ [ 1 ] [ 2 ] [ 3 ] [ 3 1 ] ], None, None)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">need_num_repeats</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">need_new2old_indexes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">([ [ 1 ] [ 2 ] [ 3 ] [ 3 1 ] ], [ [ 2 1 1 2 ] ], tensor([2, 5, 1, 0], dtype=torch.int32))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">need_num_repeats</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">([ [ 1 ] [ 2 ] [ 3 ] [ 3 1 ] ], [ [ 2 1 1 2 ] ], None)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">need_new2old_indexes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">([ [ 1 ] [ 2 ] [ 3 ] [ 3 1 ] ], None, tensor([2, 5, 1, 0], dtype=torch.int32))</span>
+</pre></div>
+</div>
+<p><strong>Example 2</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">]],</span> <span class="p">[[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">3</span><span class="p">]]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+<span class="go">([ [ [ 1 2 ] [ 2 1 ] ] [ [ 2 ] [ 3 ] [ 0 1 ] ] [ [ ] [ 3 ] [ 2 3 ] ] ], None, None)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">need_num_repeats</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">need_new2old_indexes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">([ [ [ 1 2 ] [ 2 1 ] ] [ [ 2 ] [ 3 ] [ 0 1 ] ] [ [ ] [ 3 ] [ 2 3 ] ] ], [ [ 3 1 ] [ 2 1 1 ] [ 2 1 1 ] ], tensor([ 0,  1,  5,  4,  6,  8, 11,  9], dtype=torch.int32))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">need_num_repeats</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">([ [ [ 1 2 ] [ 2 1 ] ] [ [ 2 ] [ 3 ] [ 0 1 ] ] [ [ ] [ 3 ] [ 2 3 ] ] ], [ [ 3 1 ] [ 2 1 1 ] [ 2 1 1 ] ], None)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">need_new2old_indexes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">([ [ [ 1 2 ] [ 2 1 ] ] [ [ 2 ] [ 3 ] [ 0 1 ] ] [ [ ] [ 3 ] [ 2 3 ] ] ], None, tensor([ 0,  1,  5,  4,  6,  8, 11,  9], dtype=torch.int32))</span>
+</pre></div>
+</div>
+<p><strong>Example 3</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+<span class="go">([ [ 1 ] [ 2 ] [ 3 ] ], [ [ 1 1 1 ] ], tensor([0, 2, 1], dtype=torch.int32))</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>need_num_repeats</strong> – If True, it also returns the number of repeats of each sequence.</p></li>
+<li><p><strong>need_new2old_indexes</strong> – <p>If true, it returns an extra 1-D tensor <cite>new2old_indexes</cite>.
+If <cite>src</cite> has 2 axes, this tensor contains <cite>src_idx0</cite>;
+if <cite>src</cite> has 3 axes, this tensor contains <cite>src_idx01</cite>.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>For repeated sublists, only one of them is kept.
+The choice of which one to keep is <strong>deterministic</strong> and
+is an implementation detail.</p>
+</div>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>ans: A ragged tensor with the same number of axes as <code class="docutils literal notranslate"><span class="pre">self</span></code> and possibly
+fewer elements due to removing repeated sequences on the last axis
+(and with the last-but-one indexes possibly in a different order).</p></li>
+<li><p>num_repeats: A tensor containing number of repeats of each returned
+sequence if <code class="docutils literal notranslate"><span class="pre">need_num_repeats</span></code> is True; it is <code class="docutils literal notranslate"><span class="pre">None</span></code> otherwise.
+If it is not <code class="docutils literal notranslate"><span class="pre">None</span></code>, <code class="docutils literal notranslate"><span class="pre">num_repeats.num_axes</span></code> is always 2.
+If <code class="docutils literal notranslate"><span class="pre">ans.num_axes</span></code> is 2, then <code class="docutils literal notranslate"><span class="pre">num_repeats.dim0</span> <span class="pre">==</span> <span class="pre">1</span></code> and
+<code class="docutils literal notranslate"><span class="pre">num_repeats.numel()</span> <span class="pre">==</span> <span class="pre">ans.dim0</span></code>.
+If <code class="docutils literal notranslate"><span class="pre">ans.num_axes</span></code> is 3, then <code class="docutils literal notranslate"><span class="pre">num_repeats.dim0</span> <span class="pre">==</span> <span class="pre">ans.dim0</span></code> and
+<code class="docutils literal notranslate"><span class="pre">num_repeats.numel()</span> <span class="pre">==</span> <span class="pre">ans.tot_size(1)</span></code>.</p></li>
+<li><p>new2old_indexes: A 1-D tensor whose i-th element specifies the
+input sublist that the i-th output sublist corresponds to.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Returns a tuple containing</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
