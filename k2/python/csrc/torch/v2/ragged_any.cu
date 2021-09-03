@@ -62,17 +62,24 @@ static void RaggedAnyFromListIter(py::list data, int32_t *cur_level,
   } else {
     if (*deepest_level == -1) {
       *deepest_level = *cur_level;
-    } else if (*deepest_level != *cur_level) {
-      // Handle the case for [ [], [[1]] ]
+    } else if (data.size() > 0 && *deepest_level != *cur_level) {
+      // Handle the case for [ [2], [[1]] ]
+      //
+      // Note: [ [], [[1]] ] is valid
       throw std::runtime_error("Make sure sublists are properly nested");
     }
-    if (static_cast<size_t>(*cur_level) != row_splits->size()) {
+
+    if (data.size() > 0 &&
+        static_cast<size_t>(*cur_level) != row_splits->size()) {
       // Handle cases like the following string:
       // [ [[1]], [2, 3] ]
       // The sublist [2, 3] should be [[2, 3]], i.e., has the same
       // level as [[1]]
+      //
+      // Note: [ [], [[1]] ] is valid
       throw std::runtime_error("Expect a [");
     }
+
     auto tmp = data.cast<std::vector<T>>();
     elems->insert(elems->end(), tmp.begin(), tmp.end());
   }
@@ -327,9 +334,9 @@ RaggedAny RaggedAny::RemoveValuesEq(py::object target) /*const*/ {
   return {};
 }
 
-torch::Tensor RaggedAny::ArgMax(py::object initial_value) /*const*/ {
+torch::Tensor RaggedAny::ArgMax(
+    py::object initial_value /*=py::none()*/) /*const*/ {
   K2_CHECK((bool)initial_value);
-  K2_CHECK(!initial_value.is_none());
 
   DeviceGuard guard(any.Context());
   int32_t last_axis = any.NumAxes() - 1;
@@ -340,15 +347,17 @@ torch::Tensor RaggedAny::ArgMax(py::object initial_value) /*const*/ {
 
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
-    ArgMaxPerSublist<T>(any.Specialize<T>(), initial_value.cast<T>(), &indexes);
+    T v = initial_value.is_none() ? std::numeric_limits<T>::lowest()
+                                  : initial_value.cast<T>();
+    ArgMaxPerSublist<T>(any.Specialize<T>(), v, &indexes);
   });
 
   return ToTorch(indexes);
 }
 
-torch::Tensor RaggedAny::Max(py::object initial_value) /*const*/ {
+torch::Tensor RaggedAny::Max(
+    py::object initial_value /*=py::none()*/) /*const*/ {
   K2_CHECK((bool)initial_value);
-  K2_CHECK(!initial_value.is_none());
 
   DeviceGuard guard(any.Context());
   int32_t last_axis = any.NumAxes() - 1;
@@ -359,17 +368,19 @@ torch::Tensor RaggedAny::Max(py::object initial_value) /*const*/ {
 
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
+    T v = initial_value.is_none() ? std::numeric_limits<T>::lowest()
+                                  : initial_value.cast<T>();
     Array1<T> max_values(any.Context(), num_rows);
-    MaxPerSublist<T>(any.Specialize<T>(), initial_value.cast<T>(), &max_values);
+    MaxPerSublist<T>(any.Specialize<T>(), v, &max_values);
     return ToTorch(max_values);
   });
   // Unreachable code
   return {};
 }
 
-torch::Tensor RaggedAny::Min(py::object initial_value) /*const*/ {
+torch::Tensor RaggedAny::Min(
+    py::object initial_value /*=py::none()*/) /*const*/ {
   K2_CHECK((bool)initial_value);
-  K2_CHECK(!initial_value.is_none());
 
   DeviceGuard guard(any.Context());
   int32_t last_axis = any.NumAxes() - 1;
@@ -380,8 +391,10 @@ torch::Tensor RaggedAny::Min(py::object initial_value) /*const*/ {
 
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
+    T v = initial_value.is_none() ? std::numeric_limits<T>::max()
+                                  : initial_value.cast<T>();
     Array1<T> min_values(any.Context(), num_rows);
-    MinPerSublist<T>(any.Specialize<T>(), initial_value.cast<T>(), &min_values);
+    MinPerSublist<T>(any.Specialize<T>(), v, &min_values);
     return ToTorch(min_values);
   });
   // Unreachable code
@@ -580,30 +593,49 @@ std::pair<RaggedAny, torch::optional<torch::Tensor>> RaggedAny::Index(
   return {};
 }
 
-RaggedAny RaggedAny::Index(torch::Tensor src) /*const*/ {
+RaggedAny RaggedAny::Index(torch::Tensor src,
+                           py::object default_value /*=py::none()*/) /*const*/ {
   Dtype t = any.GetDtype();
   K2_CHECK_EQ(t, kInt32Dtype) << "Unsupported dtype: " << TraitsOf(t).Name();
 
   K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
 
   DeviceGuard guard(any.Context());
-  Array1<int32_t> src_array = FromTorch<int32_t>(src);
-  return RaggedAny(k2::Index(src_array, any.Specialize<int32_t>()).Generic());
+  Dtype dtype = ScalarTypeToDtype(src.scalar_type());
+  FOR_REAL_AND_INT32_TYPES(dtype, T, {
+    T value_for_minus_one =
+        default_value.is_none() ? T() : default_value.cast<T>();
+    Array1<T> src_array = FromTorch<T>(src);
+    return RaggedAny(
+        k2::Index(src_array, any.Specialize<int32_t>(), value_for_minus_one)
+            .Generic());
+  });
+  // Unreachable code
+  return {};
 }
 
-torch::Tensor RaggedAny::IndexAndSum(torch::Tensor src) /*const*/ {
+torch::Tensor RaggedAny::IndexAndSum(
+    torch::Tensor src, py::object default_value /*=py::none()*/) /*const*/ {
   Dtype t = any.GetDtype();
   K2_CHECK_EQ(t, kInt32Dtype) << "Unsupported dtype: " << TraitsOf(t).Name();
 
   K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
+  K2_CHECK_EQ(any.NumAxes(), 2);
 
   DeviceGuard guard(any.Context());
-  Array1<float> src_array = FromTorch<float>(src);
-  Ragged<float> ragged =
-      k2::Index<float>(src_array, any.Specialize<int32_t>(), 0);
-  Array1<float> ans_array(ragged.Context(), ragged.Dim0());
-  SumPerSublist<float>(ragged, 0, &ans_array);
-  return ToTorch(ans_array);
+  Dtype dtype = ScalarTypeToDtype(src.scalar_type());
+  FOR_REAL_AND_INT32_TYPES(dtype, T, {
+    T value_for_minus_one =
+        default_value.is_none() ? T() : default_value.cast<T>();
+
+    Array1<T> src_array = FromTorch<T>(src);
+    Ragged<T> ragged =
+        k2::Index<T>(src_array, any.Specialize<int32_t>(), value_for_minus_one);
+
+    Array1<T> ans_array(ragged.Context(), ragged.Dim0());
+    SumPerSublist<T>(ragged, 0, &ans_array);
+    return ToTorch(ans_array);
+  });
 }
 
 }  // namespace k2

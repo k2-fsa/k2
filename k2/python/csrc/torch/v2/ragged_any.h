@@ -142,6 +142,8 @@ struct RaggedAny {
 
   /** Compute the sum over the last axis of the ragged tensor.
 
+     It is a wrapper around k2::SumPerSublist.
+
      @note It supports autograd if the dtype of this tensor is
      `torch.float32` or `torch.float64`.
 
@@ -152,13 +154,13 @@ struct RaggedAny {
    */
   torch::Tensor Sum(float initial_value = 0) const;
 
-  /** Index of a ragged tensor (supporting only axis==0 at present).
+  /** Index a ragged tensor (supporting only axis==0 at present).
 
      It requires that the ragged tensor has at least 3 axes.
 
      @TODO: To add autograd support.
 
-     @param axis  The axis to index
+     @param axis  The axis to index. Must be 0 at present.
      @param i  The i-th sublist of the specified axis.
 
      @return Return a ragged tensor with one fewer axis.
@@ -171,53 +173,63 @@ struct RaggedAny {
    */
   RaggedAny RemoveAxis(int32_t axis) /*const*/;
 
-  /* A wrapper for k2::RaggedArage. See its doc for help.
+  /** A wrapper for k2::RaggedArange. See its doc for help.
    */
   RaggedAny Arange(int32_t axis, int32_t begin, int32_t end) /*const*/;
 
-  // Wrapper for k2::RemoveValuesLeq()
+  /// Wrapper for k2::RemoveValuesLeq()
   RaggedAny RemoveValuesLeq(py::object cutoff) /*const*/;
 
-  // Wrapper for k2::RemoveValuesEq()
+  /// Wrapper for k2::RemoveValuesEq()
   RaggedAny RemoveValuesEq(py::object target) /*const*/;
 
-  // Wrapper for k2::ArgMaxPerSublist
-  torch::Tensor ArgMax(py::object initial_value) /*const*/;
+  /// Wrapper for k2::ArgMaxPerSublist
+  torch::Tensor ArgMax(py::object initial_value = py::none()) /*const*/;
 
   // Wrapper for k2::MaxPerSublist
-  torch::Tensor Max(py::object initial_value) /*const*/;
+  torch::Tensor Max(py::object initial_value = py::none()) /*const*/;
 
   // Wrapper for k2::MinPerSublist
   torch::Tensor Min(py::object initial_value) /*const*/;
 
-  // Wrapper for k2::Cat
+  /// Wrapper for k2::Cat
   static RaggedAny Cat(const std::vector<RaggedAny> &srcs, int32_t axis);
 
+  /// Wrapper for k2::UniqueSequences
   std::tuple<RaggedAny, torch::optional<RaggedAny>,
              torch::optional<torch::Tensor>>
   Unique(bool need_num_repeats = false, bool need_new2old_indexes = false);
 
-  // Wrapper for k2::NormalizePerSublist
+  /// Wrapper for k2::NormalizePerSublist
   RaggedAny Normalize(bool use_log) /*const*/;
 
-  // Wrapper for k2::PadRagged
+  /// Wrapper for k2::PadRagged
   torch::Tensor Pad(const std::string &mode,
                     py::object padding_value) /*const*/;
 
+  /// Convert a ragged tensor to a list of lists [of lists ...]
+  /// Note: You can use the return list to construct a ragged tensor.
   py::list ToList() /*const*/;
 
-  // Wrapper for k2::SortSublists
+  /// Wrapper for k2::SortSublists
   torch::optional<torch::Tensor> Sort(bool descending = false,
                                       bool need_new2old_indexes = false);
 
+  /// Wrapper for k2::Index
   RaggedAny Index(RaggedAny &indexes, bool remove_axis = true) /*const*/;
 
+  /// Wrapper for k2::Index
   std::pair<RaggedAny, torch::optional<torch::Tensor>> Index(
       torch::Tensor indexes, int32_t axis,
       bool need_value_indexes = false) /*const*/;
 
-  RaggedAny Index(torch::Tensor src) /*const*/;
-  torch::Tensor IndexAndSum(torch::Tensor src) /*const*/;
+  /// Wrapper for k2::Index
+  RaggedAny Index(torch::Tensor src,
+                  py::object default_value = py::none()) /*const*/;
+
+  /// Wrapper for k2::Index
+  torch::Tensor IndexAndSum(torch::Tensor src,
+                            py::object default_value = py::none()) /*const*/;
 };
 
 }  // namespace k2

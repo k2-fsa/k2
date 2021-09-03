@@ -3,7 +3,6 @@ from .autograd import normalize_scores
 from .ops import argmax_per_sublist
 from .ops import create_ragged2
 from .ops import get_layer
-from .ops import index
 from .ops import max_per_sublist
 from .ops import pad
 from .ops import regular_ragged_shape
@@ -23,3 +22,6 @@ from .tensor import RaggedFloat
 from _k2.ragged import RaggedTensor
 from _k2.ragged import create_ragged_tensor
 from _k2.ragged import cat
+from _k2.ragged import index
+from _k2.ragged import index_and_sum
+from _k2.ragged import regular_ragged_shape

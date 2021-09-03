@@ -174,14 +174,16 @@ void PybindRaggedShape(py::module &m) {
         ContextPtr c = GetCpuContext();
         return RegularRaggedShape(c, dim0, dim1);
       },
-      py::arg("dim0"), py::arg("dim1"));
+      py::arg("dim0"), py::arg("dim1"), kRaggedShapeRegularDoc);
 
   m.attr("regular_ragged_shape") = shape.attr("regular_ragged_shape");
 
-  shape.def("get_layer",
-            [](const RaggedShape &self, int32_t layer) -> RaggedShape {
-              return GetLayer(self, layer);
-            });
+  shape.def(
+      "get_layer",
+      [](const RaggedShape &self, int32_t layer) -> RaggedShape {
+        return GetLayer(self, layer);
+      },
+      kRaggedShapeGetLayerDoc);
 
   // return a pair:
   //  - ans (RaggedShape)
@@ -189,22 +191,32 @@ void PybindRaggedShape(py::module &m) {
   //
   shape.def(
       "index",
-      [](RaggedShape &self, int32_t axis, torch::Tensor indexes,
-         bool need_value_indexes =
-             true) -> std::pair<RaggedShape, torch::optional<torch::Tensor>> {
+      [](RaggedShape &self, int32_t axis,
+         torch::Tensor indexes) -> RaggedShape {
         DeviceGuard guard(self.Context());
         Array1<int32_t> indexes_array = FromTorch<int32_t>(indexes);
-        Array1<int32_t> value_indexes;
-        RaggedShape ans = Index(self, axis, indexes_array,
-                                need_value_indexes ? &value_indexes : nullptr);
+        RaggedShape ans =
+            Index(self, axis, indexes_array, /*need_value_indexes*/ nullptr);
 
-        torch::optional<torch::Tensor> value_indexes_tensor;
-        if (need_value_indexes) value_indexes_tensor = ToTorch(value_indexes);
-
-        return std::make_pair(ans, value_indexes_tensor);
+        return ans;
       },
-      py::arg("axis"), py::arg("indexes"),
-      py::arg("need_value_indexes") = true);
+      py::arg("axis"), py::arg("indexes"), kRaggedShapeIndexDoc);
+
+  shape.def(
+      "compose",
+      [](const RaggedShape &self, const RaggedShape &other) -> RaggedShape {
+        DeviceGuard guard(self.Context());
+        return ComposeRaggedShapes(self, other);
+      },
+      py::arg("other"), kRaggedShapeComposeDoc);
+
+  shape.def(
+      "remove_axis",
+      [](RaggedShape &self, int32_t axis) -> RaggedShape {
+        DeviceGuard guard(self.Context());
+        return RemoveAxis(self, axis);
+      },
+      py::arg("axis"), kRaggedShapeRemoveAxisDoc);
 }
 
 }  // namespace k2
