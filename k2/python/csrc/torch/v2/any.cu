@@ -21,6 +21,7 @@
  */
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/ragged.h"

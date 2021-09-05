@@ -20,6 +20,12 @@
  * limitations under the License.
  */
 
+#include <limits>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
+
 #include "k2/csrc/ragged_ops.h"
 #include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/autograd/index_and_sum.h"

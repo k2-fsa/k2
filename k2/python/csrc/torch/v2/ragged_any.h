@@ -20,8 +20,12 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_RAGGED_V2_ANY_H
-#define K2_PYTHON_CSRC_TORCH_RAGGED_V2_ANY_H
+#ifndef K2_PYTHON_CSRC_TORCH_V2_RAGGED_ANY_H_
+#define K2_PYTHON_CSRC_TORCH_V2_RAGGED_ANY_H_
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/torch.h"
@@ -71,7 +75,7 @@ struct RaggedAny {
 
      @note We can support other dtypes if needed.
    */
-  RaggedAny(const std::string &s, py::object dtype = py::none());
+  explicit RaggedAny(const std::string &s, py::object dtype = py::none());
 
   /** Create a ragged tensor from a list of sublist(s).
 
@@ -84,7 +88,7 @@ struct RaggedAny {
 
      @note It supports `data` with number of axes >= 2.
    */
-  RaggedAny(py::list data, py::object dtype = py::none());
+  explicit RaggedAny(py::list data, py::object dtype = py::none());
 
   /// Populate `this->data` and return it
   const torch::Tensor &Data() const;
@@ -239,4 +243,4 @@ struct RaggedAny {
 
 }  // namespace k2
 
-#endif  // K2_PYTHON_CSRC_TORCH_RAGGED_V2_ANY_H
+#endif  // K2_PYTHON_CSRC_TORCH_V2_RAGGED_ANY_H_

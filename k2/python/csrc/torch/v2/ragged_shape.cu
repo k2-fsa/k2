@@ -19,6 +19,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <string>
+#include <utility>
 
 #include "k2/csrc/device_guard.h"
 #include "k2/csrc/ragged.h"

@@ -75,7 +75,7 @@ class TestIntersectDense(unittest.TestCase):
             scores.sum().backward()
 
             # `expected` results are computed using gtn.
-            # See https://colab.research.google.com/drive/1FzEFjj5GoCDN2d05D9jE682CkR7QIlnm?usp=sharing
+            # See https://colab.research.google.com/drive/1FzEFjj5GoCDN2d05D9jE682CkR7QIlnm?usp=sharing  # noqa
             expected_scores_out_fsa = torch.tensor([1.2, 2.06, 3.0],
                                                    device=device)
             expected_grad_fsa = torch.tensor([1.0, 0.0, 1.0, 1.0],
@@ -158,13 +158,14 @@ class TestIntersectDense(unittest.TestCase):
                 scores.sum().backward()
 
                 # `expected` results are computed using gtn.
-                # See https://colab.research.google.com/drive/1FzEFjj5GoCDN2d05D9jE682CkR7QIlnm?usp=sharing
+                # See https://colab.research.google.com/drive/1FzEFjj5GoCDN2d05D9jE682CkR7QIlnm?usp=sharing  # noqa
                 if not use_map:
                     expected_scores_out_fsa = torch.tensor(
-                         [1.2, 50.05, 2.0, 3.0, 1.2, 2.6, 3.0], device=device)
+                        [1.2, 50.05, 2.0, 3.0, 1.2, 2.6, 3.0], device=device)
                 else:
                     expected_scores_out_fsa = torch.tensor(
-                         [1.2, 50.05, 2.0, 3.0, 1.2, 50.05, 2.0, 3.0], device=device)
+                        [1.2, 50.05, 2.0, 3.0, 1.2, 50.05, 2.0, 3.0],
+                        device=device)
                 assert torch.allclose(out_fsa.scores, expected_scores_out_fsa)
 
                 if not use_map:
@@ -177,18 +178,20 @@ class TestIntersectDense(unittest.TestCase):
                 assert torch.allclose(expected_grad_fsa, fsa.scores.grad)
 
                 if not use_map:
-                    expected_grad_log_prob = torch.tensor([
-                        0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0,
-                        0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0
-                    ], device=device).reshape_as(log_prob)
+                    expected_grad_log_prob = torch.tensor(
+                        [
+                            0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+                            1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0
+                        ],
+                        device=device).reshape_as(log_prob)
                 else:
-                    expected_grad_log_prob = torch.tensor([
-                        0.0, 2.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0,
-                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                    ], device=device).reshape_as(log_prob)
+                    expected_grad_log_prob = torch.tensor(
+                        [
+                            0.0, 2.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0, 0.0,
+                            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+                        ],
+                        device=device).reshape_as(log_prob)
                 assert torch.allclose(expected_grad_log_prob, log_prob.grad)
-
-
 
     def test_two_fsas(self):
         s1 = '''
@@ -245,22 +248,24 @@ class TestIntersectDense(unittest.TestCase):
             scores.sum().backward()
 
             # `expected` results are computed using gtn.
-            # See https://colab.research.google.com/drive/1FzEFjj5GoCDN2d05D9jE682CkR7QIlnm?usp=sharing
+            # See https://colab.research.google.com/drive/1FzEFjj5GoCDN2d05D9jE682CkR7QIlnm?usp=sharing  # noqa
             expected_scores_out_fsa = torch.tensor(
                 [1.2, 50.05, 2.0, 3.0, 1.2, 2.6, 3.0], device=device)
 
             expected_grad_fsa1 = torch.tensor([1.0, 1.0, 1.0, 1.0],
                                               device=device)
             expected_grad_fsa2 = torch.tensor([1.0, 1.0, 1.0], device=device)
-            expected_grad_log_prob = torch.tensor([
-                0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0
-            ], device=device).reshape_as(log_prob)
+            #  expected_grad_log_prob = torch.tensor(
+            #      [
+            #          0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+            #          0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0
+            #      ],
+            #      device=device).reshape_as(log_prob)
 
             assert torch.allclose(out_fsa.scores, expected_scores_out_fsa)
             assert torch.allclose(expected_grad_fsa1, fsa1.scores.grad)
             assert torch.allclose(expected_grad_fsa2, fsa2.scores.grad)
-            # assert torch.allclose(expected_grad_log_prob, log_prob.grad)
+            #  assert torch.allclose(expected_grad_log_prob, log_prob.grad)
 
     def test_two_fsas_long(self):
         # as test_two_fsas, but generate long DenseFsaVec for easier profiling.

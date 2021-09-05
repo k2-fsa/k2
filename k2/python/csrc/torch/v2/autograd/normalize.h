@@ -20,14 +20,14 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_NORMALIZE_H
-#define K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_NORMALIZE_H
+#ifndef K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_NORMALIZE_H_
+#define K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_NORMALIZE_H_
+
+#include <utility>
 
 #include "k2/csrc/ragged_ops.h"
 #include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
-
-using namespace torch::autograd;
 
 namespace k2 {
 
@@ -50,9 +50,9 @@ class NormalizeFunction : public torch::autograd::Function<NormalizeFunction> {
      @return Return a 1-D tensor containing the normalization of each sublist,
              which is `out->Data()`
    */
-  static torch::Tensor forward(AutogradContext *ctx, RaggedAny &ragged,
-                               bool use_log, torch::Tensor /*dummy*/,
-                               RaggedAny *out) {
+  static torch::Tensor forward(torch::autograd::AutogradContext *ctx,
+                               RaggedAny &ragged, bool use_log,
+                               torch::Tensor /*dummy*/, RaggedAny *out) {
     int32_t num_axes = ragged.any.NumAxes();
 
     torch::Tensor row_splits = ToTorch(ragged.any.RowSplits(num_axes - 1));
@@ -72,9 +72,12 @@ class NormalizeFunction : public torch::autograd::Function<NormalizeFunction> {
     return out->Data();
   }
 
-  static tensor_list backward(AutogradContext *ctx, tensor_list grad_outputs) {
+  static torch::autograd::tensor_list backward(
+      torch::autograd::AutogradContext *ctx,
+      torch::autograd::tensor_list grad_outputs) {
     bool use_log = ctx->saved_data["use_log"].toBool();
-    K2_CHECK_EQ(use_log, true);
+    K2_CHECK_EQ(use_log, true)
+        << "backprop is implemented only for use_log is true";
 
     int32_t num_sublists = ctx->saved_data["num_sublists"].toInt();
 
@@ -153,4 +156,4 @@ class NormalizeFunction : public torch::autograd::Function<NormalizeFunction> {
 
 }  // namespace k2
 
-#endif  // K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_SUM_H
+#endif  // K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_NORMALIZE_H_
