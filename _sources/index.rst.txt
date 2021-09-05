@@ -10,6 +10,7 @@ k2
     :alt: k2 logo
     :width: 168px
     :align: center
+    :target: https://github.com/k2-fsa/k2
 
 .. HINT::
 

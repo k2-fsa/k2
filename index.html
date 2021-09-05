@@ -1,3 +1,4 @@
+<!-- see https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
 
 
 <!DOCTYPE html>
@@ -15,6 +16,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
 
   
   
@@ -167,7 +169,7 @@
             
   <div class="section" id="k2">
 <h1>k2<a class="headerlink" href="#k2" title="Permalink to this headline">¶</a></h1>
-<a class="reference internal image-reference" href="_images/logo.png"><img alt="k2 logo" class="align-center" src="_images/logo.png" style="width: 168px;" /></a>
+<a class="reference external image-reference" href="https://github.com/k2-fsa/k2"><img alt="k2 logo" class="align-center" src="_images/logo.png" style="width: 168px;" /></a>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <p>We use the lowercase <code class="docutils literal notranslate"><span class="pre">k</span></code> in <code class="docutils literal notranslate"><span class="pre">k2</span></code>. That is, it is <code class="docutils literal notranslate"><span class="pre">k2</span></code>, not <code class="docutils literal notranslate"><span class="pre">K2</span></code>.</p>
@@ -215,8 +217,9 @@ including lattice rescoring in the field of automatic speech recognition
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python_tutorials/index.html">Python tutorials</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="python_tutorials/fsa.html">Fsa</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python_tutorials/fsa_algo.html">Fsa algorithms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python_tutorials/ragged/index.html">Ragged tensor tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python_tutorials/fsa/index.html">Fsa tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python_tutorials/fsa_algo/index.html">Fsa algorithms tutorials</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python_api/index.html">Python API reference</a><ul>
@@ -273,7 +276,18 @@ including lattice rescoring in the field of automatic speech recognition
   
   
     
-   
+  
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
 
 </body>
 </html>

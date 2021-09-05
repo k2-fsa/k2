@@ -1,3 +1,4 @@
+<!-- see https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
 
 
 <!DOCTYPE html>
@@ -15,6 +16,7 @@
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
 
   
   
@@ -41,7 +43,7 @@
     
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Fsa" href="fsa.html" />
+    <link rel="next" title="Ragged tensor tutorials" href="ragged/index.html" />
     <link rel="prev" title="Core concepts in k2" href="../core_concepts/index.html" /> 
 </head>
 
@@ -96,8 +98,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Python tutorials</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html">Fsa</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html">Fsa algorithms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ragged/index.html">Ragged tensor tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fsa/index.html">Fsa tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fsa_algo/index.html">Fsa algorithms tutorials</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../python_api/index.html">Python API reference</a></li>
@@ -174,18 +177,17 @@
 <h1>Python tutorials<a class="headerlink" href="#python-tutorials" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="fsa.html">Fsa</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#a-single-fsa">A single FSA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#a-list-of-fsas-fsavec">A list of FSAs: FsaVec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ragged/index.html">Ragged tensor tutorials</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ragged/basics.html">Basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ragged/operations.html">Operations</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="fsa_algo.html">Fsa algorithms</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#invert">invert</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#arc-sort">arc_sort</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#intersect">intersect</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#connect">connect</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#get-forward-scores">get_forward_scores</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#get-tot-scores">get_tot_scores</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fsa/index.html">Fsa tutorials</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="fsa/fsa.html">Fsa</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fsa_algo/index.html">Fsa algorithms tutorials</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="fsa_algo/fsa_algo.html">Fsa algorithms</a></li>
 </ul>
 </li>
 </ul>
@@ -198,7 +200,7 @@
           </div>
           <footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="fsa.html" class="btn btn-neutral float-right" title="Fsa" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="ragged/index.html" class="btn btn-neutral float-right" title="Ragged tensor tutorials" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
         <a href="../core_concepts/index.html" class="btn btn-neutral float-left" title="Core concepts in k2" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
@@ -237,7 +239,18 @@
   
   
     
-   
+  
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
 
 </body>
 </html>

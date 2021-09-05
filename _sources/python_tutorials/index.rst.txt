@@ -5,5 +5,6 @@ Python tutorials
 .. toctree::
    :maxdepth: 2
 
-   fsa
-   fsa_algo
+   ragged/index
+   fsa/index
+   fsa_algo/index
