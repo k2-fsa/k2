@@ -197,7 +197,7 @@
 <h2>index_select<a class="headerlink" href="#index-select" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.index_select">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">index_select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L125-L160"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.index_select" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">index_select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L83-L118"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.index_select" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a new tensor which indexes the input tensor along dimension 0
 using the entries in <cite>index</cite>.</p>
 <p>If the entry in <cite>index</cite> is -1, then the corresponding entry in the
@@ -239,7 +239,7 @@ entries where <cite>index[i] == -1</cite> which will be zero.</p>
 <h2>index_add<a class="headerlink" href="#index-add" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.index_add">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">index_add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_out</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L163-L198"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.index_add" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">index_add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_out</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L121-L156"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.index_add" title="Permalink to this definition">¶</a></dt>
 <dd><p>It implements in_out[index[i]] += value[i].</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
@@ -286,39 +286,12 @@ Must satisfy <cite>index.shape[0] == value.shape[0]</cite></p></li>
 </div>
 <div class="section" id="index-and-sum">
 <h2>index_and_sum<a class="headerlink" href="#index-and-sum" title="Permalink to this headline">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="k2.index_and_sum">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">index_and_sum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indexes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L201-L218"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.index_and_sum" title="Permalink to this definition">¶</a></dt>
-<dd><p>Index a 1-D tensor with a ragged tensor of indexes, perform
-a sum-per-sublist operation, and return the resulting 1-D tensor.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>It supports autograd.</p>
-</div>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>src</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – 1-D tensor with dtype torch.float32. For example, it can
-be a float tensor attribute of an FSA.</p></li>
-<li><p><strong>indexes</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>) – A ragged tensor with two axes. For example, it can be
-the arc map from <code class="xref py py-func docutils literal notranslate"><span class="pre">_k2.remove_epsilon()</span></code></p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
-</dd>
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>1-D torch.Tensor with dtype being <cite>torch.float32</cite>.</p>
-</dd>
-</dl>
-</dd></dl>
-
 </div>
 <div class="section" id="index-fsa">
 <h2>index_fsa<a class="headerlink" href="#index-fsa" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.index_fsa">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">index_fsa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indexes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L221-L252"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.index_fsa" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">index_fsa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indexes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L159-L195"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.index_fsa" title="Permalink to this definition">¶</a></dt>
 <dd><p>Select a list of FSAs from <cite>src</cite> with a 1-D tensor.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -340,106 +313,18 @@ the ids of FSAs to select.</p></li>
 </div>
 <div class="section" id="index-ragged">
 <h2>index_ragged<a class="headerlink" href="#index-ragged" title="Permalink to this headline">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="k2.index_ragged">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">index_ragged</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indexes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L255-L283"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.index_ragged" title="Permalink to this definition">¶</a></dt>
-<dd><p>Indexing ragged tensor with a 1-D tensor or a ragged tensor.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>src</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>) – Source ragged tensor to index; must have num_axes() == 2.</p></li>
-<li><p><strong>indexes</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]) – It can be a tensor or a ragged tensor.
-If it’s a tensor, it must be a 1-D tensor and
-<cite>indexes.dtype == torch.int32</cite>.
-Values in it will be interpreted as indexes into axis 0 of <cite>src</cite>,
-i.e. -1 &lt;= indexes[i] &lt; src.dim0(). If indexes[i] is -1, then
-the i-th value of ans is empty.
-If it’s a ragged tensor, <cite>indexes.values</cite> will be interpreted as
-indexes into axis 0 of <cite>src</cite>, i.e. 0 &lt;= indexes.values[i] &lt; src.dim0();
-Must have num_axes() == 2.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
-</dd>
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p><dl class="simple">
-<dt>Return the indexed ragged tensor with ans.num_axes() == 2</dt><dd><ul class="simple">
-<li><p>If <cite>indexes</cite> is a 1-D tensor, then ans.dim0() == indexes.numel().</p></li>
-<li><p>If <cite>indexes</cite> is a ragged tensor, then ans.dim0() = indexes.dim0().</p></li>
-</ul>
-</dd>
-</dl>
-</p>
-</dd>
-</dl>
-</dd></dl>
-
 </div>
 <div class="section" id="index-tensor">
 <h2>index_tensor<a class="headerlink" href="#index-tensor" title="Permalink to this headline">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="k2.index_tensor">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">index_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indexes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L286-L321"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.index_tensor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Indexing a 1-D tensor or a 2-D tensor with a 1-D tensor or a ragged
-tensor.</p>
-<div class="admonition caution">
-<p class="admonition-title">Caution</p>
-<p>Indexing a 2-D tensor supported only when indexes is a 1-D tensor.</p>
-</div>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>src</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – Source 1-D tensor or 2-D tensor to index, must have
-<cite>src.dtype == torch.int32</cite> or <cite>src.dtype == torch.float32</cite>.</p></li>
-<li><p><strong>indexes</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]) – <p>It satisfies -1 &lt;= indexes.values()[i] &lt; src.sizes()[0].</p>
-<ul>
-<li><p>If it’s a tensor, its values will be interpreted as indexes into
-<cite>src</cite>; if indexes.values()[i] is -1, then ans[i] is 0.</p></li>
-<li><p>If it’s a ragged tensor, <cite>indexes.values()</cite> will be interpreted as
-indexes into <cite>src</cite>. If src.dtype is torch.int32, it returns
-a _k2.RaggedInt; if src.dtype is torch.float32, it performs an extra
-sum-per-sublist operation and returns 1-D torch.Tensor.</p></li>
-</ul>
-</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]</p>
-</dd>
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>Returns a tensor or a ragged tensor (depending on the type of <cite>indexes</cite>)</p>
-</dd>
-</dl>
-</dd></dl>
-
 </div>
 <div class="section" id="index">
 <h2>index<a class="headerlink" href="#index" title="Permalink to this headline">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="k2.index">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indexes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L324-L344"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.index" title="Permalink to this definition">¶</a></dt>
-<dd><p>Indexing an Fsa, a 1-D tensor of a 2-D tensor with a tensor or a ragged
-tensor. It’s a wrapper of above function <cite>index_fsa</cite>, <cite>index_tensor</cite> and
-<cite>index_ragged</cite>.</p>
-<div class="admonition caution">
-<p class="admonition-title">Caution</p>
-<p>Indexing a 2-D tensor supported only when indexes is a 1-D tensor.</p>
-</div>
-<p>Supports autograd where applicable (e.g. for floating point values)</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>]</p>
-</dd>
-</dl>
-</dd></dl>
-
 </div>
 <div class="section" id="cat">
 <h2>cat<a class="headerlink" href="#cat" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.cat">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">cat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">srcs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L347-L394"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.cat" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">cat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">srcs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L198-L245"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.cat" title="Permalink to this definition">¶</a></dt>
 <dd><p>Concatenate a list of FsaVec into a single FsaVec.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
@@ -466,7 +351,7 @@ lowest index in <cite>srcs</cite>.</p>
 <h2>compose_arc_maps<a class="headerlink" href="#compose-arc-maps" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.compose_arc_maps">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">compose_arc_maps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">step1_arc_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step2_arc_map</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L397-L425"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.compose_arc_maps" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">compose_arc_maps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">step1_arc_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step2_arc_map</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/ops.py#L248-L276"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.compose_arc_maps" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compose arc maps from two Fsa operations.</p>
 <p>It implements:</p>
 <blockquote>

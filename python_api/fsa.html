@@ -257,9 +257,9 @@ column 1 the dest_state, column 2 the label, and column
 of dtype <cite>torch.int32</cite>.</p>
 </div>
 </p></li>
-<li><p><strong>aux_labels</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code>]) – Optional. If not None, it associates an aux_label with every arc,
+<li><p><strong>aux_labels</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <a class="reference internal" href="ragged_tensor.html#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedTensor</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code>]) – Optional. If not None, it associates an aux_label with every arc,
 so it has as many rows as <cite>tensor</cite>. It is a 1-D tensor of dtype
-<cite>torch.int32</cite> or <cite>_k2.RaggedInt</cite> whose <cite>dim0()</cite> equals to the
+<cite>torch.int32</cite> or <cite>k2.RaggedTensor</cite> whose <cite>dim0</cite> equals to the
 number of arcs.</p></li>
 <li><p><strong>properties</strong> – Tensor properties if known (should only be provided by
 internal code, as they are not checked; intended for use
@@ -533,7 +533,7 @@ and self._non_tensor_attr.</p>
 <p>For use by internal k2 code.  Used in many algorithms.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+<dd class="field-odd"><p><a class="reference internal" href="ragged_tensor.html#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedTensor</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -563,7 +563,7 @@ and self._non_tensor_attr.</p>
 <p>For use by internal k2 code, relates to best-path</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+<dd class="field-odd"><p><a class="reference internal" href="ragged_tensor.html#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedTensor</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -579,7 +579,7 @@ and self._non_tensor_attr.</p>
 <p>For use by internal k2 code, used in many algorithms.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+<dd class="field-odd"><p><a class="reference internal" href="ragged_tensor.html#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedTensor</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -595,7 +595,7 @@ and self._non_tensor_attr.</p>
 <p>For use by internal k2 code, used in many algorithms.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedInt</span></code></p>
+<dd class="field-odd"><p><a class="reference internal" href="ragged_tensor.html#k2.ragged.RaggedTensor" title="_k2.ragged.RaggedTensor"><code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedTensor</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1369,7 +1369,7 @@ will modify <cite>self</cite> <strong>in-place</strong>.</p>
 <dt class="sig sig-object py" id="k2.Fsa.convert_attr_to_ragged_">
 <span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">convert_attr_to_ragged_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1399-L1432"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.convert_attr_to_ragged_" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert the attribute given by <cite>name</cite> from a 1-D torch.tensor
-to a k2.RaggedInt.</p>
+to a k2.RaggedTensor.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
 <p>This function ends with an underscore, meaning it changes the FSA
