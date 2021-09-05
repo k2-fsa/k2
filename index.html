@@ -165,30 +165,32 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <a class="reference internal image-reference" href="_images/logo.png"><img alt="k2 logo" class="align-center" src="_images/logo.png" style="width: 80px;" /></a>
-<hr class="docutils" />
-<div class="section" id="k2">
+  <div class="section" id="k2">
 <h1>k2<a class="headerlink" href="#k2" title="Permalink to this headline">¶</a></h1>
-<p>The vision of k2 is to be able to seamlessly integrate Finite State
-Automaton (FSA) and Finite State Transducer (FST) algorithms into
-autograd-based machine learning toolkits like PyTorch and TensorFlow.
-For speech recognition applications, this should make it easy to
-interpolate and combine various training objectives such as cross-entropy,
-CTC and MMI and to jointly optimize a speech recognition system with multiple
-decoding passes including lattice rescoring and confidence estimation.
-We hope k2 will have many other applications as well.</p>
-<p>One of the key algorithms that we want to make efficient in the short term
-is pruned composition of a generic FSA with a “dense” FSA (i.e. one that
-corresponds to log-probs of symbols at the output of a neural network).
-This can be used as a fast implementation of decoding for ASR, and for CTC
-and LF-MMI training. This won’t give a direct advantage in terms of Word
-Error Rate when compared with existing technology; but the point is to
-do this in a much more general and extensible framework to allow further
-development of ASR technology.</p>
+<a class="reference internal image-reference" href="_images/logo.png"><img alt="k2 logo" class="align-center" src="_images/logo.png" style="width: 168px;" /></a>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <p>We use the lowercase <code class="docutils literal notranslate"><span class="pre">k</span></code> in <code class="docutils literal notranslate"><span class="pre">k2</span></code>. That is, it is <code class="docutils literal notranslate"><span class="pre">k2</span></code>, not <code class="docutils literal notranslate"><span class="pre">K2</span></code>.</p>
 </div>
+<p>k2 is able to seamlessly integrate Finite State
+Automaton (FSA) and Finite State Transducer (FST) algorithms into
+autograd-based machine learning toolkits like PyTorch <a class="footnote-reference brackets" href="#f1" id="id1">1</a>.
+k2 supports CPU as well as CUDA. It can process a batch of FSTs
+at the same time.</p>
+<dl class="footnote brackets">
+<dt class="label" id="f1"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>Support for TensorFlow will be added in the future.</p>
+</dd>
+</dl>
+<p>We have used k2 to compute CTC loss, LF-MMI loss, and to do decoding
+including lattice rescoring in the field of automatic speech recognition
+(ASR) <a class="footnote-reference brackets" href="#f2" id="id2">2</a>.</p>
+<p>We hope k2 will have many other applications as well.</p>
+<dl class="footnote brackets">
+<dt class="label" id="f2"><span class="brackets"><a class="fn-backref" href="#id2">2</a></span></dt>
+<dd><p>You can find ASR recipes in <a class="reference external" href="https://github.com/k2-fsa/icefall">https://github.com/k2-fsa/icefall</a></p>
+</dd>
+</dl>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
@@ -218,16 +220,9 @@ development of ASR technology.</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python_api/index.html">Python API reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="python_api/fsa.html">Fsa</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python_api/ctc_loss.html">CTC Loss</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python_api/dense_fsa.html">DenseFsaVec</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python_api/fsa_algo.html">Fsa Algorithms</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python_api/symbol_table.html">SymbolTable</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python_api/utils.html">utils</a></li>
 <li class="toctree-l2"><a class="reference internal" href="python_api/version.html">version</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python_api/ops.html">ops</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python_api/ragged_ops.html">ragged_ops</a></li>
-<li class="toctree-l2"><a class="reference internal" href="python_api/ragged_tensor.html">k2.ragged</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python_api/api.html">k2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python_api/api.html#k2-ragged">k2.ragged</a></li>
 </ul>
 </li>
 </ul>

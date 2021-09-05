@@ -41,7 +41,7 @@
     
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Fsa" href="fsa.html" />
+    <link rel="next" title="version" href="version.html" />
     <link rel="prev" title="Fsa algorithms" href="../python_tutorials/fsa_algo.html" /> 
 </head>
 
@@ -97,16 +97,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Python API reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html">Fsa</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ctc_loss.html">CTC Loss</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dense_fsa.html">DenseFsaVec</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html">Fsa Algorithms</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html">SymbolTable</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html">utils</a></li>
 <li class="toctree-l2"><a class="reference internal" href="version.html">version</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ops.html">ops</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html">ragged_ops</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_tensor.html">k2.ragged</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html">k2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#k2-ragged">k2.ragged</a></li>
 </ul>
 </li>
 </ul>
@@ -181,168 +174,73 @@
   <div class="section" id="python-api-reference">
 <h1>Python API reference<a class="headerlink" href="#python-api-reference" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="fsa.html">Fsa</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#init">__init__</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#invalidate-cache">_invalidate_cache_</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#to-str">to_str</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#str">__str__</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-filler">get_filler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#draw">draw</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#setattr">__setattr__</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#num-arcs">num_arcs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#labels">labels</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#properties">properties</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#properties-str">properties_str</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#requires-grad">requires_grad</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#grad">grad</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#getattr">__getattr__</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#delattr">__delattr__</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-state-batches">_get_state_batches</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-dest-states">_get_dest_states</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-incoming-arcs">_get_incoming_arcs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-entering-arc-batches">_get_entering_arc_batches</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-leaving-arc-batches">_get_leaving_arc_batches</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-arc-cdf">_get_arc_cdf</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-forward-scores">_get_forward_scores</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#id1">get_forward_scores</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-tot-scores">_get_tot_scores</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#id2">get_tot_scores</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-backward-scores">_get_backward_scores</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#id3">get_backward_scores</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-arc-post">_get_arc_post</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#id4">get_arc_post</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#get-entering-arcs">_get_entering_arcs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#id5"><cite>requires_grad_</cite></a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#rename-tensor-attribute">rename_tensor_attribute</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#invert"><cite>invert_</cite></a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#id6">invert</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#is-cpu">is_cpu</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#is-cuda">is_cuda</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#device">device</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#getitem">__getitem__</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#arcs-as-tensor">arcs_as_tensor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#as-dict">as_dict</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#from-dict">from_dict</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#to">to</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#clone">clone</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#detach">detach</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#named-tensor-attr">named_tensor_attr</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#named-non-tensor-attr">named_non_tensor_attr</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#shape">shape</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#from-str">from_str</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#from-openfst">from_openfst</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#from-fsas">from_fsas</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#set-scores-stochastic"><cite>set_scores_stochastic_</cite></a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa.html#convert-attr-to-ragged"><cite>convert_attr_to_ragged_</cite></a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="ctc_loss.html">CTC Loss</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="ctc_loss.html#ctcloss">CtcLoss</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ctc_loss.html#id1">ctc_loss</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="dense_fsa.html">DenseFsaVec</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="dense_fsa.html#id1">DenseFsaVec</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dense_fsa.html#convert-dense-to-fsa-vec">convert_dense_to_fsa_vec</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="fsa_algo.html">Fsa Algorithms</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#add-epsilon-self-loops">add_epsilon_self_loops</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#arc-sort">arc_sort</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#closure">closure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#compose">compose</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#connect">connect</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#ctc-graph">ctc_graph</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#ctc-topo">ctc_topo</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#determinize">determinize</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#expand-ragged-attributes">expand_ragged_attributes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#intersect">intersect</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#intersect-device">intersect_device</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#intersect-dense">intersect_dense</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#intersect-dense-pruned">intersect_dense_pruned</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#invert">invert</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#linear-fsa">linear_fsa</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#linear-fst">linear_fst</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#prune-on-arc-post">prune_on_arc_post</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#random-paths">random_paths</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#remove-epsilon">remove_epsilon</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#remove-epsilon-and-add-self-loops">remove_epsilon_and_add_self_loops</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#remove-epsilon-self-loops">remove_epsilon_self_loops</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#replace-fsa">replace_fsa</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#shortest-path">shortest_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#top-sort">top_sort</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fsa_algo.html#union">union</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="symbol_table.html">SymbolTable</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#from-str">from_str</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#from-file">from_file</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#to-file">to_file</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#add">add</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#get">get</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#merge">merge</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#check-compatible">_check_compatible</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#getitem">__getitem__</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#contains">__contains__</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#len">__len__</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#ids">ids</a></li>
-<li class="toctree-l2"><a class="reference internal" href="symbol_table.html#symbols">symbols</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="utils.html">utils</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="utils.html#to-str">to_str</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html#to-str-simple">to_str_simple</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html#to-tensor">to_tensor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html#to-dot">to_dot</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html#create-fsa-vec">create_fsa_vec</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html#is-rand-equivalent">is_rand_equivalent</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html#create-sparse">create_sparse</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html#random-fsa">random_fsa</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html#random-fsa-vec">random_fsa_vec</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="version.html">version</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ops.html">ops</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="ops.html#index-select">index_select</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ops.html#index-add">index_add</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ops.html#index-and-sum">index_and_sum</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ops.html#index-fsa">index_fsa</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ops.html#index-ragged">index_ragged</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ops.html#index-tensor">index_tensor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ops.html#index">index</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ops.html#cat">cat</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ops.html#compose-arc-maps">compose_arc_maps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">k2</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#add-epsilon-self-loops">add_epsilon_self_loops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#arc-sort">arc_sort</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#cat">cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#closure">closure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#compose">compose</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#compose-arc-maps">compose_arc_maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#connect">connect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#convert-dense-to-fsa-vec">convert_dense_to_fsa_vec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#create-fsa-vec">create_fsa_vec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#create-sparse">create_sparse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#ctc-graph">ctc_graph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#ctc-loss">ctc_loss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#ctc-topo">ctc_topo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#determinize">determinize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#expand-ragged-attributes">expand_ragged_attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#get-best-matching-stats">get_best_matching_stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#index-add">index_add</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#index-fsa">index_fsa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#index-select">index_select</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#intersect">intersect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#intersect-dense">intersect_dense</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#intersect-dense-pruned">intersect_dense_pruned</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#intersect-device">intersect_device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#invert">invert</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#is-rand-equivalent">is_rand_equivalent</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#linear-fsa">linear_fsa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#linear-fst">linear_fst</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#properties-to-str">properties_to_str</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#prune-on-arc-post">prune_on_arc_post</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#random-fsa">random_fsa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#random-fsa-vec">random_fsa_vec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#random-paths">random_paths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#remove-epsilon">remove_epsilon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#remove-epsilon-and-add-self-loops">remove_epsilon_and_add_self_loops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#remove-epsilon-self-loops">remove_epsilon_self_loops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#replace-fsa">replace_fsa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#shortest-path">shortest_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#simple-ragged-index-select">simple_ragged_index_select</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#to-dot">to_dot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#to-str">to_str</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#to-str-simple">to_str_simple</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#to-tensor">to_tensor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#top-sort">top_sort</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#union">union</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#ctcloss">CtcLoss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#densefsavec">DenseFsaVec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#determinizeweightpushingtype">DeterminizeWeightPushingType</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#fsa">Fsa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#nbest">Nbest</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#raggedshape">RaggedShape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#raggedtensor">RaggedTensor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#symboltable">SymbolTable</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="ragged_ops.html">ragged_ops</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#index">index</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#remove-values-leq">remove_values_leq</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#remove-values-eq">remove_values_eq</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#remove-axis">remove_axis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#to-list">to_list</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#pad">pad</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#sum-per-sublist">sum_per_sublist</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#cat">cat</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#create-ragged2">create_ragged2</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#get-layer">get_layer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#unique-sequences">unique_sequences</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#regular-ragged-shape">regular_ragged_shape</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#argmax-per-sublist">argmax_per_sublist</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#max-per-sublist">max_per_sublist</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_ops.html#sort-sublist">sort_sublist</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="ragged_tensor.html">k2.ragged</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="ragged_tensor.html#raggedshape">RaggedShape</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_tensor.html#raggedtensor">RaggedTensor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_tensor.html#cat">cat</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_tensor.html#create-ragged-shape2">create_ragged_shape2</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_tensor.html#create-ragged-tensor">create_ragged_tensor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_tensor.html#index">index</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_tensor.html#index-and-sum">index_and_sum</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ragged_tensor.html#regular-ragged-shape">regular_ragged_shape</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html#k2-ragged">k2.ragged</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id35">cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#create-ragged-shape2">create_ragged_shape2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#create-ragged-tensor">create_ragged_tensor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id36">index</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#index-and-sum">index_and_sum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#random-ragged-shape">random_ragged_shape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id37">regular_ragged_shape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id38">RaggedShape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id57">RaggedTensor</a></li>
 </ul>
 </li>
 </ul>
@@ -355,7 +253,7 @@
           </div>
           <footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="fsa.html" class="btn btn-neutral float-right" title="Fsa" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="version.html" class="btn btn-neutral float-right" title="version" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
         <a href="../python_tutorials/fsa_algo.html" class="btn btn-neutral float-left" title="Fsa algorithms" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 

@@ -255,7 +255,7 @@ state to the start state to 0.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>k2 supports conversion of FSAs from OpenFST. See <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.from_openfst" title="k2.Fsa.from_openfst"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.from_openfst()</span></code></a>.</p>
+<p>k2 supports conversion of FSAs from OpenFST. See <a class="reference internal" href="../python_api/api.html#k2.Fsa.from_openfst" title="k2.Fsa.from_openfst"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.from_openfst()</span></code></a>.</p>
 </div>
 </div>
 <div class="section" id="attributes">
@@ -352,7 +352,7 @@ this FSA is <code class="docutils literal notranslate"><span class="pre">max(0.1
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <p><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.get_tot_scores()</span></code> takes a vector of FSAs as input,
-so we use <a class="reference internal" href="../python_api/utils.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> to turn an FSA into a vector of FSAs.</p>
+so we use <a class="reference internal" href="../python_api/api.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> to turn an FSA into a vector of FSAs.</p>
 <p>Most operations in k2 take a vector of FSAs as input and process them
 in parallel.</p>
 </div>
@@ -395,8 +395,8 @@ only <code class="xref py py-class docutils literal notranslate"><span class="pr
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><a class="reference internal" href="../python_api/utils.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> can create a FsaVec from a list of
-FSAs. and <a class="reference internal" href="../python_api/fsa.html#k2.Fsa.__getitem__" title="k2.Fsa.__getitem__"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.__getitem__()</span></code></a> selects an FSA with specified
+<p><a class="reference internal" href="../python_api/api.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> can create a FsaVec from a list of
+FSAs. and <a class="reference internal" href="../python_api/api.html#k2.Fsa.__getitem__" title="k2.Fsa.__getitem__"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.__getitem__()</span></code></a> selects an FSA with specified
 index from a FsaVec.</p>
 </div>
 </div>
@@ -671,7 +671,7 @@ a dense FSA for each of them</p></li>
 FSA for each output in the batch</p></li>
 </ul>
 </div></blockquote>
-<p>Please refer to the constructor of <a class="reference internal" href="../python_api/dense_fsa.html#k2.DenseFsaVec.__init__" title="k2.DenseFsaVec.__init__"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.DenseFsaVec.__init__()</span></code></a>
+<p>Please refer to the constructor of <a class="reference internal" href="../python_api/api.html#k2.DenseFsaVec.__init__" title="k2.DenseFsaVec.__init__"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.DenseFsaVec.__init__()</span></code></a>
 to gain more insight.</p>
 </div>
 <div class="section" id="ragged-arrays">
