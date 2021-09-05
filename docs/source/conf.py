@@ -145,3 +145,6 @@ def linkcode_resolve(domain, info):
     idx = filename.rfind('k2')
     filename = filename[idx:]
     return f'https://github.com/k2-fsa/k2/blob/master/k2/python/{filename}'
+
+def setup(app):
+    app.add_css_file('custom.css')
