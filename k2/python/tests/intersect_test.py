@@ -28,12 +28,17 @@ import torch
 
 class TestIntersect(unittest.TestCase):
 
-    def test_treat_epsilon_specially_false(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
-        for device in devices:
+    def test_treat_epsilon_specially_false(self):
+        for device in self.devices:
             # a_fsa recognizes `(0|1)2*`
             s1 = '''
                 0 1 0 0.1
@@ -132,6 +137,8 @@ class TestIntersect(unittest.TestCase):
         fsa = k2.intersect(k2.arc_sort(a_fsa), k2.arc_sort(b_fsa))
         assert len(fsa.shape) == 3
 
+
+# TODO(fangjun): add more tests for ragged attributes
 
 if __name__ == '__main__':
     unittest.main()

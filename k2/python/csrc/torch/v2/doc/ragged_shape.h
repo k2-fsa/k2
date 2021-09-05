@@ -426,15 +426,27 @@ Caution:
 
 **Example 1**:
 
-  >>> import torch
-  >>> import k2.ragged as k2r
-  >>> shape = k2r.RaggedShape('[ [x x] [x] [x x x]]')
+  >>> shape = k2r.RaggedShape('[ [x x] [x] [x x x] ]')
+  >>> value = torch.arange(6, dtype=torch.float32) * 10
+  >>> ragged = k2r.RaggedTensor(shape, value)
+  >>> ragged
+  [ [ 0 10 ] [ 20 ] [ 30 40 50 ] ]
   >>> i = torch.tensor([0, 2, 1], dtype=torch.int32)
-  >>> shape.index(0, i)
+  >>> sub_shape, value_indexes = shape.index(axis=0, indexes=i, need_value_indexes=True)
+  >>> sub_shape
   [ [ x x ] [ x x x ] [ x ] ]
+  >>> value_indexes
+  tensor([0, 1, 3, 4, 5, 2], dtype=torch.int32)
+  >>> ragged.data[value_indexes.long()]
+  tensor([ 0., 10., 30., 40., 50., 20.])
   >>> k = torch.tensor([0, -1, 1, 0, 2, -1], dtype=torch.int32)
-  >>> shape.index(0, k)
+  >>> sub_shape2, value_indexes2 = shape.index(axis=0, indexes=k, need_value_indexes=True)
+  >>> sub_shape2
   [ [ x x ] [ ] [ x ] [ x x ] [ x x x ] [ ] ]
+  >>> value_indexes2
+  tensor([0, 1, 2, 0, 1, 3, 4, 5], dtype=torch.int32)
+
+
 
 **Example 2**:
 
@@ -443,7 +455,7 @@ Caution:
   >>> shape = k2r.RaggedShape('[ [[x x] [x]] [[] [x x x] [x]] [[x] [] [] [x x]] ]')
   >>> i = torch.tensor([0, 1, 3, 5, 7, 8], dtype=torch.int32)
   >>> shape.index(axis=1, indexes=i)
-  [ [ [ x x ] [ x ] ] [ [ x x x ] ] [ [ x ] [ ] [ x x ] ] ]
+  ([ [ [ x x ] [ x ] ] [ [ x x x ] ] [ [ x ] [ ] [ x x ] ] ], tensor([0, 1, 2, 3, 4, 5, 7, 8, 9], dtype=torch.int32))
 
 Args:
   axis:
@@ -453,6 +465,11 @@ Args:
     of ``self``, i.e. with ``0 <= indexes[i] < self.tot_size(axis)``.
     Note that if ``axis`` is 0, then -1 is also a valid entry in ``index``,
     in which case, an empty list is returned.
+  need_value_indexes:
+    If ``True``, it will return a torch.Tensor containing the indexes into
+    ``ragged_tensor.data`` that ``ans.data`` has, as in
+    ``ans.data = ragged_tensor.data[value_indexes]``, where ``ragged_tensor``
+    uses ``self`` as its shape.
 
     Caution:
       It is currently not allowed to change the order on axes less than
@@ -461,6 +478,28 @@ Args:
 
 Returns:
   Return an indexed ragged shape.
+)doc";
+
+static constexpr const char *kCreateRaggedShape2Doc = R"doc(
+Construct a RaggedShape from row_ids and/or row_splits vectors.  For
+the overall concepts, please see comments in k2/csrc/utils.h.
+
+>>> import k2.ragged as k2r
+>>> shape = k2r.RaggedShape('[[x x] [x]]')
+>>> k2r.create_ragged_shape2(shape.row_splits(1), shape.row_ids(1))
+[ [ x x ] [ x ] ]
+
+Args:
+  row_splits:
+    Optionally, a torch.Tensor with dtype=torch.int32 and one axis
+  row_ids:
+    Optionally, a torch.Tensor with dtype=torch.int32 and one axis.
+  cached_tot_size:
+    The number of elements (length of row_ids, even if row_ids
+    is not provided); would be identical to the last element of row_splits,
+    but can avoid a GPU to CPU transfer if known.
+Returns:
+  An instance of :class:`RaggedShape`, with ``ans.num_axes == 2``.
 )doc";
 
 }  // namespace k2

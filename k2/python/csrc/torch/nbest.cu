@@ -30,17 +30,19 @@
 #include "k2/csrc/tensor_ops.h"
 #include "k2/python/csrc/torch/nbest.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
 
 static void PybindGetBestMatchingStats(py::module &m) {
   m.def(
       "get_best_matching_stats",
-      [](Ragged<int32_t> &tokens, torch::Tensor scores, torch::Tensor counts,
+      [](RaggedAny &ragged, torch::Tensor scores, torch::Tensor counts,
          int32_t eos, int32_t min_token, int32_t max_token,
          int32_t max_order) -> std::tuple<torch::Tensor, torch::Tensor,
                                           torch::Tensor, torch::Tensor> {
-        DeviceGuard guard(tokens.Context());
+        DeviceGuard guard(ragged.any.Context());
+        Ragged<int32_t> tokens = ragged.any.Specialize<int32_t>();
         Array1<float> scores_array = FromTorch<float>(scores);
         Array1<int32_t> counts_array = FromTorch<int32_t>(counts);
         Array1<float> mean, var;

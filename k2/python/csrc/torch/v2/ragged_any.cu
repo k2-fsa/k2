@@ -22,6 +22,8 @@
 
 #include "k2/csrc/ragged_ops.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/autograd/index_and_sum.h"
+#include "k2/python/csrc/torch/v2/autograd/normalize.h"
 #include "k2/python/csrc/torch/v2/autograd/sum.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
 
@@ -133,6 +135,19 @@ static Ragged<T> RaggedAnyFromList(py::list data) {
   return ans;
 }
 
+RaggedAny::RaggedAny(const RaggedShape &shape, torch::Tensor value) {
+  Dtype t = ScalarTypeToDtype(value.scalar_type());
+  FOR_REAL_AND_INT32_TYPES(t, T, {
+    Array1<T> array = FromTorch<T>(value);
+    Ragged<T> r(shape, array);
+    any = r.Generic();
+    data = value;  // Assign value to data in case value.requires_grad is True
+    return;
+  });
+  // Unreachable code
+  K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
+}
+
 RaggedAny::RaggedAny(const std::string &s, py::object dtype /*=py::none()*/) {
   if (!dtype.is_none() && !THPDtype_Check(dtype.ptr())) {
     K2_LOG(FATAL) << "Expect an instance of torch.dtype. "
@@ -200,6 +215,7 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
 }
 
 const torch::Tensor &RaggedAny::Data() const {
+  DeviceGuard guard(any.Context());
   if (!data.defined()) {
     Dtype t = any.GetDtype();
     FOR_REAL_AND_INT32_TYPES(t, T, {
@@ -449,20 +465,9 @@ RaggedAny::Unique(bool need_num_repeats /*= false*/,
 
 RaggedAny RaggedAny::Normalize(bool use_log) /*const*/ {
   DeviceGuard guard(any.Context());
-  Dtype t = any.GetDtype();
-
-  if (t == kFloatDtype) {
-    return RaggedAny(
-        NormalizePerSublist(any.Specialize<float>(), use_log).Generic());
-  }
-
-  if (t == kDoubleDtype) {
-    return RaggedAny(
-        NormalizePerSublist(any.Specialize<double>(), use_log).Generic());
-  }
-
-  K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
-  return {};
+  RaggedAny out;
+  NormalizeFunction::apply(*this, use_log, Data(), &out);
+  return out;
 }
 
 torch::Tensor RaggedAny::Pad(const std::string &mode,
@@ -614,28 +619,9 @@ RaggedAny RaggedAny::Index(torch::Tensor src,
   return {};
 }
 
-torch::Tensor RaggedAny::IndexAndSum(
-    torch::Tensor src, py::object default_value /*=py::none()*/) /*const*/ {
-  Dtype t = any.GetDtype();
-  K2_CHECK_EQ(t, kInt32Dtype) << "Unsupported dtype: " << TraitsOf(t).Name();
-
-  K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
-  K2_CHECK_EQ(any.NumAxes(), 2);
-
+torch::Tensor RaggedAny::IndexAndSum(torch::Tensor src) /*const*/ {
   DeviceGuard guard(any.Context());
-  Dtype dtype = ScalarTypeToDtype(src.scalar_type());
-  FOR_REAL_AND_INT32_TYPES(dtype, T, {
-    T value_for_minus_one =
-        default_value.is_none() ? T() : default_value.cast<T>();
-
-    Array1<T> src_array = FromTorch<T>(src);
-    Ragged<T> ragged =
-        k2::Index<T>(src_array, any.Specialize<int32_t>(), value_for_minus_one);
-
-    Array1<T> ans_array(ragged.Context(), ragged.Dim0());
-    SumPerSublist<T>(ragged, 0, &ans_array);
-    return ToTorch(ans_array);
-  });
+  return IndexAndSumFunction::apply(src, *this);
 }
 
 }  // namespace k2

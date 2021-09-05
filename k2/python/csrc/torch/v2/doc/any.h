@@ -1406,18 +1406,15 @@ tensor([90., 50.])
 >>> k = k2r.RaggedTensor([[1, -1, 2], [-1], [2, 5, -1]])
 >>> k2r.index_and_sum(src, k)
 tensor([30.,  0., 70.])
->>> k2r.index_and_sum(src, k, default_value=8)
-tensor([38.,  8., 78.])
 
 Args:
   src:
     A 1-D tensor.
   indexes:
     A ragged tensor with two axes. Its dtype MUST be ``torch.int32``.
-  default_value:
-    Used only when an entry in ``indexes`` is -1, in which case
-    it returns ``default_value`` as -1 is not a valid index.
-    If it is ``None`` and an entry in ``indexes`` is -1, 0 is returned.
+    For instance, it can be the arc map returned from the function
+    ``remove_epsilon``. If an index is -1, the resulting sublist
+    is 0.
 Returns:
   Return a 1-D tensor with the same dtype and device as ``src``.
 )doc";

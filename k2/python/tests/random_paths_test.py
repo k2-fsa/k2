@@ -50,7 +50,7 @@ class TestRandomPaths(unittest.TestCase):
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
                                        num_paths=2)
-                assert path.num_axes() == 3
+                assert path.num_axes == 3
                 self.assertEqual(str(path), '[ [ [ 0 1 ] [ 0 1 ] ] ]')
 
     def test_single_fsa_case2(self):
@@ -71,7 +71,7 @@ class TestRandomPaths(unittest.TestCase):
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
                                        num_paths=1)
-                assert path.num_axes() == 3
+                assert path.num_axes == 3
                 # iter 0, p is 0.5, select the second leaving arc of state 0
                 # iter 1, p is 0, select the first leaving arc of state 1
                 # iter 2, p is 0, select the first leaving arc of state 2
@@ -92,7 +92,7 @@ class TestRandomPaths(unittest.TestCase):
                 #          second leaving arc of state 1
                 #  iter 2, p is (0.5 - 0.5) / (1 - 0.5) = 0, select the
                 #          first leaving arc of state 1
-                assert path.num_axes() == 3
+                assert path.num_axes == 3
                 self.assertEqual(str(path), '[ [ [ 0 3 4 ] [ 1 3 4 ] ] ]')
 
                 path = k2.random_paths(fsa_vec,
@@ -122,7 +122,7 @@ class TestRandomPaths(unittest.TestCase):
                 #          state 1
                 #  iter 2, p is 0.25/0.5=0.5, select the second leaving arc of
                 #          state 2
-                assert path.num_axes() == 3
+                assert path.num_axes == 3
                 self.assertEqual(
                     str(path),
                     '[ [ [ 0 2 5 ] [ 0 3 5 ] [ 1 2 5 ] [ 1 3 5 ] ] ]')

@@ -22,8 +22,6 @@ from typing import Union
 import torch
 
 from .fsa import Fsa
-from .ops import index
-from .ops import index_ragged
 from .ops import index_select
 from .symbol_table import SymbolTable
 import k2
@@ -31,8 +29,7 @@ import k2.ragged
 import _k2
 
 
-def to_str(fsa: Fsa,
-           openfst: bool = False) -> str:
+def to_str(fsa: Fsa, openfst: bool = False) -> str:
     '''Convert an Fsa to a string.  This version prints out all integer
     labels and integer ragged labels on the same line as each arc, the
     same format accepted by Fsa.from_str().
@@ -55,16 +52,16 @@ def to_str(fsa: Fsa,
     for name, value in sorted(fsa.named_tensor_attr(include_scores=False)):
         if isinstance(value, torch.Tensor) and value.dtype == torch.int32:
             extra_labels.append(value)
-        elif isinstance(value, _k2.RaggedInt):
+        elif isinstance(value, k2.RaggedTensor):
             ragged_labels.append(value)
 
-    return _k2.fsa_to_str(fsa.arcs, openfst=openfst,
+    return _k2.fsa_to_str(fsa.arcs,
+                          openfst=openfst,
                           extra_labels=extra_labels,
                           ragged_labels=ragged_labels)
 
 
-def to_str_simple(fsa: Fsa,
-                  openfst: bool = False) -> str:
+def to_str_simple(fsa: Fsa, openfst: bool = False) -> str:
     '''Convert an Fsa to a string.  This is less complete than Fsa.to_str(),
     fsa.__str__(), or to_str_full(), meaning it prints only fsa.aux_labels and
     no ragged labels, not printing any other attributes.  This is used in
@@ -142,7 +139,7 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':  # noqa
         name = 'WFSA'
 
     def convert_aux_label_to_symbol(
-            aux_labels: Union[torch.Tensor, _k2.RaggedInt],
+            aux_labels: Union[torch.Tensor, k2.RaggedTensor],
             arc_index: int,
             symbols: Optional[SymbolTable] = None) -> str:
         '''Convert aux_label(s) to symbol(s).
@@ -164,15 +161,15 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':  # noqa
             if ans != -1 and symbols is not None:
                 ans = symbols[ans]
             return f':{ans}'
-        assert isinstance(aux_labels, _k2.RaggedInt)
-        assert aux_labels.num_axes() == 2
-        row_splits = aux_labels.row_splits(1).cpu()
+        assert isinstance(aux_labels, k2.RaggedTensor)
+        assert aux_labels.num_axes == 2
+        row_splits = aux_labels.shape.row_splits(1).cpu()
         begin = row_splits[arc_index]
         end = row_splits[arc_index + 1]
         if end == begin:
             return ':<eps>'
 
-        labels = aux_labels.values()[begin:end]
+        labels = aux_labels.data[begin:end]
         ans = []
         for label in labels.tolist():
             if label == -1:
@@ -286,12 +283,14 @@ def create_fsa_vec(fsas):
         if isinstance(values[0], torch.Tensor):
             value = torch.cat(values)
         else:
-            assert isinstance(values[0], _k2.RaggedInt)
+            assert isinstance(values[0], k2.RaggedTensor)
             value = k2.ragged.cat(values, axis=0)
         setattr(fsa_vec, name, value)
 
-    non_tensor_attr_names = set(
-        name for name, _ in fsa.named_non_tensor_attr() for fsa in fsas)
+    non_tensor_attr_names = set()
+    for fsa in fsas:
+        for name, _ in fsa.named_non_tensor_attr():
+            non_tensor_attr_names.add(name)
 
     for name in non_tensor_attr_names:
         if name == 'properties':
@@ -447,10 +446,16 @@ def fsa_from_unary_function_tensor(src: Fsa, dest_arcs: _k2.RaggedArc,
     for name, value in src.named_tensor_attr(include_scores=False):
         if isinstance(value, torch.Tensor):
             filler = float(src.get_filler(name))
-            setattr(dest, name, index_select(value, arc_map,
-                                             default_value=filler))
+            new_value = index_select(value, arc_map, default_value=filler)
+            setattr(dest, name, new_value)
         else:
-            setattr(dest, name, index(value, arc_map))
+            assert isinstance(value, k2.RaggedTensor)
+            # Only integer types ragged attributes are supported now
+            assert value.dtype == torch.int32
+            new_value, _ = value.index(arc_map,
+                                       axis=0,
+                                       need_value_indexes=False)
+            setattr(dest, name, new_value)
 
     for name, value in src.named_non_tensor_attr():
         setattr(dest, name, value)
@@ -459,14 +464,15 @@ def fsa_from_unary_function_tensor(src: Fsa, dest_arcs: _k2.RaggedArc,
     return dest
 
 
-def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
-                                   arc_map: _k2.RaggedInt,
+def fsa_from_unary_function_ragged(src: Fsa,
+                                   dest_arcs: _k2.RaggedArc,
+                                   arc_map: k2.RaggedTensor,
                                    remove_filler: bool = True) -> Fsa:
     '''Create an Fsa object, including autograd logic and propagating
     properties from the source FSA.
 
     This is intended to be called from unary functions on FSAs where the arc_map
-    is an instance of _k2.RaggedInt.
+    is an instance of k2.RaggedTensor (with dtype torch.int32).
 
     Args:
       src:
@@ -509,10 +515,29 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
                 else:
                     value[torch.where((src.labels == -1) &
                                       (value == -1))] = filler
-            new_value = index(value, arc_map)
-            setattr(dest, name, k2.ragged.remove_values_eq(new_value, filler))
+            # Since value.dtype is torch.int32, the resulting attr
+            # is a ragged tensor also with dtype torch.int32
+            new_value = k2.ragged.index(value, arc_map, default_value=filler)
+            setattr(dest, name, new_value.remove_values_eq(filler))
         else:
-            new_value = index(value, arc_map)
+            # at this point, value can be either
+            # (1) a torch.tensor with dtype other than torch.int32
+            #     In this case, we assume its dtype is either torch.float32
+            #     or torch.float64 and we use index_and_sum to return a 1-d
+            #     tensor.
+            #     Note: In this case, autograd is supported.
+            # (2) a ragged tensor
+            #     In this case, `indexes` is to index the axis 0 of value and
+            #     we return a ragged tensor
+            #     Note: In this case, autograd is not supported.
+            if isinstance(value, torch.Tensor):
+                assert value.dtype in (torch.float32, torch.float64)
+                new_value = k2.ragged.index_and_sum(value, arc_map)
+            else:
+                assert isinstance(value, k2.RaggedTensor)
+                # We currently don't support float ragged attributes
+                assert value.dtype == torch.int32
+                new_value = value.index(arc_map)
             setattr(dest, name, new_value)
 
     for name, value in src.named_non_tensor_attr():
@@ -523,13 +548,10 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
     return dest
 
 
-def fsa_from_binary_function_tensor(
-        a_fsa: Fsa,
-        b_fsa: Fsa,
-        dest_arcs: _k2.RaggedArc,
-        a_arc_map: torch.Tensor,
-        b_arc_map: torch.Tensor) -> Fsa:
-
+def fsa_from_binary_function_tensor(a_fsa: Fsa, b_fsa: Fsa,
+                                    dest_arcs: _k2.RaggedArc,
+                                    a_arc_map: torch.Tensor,
+                                    b_arc_map: torch.Tensor) -> Fsa:
     '''Create an Fsa object, including autograd logic and propagating
     properties from the source FSAs.
 
@@ -586,8 +608,12 @@ def fsa_from_binary_function_tensor(
             if isinstance(a_value, torch.Tensor):
                 value = index_select(a_value, a_arc_map, default_value=filler)
             else:
-                assert isinstance(a_value, _k2.RaggedInt)
-                value = index_ragged(a_value, a_arc_map)
+                assert isinstance(a_value, k2.RaggedTensor)
+                assert a_value.dtype == torch.int32
+
+                value, _ = a_value.index(a_arc_map,
+                                         axis=0,
+                                         need_value_indexes=False)
             setattr(out_fsa, name, value)
 
     for name, b_value in b_fsa.named_tensor_attr():
@@ -596,8 +622,12 @@ def fsa_from_binary_function_tensor(
                 filler = float(b_fsa.get_filler(name))
                 value = index_select(b_value, b_arc_map, default_value=filler)
             else:
-                assert isinstance(b_value, _k2.RaggedInt)
-                value = index_ragged(b_value, b_arc_map)
+                assert isinstance(b_value, k2.RaggedTensor)
+                assert b_value.dtype == torch.int32
+
+                value, _ = b_value.index(b_arc_map,
+                                         axis=0,
+                                         need_value_indexes=False)
             setattr(out_fsa, name, value)
 
     for name, a_value in a_fsa.named_non_tensor_attr():
@@ -638,7 +668,6 @@ def random_fsa_vec(min_num_fsas: int = 1,
                    max_symbol: int = 50,
                    min_num_arcs: int = 0,
                    max_num_arcs: int = 1000) -> Fsa:
-
     '''Generate a random FsaVec.
 
     Args:
@@ -663,10 +692,10 @@ def random_fsa_vec(min_num_fsas: int = 1,
     return Fsa(random_arcs)
 
 
-def get_best_matching_stats(tokens: _k2.RaggedInt, scores: torch.Tensor,
-                            counts: torch.Tensor, eos: int, min_token: int,
-                            max_token: int, max_order: int
-                            ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:  # noqa
+def get_best_matching_stats(
+        tokens: k2.RaggedTensor, scores: torch.Tensor, counts: torch.Tensor,
+        eos: int, min_token: int, max_token: int, max_order: int
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:  # noqa
     '''For "query" sentences, this function gets the mean and variance of
     scores from the best matching words-in-context in a set of provided "key"
     sentences. This matching process matches the word and the words preceding
@@ -749,5 +778,5 @@ def get_best_matching_stats(tokens: _k2.RaggedInt, scores: torch.Tensor,
           `max_order`; will be `max_order` if we matched all
           the way to the beginning of a sentence.
     '''
-    return _k2.get_best_matching_stats(tokens, scores, counts, eos,
-                                       min_token, max_token, max_order)
+    return _k2.get_best_matching_stats(tokens, scores, counts, eos, min_token,
+                                       max_token, max_order)

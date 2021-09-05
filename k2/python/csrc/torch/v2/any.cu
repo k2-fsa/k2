@@ -53,6 +53,9 @@ void PybindRaggedAny(py::module &m) {
       }),
       py::arg("s"), py::arg("dtype") = py::none(), kRaggedAnyInitStrDoc);
 
+  // TODO(fangjun): add documentation for it
+  any.def(py::init<const RaggedShape &, torch::Tensor>());
+
   any.def(
       "__str__",
       [](const RaggedAny &self) -> std::string { return self.ToString(); },
@@ -93,10 +96,10 @@ void PybindRaggedAny(py::module &m) {
 
   m.def(
       "index_and_sum",
-      [](torch::Tensor src, RaggedAny &indexes, py::object default_value)
-          -> torch::Tensor { return indexes.IndexAndSum(src, default_value); },
-      py::arg("src"), py::arg("indexes"), py::arg("default_value") = py::none(),
-      kRaggedAnyIndexAndSumDoc);
+      [](torch::Tensor src, RaggedAny &indexes) -> torch::Tensor {
+        return indexes.IndexAndSum(src);
+      },
+      py::arg("src"), py::arg("indexes"), kRaggedAnyIndexAndSumDoc);
 
   any.def("to",
           static_cast<RaggedAny (RaggedAny::*)(torch::Device) const>(
@@ -320,15 +323,7 @@ void PybindRaggedAny(py::module &m) {
   // Return the underlying memory of this tensor.
   // No data is copied. Memory is shared.
   any.def_property_readonly(
-      "data",
-      [](RaggedAny &self) -> torch::Tensor {
-        Dtype t = self.any.GetDtype();
-        FOR_REAL_AND_INT32_TYPES(
-            t, T, { return ToTorch(self.any.values.Specialize<T>()); });
-
-        // Unreachable code
-        return {};
-      },
+      "data", [](RaggedAny &self) -> torch::Tensor { return self.Data(); },
       kRaggedAnyDataDoc);
 
   any.def_property_readonly(

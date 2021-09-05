@@ -378,7 +378,7 @@ class TestSimpleRaggedIndexSelect(unittest.TestCase):
             values = torch.tensor([1, 0, 4, 2, 3, 0, 4, 5, 2],
                                   dtype=torch.int32,
                                   device=device)
-            ragged2 = k2.RaggedInt(shape2, values)
+            ragged2 = k2.RaggedTensor(shape2, values)
 
             # contiguous
             src = torch.tensor([0, 2, 0, 10, 0, -1],
@@ -386,7 +386,7 @@ class TestSimpleRaggedIndexSelect(unittest.TestCase):
                                device=device)
             ans = k2.simple_ragged_index_select(src, ragged2)
             self.assertEqual(ans.dtype, src.dtype)
-            self.assertEqual(ans.numel(), shape2.dim0())
+            self.assertEqual(ans.numel(), shape2.dim0)
             expected = torch.tensor([2, 10, 0, 0, -1],
                                     dtype=torch.int32,
                                     device=device)
@@ -398,7 +398,7 @@ class TestSimpleRaggedIndexSelect(unittest.TestCase):
             self.assertEqual(src.stride(0), 3)
             ans = k2.simple_ragged_index_select(src, ragged2)
             self.assertEqual(ans.dtype, src.dtype)
-            self.assertEqual(ans.numel(), shape2.dim0())
+            self.assertEqual(ans.numel(), shape2.dim0)
             self.assertTrue(ans.is_contiguous())
             self.assertEqual(ans.stride(0), 1)
             expected = torch.tensor([2, 10, 0, 0, -1],

@@ -41,6 +41,12 @@ struct RaggedAny {
 
   /// The default constructor initializes an invalid ragged tensor.
   RaggedAny() = default;
+  /** Construct a ragged tensor from a shape and a value.
+
+     @param shape The shape of the ragged tensor.
+     @param value 1-D tensor containing the value of the ragged tensor.
+   */
+  RaggedAny(const RaggedShape &shape, torch::Tensor value);
 
   RaggedAny(const RaggedAny &) = default;
   RaggedAny &operator=(const RaggedAny &) = default;
@@ -228,8 +234,7 @@ struct RaggedAny {
                   py::object default_value = py::none()) /*const*/;
 
   /// Wrapper for k2::Index
-  torch::Tensor IndexAndSum(torch::Tensor src,
-                            py::object default_value = py::none()) /*const*/;
+  torch::Tensor IndexAndSum(torch::Tensor src) /*const*/;
 };
 
 }  // namespace k2

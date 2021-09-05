@@ -34,6 +34,7 @@
 #include "k2/csrc/tensor_ops.h"
 #include "k2/python/csrc/torch/index_select.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
 
@@ -212,8 +213,9 @@ static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
 }
 
 static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
-                                                    Ragged<int32_t> &indexes) {
+                                                    RaggedAny &ragged) {
   DeviceGuard guard(GetContext(src));
+  Ragged<int32_t> indexes = ragged.any.Specialize<int32_t>();
   auto scalar_type = src.scalar_type();
   if (src.dim() == 1) {
     switch (scalar_type) {
