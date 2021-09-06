@@ -540,6 +540,7 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
 
   int32_t last_axis = src.NumAxes() - 1;
   const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
+  const Array1<int32_t> &row_ids_array = src.RowIds(last_axis);
   int32_t num_rows = row_splits_array.Dim() - 1;
   K2_CHECK_EQ(num_rows, dst->Dim());
 
@@ -584,6 +585,45 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
         d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
         num_rows, row_splits, row_splits + 1, op, initial_pair,
         c->GetCudaStream()));
+
+    // We do the following things, because we found that the argmax based on
+    // Reduce function in cub would produce wrong results in a very rare
+    // frequency.
+
+    // To check whether the argmax result of cub is right.
+    const int32_t *row_ids_data = row_ids_array.Data();
+    Renumbering r(c, num_rows, true);
+    char *keep = r.Keep().Data();
+    K2_EVAL(
+        c, src.NumElements(), lambda_check_argmax, (int32_t idx01) -> void {
+          int32_t idx0 = row_ids_data[idx01];
+          T max_value = values_data[output_data[idx0]];
+          if (values_data[idx01] > max_value)
+            keep[idx0] = (char)1;
+        });
+
+    // If there are errors of argmax results, we would recompute the error ones.
+    if (r.New2Old().Dim()) {
+      K2_LOG(WARNING) << "The argmax results of cub is wrong,"
+                      << "we will recompute it.";
+      const int32_t *new2old_data = r.New2Old().Data();
+      K2_EVAL(
+          c, r.New2Old().Dim(), lambda_recompute_argmax, (int32_t idx) -> void {
+            int32_t idx0 = new2old_data[idx],
+                    row_begin = row_splits[idx0],
+                    row_end = row_splits[idx0 + 1],
+                    max_idx = -1;
+            T val = initial_value;
+            for (int32_t j = row_begin; j < row_end; ++j) {
+              T elem = values_data[j];
+              if (elem >= val) {
+                val = elem;
+                max_idx = j;
+              }
+            }
+            output_data[idx0] = max_idx;
+          });
+    }
   }
 }
 
