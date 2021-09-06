@@ -597,6 +597,7 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
     K2_EVAL(
         c, src.NumElements(), lambda_check_argmax, (int32_t idx01) -> void {
           int32_t idx0 = row_ids_data[idx01];
+          if (output_data[idx0] == -1) return;
           T max_value = values_data[output_data[idx0]];
           if (values_data[idx01] > max_value)
             keep[idx0] = (char)1;
