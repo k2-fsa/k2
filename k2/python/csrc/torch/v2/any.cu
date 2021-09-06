@@ -55,7 +55,8 @@ void PybindRaggedAny(py::module &m) {
       py::arg("s"), py::arg("dtype") = py::none(), kRaggedAnyInitStrDoc);
 
   // TODO(fangjun): add documentation for it
-  any.def(py::init<const RaggedShape &, torch::Tensor>());
+  any.def(py::init<const RaggedShape &, torch::Tensor>(), py::arg("shape"),
+          py::arg("value"), kRaggedInitFromShapeAndTensorDoc);
 
   any.def(
       "__str__",
@@ -329,7 +330,7 @@ void PybindRaggedAny(py::module &m) {
 
   any.def_property_readonly(
       "shape", [](RaggedAny &self) -> RaggedShape { return self.any.shape; },
-      "Return the ``Shape`` of this tensor.");
+      kRaggedAnyShapeDoc);
 
   any.def_property_readonly(
       "grad",

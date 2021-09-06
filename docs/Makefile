@@ -21,3 +21,6 @@ help:
 
 source/python_api/api.rst:
 	python3 ./gen-api-doc.py > source/python_api/api.rst
+
+clean:
+	$(RM) -v source/python_api/api.rst

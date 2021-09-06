@@ -120,6 +120,23 @@ Args:
 Returns:
   Return a ragged tensor.
 )doc";
+static constexpr const char *kRaggedInitFromShapeAndTensorDoc = R"doc(
+Create a ragged tensor from a shape and a value.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> shape = k2r.RaggedShape('[ [x x] [] [x x x] ]')
+>>> value = torch.tensor([10, 0, 20, 30, 40], dtype=torch.float32)
+>>> ragged = k2r.RaggedTensor(shape, value)
+>>> ragged
+[ [ 10 0 ] [ ] [ 20 30 40 ] ]
+
+Args:
+  shape:
+    The shape of the tensor.
+  value:
+    The value of the tensor.
+)doc";
 
 static constexpr const char *kRaggedAnyInitDataDoc = R"doc(
 Create a ragged tensor with arbitrary number of axes.
@@ -644,6 +661,17 @@ True
 >>> a.data[2] = -2
 >>> a
 [ [ -1 2 ] [ ] [ -2 ] [ ] [ -3 9 10 ] ]
+)doc";
+
+static constexpr const char *kRaggedAnyShapeDoc = R"doc(
+Return the shape of this tensor.
+
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([ [1, 2], [], [3] ])
+>>> a.shape
+[ [ x x ] [ ] [ x ] ]
+>>> type(a.shape)
+<class '_k2.ragged.RaggedShape'>
 )doc";
 
 static constexpr const char *kRaggedAnyIsCudaDoc = R"doc(

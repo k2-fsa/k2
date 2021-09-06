@@ -146,5 +146,38 @@ def linkcode_resolve(domain, info):
     filename = filename[idx:]
     return f'https://github.com/k2-fsa/k2/blob/master/k2/python/{filename}'
 
+# Replace key with value in the generated doc
+REPLACE_PATTERN = {
+  '_k2.ragged': 'k2.ragged',
+  'at::Tensor': 'torch.Tensor'
+}
+
+def replace(s):
+    replaced = True
+    while replaced:
+        replaced = False
+        for key in REPLACE_PATTERN:
+            if key in s:
+                s = s.replace(key, REPLACE_PATTERN[key])
+                replaced = True
+    return s
+
+# see https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#event-autodoc-process-docstring
+def replace_doc(app, what, name, obj, options, lines):
+    num_lines = len(lines)
+    for i in range(num_lines):
+        lines[i] = replace(lines[i])
+
+# see https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#event-autodoc-process-signature
+def replace_signature(app, what, name, obj, options, signature, return_annotation):
+    signature = replace(signature)
+    return_annotation = replace(return_annotation)
+    return (signature, return_annotation)
+
+# Note: setup is called by sphinx automatically
+#
+# See https://www.sphinx-doc.org/en/master/extdev/appapi.html#extension-setup
 def setup(app):
     app.add_css_file('custom.css')
+    app.connect('autodoc-process-signature', replace_signature)
+    app.connect('autodoc-process-docstring', replace_doc)

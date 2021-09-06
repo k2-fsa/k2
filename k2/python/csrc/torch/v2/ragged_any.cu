@@ -141,13 +141,13 @@ static Ragged<T> RaggedAnyFromList(py::list data) {
   return ans;
 }
 
-RaggedAny::RaggedAny(const RaggedShape &shape, torch::Tensor value) {
+RaggedAny::RaggedAny(const RaggedShape &shape, torch::Tensor value)
+    : data(value) {
   Dtype t = ScalarTypeToDtype(value.scalar_type());
   FOR_REAL_AND_INT32_TYPES(t, T, {
     Array1<T> array = FromTorch<T>(value);
     Ragged<T> r(shape, array);
     any = r.Generic();
-    data = value;  // Assign value to data in case value.requires_grad is True
     return;
   });
   // Unreachable code
