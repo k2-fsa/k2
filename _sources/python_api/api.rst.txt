@@ -249,8 +249,23 @@ to
 
 .. automethod:: k2.DenseFsaVec.to
 
+device
+^^^^^^
+
+.. autoattribute:: k2.DenseFsaVec.device
+
+duration
+^^^^^^^^
+
+.. autoattribute:: k2.DenseFsaVec.duration
+
 DeterminizeWeightPushingType
 ----------------------------
+
+name
+^^^^
+
+.. autoattribute:: k2.DeterminizeWeightPushingType.name
 
 Fsa
 ---
@@ -390,6 +405,46 @@ to
 
 .. automethod:: k2.Fsa.to
 
+device
+^^^^^^
+
+.. autoattribute:: k2.Fsa.device
+
+grad
+^^^^
+
+.. autoattribute:: k2.Fsa.grad
+
+labels
+^^^^^^
+
+.. autoattribute:: k2.Fsa.labels
+
+num_arcs
+^^^^^^^^
+
+.. autoattribute:: k2.Fsa.num_arcs
+
+properties
+^^^^^^^^^^
+
+.. autoattribute:: k2.Fsa.properties
+
+properties_str
+^^^^^^^^^^^^^^
+
+.. autoattribute:: k2.Fsa.properties_str
+
+requires_grad
+^^^^^^^^^^^^^
+
+.. autoattribute:: k2.Fsa.requires_grad
+
+shape
+^^^^^
+
+.. autoattribute:: k2.Fsa.shape
+
 Nbest
 -----
 
@@ -500,6 +555,21 @@ tot_sizes
 ^^^^^^^^^
 
 .. automethod:: k2.RaggedShape.tot_sizes
+
+device
+^^^^^^
+
+.. autoattribute:: k2.RaggedShape.device
+
+dim0
+^^^^
+
+.. autoattribute:: k2.RaggedShape.dim0
+
+num_axes
+^^^^^^^^
+
+.. autoattribute:: k2.RaggedShape.num_axes
 
 RaggedTensor
 ------------
@@ -644,6 +714,51 @@ unique
 
 .. automethod:: k2.RaggedTensor.unique
 
+data
+^^^^
+
+.. autoattribute:: k2.RaggedTensor.data
+
+device
+^^^^^^
+
+.. autoattribute:: k2.RaggedTensor.device
+
+dim0
+^^^^
+
+.. autoattribute:: k2.RaggedTensor.dim0
+
+dtype
+^^^^^
+
+.. autoattribute:: k2.RaggedTensor.dtype
+
+grad
+^^^^
+
+.. autoattribute:: k2.RaggedTensor.grad
+
+is_cuda
+^^^^^^^
+
+.. autoattribute:: k2.RaggedTensor.is_cuda
+
+num_axes
+^^^^^^^^
+
+.. autoattribute:: k2.RaggedTensor.num_axes
+
+requires_grad
+^^^^^^^^^^^^^
+
+.. autoattribute:: k2.RaggedTensor.requires_grad
+
+shape
+^^^^^
+
+.. autoattribute:: k2.RaggedTensor.shape
+
 SymbolTable
 -----------
 
@@ -676,6 +791,16 @@ to_file
 ^^^^^^^
 
 .. automethod:: k2.SymbolTable.to_file
+
+ids
+^^^
+
+.. autoattribute:: k2.SymbolTable.ids
+
+symbols
+^^^^^^^
+
+.. autoattribute:: k2.SymbolTable.symbols
 
 k2.ragged
 =========
@@ -809,6 +934,21 @@ tot_sizes
 ^^^^^^^^^
 
 .. automethod:: k2.ragged.RaggedShape.tot_sizes
+
+device
+^^^^^^
+
+.. autoattribute:: k2.ragged.RaggedShape.device
+
+dim0
+^^^^
+
+.. autoattribute:: k2.ragged.RaggedShape.dim0
+
+num_axes
+^^^^^^^^
+
+.. autoattribute:: k2.ragged.RaggedShape.num_axes
 
 RaggedTensor
 ------------
@@ -952,5 +1092,50 @@ unique
 ^^^^^^
 
 .. automethod:: k2.ragged.RaggedTensor.unique
+
+data
+^^^^
+
+.. autoattribute:: k2.ragged.RaggedTensor.data
+
+device
+^^^^^^
+
+.. autoattribute:: k2.ragged.RaggedTensor.device
+
+dim0
+^^^^
+
+.. autoattribute:: k2.ragged.RaggedTensor.dim0
+
+dtype
+^^^^^
+
+.. autoattribute:: k2.ragged.RaggedTensor.dtype
+
+grad
+^^^^
+
+.. autoattribute:: k2.ragged.RaggedTensor.grad
+
+is_cuda
+^^^^^^^
+
+.. autoattribute:: k2.ragged.RaggedTensor.is_cuda
+
+num_axes
+^^^^^^^^
+
+.. autoattribute:: k2.ragged.RaggedTensor.num_axes
+
+requires_grad
+^^^^^^^^^^^^^
+
+.. autoattribute:: k2.ragged.RaggedTensor.requires_grad
+
+shape
+^^^^^
+
+.. autoattribute:: k2.ragged.RaggedTensor.shape
 
 
