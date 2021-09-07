@@ -170,8 +170,11 @@ def replace_doc(app, what, name, obj, options, lines):
 
 # see https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#event-autodoc-process-signature
 def replace_signature(app, what, name, obj, options, signature, return_annotation):
-    signature = replace(signature)
-    return_annotation = replace(return_annotation)
+    if signature:
+        signature = replace(signature)
+
+    if return_annotation:
+        return_annotation = replace(return_annotation)
     return (signature, return_annotation)
 
 # Note: setup is called by sphinx automatically

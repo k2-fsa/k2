@@ -327,7 +327,7 @@ def compose(a_fsa: Fsa,
         If False, epsilons will be treated as real, normal symbols (to have
         them treated as epsilons in this case you may have to add epsilon
         self-loops to whichever of the inputs is naturally epsilon-free).
-     inner_labels:
+      inner_labels:
         If specified (and if a_fsa has `aux_labels`), the labels that we matched
         on, which would normally be discarded, will instead be copied to
         this attribute name.

@@ -596,7 +596,6 @@ Returns:
 Note:
   "row_ids1" and "row_ids2" in the returned value is for
   backward compatibility.
-"""
 )doc";
 
 static constexpr const char *kRaggedAnySetStateDoc = R"doc(
@@ -1138,12 +1137,14 @@ Normalize a ragged tensor over the last axis.
 If ``use_log`` is ``True``, the normalization per sublist is done as follows:
 
     1. Compute the log sum per sublist
+
     2. Subtract the log sum computed above from the sublist and return
     it
 
 If ``use_log`` is ``False``, the normalization per sublist is done as follows:
 
     1. Compute the sum per sublist
+
     2. Divide the sublist by the above sum and return the resulting sublist
 
 Note:

@@ -1315,7 +1315,7 @@ class Fsa(object):
 
            src_state dest_state label [aux_label1 aux_label2...] [cost]
 
-       (the cost defaults to 0.0 if not present).
+        (the cost defaults to 0.0 if not present).
 
         The line for the final state consists of two fields::
 
