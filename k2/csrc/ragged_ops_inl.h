@@ -467,7 +467,7 @@ struct PairInputIterator {
   __device__ __forceinline__ PairInputIterator(const T *t, int32_t offset)
       : t_(t), offset_(offset) {}
   __device__ __forceinline__ Pair<T> operator[](int32_t idx) const {
-    return Pair<T>{t_[idx], idx + offset_};
+    return Pair<T>{t_[idx + offset_], idx + offset_};
   }
   __device__ __forceinline__ PairInputIterator operator+(int32_t offset) {
     return PairInputIterator{t_, offset + offset_};
@@ -568,7 +568,28 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
     }
   } else {
     K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    argmax_internal::PairInputIterator<T> input_iter(values_data);
+    argmax_internal::PairOutputIterator<T> output_iter(output_data);
+    argmax_internal::PairMaxOp<T> op;
+    argmax_internal::Pair<T> initial_pair{initial_value, -1};
 
+    // This code is based on the example here:
+    // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
+    std::size_t temp_storage_bytes = 0;
+
+    // the first time is to determine temporary device storage requirements
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        nullptr, temp_storage_bytes, input_iter, output_iter, num_rows,
+        row_splits, row_splits + 1, op, initial_pair, c->GetCudaStream()));
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
+        num_rows, row_splits, row_splits + 1, op, initial_pair,
+        c->GetCudaStream()));
+
+    // Do the same thing as the code above, but it need one more kernel to
+    // add offset to the result.
+#if 0
     size_t align = alignof(cub::KeyValuePair<int, T>);
     Array1<int8_t> out_storage(c,
         num_rows * sizeof(cub::KeyValuePair<int, T>) + align);
@@ -595,36 +616,7 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
           else
             output_data[idx0] = d_out_data[idx0].key + row_splits[idx0];
         });
-
-
-    // TODO: Finally, we will remove the checking below.
-    // To check whether the argmax result of cub is right. If there are errors
-    // of argmax results, we would recompute the incorrect ones.
-    K2_EVAL(
-        c, src.NumElements(), lambda_check_argmax, (int32_t idx01) -> void {
-          int32_t idx0 = row_ids[idx01];
-          if (output_data[idx0] == -1) return;
-          T max_value = values_data[output_data[idx0]];
-          if (values_data[idx01] > max_value) {
-            int32_t row_begin = row_splits[idx0],
-                    row_end = row_splits[idx0 + 1],
-                    max_idx = -1;
-            T val = initial_value;
-            for (int32_t j = row_begin; j < row_end; ++j) {
-              T elem = values_data[j];
-              if (elem >= val) {
-                val = elem;
-                max_idx = j;
-              }
-            }
-            // we only print warning message once.
-            if (max_idx == idx01) {
-              output_data[idx0] = max_idx;
-              K2_LOG(WARNING) << "There are errors in cub::ArgMax results,"
-                              << "we have recomputed it.";
-            }
-          }
-        });
+#endif
   }
 }
 
