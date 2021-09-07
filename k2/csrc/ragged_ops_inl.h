@@ -540,13 +540,11 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
 
   int32_t last_axis = src.NumAxes() - 1;
   const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
-  const Array1<int32_t> &row_ids_array = src.RowIds(last_axis);
   int32_t num_rows = row_splits_array.Dim() - 1;
   K2_CHECK_EQ(num_rows, dst->Dim());
 
   ContextPtr &c = src.Context();
-  const int32_t *row_splits = row_splits_array.Data(),
-                *row_ids = row_ids_array.Data();
+  const int32_t *row_splits = row_splits_array.Data();
   const T *values_data = src.values.Data();
   int32_t *output_data = dst->Data();
 
@@ -590,6 +588,8 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
     // Do the same thing as the code above, but it need one more kernel to
     // add offset to the result.
 #if 0
+    const Array1<int32_t> &row_ids_array = src.RowIds(last_axis);
+    const int32_t *row_ids = row_ids_array.Data();
     size_t align = alignof(cub::KeyValuePair<int, T>);
     Array1<int8_t> out_storage(c,
         num_rows * sizeof(cub::KeyValuePair<int, T>) + align);
