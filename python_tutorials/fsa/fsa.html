@@ -360,24 +360,24 @@ of an FSA in a 1-D <cite>torch.Tensor</cite> with dtype <cite>torch.float32</cit
 <span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">device</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cuda&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Note that you can use <code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.device</span></code> to get the device on which
+<p>Note that you can use <a class="reference internal" href="../../python_api/api.html#k2.Fsa.device" title="k2.Fsa.device"><code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.device</span></code></a> to get the device on which
 the current FSA resides.</p>
 </div>
 </div>
 <div class="section" id="a-list-of-fsas-fsavec">
 <h2>A list of FSAs: FsaVec<a class="headerlink" href="#a-list-of-fsas-fsavec" title="Permalink to this headline">¶</a></h2>
-<p>You can use <code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code> to create a FsaVec from a list of FSAs.
+<p>You can use <a class="reference internal" href="../../python_api/api.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> to create a FsaVec from a list of FSAs.
 For example,</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">,</span> <span class="n">fsa</span><span class="p">])</span>
 </pre></div>
 </div>
 <p>Both <cite>FsaVec</cite> and <cite>FSA</cite> are represented by a single Python class <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.Fsa</span></code>.
 You can tell whether an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.Fsa</span></code> is a single FSA or a FsaVec
-from its property <code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.shape</span></code>:</p>
+from its property <a class="reference internal" href="../../python_api/api.html#k2.Fsa.shape" title="k2.Fsa.shape"><code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.shape</span></code></a>:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>For a single FSA, <code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.shape</span></code> returns a tuple with two elements <cite>(num_states, None)</cite></p></li>
-<li><p>For a FsaVec, <code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.shape</span></code> returns a tuple with three elements <cite>(num_fsas, None, None)</cite></p></li>
+<li><p>For a single FSA, <a class="reference internal" href="../../python_api/api.html#k2.Fsa.shape" title="k2.Fsa.shape"><code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.shape</span></code></a> returns a tuple with two elements <cite>(num_states, None)</cite></p></li>
+<li><p>For a FsaVec, <a class="reference internal" href="../../python_api/api.html#k2.Fsa.shape" title="k2.Fsa.shape"><code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.shape</span></code></a> returns a tuple with three elements <cite>(num_fsas, None, None)</cite></p></li>
 </ul>
 </div></blockquote>
 </div>

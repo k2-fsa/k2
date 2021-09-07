@@ -227,7 +227,11 @@
 </li>
         <li><a href="python_api/api.html#k2.ragged.RaggedShape.__init__">(k2.ragged.RaggedShape method)</a>
 </li>
+        <li><a href="python_api/api.html#k2.ragged.RaggedTensor.__init__">(k2.ragged.RaggedTensor method)</a>
+</li>
         <li><a href="python_api/api.html#k2.RaggedShape.__init__">(k2.RaggedShape method)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedTensor.__init__">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
       <li><a href="python_api/api.html#k2.ragged.RaggedShape.__ne__">__ne__() (k2.ragged.RaggedShape method)</a>
@@ -356,7 +360,13 @@
 </li>
       <li><a href="python_api/api.html#k2.convert_dense_to_fsa_vec">convert_dense_to_fsa_vec() (in module k2)</a>
 </li>
+      <li><a href="python_api/api.html#k2.create_fsa_vec">create_fsa_vec() (in module k2)</a>
+</li>
       <li><a href="python_api/api.html#k2.ragged.create_ragged_shape2">create_ragged_shape2() (in module k2.ragged)</a>
+</li>
+      <li><a href="python_api/api.html#k2.ragged.create_ragged_tensor">create_ragged_tensor() (in module k2.ragged)</a>
+</li>
+      <li><a href="python_api/api.html#k2.create_sparse">create_sparse() (in module k2)</a>
 </li>
       <li><a href="python_api/api.html#k2.ctc_graph">ctc_graph() (in module k2)</a>
 </li>
@@ -370,11 +380,49 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="python_api/api.html#k2.ragged.RaggedTensor.data">data (k2.ragged.RaggedTensor attribute)</a>
+
+      <ul>
+        <li><a href="python_api/api.html#k2.RaggedTensor.data">(k2.RaggedTensor attribute)</a>
+</li>
+      </ul></li>
       <li><a href="python_api/api.html#k2.determinize">determinize() (in module k2)</a>
 </li>
+      <li><a href="python_api/api.html#k2.DenseFsaVec.device">device (k2.DenseFsaVec attribute)</a>
+
+      <ul>
+        <li><a href="python_api/api.html#k2.Fsa.device">(k2.Fsa attribute)</a>
+</li>
+        <li><a href="python_api/api.html#k2.ragged.RaggedShape.device">(k2.ragged.RaggedShape attribute)</a>
+</li>
+        <li><a href="python_api/api.html#k2.ragged.RaggedTensor.device">(k2.ragged.RaggedTensor attribute)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedShape.device">(k2.RaggedShape attribute)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedTensor.device">(k2.RaggedTensor attribute)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="python_api/api.html#k2.ragged.RaggedShape.dim0">dim0 (k2.ragged.RaggedShape attribute)</a>
+
+      <ul>
+        <li><a href="python_api/api.html#k2.ragged.RaggedTensor.dim0">(k2.ragged.RaggedTensor attribute)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedShape.dim0">(k2.RaggedShape attribute)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedTensor.dim0">(k2.RaggedTensor attribute)</a>
+</li>
+      </ul></li>
       <li><a href="python_api/api.html#k2.Fsa.draw">draw() (k2.Fsa method)</a>
+</li>
+      <li><a href="python_api/api.html#k2.ragged.RaggedTensor.dtype">dtype (k2.ragged.RaggedTensor attribute)</a>
+
+      <ul>
+        <li><a href="python_api/api.html#k2.RaggedTensor.dtype">(k2.RaggedTensor attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="python_api/api.html#k2.DenseFsaVec.duration">duration (k2.DenseFsaVec attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -418,12 +466,12 @@
 </li>
       <li><a href="python_api/api.html#k2.get_best_matching_stats">get_best_matching_stats() (in module k2)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.Fsa.get_filler">get_filler() (k2.Fsa method)</a>
 </li>
       <li><a href="python_api/api.html#k2.Fsa.get_forward_scores">get_forward_scores() (k2.Fsa method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.ragged.RaggedShape.get_layer">get_layer() (k2.ragged.RaggedShape method)</a>
 
       <ul>
@@ -432,18 +480,32 @@
       </ul></li>
       <li><a href="python_api/api.html#k2.Fsa.get_tot_scores">get_tot_scores() (k2.Fsa method)</a>
 </li>
+      <li><a href="python_api/api.html#k2.Fsa.grad">grad (k2.Fsa attribute)</a>
+
+      <ul>
+        <li><a href="python_api/api.html#k2.ragged.RaggedTensor.grad">(k2.ragged.RaggedTensor attribute)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedTensor.grad">(k2.RaggedTensor attribute)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="python_api/api.html#k2.SymbolTable.ids">ids (k2.SymbolTable attribute)</a>
+</li>
       <li><a href="python_api/api.html#k2.ragged.index">index() (in module k2.ragged)</a>
 
       <ul>
         <li><a href="python_api/api.html#k2.ragged.RaggedShape.index">(k2.ragged.RaggedShape method)</a>
 </li>
+        <li><a href="python_api/api.html#k2.ragged.RaggedTensor.index">(k2.ragged.RaggedTensor method)</a>
+</li>
         <li><a href="python_api/api.html#k2.RaggedShape.index">(k2.RaggedShape method)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedTensor.index">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
       <li><a href="python_api/api.html#k2.index_add">index_add() (in module k2)</a>
@@ -454,14 +516,14 @@
 </li>
       <li><a href="python_api/api.html#k2.index_select">index_select() (in module k2)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.intersect">intersect() (in module k2)</a>
 
       <ul>
         <li><a href="python_api/api.html#k2.Nbest.intersect">(k2.Nbest method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.intersect_dense">intersect_dense() (in module k2)</a>
 </li>
       <li><a href="python_api/api.html#k2.intersect_dense_pruned">intersect_dense_pruned() (in module k2)</a>
@@ -476,6 +538,12 @@
       </ul></li>
       <li><a href="python_api/api.html#k2.Fsa.invert_">invert_() (k2.Fsa method)</a>
 </li>
+      <li><a href="python_api/api.html#k2.ragged.RaggedTensor.is_cuda">is_cuda (k2.ragged.RaggedTensor attribute)</a>
+
+      <ul>
+        <li><a href="python_api/api.html#k2.RaggedTensor.is_cuda">(k2.RaggedTensor attribute)</a>
+</li>
+      </ul></li>
       <li><a href="python_api/api.html#k2.is_rand_equivalent">is_rand_equivalent() (in module k2)</a>
 </li>
   </ul></td>
@@ -484,10 +552,12 @@
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="python_api/api.html#k2.linear_fsa">linear_fsa() (in module k2)</a>
+      <li><a href="python_api/api.html#k2.Fsa.labels">labels (k2.Fsa attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="python_api/api.html#k2.linear_fsa">linear_fsa() (in module k2)</a>
+</li>
       <li><a href="python_api/api.html#k2.linear_fst">linear_fst() (in module k2)</a>
 </li>
   </ul></td>
@@ -524,12 +594,28 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="python_api/api.html#k2.DeterminizeWeightPushingType.name">name (k2.DeterminizeWeightPushingType attribute)</a>
+</li>
       <li><a href="python_api/api.html#k2.ragged.RaggedTensor.normalize">normalize() (k2.ragged.RaggedTensor method)</a>
 
       <ul>
         <li><a href="python_api/api.html#k2.RaggedTensor.normalize">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
+      <li><a href="python_api/api.html#k2.Fsa.num_arcs">num_arcs (k2.Fsa attribute)</a>
+</li>
+      <li><a href="python_api/api.html#k2.ragged.RaggedShape.num_axes">num_axes (k2.ragged.RaggedShape attribute)</a>
+
+      <ul>
+        <li><a href="python_api/api.html#k2.ragged.RaggedTensor.num_axes">(k2.ragged.RaggedTensor attribute)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedShape.num_axes">(k2.RaggedShape attribute)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedTensor.num_axes">(k2.RaggedTensor attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.ragged.RaggedShape.numel">numel() (k2.ragged.RaggedShape method)</a>
 
       <ul>
@@ -552,8 +638,12 @@
         <li><a href="python_api/api.html#k2.RaggedTensor.pad">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
+      <li><a href="python_api/api.html#k2.Fsa.properties">properties (k2.Fsa attribute)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="python_api/api.html#k2.Fsa.properties_str">properties_str (k2.Fsa attribute)</a>
+</li>
       <li><a href="python_api/api.html#k2.properties_to_str">properties_to_str() (in module k2)</a>
 </li>
       <li><a href="python_api/api.html#k2.prune_on_arc_post">prune_on_arc_post() (in module k2)</a>
@@ -594,8 +684,6 @@
 </li>
       <li><a href="python_api/api.html#k2.remove_epsilon_and_add_self_loops">remove_epsilon_and_add_self_loops() (in module k2)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.remove_epsilon_self_loops">remove_epsilon_self_loops() (in module k2)</a>
 </li>
       <li><a href="python_api/api.html#k2.ragged.RaggedTensor.remove_values_eq">remove_values_eq() (k2.ragged.RaggedTensor method)</a>
@@ -604,6 +692,8 @@
         <li><a href="python_api/api.html#k2.RaggedTensor.remove_values_eq">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.ragged.RaggedTensor.remove_values_leq">remove_values_leq() (k2.ragged.RaggedTensor method)</a>
 
       <ul>
@@ -614,6 +704,14 @@
 </li>
       <li><a href="python_api/api.html#k2.replace_fsa">replace_fsa() (in module k2)</a>
 </li>
+      <li><a href="python_api/api.html#k2.Fsa.requires_grad">requires_grad (k2.Fsa attribute)</a>
+
+      <ul>
+        <li><a href="python_api/api.html#k2.ragged.RaggedTensor.requires_grad">(k2.ragged.RaggedTensor attribute)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedTensor.requires_grad">(k2.RaggedTensor attribute)</a>
+</li>
+      </ul></li>
       <li><a href="python_api/api.html#k2.Fsa.requires_grad_">requires_grad_() (k2.Fsa method)</a>
 
       <ul>
@@ -642,12 +740,20 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.Fsa.set_scores_stochastic_">set_scores_stochastic_() (k2.Fsa method)</a>
 </li>
-      <li><a href="python_api/api.html#k2.shortest_path">shortest_path() (in module k2)</a>
+      <li><a href="python_api/api.html#k2.Fsa.shape">shape (k2.Fsa attribute)</a>
+
+      <ul>
+        <li><a href="python_api/api.html#k2.ragged.RaggedTensor.shape">(k2.ragged.RaggedTensor attribute)</a>
 </li>
-      <li><a href="python_api/api.html#k2.simple_ragged_index_select">simple_ragged_index_select() (in module k2)</a>
+        <li><a href="python_api/api.html#k2.RaggedTensor.shape">(k2.RaggedTensor attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="python_api/api.html#k2.shortest_path">shortest_path() (in module k2)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="python_api/api.html#k2.simple_ragged_index_select">simple_ragged_index_select() (in module k2)</a>
+</li>
       <li><a href="python_api/api.html#k2.ragged.RaggedTensor.sort_">sort_() (k2.ragged.RaggedTensor method)</a>
 
       <ul>
@@ -660,6 +766,8 @@
         <li><a href="python_api/api.html#k2.RaggedTensor.sum">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
+      <li><a href="python_api/api.html#k2.SymbolTable.symbols">symbols (k2.SymbolTable attribute)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -673,10 +781,16 @@
 </li>
         <li><a href="python_api/api.html#k2.ragged.RaggedShape.to">(k2.ragged.RaggedShape method)</a>
 </li>
+        <li><a href="python_api/api.html#k2.ragged.RaggedTensor.to">(k2.ragged.RaggedTensor method)</a>
+</li>
         <li><a href="python_api/api.html#k2.RaggedShape.to">(k2.RaggedShape method)</a>
+</li>
+        <li><a href="python_api/api.html#k2.RaggedTensor.to">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
       <li><a href="python_api/api.html#k2.to_dot">to_dot() (in module k2)</a>
+</li>
+      <li><a href="python_api/api.html#k2.SymbolTable.to_file">to_file() (k2.SymbolTable method)</a>
 </li>
       <li><a href="python_api/api.html#k2.to_str">to_str() (in module k2)</a>
 </li>
@@ -684,14 +798,14 @@
 </li>
       <li><a href="python_api/api.html#k2.to_tensor">to_tensor() (in module k2)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.ragged.RaggedTensor.tolist">tolist() (k2.ragged.RaggedTensor method)</a>
 
       <ul>
         <li><a href="python_api/api.html#k2.RaggedTensor.tolist">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.Nbest.top_k">top_k() (k2.Nbest method)</a>
 </li>
       <li><a href="python_api/api.html#k2.top_sort">top_sort() (in module k2)</a>
