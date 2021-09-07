@@ -602,7 +602,7 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
     // of argmax results, we would recompute the error ones.
 
     Array1<int8_t> flag(c, 1, 0);
-    int8_t* flag_data = flag.Data();
+    int8_t *flag_data = flag.Data();
     K2_EVAL(
         c, src.NumElements(), lambda_check_argmax, (int32_t idx01) -> void {
           int32_t idx0 = row_ids[idx01];
@@ -624,9 +624,9 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
             output_data[idx0] = max_idx;
           }
         });
-    flag_data = flag.To(GetCpuContext()).Data();
-    //flag_data = flag.Data();
-    if (flag_data[0] == 1)
+    flag = flag.To(GetCpuContext());
+    const int8_t *flag_data_c = flag.Data();
+    if (flag_data_c[0] == 1)
       K2_LOG(WARNING) << "There are errors in cub::ArgMax results,"
                       << "we have recomputed it.";
   }
