@@ -555,6 +555,9 @@ Returns:
 >>> b = k2r.RaggedTensor('[ [[1] [] []]  [[2 3]]]')
 >>> b.numel()
 3
+>>> c = k2r.RaggedTensor('[[1] [] [3 4 5 6]]')
+>>> c.numel()
+5
 )doc";
 static constexpr const char *kRaggedAnyTotSizeDoc = R"doc(
 Return the number of elements of an given axis. If axis is 0, it's
