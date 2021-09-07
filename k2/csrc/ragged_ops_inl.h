@@ -599,17 +599,13 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
 
     // TODO: Finally, we will remove the checking below.
     // To check whether the argmax result of cub is right. If there are errors
-    // of argmax results, we would recompute the error ones.
-
-    Array1<int8_t> flag(c, 1, 0);
-    int8_t *flag_data = flag.Data();
+    // of argmax results, we would recompute the incorrect ones.
     K2_EVAL(
         c, src.NumElements(), lambda_check_argmax, (int32_t idx01) -> void {
           int32_t idx0 = row_ids[idx01];
           if (output_data[idx0] == -1) return;
           T max_value = values_data[output_data[idx0]];
           if (values_data[idx01] > max_value) {
-            flag_data[0] = 1;
             int32_t row_begin = row_splits[idx0],
                     row_end = row_splits[idx0 + 1],
                     max_idx = -1;
@@ -621,14 +617,14 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
                 max_idx = j;
               }
             }
-            output_data[idx0] = max_idx;
+            // we only print warning message once.
+            if (max_idx == idx01) {
+              output_data[idx0] = max_idx;
+              K2_LOG(WARNING) << "There are errors in cub::ArgMax results,"
+                              << "we have recomputed it.";
+            }
           }
         });
-    flag = flag.To(GetCpuContext());
-    const int8_t *flag_data_c = flag.Data();
-    if (flag_data_c[0] == 1)
-      K2_LOG(WARNING) << "There are errors in cub::ArgMax results,"
-                      << "we have recomputed it.";
   }
 }
 
