@@ -567,6 +567,20 @@ class TestRaggedOps(unittest.TestCase):
             expected = torch.tensor([0, 3, -1, 6, 9], device=device)
             assert torch.all(torch.eq(indexes, expected))
 
+    def test_argmax_per_sublist_two_axes_random(self):
+        res = []
+        # sublists with single element
+        for i in range(10000):
+            res.append([random.random() * -100])
+        # sublist with huge elements
+        res.append([random.random() * -100 for x in range(5000)])
+        ragged_cpu = k2.ragged.create_ragged2(res)
+        indexes_cpu = k2.ragged.argmax_per_sublist(ragged_cpu)
+        for device in self.devices:
+            ragged = ragged_cpu.to(device)
+            indexes = k2.ragged.argmax_per_sublist(ragged).to("cpu")
+            assert torch.all(torch.eq(indexes, indexes_cpu))
+
     def test_max_per_sublist_two_axes(self):
         for device in self.devices:
             src = k2.RaggedFloat(
