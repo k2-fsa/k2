@@ -44,7 +44,7 @@
 namespace k2 {
 
 template <typename T, typename Op>
-void SegmentedReduce(Ragged<T> &src, T initial_value, Array1<T> *dst) {
+void SegmentedReduce(const Ragged<T> &src, T initial_value, Array1<T> *dst) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(src.NumAxes(), 2);
   K2_CHECK(IsCompatible(src.shape, *dst));
@@ -193,7 +193,7 @@ template <typename T>
 Ragged<T> Cat(int32_t axis, int32_t num_srcs, Ragged<T> *src,
               Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(axis == 0 || axis == 1);
+  K2_CHECK(axis == 0 || axis == 1) << "Given: " << axis;
   K2_CHECK_GT(num_srcs, 0);
   std::vector<Ragged<T> *> temp(num_srcs);
   for (int32_t i = 0; i != num_srcs; ++i) temp[i] = src + i;

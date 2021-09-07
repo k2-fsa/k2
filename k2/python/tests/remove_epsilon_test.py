@@ -64,17 +64,55 @@ class TestRemoveEpsilonHost(unittest.TestCase):
             1 2 -1 0.3
             2
         '''
-        fsa = k2.Fsa.from_str(s).requires_grad_(True)
-        ans = k2.remove_epsilon(fsa)
-        # arc map is [[1] [0 2] [2]]
-        scale = torch.tensor([10, 20, 30])
+        src = k2.Fsa.from_str(s).requires_grad_(True)
+        scores_copy = src.scores.detach().clone().requires_grad_(True)
 
-        (ans.scores * scale).sum().backward()
-        expected_grad = torch.empty_like(fsa.scores)
-        expected_grad[0] = scale[1]
-        expected_grad[1] = scale[0]
-        expected_grad[2] = scale[1] + scale[2]
-        assert torch.all(torch.eq(fsa.grad, expected_grad))
+        src.attr1 = "hello"
+        src.attr2 = "k2"
+        float_attr = torch.tensor([0.1, 0.2, 0.3],
+                                  dtype=torch.float32,
+                                  requires_grad=True)
+
+        src.float_attr = float_attr.detach().clone().requires_grad_(True)
+        src.int_attr = torch.tensor([1, 2, 3], dtype=torch.int32)
+        src.ragged_attr = k2.RaggedTensor([[10, 20], [30, 40, 50], [60, 70]])
+
+        dest = k2.remove_epsilon(src)
+        # arc map is [[1] [0 2] [2]]
+
+        assert dest.attr1 == src.attr1
+        assert dest.attr2 == src.attr2
+
+        expected_int_attr = k2.RaggedTensor([[2], [1, 3], [3]])
+        assert dest.int_attr == expected_int_attr
+
+        expected_ragged_attr = k2.RaggedTensor([[30, 40, 50], [10, 20, 60, 70],
+                                                [60, 70]])
+        assert dest.ragged_attr == expected_ragged_attr
+
+        expected_float_attr = torch.empty_like(dest.float_attr)
+        expected_float_attr[0] = float_attr[1]
+        expected_float_attr[1] = float_attr[0] + float_attr[2]
+        expected_float_attr[2] = float_attr[2]
+
+        assert torch.all(torch.eq(dest.float_attr, expected_float_attr))
+
+        expected_scores = torch.empty_like(dest.scores)
+        expected_scores[0] = scores_copy[1]
+        expected_scores[1] = scores_copy[0] + scores_copy[2]
+        expected_scores[2] = scores_copy[2]
+
+        assert torch.all(torch.eq(dest.scores, expected_scores))
+
+        scale = torch.tensor([10, 20, 30]).to(float_attr)
+
+        (dest.float_attr * scale).sum().backward()
+        (expected_float_attr * scale).sum().backward()
+        assert torch.all(torch.eq(src.float_attr.grad, float_attr.grad))
+
+        (dest.scores * scale).sum().backward()
+        (expected_scores * scale).sum().backward()
+        assert torch.all(torch.eq(src.scores.grad, scores_copy.grad))
 
 
 class TestRemoveEpsilonDevice(unittest.TestCase):
@@ -97,7 +135,6 @@ class TestRemoveEpsilonDevice(unittest.TestCase):
             5
         '''
         fsa = k2.Fsa.from_str(s, num_aux_labels=1).to(device)
-        print(fsa.aux_labels)
         prop = fsa.properties
         self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)
         dest = k2.remove_epsilon(fsa)
@@ -134,31 +171,156 @@ class TestRemoveEpsilonDevice(unittest.TestCase):
         if not k2.with_cuda:
             return
 
-        device = torch.device('cuda', 0)
+        devices = [torch.device('cuda', 0)]
+        if torch.cuda.device_count() > 1:
+            torch.cuda.set_device(1)
+            devices.append(torch.device('cuda', 1))
+
         s = '''
             0 1 0 0.1
             0 1 1 0.2
             1 2 -1 0.3
             2
         '''
-        fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
-        ans = k2.remove_epsilon(fsa)
-        print("ans = ", ans)
-        # arc map is [[1] [0 2] [2]]
-        scale = torch.tensor([10, 20, 30]).to(device)
+        for device in devices:
+            src = k2.Fsa.from_str(s).to(device).requires_grad_(True)
+            scores_copy = src.scores.detach().clone().requires_grad_(True)
 
-        (ans.scores * scale).sum().backward()
-        expected_grad = torch.empty_like(fsa.scores)
-        expected_grad[0] = scale[1]
-        expected_grad[1] = scale[0]
-        expected_grad[2] = scale[1] + scale[2]
-        print("fsa.grad = ", fsa.grad)
-        print("expected_grad = ", expected_grad)
-        assert torch.all(torch.eq(fsa.grad, expected_grad))
+            src.attr1 = "hello"
+            src.attr2 = "k2"
+            float_attr = torch.tensor([0.1, 0.2, 0.3],
+                                      dtype=torch.float32,
+                                      requires_grad=True,
+                                      device=device)
+
+            src.float_attr = float_attr.detach().clone().requires_grad_(True)
+            src.int_attr = torch.tensor([1, 2, 3],
+                                        dtype=torch.int32,
+                                        device=device)
+            src.ragged_attr = k2.RaggedTensor([[10, 20], [30, 40, 50],
+                                               [60, 70]]).to(device)
+
+            dest = k2.remove_epsilon(src)
+            # arc map is [[1] [0 2] [2]]
+
+            assert dest.attr1 == src.attr1
+            assert dest.attr2 == src.attr2
+
+            expected_int_attr = k2.RaggedTensor([[2], [1, 3], [3]]).to(device)
+            assert dest.int_attr == expected_int_attr
+
+            expected_ragged_attr = k2.RaggedTensor([[30, 40, 50],
+                                                    [10, 20, 60, 70],
+                                                    [60, 70]]).to(device)
+            assert dest.ragged_attr == expected_ragged_attr
+
+            expected_float_attr = torch.empty_like(dest.float_attr)
+            expected_float_attr[0] = float_attr[1]
+            expected_float_attr[1] = float_attr[0] + float_attr[2]
+            expected_float_attr[2] = float_attr[2]
+
+            assert torch.all(torch.eq(dest.float_attr, expected_float_attr))
+
+            expected_scores = torch.empty_like(dest.scores)
+            expected_scores[0] = scores_copy[1]
+            expected_scores[1] = scores_copy[0] + scores_copy[2]
+            expected_scores[2] = scores_copy[2]
+
+            assert torch.all(torch.eq(dest.scores, expected_scores))
+
+            scale = torch.tensor([10, 20, 30]).to(float_attr)
+
+            (dest.float_attr * scale).sum().backward()
+            (expected_float_attr * scale).sum().backward()
+            assert torch.all(torch.eq(src.float_attr.grad, float_attr.grad))
+
+            (dest.scores * scale).sum().backward()
+            (expected_scores * scale).sum().backward()
+            assert torch.all(torch.eq(src.scores.grad, scores_copy.grad))
+
+    def test_autograd_remove_epsilon_and_add_self_loops(self):
+        if not torch.cuda.is_available():
+            return
+
+        if not k2.with_cuda:
+            return
+
+        devices = [torch.device('cuda', 0)]
+        if torch.cuda.device_count() > 1:
+            torch.cuda.set_device(1)
+            devices.append(torch.device('cuda', 1))
+
+        s = '''
+            0 1 0 0.1
+            0 1 1 0.2
+            1 2 -1 0.3
+            2
+        '''
+        for device in devices:
+            src = k2.Fsa.from_str(s).to(device).requires_grad_(True)
+            scores_copy = src.scores.detach().clone().requires_grad_(True)
+
+            src.attr1 = "hello"
+            src.attr2 = "k2"
+            float_attr = torch.tensor([0.1, 0.2, 0.3],
+                                      dtype=torch.float32,
+                                      requires_grad=True,
+                                      device=device)
+
+            src.float_attr = float_attr.detach().clone().requires_grad_(True)
+            src.int_attr = torch.tensor([1, 2, 3],
+                                        dtype=torch.int32,
+                                        device=device)
+            src.ragged_attr = k2.RaggedTensor([[10, 20], [30, 40, 50],
+                                               [60, 70]]).to(device)
+
+            dest = k2.remove_epsilon_and_add_self_loops(src)
+            # without add_self_loops, the arc map is [[1] [0 2] [2]]
+            # with add_self_loops, the arc map is [[] [1] [0 2] [] [2]]
+
+            assert dest.attr1 == src.attr1
+            assert dest.attr2 == src.attr2
+
+            expected_int_attr = k2.RaggedTensor([[], [2], [1, 3], [],
+                                                 [3]]).to(device)
+            assert dest.int_attr == expected_int_attr
+
+            expected_ragged_attr = k2.RaggedTensor([[], [30, 40, 50],
+                                                    [10, 20, 60, 70], [],
+                                                    [60, 70]]).to(device)
+            assert dest.ragged_attr == expected_ragged_attr
+
+            expected_float_attr = torch.empty_like(dest.float_attr)
+            expected_float_attr[0] = 0
+            expected_float_attr[1] = float_attr[1]
+            expected_float_attr[2] = float_attr[0] + float_attr[2]
+            expected_float_attr[3] = 0
+            expected_float_attr[4] = float_attr[2]
+
+            assert torch.all(torch.eq(dest.float_attr, expected_float_attr))
+
+            expected_scores = torch.empty_like(dest.scores)
+            expected_scores[0] = 0
+            expected_scores[1] = scores_copy[1]
+            expected_scores[2] = scores_copy[0] + scores_copy[2]
+            expected_scores[3] = 0
+            expected_scores[4] = scores_copy[2]
+
+            assert torch.all(torch.eq(dest.scores, expected_scores))
+
+            scale = torch.tensor([10, 20, 30, 40, 50]).to(float_attr)
+
+            (dest.float_attr * scale).sum().backward()
+            (expected_float_attr * scale).sum().backward()
+            assert torch.all(torch.eq(src.float_attr.grad, float_attr.grad))
+
+            (dest.scores * scale).sum().backward()
+            (expected_scores * scale).sum().backward()
+            assert torch.all(torch.eq(src.scores.grad, scores_copy.grad))
 
 
 class TestRemoveEpsilonDeviceFillers(unittest.TestCase):
-    ''' aim to test code relating to _filler attributres. '''
+    ''' aim to test code relating to _filler attributes. '''
 
     def test1(self):
         if not torch.cuda.is_available():
@@ -178,7 +340,8 @@ class TestRemoveEpsilonDeviceFillers(unittest.TestCase):
             5
         '''
         fsa = k2.Fsa.from_str(s, aux_label_names=['foo']).to(device)
-        fsa.foo_filler = 2
+        filler = 2
+        fsa.foo_filler = filler
         print("Before removing epsilons: ", fsa)
         prop = fsa.properties
         self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)
@@ -189,7 +352,7 @@ class TestRemoveEpsilonDeviceFillers(unittest.TestCase):
         self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
 
         print("After removing epsilons: ", dest)
-        assert torch.where(dest.foo.values() == 2)[0].numel() == 0
+        assert torch.where(dest.foo.data == filler)[0].numel() == 0
 
 
 if __name__ == '__main__':

@@ -158,7 +158,8 @@ class RaggedShape {
                          values necessary to take the needed sub-part
                          of the data will be written to here.
    */
-  RaggedShape Index(int32_t axis, int32_t i, int32_t *value_offset = nullptr);
+  RaggedShape Index(int32_t axis, int32_t i,
+                    int32_t *value_offset = nullptr) const;
 
   /*
     Given a vector `indexes` of length NumAxes() which is a valid index
@@ -341,11 +342,18 @@ struct Ragged {
 
   // Defined in ragged_ops_inl.h
   // This will crash if T == Any.
-  explicit Ragged(const std::string &src) {
+  explicit Ragged(const std::string &src, bool throw_on_failure = false) {
     std::istringstream is(src);
     is >> *this >> std::ws;
-    if (!is.eof() || is.fail())
-      K2_LOG(FATAL) << "Failed to construct Ragged array from string: " << src;
+    if (!is.eof() || is.fail()) {
+      std::ostringstream os;
+      os << "Failed to construct Ragged array from string: " << src;
+      if (throw_on_failure) {
+        throw std::runtime_error(os.str());
+      } else {
+        K2_LOG(FATAL) << os.str();
+      }
+    }
   }
 
   // Construct from context and string.  This uses delegating constructors,
@@ -378,7 +386,7 @@ struct Ragged {
   const Array1<int32_t> &RowSplits(int32_t axis) const {
     return shape.RowSplits(axis);
   }
-  Dtype GetDtype() const { return values.Dtype(); }
+  Dtype GetDtype() const { return values.GetDtype(); }
   Array1<int32_t> &RowSplits(int32_t axis) { return shape.RowSplits(axis); }
   const Array1<int32_t> &RowIds(int32_t axis) const {
     return shape.RowIds(axis);
@@ -430,7 +438,7 @@ struct Ragged {
                          is supported.
       @param [in]  i     Index to select
    */
-  Ragged<T> Index(int32_t axis, int32_t i) {
+  Ragged<T> Index(int32_t axis, int32_t i) const {
     // Get returned Ragged.shape
     int32_t values_offset;
     RaggedShape sub_shape = shape.Index(axis, i, &values_offset);
@@ -465,9 +473,38 @@ struct Ragged {
     return Ragged<T>(new_shape, new_values);
   }
 
-  // There is no need to clone the shape because it's a kind of convention that
-  // Array1's that are the row_ids or row_splits of a Ragged object are not
-  // mutable so they can be re-used.
+  // The ToType() macro will be expanded to
+  //
+  //  Ragged<int32_t> ToInt() const;
+  //  Ragged<float> ToFloat() const;
+  //  Ragged<double> ToDouble() const;
+  //  Ragged<int64_t> ToLong() const;
+  //
+  // which is roughly equivalent to the following template
+  //
+  //  template<typename U>
+  //  Ragged<U> To() const;
+  //
+  // The purpose is to convert Ragged<T> to Ragged<U>, e.g.,
+  // convert Ragged<int32_t> to Ragged<float>.
+  //
+  // If T == U, then the Ragged itself is returned; otherwise,
+  // a new Ragged is returned.
+  //
+#define ToType(type, name)                                  \
+  Ragged<type> To##name() const {                           \
+    Array1<type> new_values = values.To##name();            \
+    return Ragged<type>(shape, new_values);                 \
+  }
+ToType(float, Float)
+ToType(double, Double)
+ToType(int32_t, Int)
+ToType(int64_t, Long)
+#undef ToType
+
+  // There is no need to clone the shape because it's a kind of convention
+  // that Array1's that are the row_ids or row_splits of a Ragged object are
+  // not mutable so they can be re-used.
   Ragged<T> Clone() const { return Ragged<T>(shape, values.Clone()); }
 };
 

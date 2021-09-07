@@ -94,8 +94,8 @@ class TestLinearFsa(unittest.TestCase):
 
     def test_from_ragged_int_single_fsa(self):
         for device in self.devices:
-            ragged_int = k2.RaggedInt('[ [10 20] ]').to(device)
-            fsa = k2.linear_fsa(ragged_int)
+            ragged = k2.RaggedTensor([[10, 20]]).to(device)
+            fsa = k2.linear_fsa(ragged)
             assert fsa.shape == (1, None, None)
             assert fsa.device == device
             expected_arcs = torch.tensor([[0, 1, 10], [1, 2, 20], [2, 3, -1]],
@@ -111,8 +111,8 @@ class TestLinearFsa(unittest.TestCase):
 
     def test_from_ragged_int_two_fsas(self):
         for device in self.devices:
-            ragged_int = k2.RaggedInt('[ [10 20] [100 200 300] ]').to(device)
-            fsa = k2.linear_fsa(ragged_int)
+            ragged = k2.RaggedTensor([[10, 20], [100, 200, 300]]).to(device)
+            fsa = k2.linear_fsa(ragged)
             assert fsa.shape == (2, None, None)
             assert fsa.device == device
             expected_arcs = torch.tensor(

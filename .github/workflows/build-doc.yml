@@ -1,0 +1,101 @@
+# Copyright      2021  Fangjun Kuang (csukuangfj@gmail.com)
+
+# See ../../LICENSE for clarification regarding multiple authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# refer to https://github.com/actions/starter-workflows/pull/47/files
+
+# You can access it at https://k2-fsa.github.io/k2/
+name: Generate doc
+on:
+  push:
+    branches:
+    - master
+
+env:
+  # debug is faster in terms of compilation time
+  BUILD_TYPE: Debug
+
+jobs:
+  build-doc:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-18.04]
+        torch: ["1.7.1"]
+        python-version: [3.8]
+    steps:
+      # refer to https://github.com/actions/checkout
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install GCC 7
+        run: |
+          sudo apt-get install -y gcc-7 g++-7
+          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Install PyTorch ${{ matrix.torch }}
+        shell: bash
+        run: |
+          python3 -m pip install -qq --upgrade pip
+          python3 -m pip install -qq wheel twine typing_extensions
+          python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+
+          python3 -c "import torch; print('torch version:', torch.__version__)"
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          pwd
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
+
+          cat k2/csrc/version.h
+
+      - name: Build k2
+        shell: bash
+        run: |
+          cd build
+          make -j2 _k2
+          pwd
+          ls -lh lib
+
+      - name: Build doc
+        shell: bash
+        run: |
+          export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
+          echo "PYTHONPATH: $PYTHONPATH"
+          cd docs
+          python3 -m pip install -r ./requirements.txt
+          make html
+          touch build/html/.nojekyll
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/build/html
+          publish_branch: gh-pages

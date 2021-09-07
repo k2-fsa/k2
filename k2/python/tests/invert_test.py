@@ -76,7 +76,7 @@ class TestInvert(unittest.TestCase):
         aux_shape = k2.ragged.create_ragged_shape2(aux_row_splits, None, 11)
         aux_values = torch.tensor([1, 2, 3, 5, 6, 7, 8, -1, 9, 10, -1],
                                   dtype=torch.int32)
-        fsa.aux_labels = k2.RaggedInt(aux_shape, aux_values)
+        fsa.aux_labels = k2.RaggedTensor(aux_shape, aux_values)
         dest = k2.invert(fsa)
         print(dest)  # will print aux_labels as well
         # TODO(haowen): wrap C++ code to check equality for Ragged?
@@ -93,7 +93,7 @@ class TestInvert(unittest.TestCase):
             '''
             # https://git.io/JqNiR
             fsa = k2.Fsa.from_str(s).to(device)
-            fsa.aux_labels = k2.RaggedInt('[[2 3] [3 4] [] [5] [-1]]').to(
+            fsa.aux_labels = k2.RaggedTensor('[[2 3] [3 4] [] [5] [-1]]').to(
                 device)
             fsa.tensor_attr1 = torch.tensor([1, 2, 3, 4, 5]).to(device)
             # https://git.io/JqNiw

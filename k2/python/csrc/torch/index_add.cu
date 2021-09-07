@@ -32,7 +32,6 @@
 #include "k2/csrc/tensor_ops.h"
 #include "k2/python/csrc/torch/index_add.h"
 #include "k2/python/csrc/torch/torch_util.h"
-#include "torch/extension.h"
 
 namespace k2 {
 

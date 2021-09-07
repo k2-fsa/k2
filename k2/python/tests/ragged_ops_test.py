@@ -41,17 +41,19 @@ class TestRaggedOps(unittest.TestCase):
                 torch.cuda.set_device(1)
                 cls.devices.append(torch.device('cuda', 1))
 
+        cls.dtypes = [torch.int32, torch.float32, torch.float64]
+
     def test_remove_axis_ragged_array(self):
         s = '''
             [ [ [ 1 2 ] [ 0 ] ] [ [3 0 ] [ 2 ] ] ]
         '''
         for device in self.devices:
-            src = k2.RaggedInt(s).to(device)
+            src = k2.RaggedTensor(s).to(device)
 
-            ans = k2.ragged.remove_axis(src, 0)
+            ans = src.remove_axis(0)
             self.assertEqual(str(ans), '[ [ 1 2 ] [ 0 ] [ 3 0 ] [ 2 ] ]')
 
-            ans = k2.ragged.remove_axis(src, 1)
+            ans = src.remove_axis(1)
             self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] ]')
 
     def test_remove_axis_ragged_shape(self):
@@ -59,37 +61,38 @@ class TestRaggedOps(unittest.TestCase):
             shape = k2.RaggedShape('[ [[x x] [] [x]] [[] [x x] [x x x] [x]] ]')
             shape = shape.to(device)
 
-            ans = k2.ragged.remove_axis(shape, 0)
-            expected = k2.RaggedShape('[[x x] [] [x] [] [x x] [x x x] [x]]')
-            self.assertEqual(str(ans), str(expected))
+            ans = shape.remove_axis(0)
+            expected = k2.RaggedShape(
+                '[[x x] [] [x] [] [x x] [x x x] [x]]').to(device)
+            assert ans == expected
 
-            ans = k2.ragged.remove_axis(shape, 1)
-            expected = k2.RaggedShape('[[x x x] [x x x x x x]]')
-            self.assertEqual(str(ans), str(expected))
+            ans = shape.remove_axis(1)
+            expected = k2.RaggedShape('[[x x x] [x x x x x x]]').to(device)
+            assert ans == expected
 
-            ans = k2.ragged.remove_axis(shape, 2)
-            expected = k2.RaggedShape('[[x x x] [x x x x]]')
-            self.assertEqual(str(ans), str(expected))
+            ans = shape.remove_axis(2)
+            expected = k2.RaggedShape('[[x x x] [x x x x]]').to(device)
+            assert ans == expected
 
-    def test_to_list(self):
+    def test_tolist(self):
         s = '''
             [ [ [ 1 2 ] [ 0 ] ] [ [ 3 0 ] [ 2 ] ] ]
         '''
         for device in self.devices:
-            src = k2.RaggedInt(s).to(device)
+            for dtype in self.dtypes:
+                src = k2.RaggedTensor(s, dtype).to(device)
 
-            ans = k2.ragged.remove_axis(src, 0)
-            self.assertEqual(k2.ragged.to_list(ans),
-                             [[1, 2], [0], [3, 0], [2]])
+                ans = src.remove_axis(0)
+                assert ans.tolist() == [[1, 2], [0], [3, 0], [2]]
 
     def test_pad(self):
         s = '''
             [ [ 1 2 ] [ 3 ] [ ] [ 4 5 6 ] [ 7 8 9 10 ] ]
         '''
         for device in self.devices:
-            src = k2.RaggedInt(s).to(device)
+            src = k2.RaggedTensor(s).to(device)
             value = random.randint(0, 1000)
-            ans = k2.ragged.pad(src, 'constant', value)
+            ans = src.pad('constant', value)
             expected = torch.ones(
                 (5, 4), dtype=torch.int32, device=device) * value
             expected[0, 0] = 1
@@ -110,9 +113,9 @@ class TestRaggedOps(unittest.TestCase):
             [ [ 1.0 2.0 ] [ 3.0 ] [ ] [ 4.0 5.0 6.0 ] [ 7.0 8.0 9.0 10.0 ] ]
         '''
         for device in self.devices:
-            src = k2.RaggedFloat(s).to(device)
+            src = k2.RaggedTensor(s).to(device)
             value = random.random() * 10
-            ans = k2.ragged.pad(src, 'constant', value)
+            ans = src.pad('constant', value)
             expected = torch.ones(
                 (5, 4), dtype=torch.int32, device=device) * value
             expected[0, 0] = 1.0
@@ -133,10 +136,10 @@ class TestRaggedOps(unittest.TestCase):
             [ [1 2] [10] [] [3 5 8 9] ]
         '''
         for device in self.devices:
-            for T in [k2.RaggedInt, k2.RaggedFloat]:
+            for dtype in self.dtypes:
                 value = random.randint(0, 1000)
-                src = T(s).to(device)
-                padded = k2.ragged.pad(src, 'replicate', value)
+                src = k2.RaggedTensor(s, dtype).to(device)
+                padded = src.pad('replicate', value)
                 expected = torch.tensor(
                     [[1, 2, 2, 2], [10, 10, 10, 10],
                      [value, value, value, value], [3, 5, 8, 9]],).to(padded)
@@ -147,109 +150,113 @@ class TestRaggedOps(unittest.TestCase):
             [ [1 2 0] [3 0 2] [0 8 0 6 0] [0] ]
         '''
         for device in self.devices:
-            src = k2.RaggedInt(s).to(device)
+            for dtype in self.dtypes:
+                src = k2.RaggedTensor(s, dtype).to(device)
 
-            ans = k2.ragged.remove_values_leq(src, 0)
-            self.assertEqual(str(ans), '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
+                ans = src.remove_values_leq(0)
+                self.assertEqual(str(ans), '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
 
-            ans = k2.ragged.remove_values_leq(src, 1)
-            self.assertEqual(str(ans), '[ [ 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
+                ans = src.remove_values_leq(1)
+                self.assertEqual(str(ans), '[ [ 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
 
-            ans = k2.ragged.remove_values_leq(src, 6)
-            self.assertEqual(str(ans), '[ [ ] [ ] [ 8 ] [ ] ]')
+                ans = src.remove_values_leq(6)
+                self.assertEqual(str(ans), '[ [ ] [ ] [ 8 ] [ ] ]')
 
-            ans = k2.ragged.remove_values_leq(src, 8)
-            self.assertEqual(str(ans), '[ [ ] [ ] [ ] [ ] ]')
+                ans = src.remove_values_leq(8)
+                self.assertEqual(str(ans), '[ [ ] [ ] [ ] [ ] ]')
 
     def test_remove_values_eq(self):
         s = '''
             [ [1 2 0] [3 0 2] [0 8 0 6 0] [0] ]
         '''
         for device in self.devices:
-            src = k2.RaggedInt(s).to(device)
+            for dtype in self.dtypes:
+                src = k2.RaggedTensor(s).to(device)
 
-            ans = k2.ragged.remove_values_eq(src, 0)
-            self.assertEqual(str(ans), '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
+                ans = src.remove_values_eq(0)
+                self.assertEqual(str(ans), '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
 
-            ans = k2.ragged.remove_values_eq(src, 1)
-            self.assertEqual(str(ans),
-                             '[ [ 2 0 ] [ 3 0 2 ] [ 0 8 0 6 0 ] [ 0 ] ]')
+                ans = src.remove_values_eq(1)
+                self.assertEqual(str(ans),
+                                 '[ [ 2 0 ] [ 3 0 2 ] [ 0 8 0 6 0 ] [ 0 ] ]')
 
-            ans = k2.ragged.remove_values_eq(src, 6)
-            self.assertEqual(str(ans),
-                             '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 8 0 0 ] [ 0 ] ]')
+                ans = src.remove_values_eq(6)
+                self.assertEqual(str(ans),
+                                 '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 8 0 0 ] [ 0 ] ]')
 
-            ans = k2.ragged.remove_values_eq(src, 8)
-            self.assertEqual(str(ans),
-                             '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 0 6 0 ] [ 0 ] ]')
+                ans = src.remove_values_eq(8)
+                self.assertEqual(str(ans),
+                                 '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 0 6 0 ] [ 0 ] ]')
 
     def test_normalize_scores_use_log_non_zero_stride(self):
         s = '''
             [ [1 -1 0] [2 10] [] [3] [5 8] ]
         '''
         for device in self.devices:
-            src = k2.ragged.RaggedFloat(s).to(device)
-            saved = src.values.clone().detach()
-            saved.requires_grad_(True)
-            src.requires_grad_(True)
+            for dtype in [torch.float32, torch.float64]:
+                src = k2.RaggedTensor(s, dtype).to(device)
+                saved = src.data.clone().detach()
+                saved.requires_grad_(True)
+                src.requires_grad_(True)
 
-            ans = k2.ragged.normalize_scores(src, use_log=True)
+                ans = src.normalize(use_log=True)
 
-            scale = torch.arange(ans.values.numel(), device=device)
+                scale = torch.arange(ans.numel(), device=device)
 
-            # the stride of grad is not 0
-            (ans.values * scale).sum().backward()
+                # the stride of grad is not 0
+                (ans.data * scale).sum().backward()
 
-            expected = saved.new_zeros(*ans.values.shape)
+                expected = saved.new_zeros(*ans.data.shape)
 
-            normalizer = saved[:3].exp().sum().log()
-            expected[:3] = saved[:3] - normalizer
+                normalizer = saved[:3].exp().sum().log()
+                expected[:3] = saved[:3] - normalizer
 
-            normalizer = saved[3:5].exp().sum().log()
-            expected[3:5] = saved[3:5] - normalizer
+                normalizer = saved[3:5].exp().sum().log()
+                expected[3:5] = saved[3:5] - normalizer
 
-            expected[5] = 0  # it has only one entry
+                expected[5] = 0  # it has only one entry
 
-            normalizer = saved[6:8].exp().sum().log()
-            expected[6:8] = saved[6:8] - normalizer
+                normalizer = saved[6:8].exp().sum().log()
+                expected[6:8] = saved[6:8] - normalizer
 
-            self.assertTrue(torch.allclose(expected, ans.values))
-            (expected * scale).sum().backward()
+                self.assertTrue(torch.allclose(expected, ans.data))
+                (expected * scale).sum().backward()
 
-            self.assertTrue(torch.allclose(saved.grad, src.grad))
+                self.assertTrue(torch.allclose(saved.grad, src.grad))
 
     def test_normalize_scores_use_log_zero_stride(self):
         s = '''
             [ [1 3 5] [2 -1] [] [3] [5 2] ]
         '''
         for device in self.devices:
-            src = k2.ragged.RaggedFloat(s).to(device)
-            saved = src.values.clone().detach()
-            saved.requires_grad_(True)
-            src.requires_grad_(True)
+            for dtype in [torch.float32, torch.float64]:
+                src = k2.RaggedTensor(s, dtype).to(device)
+                saved = src.data.clone().detach()
+                saved.requires_grad_(True)
+                src.requires_grad_(True)
 
-            ans = k2.ragged.normalize_scores(src, use_log=True)
+                ans = src.normalize(use_log=True)
 
-            # the stride of grad is 0
-            ans.values.sum().backward()
+                # the stride of grad is 0
+                ans.data.sum().backward()
 
-            expected = saved.new_zeros(*ans.values.shape)
+                expected = saved.new_zeros(*ans.data.shape)
 
-            normalizer = saved[:3].exp().sum().log()
-            expected[:3] = saved[:3] - normalizer
+                normalizer = saved[:3].exp().sum().log()
+                expected[:3] = saved[:3] - normalizer
 
-            normalizer = saved[3:5].exp().sum().log()
-            expected[3:5] = saved[3:5] - normalizer
+                normalizer = saved[3:5].exp().sum().log()
+                expected[3:5] = saved[3:5] - normalizer
 
-            expected[5] = 0  # it has only one entry
+                expected[5] = 0  # it has only one entry
 
-            normalizer = saved[6:8].exp().sum().log()
-            expected[6:8] = saved[6:8] - normalizer
+                normalizer = saved[6:8].exp().sum().log()
+                expected[6:8] = saved[6:8] - normalizer
 
-            self.assertTrue(torch.allclose(expected, ans.values))
-            expected.sum().backward()
+                self.assertTrue(torch.allclose(expected, ans.data))
+                expected.sum().backward()
 
-            self.assertTrue(torch.allclose(saved.grad, src.grad))
+                self.assertTrue(torch.allclose(saved.grad, src.grad))
 
     def test_normalize_scores_use_log_from_shape(self):
         s = '''
@@ -268,14 +275,13 @@ class TestRaggedOps(unittest.TestCase):
                                   device=device)
             scores.requires_grad_(True)
 
-            ragged_scores = k2.ragged.RaggedFloat(fsa.arcs.shape(), scores)
+            ragged_scores = k2.RaggedTensor(fsa.arcs.shape(), scores)
             assert ragged_scores.requires_grad is True
 
-            normalized_scores = k2.ragged.normalize_scores(ragged_scores,
-                                                           use_log=True)
+            normalized_scores = ragged_scores.normalize(use_log=True)
             assert normalized_scores.requires_grad is True
 
-            fsa.scores = normalized_scores.values
+            fsa.scores = normalized_scores.data
             assert fsa.scores.requires_grad is True
 
             # arcs leaving state 0
@@ -295,20 +301,21 @@ class TestRaggedOps(unittest.TestCase):
 
     def test_normalize_scores(self):
         for device in self.devices:
-            s = '''
-                [ [1 3 5] [2 -1] [] [3] [5 2] ]
-            '''
-            src = k2.ragged.RaggedFloat(s).to(device)
-            saved = src.values
+            for dtype in [torch.float32, torch.float64]:
+                s = '''
+                    [ [1 3 5] [2 -1] [] [3] [5 2] ]
+                '''
+                src = k2.RaggedTensor(s, dtype=dtype).to(device)
+                saved = src.data
 
-            ans = k2.ragged.normalize_scores(src, use_log=False)
-            expected = saved.new_zeros(*ans.values.shape)
-            expected[:3] = saved[:3] / saved[:3].sum()
-            expected[3:5] = saved[3:5] / saved[3:5].sum()
-            expected[5] = 1
-            expected[6:8] = saved[6:8] / saved[6:8].sum()
+                ans = src.normalize(use_log=False)
+                expected = saved.new_zeros(*ans.data.shape)
+                expected[:3] = saved[:3] / saved[:3].sum()
+                expected[3:5] = saved[3:5] / saved[3:5].sum()
+                expected[5] = 1
+                expected[6:8] = saved[6:8] / saved[6:8].sum()
 
-            assert torch.allclose(ans.values, expected)
+                assert torch.allclose(ans.data, expected)
 
     def test_sum_per_sublist(self):
         s = '''
@@ -324,8 +331,8 @@ class TestRaggedOps(unittest.TestCase):
             fsa = k2.Fsa.from_str(s).to(device)
             scores = torch.randn_like(fsa.scores)
             fsa.set_scores_stochastic_(scores)
-            normalized_scores = k2.ragged.sum_per_sublist(
-                _k2.RaggedFloat(fsa.arcs.shape(), fsa.scores.exp()))
+            ragged = k2.RaggedTensor(fsa.arcs.shape(), fsa.scores.exp())
+            normalized_scores = ragged.sum()
             assert normalized_scores.numel() == fsa.arcs.dim0()
 
             assert torch.allclose(
@@ -337,80 +344,87 @@ class TestRaggedOps(unittest.TestCase):
 
     def test_cat(self):
         for device in self.devices:
-            ragged1 = k2.RaggedInt('[ [1 2 3] [] [4 5] ]').to(device)
-            ragged2 = k2.RaggedInt('[ [] [10 20] [30] [40 50] ]').to(device)
-            ragged = k2.ragged.cat([ragged1, ragged2])
-            self.assertEqual(
-                str(ragged),
-                '[ [ 1 2 3 ] [ ] [ 4 5 ] [ ] [ 10 20 ] [ 30 ] [ 40 50 ] ]')
+            for dtype in self.dtypes:
+                ragged1 = k2.RaggedTensor('[ [1 2 3] [] [4 5] ]',
+                                          dtype).to(device)
+                ragged2 = k2.RaggedTensor('[ [] [10 20] [30] [40 50] ]',
+                                          dtype).to(device)
+                ragged = k2.ragged.cat([ragged1, ragged2], axis=0)
+                self.assertEqual(
+                    str(ragged),
+                    '[ [ 1 2 3 ] [ ] [ 4 5 ] [ ] [ 10 20 ] [ 30 ] [ 40 50 ] ]')
 
     def test_cat_axis1(self):
         for device in self.devices:
-            ragged1 = k2.RaggedInt('[ [1 2 3] [] [4 5] ]').to(device)
-            ragged2 = k2.RaggedInt('[ [10 20] [8] [9 10] ]').to(device)
-            ragged = k2.ragged.cat([ragged1, ragged2], axis=1)
-            self.assertEqual(str(ragged),
-                             '[ [ 1 2 3 10 20 ] [ 8 ] [ 4 5 9 10 ] ]')
+            for dtype in self.dtypes:
+                ragged1 = k2.RaggedTensor('[ [1 2 3] [] [4 5] ]',
+                                          dtype).to(device)
+                ragged2 = k2.RaggedTensor('[ [10 20] [8] [9 10] ]',
+                                          dtype).to(device)
+                ragged = k2.ragged.cat([ragged1, ragged2], axis=1)
+                self.assertEqual(str(ragged),
+                                 '[ [ 1 2 3 10 20 ] [ 8 ] [ 4 5 9 10 ] ]')
 
     def test_get_layer_two_axes(self):
         for device in self.devices:
             shape = k2.RaggedShape('[ [x x x] [x] [] [x x] ]').to(device)
-            subshape = k2.ragged.get_layer(shape, 0)
+            subshape = shape.get_layer(0)
             # subshape should contain the same information as shape
-            self.assertEqual(subshape.num_axes(), 2)
-            self.assertEqual(str(subshape), str(shape))
+            assert subshape.num_axes == 2
+            assert subshape == shape
 
     def test_get_layer_three_axes(self):
         for device in self.devices:
             shape = k2.RaggedShape(
                 '[ [[x x] [] [x] [x x x]] [[] [] [x x] [x] [x x]] ]')
             shape = shape.to(device)
-            shape0 = k2.ragged.get_layer(shape, 0)
-            expected_shape0 = k2.RaggedShape('[ [x x x x] [x x x x x] ]')
-            self.assertEqual(str(shape0), str(expected_shape0))
+            shape0 = shape.get_layer(0)
+            expected_shape0 = k2.RaggedShape('[ [x x x x] [x x x x x] ]').to(
+                device)
+            assert shape0 == expected_shape0
 
-            shape1 = k2.ragged.get_layer(shape, 1)
+            shape1 = shape.get_layer(1)
             expected_shape1 = k2.RaggedShape(
-                '[ [x x] [] [x] [x x x] [] [] [x x] [x] [x x] ]')
-            self.assertEqual(str(shape1), str(expected_shape1))
+                '[ [x x] [] [x] [x x x] [] [] [x x] [x] [x x] ]').to(device)
+            assert shape1 == expected_shape1
 
     def test_create_ragged2(self):
         lst = [[7, 9], [12, 13], []]
-        ragged = k2.create_ragged2(lst)
-        expected = k2.RaggedInt('[[7 9] [12 13] []]')
-        self.assertEqual(str(ragged), str(expected))
+        ragged = k2.RaggedTensor(lst)
+        expected = k2.RaggedTensor('[[7 9] [12 13] []]')
+        assert ragged == expected
 
         float_lst = [[1.2], [], [3.4, 5.6, 7.8]]
-        ragged = k2.create_ragged2(float_lst)
-        expected = _k2.RaggedFloat('[[1.2] [] [3.4 5.6 7.8]]')
-        self.assertEqual(str(ragged), str(expected))
+        ragged = k2.RaggedTensor(float_lst)
+        expected = k2.RaggedTensor('[[1.2] [] [3.4 5.6 7.8]]')
+        assert ragged == expected
 
     def test_unique_sequences_two_axes(self):
         for device in self.devices:
-            ragged = k2.RaggedInt(
+            ragged = k2.RaggedTensor(
                 '[[1 3] [1 2] [1 2] [1 4] [1 3] [1 2] [1]]').to(device)
-            unique, num_repeats, new2old = k2.ragged.unique_sequences(
-                ragged, need_num_repeats=True, need_new2old_indexes=True)
+            unique, num_repeats, new2old = ragged.unique(
+                need_num_repeats=True, need_new2old_indexes=True)
             # [1, 3] has a larger hash value than [1, 2]; after sorting,
             # [1, 3] is placed after [1, 2]
-            expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
-            self.assertEqual(str(unique), str(expected))
+            expected = k2.RaggedTensor('[[1] [1 2] [1 3] [1 4]]').to(device)
+            assert unique == expected
 
-            expected_num_repeats = k2.RaggedInt('[[1 3 2 1]]')
-            self.assertEqual(str(num_repeats), str(expected_num_repeats))
+            expected_num_repeats = k2.RaggedTensor('[[1 3 2 1]]').to(device)
+            assert num_repeats == expected_num_repeats
             expected_new2old = torch.tensor([6, 1, 0, 3]).to(device)
             assert torch.all(torch.eq(new2old, expected_new2old))
 
         for device in self.devices:
-            ragged = k2.RaggedInt('[ [1 3] [1 2] [1] [1 4]]').to(device)
-            unique, num_repeats, new2old = k2.ragged.unique_sequences(
-                ragged, need_num_repeats=True, need_new2old_indexes=True)
+            ragged = k2.RaggedTensor('[ [1 3] [1 2] [1] [1 4]]').to(device)
+            unique, num_repeats, new2old = ragged.unique(
+                need_num_repeats=True, need_new2old_indexes=True)
 
-            expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
-            self.assertEqual(str(unique), str(expected))
+            expected = k2.RaggedTensor('[[1] [1 2] [1 3] [1 4]]').to(device)
+            assert unique == expected
 
-            expected_num_repeats = k2.RaggedInt('[[1 1 1 1]]')
-            self.assertEqual(str(num_repeats), str(expected_num_repeats))
+            expected_num_repeats = k2.RaggedTensor('[[1 1 1 1]]').to(device)
+            assert num_repeats == expected_num_repeats
 
             # CAUTION: The output sublists are ordered by their hash value!
             expected_new2old = torch.tensor([2, 1, 0, 3]).to(device)
@@ -418,32 +432,34 @@ class TestRaggedOps(unittest.TestCase):
 
     def test_unique_sequences_three_axes(self):
         for device in self.devices:
-            ragged = k2.RaggedInt(
+            ragged = k2.RaggedTensor(
                 '[ [[1] [1 2] [1 3] [1] [1 3]] [[1 4] [1 2] [1 3] [1 3] [1 2] [1]] ]'  # noqa
             ).to(device)
-            unique, num_repeats, new2old = k2.ragged.unique_sequences(
-                ragged, need_num_repeats=True, need_new2old_indexes=True)
-            expected = k2.RaggedInt(
-                '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4]] ]')
-            self.assertEqual(str(unique), str(expected))
+            unique, num_repeats, new2old = ragged.unique(
+                need_num_repeats=True, need_new2old_indexes=True)
+            expected = k2.RaggedTensor(
+                '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4]] ]').to(device)
+            assert unique == expected
 
-            expected_num_repeats = k2.RaggedInt('[ [2 1 2] [1 2 2 1] ]')
-            self.assertEqual(str(num_repeats), str(expected_num_repeats))
+            expected_num_repeats = k2.RaggedTensor('[ [2 1 2] [1 2 2 1] ]').to(
+                device)
+            assert num_repeats == expected_num_repeats
             expected_new2old = torch.tensor([0, 1, 2, 10, 6, 7, 5]).to(device)
             assert torch.all(torch.eq(new2old, expected_new2old))
 
         for device in self.devices:
-            ragged = k2.RaggedInt(
+            ragged = k2.RaggedTensor(
                 '[ [[1 3] [1] [1 2]] [[1 2] [1 3] [1 4 5] [1]] ]').to(device)
-            unique, num_repeats, new2old = k2.ragged.unique_sequences(
-                ragged, need_num_repeats=True, need_new2old_indexes=True)
+            unique, num_repeats, new2old = ragged.unique(
+                need_num_repeats=True, need_new2old_indexes=True)
 
-            expected = k2.RaggedInt(
-                '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4 5]] ]')
-            self.assertEqual(str(unique), str(expected))
+            expected = k2.RaggedTensor(
+                '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4 5]] ]').to(device)
+            assert unique == expected
 
-            expected_num_repeats = k2.RaggedInt('[[1 1 1 ] [1 1 1 1]]')
-            self.assertEqual(str(num_repeats), str(expected_num_repeats))
+            expected_num_repeats = k2.RaggedTensor('[[1 1 1 ] [1 1 1 1]]').to(
+                device)
+            assert num_repeats == expected_num_repeats
 
             # CAUTION: The output sublists are ordered by their hash value!
             expected_new2old = torch.tensor([1, 2, 0, 6, 3, 4, 5]).to(device)
@@ -455,13 +471,13 @@ class TestRaggedOps(unittest.TestCase):
             indexes = torch.tensor([-1, 0, -1, 0, 1, 2, 0, 2, 1, -1],
                                    dtype=torch.int32,
                                    device=device)
-            ans, value_indexes = k2.ragged.index(shape,
-                                                 indexes,
-                                                 axis=0,
-                                                 need_value_indexes=True)
+            ans, value_indexes = shape.index(axis=0,
+                                             indexes=indexes,
+                                             need_value_indexes=True)
             expected_ans = k2.RaggedShape(
-                '[ [] [x x] [] [x x] [] [x x x] [x x] [x x x] [] [] ]')
-            self.assertEqual(str(ans), str(expected_ans))
+                '[ [] [x x] [] [x x] [] [x x x] [x x] [x x x] [] [] ]').to(
+                    device)
+            assert ans == expected_ans
 
             expected_value_indexes = torch.tensor(
                 [0, 1, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
@@ -473,12 +489,12 @@ class TestRaggedOps(unittest.TestCase):
             indexes = torch.tensor([0, 0, 0, 1, 2, 2, 2, 3, 3],
                                    dtype=torch.int32,
                                    device=device)
-            ans, value_indexes = k2.ragged.index(shape,
-                                                 indexes,
-                                                 axis=1,
-                                                 need_value_indexes=True)
-            expected_ans = k2.RaggedShape('[ [x x x x] [] [x x x x x] ]')
-            self.assertEqual(str(ans), str(expected_ans))
+            ans, value_indexes = shape.index(axis=1,
+                                             indexes=indexes,
+                                             need_value_indexes=True)
+            expected_ans = k2.RaggedShape('[ [x x x x] [] [x x x x x] ]').to(
+                device)
+            assert ans == expected_ans
             assert torch.all(torch.eq(indexes, value_indexes))
 
     def test_index_ragged_shape_three_axes(self):
@@ -488,14 +504,13 @@ class TestRaggedOps(unittest.TestCase):
             indexes = torch.tensor([-1, 0, 1, 1, -1, 0],
                                    dtype=torch.int32,
                                    device=device)
-            ans, value_indexes = k2.ragged.index(shape,
-                                                 indexes,
-                                                 axis=0,
-                                                 need_value_indexes=True)
+            ans, value_indexes = shape.index(axis=0,
+                                             indexes=indexes,
+                                             need_value_indexes=True)
             expected_ans = k2.RaggedShape(
                 '[ [] [[x x x] [x x] []] [[x] [x x x]] [[x] [x x x]] [] [[x x x] [x x] []] ]'  # noqa
-            )
-            self.assertEqual(str(ans), str(expected_ans))
+            ).to(device)
+            assert ans == expected_ans
             expected_value_indexes = torch.tensor(
                 [0, 1, 2, 3, 4, 5, 6, 7, 8, 5, 6, 7, 8, 0, 1, 2, 3, 4],
                 dtype=torch.int32,
@@ -506,13 +521,12 @@ class TestRaggedOps(unittest.TestCase):
             indexes = torch.tensor([0, 0, 2, 3, 3, 4],
                                    dtype=torch.int32,
                                    device=device)
-            ans, value_indexes = k2.ragged.index(shape,
-                                                 indexes,
-                                                 axis=1,
-                                                 need_value_indexes=True)
+            ans, value_indexes = shape.index(axis=1,
+                                             indexes=indexes,
+                                             need_value_indexes=True)
             expected_ans = k2.RaggedShape(
-                '[ [[x x x] [x x x] []] [[x] [x] [x x x]] ]')
-            self.assertEqual(str(ans), str(expected_ans))
+                '[ [[x x x] [x x x] []] [[x] [x] [x x x]] ]').to(device)
+            assert ans == expected_ans
             expected_value_indexes = torch.tensor(
                 [0, 1, 2, 0, 1, 2, 5, 5, 6, 7, 8],
                 dtype=torch.int32,
@@ -523,23 +537,22 @@ class TestRaggedOps(unittest.TestCase):
             indexes = torch.tensor([0, 2, 2, 3, 4, 4, 6, 6, 7],
                                    dtype=torch.int32,
                                    device=device)
-            ans, value_indexes = k2.ragged.index(shape,
-                                                 indexes,
-                                                 axis=2,
-                                                 need_value_indexes=True)
+            ans, value_indexes = shape.index(axis=2,
+                                             indexes=indexes,
+                                             need_value_indexes=True)
             expected_ans = k2.RaggedShape(
-                '[ [[x x x] [x x x] [] ] [[] [x x x]] ]')
-            self.assertEqual(str(ans), str(expected_ans))
+                '[ [[x x x] [x x x] [] ] [[] [x x x]] ]').to(device)
+            assert ans == expected_ans
             assert torch.all(torch.eq(indexes, value_indexes))
 
     def test_regular_ragged_shape(self):
         shape = k2.ragged.regular_ragged_shape(1, 2)
         expected = k2.RaggedShape('[[x x]]')
-        self.assertEqual(str(shape), str(expected))
+        assert shape == expected
 
         shape = k2.ragged.regular_ragged_shape(2, 3)
         expected = k2.RaggedShape('[[x x x] [x x x]]')
-        self.assertEqual(str(shape), str(expected))
+        assert shape == expected
 
         assert shape.row_splits(1).device.type == 'cpu'
 
@@ -550,22 +563,26 @@ class TestRaggedOps(unittest.TestCase):
 
     def test_argmax_per_sublist_two_axes(self):
         for device in self.devices:
-            src = k2.RaggedFloat(
-                '[[1 3 -1 -2] [1 0 -1] [3 2 1] [] [1] [2 3]]').to(device)
-            indexes = k2.ragged.argmax_per_sublist(src)
+            for dtype in self.dtypes:
+                src = k2.RaggedTensor(
+                    [[1, 3, -1, -2], [1, 0, -1], [3, 2, 1], [], [1], [2, 3]],
+                    dtype=dtype).to(device)
+                indexes = src.argmax()
 
-            # -1 for an empty sublist
-            expected = torch.tensor([1, 4, 7, -1, 10, 12], device=device)
-            assert torch.all(torch.eq(indexes, expected))
+                # -1 for an empty sublist
+                expected = torch.tensor([1, 4, 7, -1, 10, 12], device=device)
+                assert torch.all(torch.eq(indexes, expected))
 
     def test_argmax_per_sublist_three_axes(self):
         for device in self.devices:
-            src = k2.RaggedFloat(
-                '[ [[3 2 1] [0 -1] []] [[2 5 3] [1 10 9 8]] ]').to(device)
-            indexes = k2.ragged.argmax_per_sublist(src)
-            # -1 for an empty sublist
-            expected = torch.tensor([0, 3, -1, 6, 9], device=device)
-            assert torch.all(torch.eq(indexes, expected))
+            for dtype in self.dtypes:
+                src = k2.RaggedTensor(
+                    [[[3, 2, 1], [0, -1], []], [[2, 5, 3], [1, 10, 9, 8]]],
+                    dtype=dtype).to(device)
+                indexes = src.argmax()
+                # -1 for an empty sublist
+                expected = torch.tensor([0, 3, -1, 6, 9], device=device)
+                assert torch.all(torch.eq(indexes, expected))
 
     def test_argmax_per_sublist_two_axes_random(self):
         res = []
@@ -583,57 +600,64 @@ class TestRaggedOps(unittest.TestCase):
 
     def test_max_per_sublist_two_axes(self):
         for device in self.devices:
-            src = k2.RaggedFloat(
-                '[[1 3 -1 -2] [1 0 -1] [3 2 1] [] [1] [2 3]]').to(device)
-            indexes = k2.ragged.max_per_sublist(src, initial_value=0)
-            # 0 for an empty sublist
-            expected = torch.tensor([3, 1, 3, 0, 1, 3], device=device)
-            assert torch.all(torch.eq(indexes, expected))
+            for dtype in self.dtypes:
+                src = k2.RaggedTensor(
+                    [[1, 3, -1, -2], [1, 0, -1], [3, 2, 1], [], [1], [2, 3]],
+                    dtype=dtype).to(device)
+                indexes = src.max(initial_value=0)
+                # 0 for an empty sublist
+                expected = torch.tensor([3, 1, 3, 0, 1, 3], device=device)
+                assert torch.all(torch.eq(indexes, expected))
 
     def test_max_per_sublist_three_axes(self):
         for device in self.devices:
-            src = k2.RaggedFloat(
-                '[ [[3 2 1] [0 -1] []] [[2 5 3] [1 10 9 8]] ]').to(device)
-            indexes = k2.ragged.max_per_sublist(src, initial_value=0)
-            # 0 for an empty sublist
-            expected = torch.tensor([3, 0, 0, 5, 10], device=device)
-            assert torch.all(torch.eq(indexes, expected))
+            for dtype in self.dtypes:
+                src = k2.RaggedTensor(
+                    [[[3, 2, 1], [0, -1], []], [[2, 5, 3], [1, 10, 9, 8]]],
+                    dtype).to(device)
+                indexes = src.max(initial_value=0)
+                # 0 for an empty sublist
+                expected = torch.tensor([3, 0, 0, 5, 10], device=device)
+                assert torch.all(torch.eq(indexes, expected))
 
     def test_sort_sublist_ascending(self):
         for device in self.devices:
-            src = k2.RaggedInt('[ [3 2] [] [1 5 2]]').to(device)
-            src_clone = src.clone()
-            new2old = k2.ragged.sort_sublist(src,
-                                             descending=False,
-                                             need_new2old_indexes=True)
-            expected_src = k2.RaggedInt('[[2 3] [] [1 2 5]]')
-            expected_new2old = torch.tensor([1, 0, 2, 4, 3],
-                                            device=device,
-                                            dtype=torch.int32)
-            assert str(src) == str(expected_src)
-            assert torch.all(torch.eq(new2old, expected_new2old))
+            for dtype in self.dtypes:
+                src = k2.RaggedTensor([[3, 2], [], [1, 5, 2]],
+                                      dtype=dtype).to(device)
+                src_clone = src.clone()
+                new2old = src.sort_(descending=False,
+                                    need_new2old_indexes=True)
+                expected_src = k2.RaggedTensor([[2, 3], [], [1, 2, 5]],
+                                               dtype=dtype).to(device)
+                expected_new2old = torch.tensor([1, 0, 2, 4, 3],
+                                                device=device,
+                                                dtype=torch.int32)
+                assert src == expected_src
+                assert torch.all(torch.eq(new2old, expected_new2old))
 
-            expected_sorted = k2.index(src_clone.values(), new2old)
-            sorted = src.values()
-            assert torch.all(torch.eq(expected_sorted, sorted))
+                expected_sorted = k2.index_select(src_clone.data, new2old)
+                sorted = src.data
+                assert torch.all(torch.eq(expected_sorted, sorted))
 
     def test_sort_sublist_descending(self):
         for device in self.devices:
-            src = k2.RaggedInt('[ [3 2] [] [1 5 2]]').to(device)
-            src_clone = src.clone()
-            new2old = k2.ragged.sort_sublist(src,
-                                             descending=True,
-                                             need_new2old_indexes=True)
-            sorted_src = k2.RaggedInt('[[3 2] [] [5 2 1]]')
-            expected_new2old = torch.tensor([0, 1, 3, 4, 2],
-                                            device=device,
-                                            dtype=torch.int32)
-            assert str(src) == str(sorted_src)
-            assert torch.all(torch.eq(new2old, expected_new2old))
+            for dtype in self.dtypes:
+                src = k2.RaggedTensor([[3, 2], [], [1, 5, 2]],
+                                      dtype).to(device)
+                src_clone = src.clone()
+                new2old = src.sort_(descending=True, need_new2old_indexes=True)
+                sorted_src = k2.RaggedTensor([[3, 2], [], [5, 2, 1]],
+                                             dtype=dtype).to(device)
+                expected_new2old = torch.tensor([0, 1, 3, 4, 2],
+                                                device=device,
+                                                dtype=torch.int32)
+                assert src == sorted_src
+                assert torch.all(torch.eq(new2old, expected_new2old))
 
-            expected_sorted = k2.index(src_clone.values(), new2old)
-            sorted = src.values()
-            assert torch.all(torch.eq(expected_sorted, sorted))
+                expected_sorted = k2.index_select(src_clone.data, new2old)
+                sorted = src.data
+                assert torch.all(torch.eq(expected_sorted, sorted))
 
 
 if __name__ == '__main__':

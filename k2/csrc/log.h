@@ -147,14 +147,26 @@ class Logger {
   }
 
   K2_CUDA_HOSTDEV ~Logger() noexcept(false) {
+    static constexpr const char *kErrMsg = R"(
+    Some bad things happened. Please read the above error messages and stack
+    trace. If you are using Python, the following command may be helpful:
+
+      gdb --args python /path/to/your/code.py
+
+    (You can use `gdb` to debug the code. Please consider compiling
+    a debug version of k2.).
+
+    If you are unable to fix it, please open an issue at:
+
+      https://github.com/k2-fsa/k2/issues/new
+    )";
     printf("\n");
     if (level_ == FATAL) {
 #if defined(__CUDA_ARCH__)
       // this is usually caused by one of the K2_CHECK macros and the detailed
       // error messages should have already been printed by the macro, so we
       // use an arbitrary string here.
-      __assert_fail("Some bad things happened", filename_, line_num_,
-                    func_name_);
+      __assert_fail(kErrMsg, filename_, line_num_, func_name_);
 #else
       std::string stack_trace = GetStackTrace();
       if (!stack_trace.empty()) {
@@ -165,7 +177,7 @@ class Logger {
       //
       // NOTE: abort() will terminate the program immediately without
       // printing the Python stack backtrace.
-      throw std::runtime_error("Some bad things happed.");
+      throw std::runtime_error(kErrMsg);
 #endif
     }
   }
@@ -176,7 +188,6 @@ class Logger {
     }
     return *this;
   }
-
 
   K2_CUDA_HOSTDEV const Logger &operator<<(int8_t i) const {
     if (cur_level_ <= level_) printf("%d", i);
@@ -368,13 +379,12 @@ inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
 // function EnableCudaDeviceSync above.
 //
 #ifdef K2_WITH_CUDA
-#define K2_CUDA_SAFE_CALL(...)                \
-  do {                                        \
-    __VA_ARGS__;                              \
-    if (k2::internal::EnableCudaDeviceSync()) \
-      cudaDeviceSynchronize();                \
-    cudaError_t e = cudaGetLastError();       \
-    K2_CHECK_CUDA_ERROR(e);                   \
+#define K2_CUDA_SAFE_CALL(...)                                         \
+  do {                                                                 \
+    __VA_ARGS__;                                                       \
+    if (k2::internal::EnableCudaDeviceSync()) cudaDeviceSynchronize(); \
+    cudaError_t e = cudaGetLastError();                                \
+    K2_CHECK_CUDA_ERROR(e);                                            \
   } while (0)
 #else
 // Use a separate K2_CUDA_SAFE_CALL() for CPU

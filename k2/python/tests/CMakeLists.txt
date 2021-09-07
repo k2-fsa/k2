@@ -55,6 +55,7 @@ set(py_test_files
   numerical_gradient_check_test.py
   ragged_ops_test.py
   ragged_shape_test.py
+  ragged_tensor_test.py
   ragged_test.py
   random_paths_test.py
   remove_epsilon_self_loops_test.py

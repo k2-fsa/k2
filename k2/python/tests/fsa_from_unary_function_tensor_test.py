@@ -54,7 +54,8 @@ class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
             src.int_attr = torch.tensor([1, 2, 3],
                                         dtype=torch.int32,
                                         device=device)
-            src.ragged_attr = k2.RaggedInt('[[1 2 3] [5 6] []]').to(device)
+            src.ragged_attr = k2.RaggedTensor([[1, 2, 3], [5, 6],
+                                               []]).to(device)
             src.attr1 = 'src'
             src.attr2 = 'fsa'
 
@@ -81,8 +82,9 @@ class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
                     dest.int_attr,
                     torch.tensor([2, 1, 3], dtype=torch.int32, device=device)))
 
-            expected_ragged_attr = k2.RaggedInt('[ [5 6] [1 2 3] []]')
-            self.assertEqual(str(dest.ragged_attr), str(expected_ragged_attr))
+            expected_ragged_attr = k2.RaggedTensor([[5, 6], [1, 2, 3],
+                                                    []]).to(device)
+            assert dest.ragged_attr == expected_ragged_attr
 
             assert dest.attr1 == src.attr1
             assert dest.attr2 == src.attr2

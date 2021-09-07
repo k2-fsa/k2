@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "k2/python/csrc/torch/torch_util.h"
-#include "torch/extension.h"
 
 namespace k2 {
 
@@ -62,7 +61,7 @@ Dtype ScalarTypeToDtype(torch::ScalarType scalar_type) {
     case torch::kLong:
       return kInt64Dtype;
     default:
-      // TODO(fangjun): add other type when needed
+      // TODO(fangjun): add other types when needed
       K2_LOG(FATAL) << "Unsupported scalar_type: " << scalar_type;
       return kInt32Dtype;  // unreachable code
   }
@@ -79,7 +78,7 @@ torch::ScalarType ScalarTypeFromDtype(Dtype dtype) {
     case kInt64Dtype:
       return torch::kLong;
     default:
-      // TODO(fangjun): add other type when needed
+      // TODO(fangjun): add other types when needed
       K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(dtype).Name();
       return torch::ScalarType::Undefined;  // unreachable code
   }
@@ -155,11 +154,11 @@ torch::Tensor ToTorch(Tensor &tensor) {
       [saved_region = tensor.GetRegion()](void *) {}, options);
 }
 
-ContextPtr GetContext(torch::Tensor tensor) {
-  if (tensor.device().type() == torch::kCPU) return GetCpuContext();
+ContextPtr GetContext(torch::Device device) {
+  if (device.type() == torch::kCPU) return GetCpuContext();
 
-  K2_CHECK(tensor.is_cuda());
-  return GetCudaContext(tensor.device().index());
+  K2_CHECK_EQ(device.type(), torch::kCUDA);
+  return GetCudaContext(device.index());
 }
 
 }  // namespace k2

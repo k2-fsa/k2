@@ -50,13 +50,13 @@ class TestRaggedShape(unittest.TestCase):
         for device in self.devices:
             shape = k2.RaggedShape(src)
             shape = shape.to(device)
-            assert shape.num_axes() == 4
-            assert shape.dim0() == 3
+            assert shape.num_axes == 4
+            assert shape.dim0 == 3
             assert shape.tot_size(0) == 3
             assert shape.tot_size(1) == 6
             assert shape.tot_size(2) == 10
             assert shape.tot_size(3) == 16
-            assert shape.num_elements() == shape.tot_size(3)
+            assert shape.numel() == shape.tot_size(3)
 
             assert shape.max_size(1) == 3
             assert shape.max_size(2) == 3
@@ -90,35 +90,36 @@ class TestRaggedShape(unittest.TestCase):
         # test case reference:
         # https://github.com/k2-fsa/k2/blob/master/k2/csrc/ragged_shape_test.cu#L304
         shape = k2.ragged.random_ragged_shape(False, 2, 4, 0, 0)
-        assert shape.num_axes() >= 2
-        assert shape.num_elements() == 0
+        assert shape.num_axes >= 2
+        assert shape.numel() == 0
 
         shape = k2.ragged.random_ragged_shape()
-        assert shape.num_axes() >= 2
-        assert shape.num_elements() >= 0
+        assert shape.num_axes >= 2
+        assert shape.numel() >= 0
 
         shape = k2.ragged.random_ragged_shape(False, 3, 5, 100)
-        assert shape.num_axes() >= 3
-        assert shape.num_elements() >= 100
+        assert shape.num_axes >= 3
+        assert shape.numel() >= 100
 
         shape = k2.ragged.random_ragged_shape(True, 3, 5, 100)
-        assert shape.num_axes() >= 3
-        assert shape.num_elements() >= 100
+        assert shape.num_axes >= 3
+        assert shape.numel() >= 100
 
     def test_compose_ragged_shape(self):
         for device in self.devices:
-            a = k2.RaggedInt('[ [ 0 ] [ 1 2 ] ]').to(device)
-            b = k2.RaggedInt('[ [ 3 ] [ 4 5 ] [ 6 7 ] ]').to(device)
-            prod = k2.RaggedInt('[ [ [ 3 ] ] [ [ 4 5 ] [ 6 7 ] ] ]')
-            ashape = a.shape()
-            bshape = b.shape()
-            abshape = k2.ragged.compose_ragged_shapes(ashape, bshape)
+            a = k2.RaggedTensor('[ [ 0 ] [ 1 2 ] ]').to(device)
+            b = k2.RaggedTensor('[ [ 3 ] [ 4 5 ] [ 6 7 ] ]').to(device)
+            prod = k2.RaggedTensor('[ [ [ 3 ] ] [ [ 4 5 ] [ 6 7 ] ] ]').to(
+                device)
+            ashape = a.shape
+            bshape = b.shape
+            abshape = ashape.compose(bshape)
             # should also be available under k2.ragged.
-            abshape2 = k2.ragged.compose_ragged_shapes(ashape, bshape)
-            self.assertEqual(str(abshape), str(prod.shape()))
-            self.assertEqual(str(abshape2), str(prod.shape()))
-            prod2 = k2.RaggedInt(abshape2, b.values())
-            self.assertEqual(str(prod), str(prod2))
+            abshape2 = ashape.compose(bshape)
+            assert abshape == prod.shape
+            assert abshape2 == prod.shape
+            prod2 = k2.RaggedTensor(abshape2, b.data)
+            assert prod == prod2
 
 
 if __name__ == '__main__':

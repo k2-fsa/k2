@@ -43,8 +43,9 @@ class TestIndexAndSum(unittest.TestCase):
                                dtype=torch.float32,
                                requires_grad=True,
                                device=device)
-            indexes = k2.RaggedInt('[ [1 2] [0 3] [0 2 3 1 3] [] ]').to(device)
-            ans = k2.index_and_sum(src, indexes)
+            indexes = k2.RaggedTensor([[1, 2], [0, 3], [0, 2, 3, 1, 3],
+                                       []]).to(device)
+            ans = k2.ragged.index_and_sum(src, indexes)
             expected = torch.tensor([1 + 2, 0 + 3, 0 + 2 + 3 + 1 + 3,
                                      0]).to(src)
             assert torch.all(torch.eq(ans, expected)), \
@@ -68,9 +69,9 @@ class TestIndexAndSum(unittest.TestCase):
                                dtype=torch.float32,
                                requires_grad=True,
                                device=device)
-            indexes = k2.RaggedInt(
-                '[ [1 2 -1] [0 3] [-1] [0 2 3 1 3] [] ]').to(device)
-            ans = k2.index_and_sum(src, indexes)
+            indexes = k2.RaggedTensor([[1, 2, -1], [0, 3], [-1],
+                                       [0, 2, 3, 1, 3], []]).to(device)
+            ans = k2.ragged.index_and_sum(src, indexes)
             expected = torch.tensor([1 + 2, 0 + 3, 0, 0 + 2 + 3 + 1 + 3,
                                      0]).to(src)
             assert torch.allclose(ans, expected)

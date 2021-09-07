@@ -66,8 +66,9 @@ class TestDeterminize(unittest.TestCase):
 
     def test_random(self):
         while True:
-            fsa = k2.random_fsa(
-                max_symbol=20, min_num_arcs=50, max_num_arcs=500)
+            fsa = k2.random_fsa(max_symbol=20,
+                                min_num_arcs=50,
+                                max_num_arcs=500)
             fsa = k2.arc_sort(k2.connect(k2.remove_epsilon(fsa)))
             prob = fsa.properties
             # we need non-deterministic fsa
@@ -77,14 +78,16 @@ class TestDeterminize(unittest.TestCase):
         # test weight pushing tropical
         dest_max = k2.determinize(
             fsa, k2.DeterminizeWeightPushingType.kTropicalWeightPushing)
-        self.assertTrue(k2.is_rand_equivalent(
-            fsa, dest_max, log_semiring, delta=1e-3))
+        self.assertTrue(
+            k2.is_rand_equivalent(fsa, dest_max, log_semiring, delta=1e-3))
         # test weight pushing log
         dest_log = k2.determinize(
             fsa, k2.DeterminizeWeightPushingType.kLogWeightPushing)
-        self.assertTrue(k2.is_rand_equivalent(
-            fsa, dest_log, log_semiring, delta=1e-3))
+        self.assertTrue(
+            k2.is_rand_equivalent(fsa, dest_log, log_semiring, delta=1e-3))
 
+
+# TODO(fangjun): add more tests to test autograd use simple cases
 
 if __name__ == '__main__':
     unittest.main()

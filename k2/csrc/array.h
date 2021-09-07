@@ -240,6 +240,48 @@ class Array1 {
   // Copy from another array of the same dimension and type.
   void CopyFrom(const Array1<T> &src);
 
+  // The ToType() macro will be expanded to
+  //
+  //  Array1<int32_t> ToInt() const;
+  //  Array1<float> ToFloat() const;
+  //  Array1<double> ToDouble() const;
+  //  Array1<int64_t> ToLong() const;
+  //
+  // which is roughly equivalent to the following template
+  //
+  //  template<typename U>
+  //  Array1<U> To() const;
+  //
+  // The purpose is to convert Array1<T> to Array1<U>, e.g.,
+  // convert Array1<int32_t> to Array1<float>.
+  //
+  // If T == U, then the array itself is returned; otherwise,
+  // a new array is returned.
+  //
+#define ToType(type, name)                                    \
+  Array1<type> To##name() const {                             \
+    if (std::is_same<type, T>::value)                         \
+      return *reinterpret_cast<const Array1<type> *>(this);   \
+                                                              \
+    Array1<type> ans(Context(), Dim(), DtypeOf<type>::dtype); \
+    if (Dim() == 0) return ans;                               \
+                                                              \
+    type *ans_data = ans.Data();                              \
+    const T *src_data = this->Data();                         \
+    int32_t dim = Dim();                                      \
+    K2_EVAL(                                                  \
+        Context(), Dim(), copy_data,                          \
+        (int32_t i)->void { ans_data[i] = src_data[i]; });    \
+    return ans;                                               \
+  }
+
+ToType(float, Float)
+ToType(double, Double)
+ToType(int32_t, Int)
+ToType(int64_t, Long)
+
+#undef ToType
+
   // Copy this array to another array with type S; but if S == T, then it just
   // returns *this
   template <typename S>
