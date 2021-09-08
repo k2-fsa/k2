@@ -456,7 +456,7 @@ class Array1 {
 
   void Init(ContextPtr context, int32_t size, Dtype dtype) {
     K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
-    K2_CHECK_GE(size, 0) << "Array size MUST be great equal to 0, "
+    K2_CHECK_GE(size, 0) << "Array size MUST be great equal than 0, "
                          << "given :" << size;
     dtype_ = dtype;
     region_ = NewRegion(context, static_cast<size_t>(size) * ElementSize());
