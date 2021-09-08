@@ -274,9 +274,7 @@ class MultiGraphDenseIntersect {
                   backward_score =
                   state_scores_data[fsa_info.T - t][backward_state_idx];
 
-              if (forward_score + backward_score > cutoff) {
-                keep = 1;
-              }
+              if (forward_score + backward_score > cutoff) keep = 1;
             }
             keep_state_data[i] = keep;
             state_arcs_data[i] = (int32_t)keep * num_arcs;
@@ -1007,9 +1005,8 @@ class MultiGraphDenseIntersect {
 
   int32_t T_;  // == b_fsas_.MaxSize(1)
 
-  // 15 million is max_states... this is to avoid out-of-memory conditions
-  int32_t max_states_;
-  int32_t max_arcs_;
+  int32_t max_states_;  // number of max states to avoid out-of-memory
+  int32_t max_arcs_;    // number of max arcs to avoid out-of-memory
 };
 
 void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
