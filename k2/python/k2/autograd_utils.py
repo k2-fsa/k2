@@ -19,6 +19,7 @@ import torch
 
 from .fsa import Fsa
 import _k2
+import k2
 
 
 # This is a trick when we want to set the scores of an Fsa to a certain
@@ -81,10 +82,10 @@ class _PhantomIndexAndSumScoresFunction(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, out_fsa: Fsa, unused_in_fsa_scores: torch.Tensor,
-                arc_map: _k2.RaggedInt) -> torch.Tensor:
+                arc_map: k2.RaggedTensor) -> torch.Tensor:
         if False:
             # TODO(fangjun): this is for debugging only. Can be removed.
-            expected_scores = _k2.index_and_sum(
+            expected_scores = _k2.ragged.index_and_sum(
                 unused_in_fsa_scores.contiguous(), arc_map)
             assert torch.all(torch.eq(out_fsa.scores, expected_scores))
 
@@ -98,12 +99,13 @@ class _PhantomIndexAndSumScoresFunction(torch.autograd.Function):
         unused_in_fsa_scores, = ctx.saved_tensors
         arc_map = ctx.arc_map
 
-        expanded = _k2.index_select(out_fsa_scores_grad, arc_map.row_ids(1))
+        expanded = _k2.index_select(out_fsa_scores_grad,
+                                    arc_map.shape.row_ids(1))
         ans = torch.zeros(unused_in_fsa_scores.shape,
                           dtype=torch.float32,
                           device=unused_in_fsa_scores.device,
                           requires_grad=False)
-        _k2.index_add(arc_map.values(), expanded, ans)
+        _k2.index_add(arc_map.data, expanded, ans)
 
         return (
             None,  # out_fsa
@@ -126,5 +128,5 @@ def phantom_index_select_scores(fsa: Fsa, scores_value: torch.Tensor,
 
 
 def phantom_index_and_sum_scores(fsa: Fsa, scores_value: torch.Tensor,
-                                 arc_map: _k2.RaggedInt) -> None:
+                                 arc_map: k2.RaggedTensor) -> None:
     _PhantomIndexAndSumScoresFunction.apply(fsa, scores_value, arc_map)

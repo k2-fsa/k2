@@ -30,7 +30,7 @@ class TestGetBestMatchingStats(unittest.TestCase):
 
     def test(self):
         s = '[ [ [ 5 1 4 6 ] [ 5 1 2 6 ] [ 5 3 4 6 ] ] ]'
-        tokens = k2.RaggedInt(s)
+        tokens = k2.RaggedTensor(s)
         scores = torch.tensor([1, 2, 3, 4, 5, 7, 8, 6, 0, 0, 0, 0],
                               dtype=torch.float32)
         counts = torch.tensor([1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],

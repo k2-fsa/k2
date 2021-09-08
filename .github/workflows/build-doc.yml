@@ -21,8 +21,6 @@ name: Generate doc
 on:
   push:
     branches:
-    - any
-    - doc
     - master
 
 env:

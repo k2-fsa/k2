@@ -42,22 +42,23 @@ class TestCtcGraph(unittest.TestCase):
             s = '''
             [ [1 2 2] [1 2 3] ]
             '''
-            ragged_int = k2.RaggedInt(s).to(device)
+            ragged_int = k2.RaggedTensor(s).to(device)
             fsa_vec_ragged = k2.ctc_graph(ragged_int)
 
             fsa_vec = k2.ctc_graph([[1, 2, 2], [1, 2, 3]], False, device)
-            expected_str0 = '\n'.join(['0 0 0 0 0', '0 1 1 1 0', '1 2 0 0 0',
-                                       '1 1 1 0 0', '1 3 2 2 0', '2 2 0 0 0',
-                                       '2 3 2 2 0', '3 4 0 0 0', '3 3 2 0 0',
-                                       '4 4 0 0 0', '4 5 2 2 0', '5 6 0 0 0',
-                                       '5 5 2 0 0', '5 7 -1 0 0', '6 6 0 0 0',
-                                       '6 7 -1 0 0', '7'])
-            expected_str1 = '\n'.join(['0 0 0 0 0', '0 1 1 1 0', '1 2 0 0 0',
-                                       '1 1 1 0 0', '1 3 2 2 0', '2 2 0 0 0',
-                                       '2 3 2 2 0', '3 4 0 0 0', '3 3 2 0 0',
-                                       '3 5 3 3 0', '4 4 0 0 0', '4 5 3 3 0',
-                                       '5 6 0 0 0', '5 5 3 0 0', '5 7 -1 0 0',
-                                       '6 6 0 0 0', '6 7 -1 0 0', '7'])
+            expected_str0 = '\n'.join([
+                '0 0 0 0 0', '0 1 1 1 0', '1 2 0 0 0', '1 1 1 0 0',
+                '1 3 2 2 0', '2 2 0 0 0', '2 3 2 2 0', '3 4 0 0 0',
+                '3 3 2 0 0', '4 4 0 0 0', '4 5 2 2 0', '5 6 0 0 0',
+                '5 5 2 0 0', '5 7 -1 0 0', '6 6 0 0 0', '6 7 -1 0 0', '7'
+            ])
+            expected_str1 = '\n'.join([
+                '0 0 0 0 0', '0 1 1 1 0', '1 2 0 0 0', '1 1 1 0 0',
+                '1 3 2 2 0', '2 2 0 0 0', '2 3 2 2 0', '3 4 0 0 0',
+                '3 3 2 0 0', '3 5 3 3 0', '4 4 0 0 0', '4 5 3 3 0',
+                '5 6 0 0 0', '5 5 3 0 0', '5 7 -1 0 0', '6 6 0 0 0',
+                '6 7 -1 0 0', '7'
+            ])
             actual_str_ragged0 = k2.to_str_simple(fsa_vec_ragged[0].to('cpu'))
             actual_str_ragged1 = k2.to_str_simple(fsa_vec_ragged[1].to('cpu'))
             actual_str0 = k2.to_str_simple(fsa_vec[0].to('cpu'))
@@ -72,22 +73,24 @@ class TestCtcGraph(unittest.TestCase):
             s = '''
             [ [1 2 2] [1 2 3] ]
             '''
-            ragged_int = k2.RaggedInt(s).to(device)
+            ragged_int = k2.RaggedTensor(s).to(device)
             fsa_vec_ragged = k2.ctc_graph(ragged_int, True)
 
             fsa_vec = k2.ctc_graph([[1, 2, 2], [1, 2, 3]], True, device)
-            expected_str0 = '\n'.join(['0 0 0 0 0', '0 1 1 1 0', '1 2 0 0 0',
-                                       '1 1 1 0 0', '1 3 2 2 0', '2 2 0 0 0',
-                                       '2 3 2 2 0', '3 4 0 0 0', '3 3 2 0 0',
-                                       '3 5 2 2 0', '4 4 0 0 0', '4 5 2 2 0',
-                                       '5 6 0 0 0', '5 5 2 0 0', '5 7 -1 0 0',
-                                       '6 6 0 0 0', '6 7 -1 0 0', '7'])
-            expected_str1 = '\n'.join(['0 0 0 0 0', '0 1 1 1 0', '1 2 0 0 0',
-                                       '1 1 1 0 0', '1 3 2 2 0', '2 2 0 0 0',
-                                       '2 3 2 2 0', '3 4 0 0 0', '3 3 2 0 0',
-                                       '3 5 3 3 0', '4 4 0 0 0', '4 5 3 3 0',
-                                       '5 6 0 0 0', '5 5 3 0 0', '5 7 -1 0 0',
-                                       '6 6 0 0 0', '6 7 -1 0 0', '7'])
+            expected_str0 = '\n'.join([
+                '0 0 0 0 0', '0 1 1 1 0', '1 2 0 0 0', '1 1 1 0 0',
+                '1 3 2 2 0', '2 2 0 0 0', '2 3 2 2 0', '3 4 0 0 0',
+                '3 3 2 0 0', '3 5 2 2 0', '4 4 0 0 0', '4 5 2 2 0',
+                '5 6 0 0 0', '5 5 2 0 0', '5 7 -1 0 0', '6 6 0 0 0',
+                '6 7 -1 0 0', '7'
+            ])
+            expected_str1 = '\n'.join([
+                '0 0 0 0 0', '0 1 1 1 0', '1 2 0 0 0', '1 1 1 0 0',
+                '1 3 2 2 0', '2 2 0 0 0', '2 3 2 2 0', '3 4 0 0 0',
+                '3 3 2 0 0', '3 5 3 3 0', '4 4 0 0 0', '4 5 3 3 0',
+                '5 6 0 0 0', '5 5 3 0 0', '5 7 -1 0 0', '6 6 0 0 0',
+                '6 7 -1 0 0', '7'
+            ])
             actual_str_ragged0 = k2.to_str_simple(fsa_vec_ragged[0].to('cpu'))
             actual_str_ragged1 = k2.to_str_simple(fsa_vec_ragged[1].to('cpu'))
             actual_str0 = k2.to_str_simple(fsa_vec[0].to('cpu'))

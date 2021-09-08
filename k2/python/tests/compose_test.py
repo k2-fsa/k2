@@ -98,5 +98,7 @@ class TestCompose(unittest.TestCase):
         assert torch.all(torch.eq(ans.aux_labels, torch.tensor([1, 3, 5, -1])))
 
 
+# TODO(fangjun): add more tests for ragged attributes and test for CUDA.
+
 if __name__ == '__main__':
     unittest.main()

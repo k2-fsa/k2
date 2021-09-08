@@ -33,7 +33,7 @@ class Nbest(object):
 
     def __init__(self, fsa: Fsa, shape: _k2.RaggedShape) -> None:
         assert len(fsa.shape) == 3, f'fsa.shape: {fsa.shape}'
-        assert shape.num_axes() == 2, f'num_axes: {shape.num_axes()}'
+        assert shape.num_axes == 2, f'num_axes: {shape.num_axes}'
 
         assert fsa.shape[0] == shape.tot_size(1), \
                 f'{fsa.shape[0]} vs {shape.tot_size(1)}'
@@ -87,7 +87,7 @@ class Nbest(object):
 
         return Nbest(fsa=one_best, shape=self.shape)
 
-    def total_scores(self) -> _k2.RaggedFloat:
+    def total_scores(self) -> k2.RaggedTensor:
         '''Get total scores of the FSAs in this Nbest.
 
         Note:
@@ -99,9 +99,7 @@ class Nbest(object):
         '''
         scores = self.fsa.get_tot_scores(use_double_scores=True,
                                          log_semiring=False)
-        # We use single precision here since we only wrap k2.RaggedFloat.
-        # If k2.RaggedDouble is wrapped, we can use double precision here.
-        return _k2.RaggedFloat(self.shape, scores.float())
+        return k2.RaggedTensor(self.shape, scores.float())
 
     def top_k(self, k: int) -> 'Nbest':
         '''Get a subset of paths in the Nbest. The resulting Nbest is regular
@@ -123,15 +121,13 @@ class Nbest(object):
 
         # indexes contains idx01's for self.shape
         # ragged_scores.values()[indexes] is sorted
-        indexes = k2.ragged.sort_sublist(ragged_scores,
-                                         descending=True,
-                                         need_new2old_indexes=True)
+        # Note: ragged_scores is changed **in-place**
+        indexes = ragged_scores.sort_(descending=True,
+                                      need_new2old_indexes=True)
 
-        ragged_indexes = k2.RaggedInt(self.shape, indexes)
+        ragged_indexes = k2.RaggedTensor(self.shape, indexes)
 
-        padded_indexes = k2.ragged.pad(ragged_indexes,
-                                       mode='replicate',
-                                       value=-1)
+        padded_indexes = ragged_indexes.pad(mode='replicate', padding_value=-1)
         assert torch.ge(padded_indexes, 0).all(), \
                 'Some utterances contain empty ' \
                 f'n-best: {self.shape.row_splits(1)}'
@@ -141,7 +137,7 @@ class Nbest(object):
 
         top_k_fsas = k2.index_fsa(self.fsa, top_k_indexes)
 
-        top_k_shape = k2.ragged.regular_ragged_shape(dim0=self.shape.dim0(),
+        top_k_shape = k2.ragged.regular_ragged_shape(dim0=self.shape.dim0,
                                                      dim1=k)
         return Nbest(top_k_fsas, top_k_shape)
 
@@ -176,7 +172,8 @@ def whole_lattice_rescoring(lats: Fsa, G_with_epsilon_loops: Fsa) -> Fsa:
     assert hasattr(lats, 'lm_scores') is False
 
     # inverted_lats has word IDs as labels.
-    # Its aux_labels are token IDs, which is a ragged tensor k2.RaggedInt
+    # Its aux_labels are token IDs, which is a ragged tensor
+    #  k2.RaggedTensor (dtype is torch.int32)
     # if lats.aux_labels is a ragged tensor
     inverted_lats = k2.invert(lats)
     num_seqs = lats.shape[0]
@@ -238,28 +235,29 @@ def generate_nbest_list(lats: Fsa, num_paths: int) -> Nbest:
     # we use tokens instead of phones in the following code
 
     # First, extract `num_paths` paths for each sequence.
-    # paths is a k2.RaggedInt with axes [seq][path][arc_pos]
+    # paths is a k2.RaggedTensor with axes [seq][path][arc_pos]
     paths = k2.random_paths(lats, num_paths=num_paths, use_double_scores=True)
 
-    # token_seqs is a k2.RaggedInt sharing the same shape as `paths`
+    # token_seqs is a k2.RaggedTensor sharing the same shape as `paths`
     # but it contains token IDs. Note that it also contains 0s and -1s.
     # The last entry in each sublist is -1.
     # Its axes are [seq][path][token_id]
-    token_seqs = k2.index(lats.tokens, paths)
+    token_seqs = k2.ragged.index(lats.tokens, paths)
 
     # Remove epsilons (0s) and -1 from token_seqs
-    token_seqs = k2.ragged.remove_values_leq(token_seqs, 0)
+    token_seqs = token_seqs.remove_values_leq(0)
 
-    # unique_token_seqs is still a k2.RaggedInt with axes [seq][path]token_id].
-    # But then number of pathsin each sequence may be different.
-    unique_token_seqs, _, _ = k2.ragged.unique_sequences(
-        token_seqs, need_num_repeats=False, need_new2old_indexes=False)
+    # unique_token_seqs is still a k2.RaggedTensor with axes
+    # [seq][path]token_id].
+    # But then number of paths in each sequence may be different.
+    unique_token_seqs, _, _ = token_seqs.unique(need_num_repeats=False,
+                                                need_new2old_indexes=False)
 
-    seq_to_path_shape = k2.ragged.get_layer(unique_token_seqs.shape(), 0)
+    seq_to_path_shape = unique_token_seqs.shape.get_layer(0)
 
     # Remove the seq axis.
     # Now unique_token_seqs has only two axes [path][token_id]
-    unique_token_seqs = k2.ragged.remove_axis(unique_token_seqs, 0)
+    unique_token_seqs = unique_token_seqs.remove_axis(0)
 
     token_fsas = k2.linear_fsa(unique_token_seqs)
 

@@ -38,44 +38,45 @@ class TestRagged(unittest.TestCase):
             if torch.cuda.device_count() > 1:
                 torch.cuda.set_device(1)
                 cls.devices.append(torch.device('cuda', 1))
+        cls.dtypes = [torch.int32, torch.float32, torch.float64]
 
     def test_ragged_int_from_str(self):
         s = '''
         [ [1 2] [3] ]
         '''
         for device in self.devices:
-            ragged_int = k2.RaggedInt(s).to(device)
+            ragged_int = k2.RaggedTensor(s).to(device)
             print(ragged_int)
             assert torch.all(
-                torch.eq(ragged_int.values(),
-                         torch.tensor([1, 2, 3], device=device)))
-            assert ragged_int.dim0() == 2
+                torch.eq(ragged_int.data, torch.tensor([1, 2, 3],
+                                                       device=device)))
+            assert ragged_int.dim0 == 2
             assert torch.all(
-                torch.eq(ragged_int.row_splits(1),
+                torch.eq(ragged_int.shape.row_splits(1),
                          torch.tensor([0, 2, 3], device=device)))
 
-            self.assertEqual([2, 3], ragged_int.tot_sizes())
+            assert ragged_int.shape.tot_sizes() == (2, 3)
 
     def test_pickle_ragged(self):
         for device in self.devices:
             # test num_axes == 2
             raggeds = ("[ ]", "[ [ ] ]", "[ [1 2] [3] ]")
             for s in raggeds:
-                for cls in [k2.RaggedInt, k2.RaggedFloat]:
-                    ragged = cls(s).to(device)
+                for dtype in self.dtypes:
+                    ragged = k2.RaggedTensor(s, dtype).to(device)
                     torch.save(ragged, "ragged.pt")
                     ragged_reload = torch.load("ragged.pt")
-                    self.assertEqual(ragged, ragged_reload)
+                    assert ragged == ragged_reload
                     os.remove("ragged.pt")
 
             # test num_axes == 3
             raggeds = ("[ [ [ ] ] ]", "[ [ [1 2] [3] ] [ [4 5] [6] ] ]")
             for s in raggeds:
-                for cls in [k2.RaggedInt, k2.RaggedFloat]:
-                    ragged = cls(s).to(device)
+                for dtype in self.dtypes:
+                    ragged = k2.RaggedTensor(s, dtype).to(device)
                     torch.save(ragged, "ragged.pt")
                     ragged_reload = torch.load("ragged.pt")
-                    self.assertEqual(ragged, ragged_reload)
+                    assert ragged == ragged_reload
                     os.remove("ragged.pt")
 
 

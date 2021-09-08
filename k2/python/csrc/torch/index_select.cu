@@ -34,6 +34,7 @@
 #include "k2/csrc/tensor_ops.h"
 #include "k2/python/csrc/torch/index_select.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
 
@@ -58,11 +59,11 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
   K2_CHECK_EQ(src.scalar_type(), ToScalarType<T>::value)
-      << "Expeted equal type"
+      << "Expected equal type"
       << " Given : " << src.scalar_type() << ", " << ToScalarType<T>::value;
 
   K2_CHECK_EQ(index.dim(), 1)
-      << "Expected index dim: 1. Givev : " << index.dim();
+      << "Expected index dim: 1. Given : " << index.dim();
   K2_CHECK_EQ(index.scalar_type(), ToScalarType<int32_t>::value)
       << "Expected type int32_t Given : " << index.scalar_type();
   K2_CHECK(index.is_contiguous()) << "Expected contiguous";
@@ -212,8 +213,9 @@ static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
 }
 
 static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
-                                                    Ragged<int32_t> &indexes) {
+                                                    RaggedAny &ragged) {
   DeviceGuard guard(GetContext(src));
+  Ragged<int32_t> indexes = ragged.any.Specialize<int32_t>();
   auto scalar_type = src.scalar_type();
   if (src.dim() == 1) {
     switch (scalar_type) {

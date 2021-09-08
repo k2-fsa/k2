@@ -21,6 +21,7 @@
  */
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/ragged.h"
@@ -33,7 +34,7 @@
 namespace k2 {
 
 void PybindRaggedAny(py::module &m) {
-  py::class_<RaggedAny> any(m, "Tensor");
+  py::class_<RaggedAny> any(m, "RaggedTensor");
 
   //==================================================
   //      k2.ragged.Tensor methods
@@ -53,6 +54,10 @@ void PybindRaggedAny(py::module &m) {
       }),
       py::arg("s"), py::arg("dtype") = py::none(), kRaggedAnyInitStrDoc);
 
+  // TODO(fangjun): add documentation for it
+  any.def(py::init<const RaggedShape &, torch::Tensor>(), py::arg("shape"),
+          py::arg("value"), kRaggedInitFromShapeAndTensorDoc);
+
   any.def(
       "__str__",
       [](const RaggedAny &self) -> std::string { return self.ToString(); },
@@ -70,10 +75,43 @@ void PybindRaggedAny(py::module &m) {
       },
       py::arg("i"), kRaggedAnyGetItemDoc);
 
+  any.def("index",
+          static_cast<RaggedAny (RaggedAny::*)(RaggedAny &, bool)>(
+              &RaggedAny::Index),
+          py::arg("indexes"), py::arg("remove_axis") = true,
+          kRaggedAnyRaggedIndexDoc);
+
+  any.def("index",
+          static_cast<std::pair<RaggedAny, torch::optional<torch::Tensor>> (
+              RaggedAny::*)(torch::Tensor, int32_t, bool)>(&RaggedAny::Index),
+          py::arg("indexes"), py::arg("axis"),
+          py::arg("need_value_indexes") = false, kRaggedAnyTensorIndexDoc);
+
+  m.def(
+      "index",
+      [](torch::Tensor src, RaggedAny &indexes,
+         py::object default_value = py::none()) -> RaggedAny {
+        return indexes.Index(src, default_value);
+      },
+      py::arg("src"), py::arg("indexes"), py::arg("default_value") = py::none(),
+      kRaggedAnyIndexTensorWithRaggedDoc);
+
+  m.def(
+      "index_and_sum",
+      [](torch::Tensor src, RaggedAny &indexes) -> torch::Tensor {
+        return indexes.IndexAndSum(src);
+      },
+      py::arg("src"), py::arg("indexes"), kRaggedAnyIndexAndSumDoc);
+
   any.def("to",
           static_cast<RaggedAny (RaggedAny::*)(torch::Device) const>(
               &RaggedAny::To),
           py::arg("device"), kRaggedAnyToDeviceDoc);
+
+  any.def("to",
+          static_cast<RaggedAny (RaggedAny::*)(const std::string &) const>(
+              &RaggedAny::To),
+          py::arg("device"), kRaggedAnyToDeviceStrDoc);
 
   any.def("to",
           static_cast<RaggedAny (RaggedAny::*)(torch::ScalarType) const>(
@@ -205,6 +243,45 @@ void PybindRaggedAny(py::module &m) {
   SetMethodDoc(&any, "__getstate__", kRaggedAnyGetStateDoc);
   SetMethodDoc(&any, "__setstate__", kRaggedAnySetStateDoc);
 
+  any.def("remove_axis", &RaggedAny::RemoveAxis, py::arg("axis"),
+          kRaggedAnyRemoveAxisDoc);
+
+  any.def("arange", &RaggedAny::Arange, py::arg("axis"), py::arg("begin"),
+          py::arg("end"), kRaggedAnyArangeDoc);
+
+  any.def("remove_values_leq", &RaggedAny::RemoveValuesLeq, py::arg("cutoff"),
+          kRaggedAnyRemoveValuesLeqDoc);
+
+  any.def("remove_values_eq", &RaggedAny::RemoveValuesEq, py::arg("target"),
+          kRaggedAnyRemoveValuesEqDoc);
+
+  any.def("argmax", &RaggedAny::ArgMax, py::arg("initial_value") = py::none(),
+          kRaggedAnyArgMaxDoc);
+
+  any.def("max", &RaggedAny::Max, py::arg("initial_value") = py::none(),
+          kRaggedAnyMaxDoc);
+
+  any.def("min", &RaggedAny::Min, py::arg("initial_value") = py::none(),
+          kRaggedAnyMinDoc);
+
+  any.def_static("cat", &RaggedAny::Cat, py::arg("srcs"), py::arg("axis"),
+                 kRaggedCatDoc);
+  m.attr("cat") = any.attr("cat");
+
+  any.def("unique", &RaggedAny::Unique, py::arg("need_num_repeats") = false,
+          py::arg("need_new2old_indexes") = false, kRaggedAnyUniqueDoc);
+
+  any.def("normalize", &RaggedAny::Normalize, py::arg("use_log"),
+          kRaggedAnyNormalizeDoc);
+
+  any.def("pad", &RaggedAny::Pad, py::arg("mode"), py::arg("padding_value"),
+          kRaggedAnyPadDoc);
+
+  any.def("tolist", &RaggedAny::ToList, kRaggedAnyToListDoc);
+
+  any.def("sort_", &RaggedAny::Sort, py::arg("descending") = false,
+          py::arg("need_new2old_indexes") = false, kRaggedAnySortDoc);
+
   //==================================================
   //      k2.ragged.Tensor properties
   //--------------------------------------------------
@@ -248,20 +325,12 @@ void PybindRaggedAny(py::module &m) {
   // Return the underlying memory of this tensor.
   // No data is copied. Memory is shared.
   any.def_property_readonly(
-      "data",
-      [](RaggedAny &self) -> torch::Tensor {
-        Dtype t = self.any.GetDtype();
-        FOR_REAL_AND_INT32_TYPES(
-            t, T, { return ToTorch(self.any.values.Specialize<T>()); });
-
-        // Unreachable code
-        return {};
-      },
+      "data", [](RaggedAny &self) -> torch::Tensor { return self.Data(); },
       kRaggedAnyDataDoc);
 
   any.def_property_readonly(
       "shape", [](RaggedAny &self) -> RaggedShape { return self.any.shape; },
-      "Return the ``Shape`` of this tensor.");
+      kRaggedAnyShapeDoc);
 
   any.def_property_readonly(
       "grad",
@@ -308,18 +377,19 @@ void PybindRaggedAny(py::module &m) {
 
   // TODO: change the function name from "create_tensor" to "tensor"
   m.def(
-      "create_tensor",
+      "create_ragged_tensor",
       [](py::list data, py::object dtype = py::none()) -> RaggedAny {
         return RaggedAny(data, dtype);
       },
-      py::arg("data"), py::arg("dtype") = py::none(), kRaggedAnyInitDataDoc);
+      py::arg("data"), py::arg("dtype") = py::none(),
+      kCreateRaggedTensorDataDoc);
 
   m.def(
-      "create_tensor",
+      "create_ragged_tensor",
       [](const std::string &s, py::object dtype = py::none()) -> RaggedAny {
         return RaggedAny(s, dtype);
       },
-      py::arg("s"), py::arg("dtype") = py::none(), kRaggedAnyInitStrDoc);
+      py::arg("s"), py::arg("dtype") = py::none(), kCreateRaggedTensorStrDoc);
 }
 
 }  // namespace k2
