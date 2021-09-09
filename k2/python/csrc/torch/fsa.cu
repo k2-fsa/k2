@@ -36,7 +36,7 @@
 #include "k2/csrc/host_shim.h"
 #include "k2/python/csrc/torch/fsa.h"
 #include "k2/python/csrc/torch/torch_util.h"
-#include "torch/extension.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
 
@@ -109,17 +109,24 @@ static void PybindFsaUtil(py::module &m) {
   m.def(
       "fsa_to_str",
       [](Fsa &fsa, bool openfst = false,
-    std::vector<torch::Tensor> extra_labels = std::vector<torch::Tensor>(),
-    std::vector<Ragged<int32_t>> ragged_labels = std::vector<Ragged<int32_t>>())
-      -> std::string {
+         std::vector<torch::Tensor> extra_labels = std::vector<torch::Tensor>(),
+         torch::optional<std::vector<RaggedAny>> ragged = {}) -> std::string {
+        std::vector<Ragged<int32_t>> ragged_labels;
+        if (ragged.has_value()) {
+          ragged_labels.reserve(ragged.value().size());
+          for (const auto &r : ragged.value()) {
+            ragged_labels.push_back(r.any.Specialize<int32_t>());
+          }
+        }
+
         DeviceGuard guard(fsa.Context());
         std::vector<Array1<int32_t>> extra_labels_arrays(extra_labels.size());
         for (size_t i = 0; i < extra_labels.size(); i++) {
           extra_labels_arrays[i] = FromTorch<int32_t>(extra_labels[i]);
         }
         return FsaToString(fsa, openfst, extra_labels.size(),
-                           extra_labels_arrays.data(),
-                           ragged_labels.size(), ragged_labels.data());
+                           extra_labels_arrays.data(), ragged_labels.size(),
+                           ragged_labels.data());
       },
       py::arg("fsa"), py::arg("openfst") = false,
       py::arg("extra_labels") = py::none(),
@@ -128,17 +135,23 @@ static void PybindFsaUtil(py::module &m) {
   m.def(
       "fsa_from_str",
       [](const std::string &s, int num_extra_labels = 0,
-         int num_ragged_labels = 0, bool openfst = false)
-       -> std::tuple<Fsa, torch::optional<torch::Tensor>,
-                     std::vector<Ragged<int32_t> > > {
+         int num_ragged_labels = 0,
+         bool openfst =
+             false) -> std::tuple<Fsa, torch::optional<torch::Tensor>,
+                                  std::vector<RaggedAny>> {
         Array2<int32_t> extra_labels;
-        std::vector<Ragged<int32_t> > ragged_labels(num_ragged_labels);
-        Fsa fsa = FsaFromString(s, openfst,
-                                num_extra_labels, &extra_labels,
+        std::vector<Ragged<int32_t>> ragged_labels(num_ragged_labels);
+        Fsa fsa = FsaFromString(s, openfst, num_extra_labels, &extra_labels,
                                 num_ragged_labels, ragged_labels.data());
         torch::optional<torch::Tensor> tensor;
         if (num_extra_labels != 0) tensor = ToTorch(extra_labels);
-        return std::make_tuple(fsa, tensor, ragged_labels);
+
+        std::vector<RaggedAny> ragged(num_ragged_labels);
+        for (int32_t i = 0; i != num_ragged_labels; ++i) {
+          ragged[i] = RaggedAny(ragged_labels[i].Generic());
+        }
+
+        return std::make_tuple(fsa, tensor, ragged);
       },
       py::arg("s"), py::arg("num_extra_labels") = 0,
       py::arg("num_ragged_labels"), py::arg("openfst") = false,
@@ -146,7 +159,7 @@ static void PybindFsaUtil(py::module &m) {
       "`fsa` is the Fsa with 2 axes; `extra_labels` is None if num_extra_labels"
       " is 0, else a 2-D tensor of dtype torch.int32 and shape "
       "(num_extra_labels, num_arcs) if num_extra_labels > 0; otherwise None; "
-      "`ragged_labels` is a list of Ragged<int32_t> of length "
+      "`ragged_labels` is a list of RaggedAny (dtype is torch.int32) of length "
       "`num_ragged_labels`");
 
   // the following methods are for debugging only
@@ -174,12 +187,12 @@ static void PybindFsaUtil(py::module &m) {
       },
       py::arg("fsas"));
 
-  // returns Ragged<int32_t>
+  // returns RaggedAny with dtype torch.int32
   m.def(
       "get_state_batches",
-      [](FsaVec &fsas, bool transpose = true) -> Ragged<int32_t> {
+      [](FsaVec &fsas, bool transpose = true) -> RaggedAny {
         DeviceGuard guard(fsas.Context());
-        return GetStateBatches(fsas, transpose);
+        return RaggedAny(GetStateBatches(fsas, transpose).Generic());
       },
       py::arg("fsas"), py::arg("transpose") = true);
 
@@ -194,27 +207,32 @@ static void PybindFsaUtil(py::module &m) {
 
   m.def(
       "get_incoming_arcs",
-      [](FsaVec &fsas, torch::Tensor dest_states) -> Ragged<int32_t> {
+      [](FsaVec &fsas, torch::Tensor dest_states) -> RaggedAny {
         DeviceGuard guard(fsas.Context());
         Array1<int32_t> dest_states_array = FromTorch<int32_t>(dest_states);
-        return GetIncomingArcs(fsas, dest_states_array);
+        return RaggedAny(GetIncomingArcs(fsas, dest_states_array).Generic());
       },
       py::arg("fsas"), py::arg("dest_states"));
 
   m.def(
       "get_entering_arc_index_batches",
-      [](FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
-         Ragged<int32_t> &state_batches) -> Ragged<int32_t> {
+      [](FsaVec &fsas, RaggedAny &incoming_arcs,
+         RaggedAny &state_batches) -> RaggedAny {
         DeviceGuard guard(fsas.Context());
-        return GetEnteringArcIndexBatches(fsas, incoming_arcs, state_batches);
+        return RaggedAny(GetEnteringArcIndexBatches(
+                             fsas, incoming_arcs.any.Specialize<int32_t>(),
+                             state_batches.any.Specialize<int32_t>())
+                             .Generic());
       },
       py::arg("fsas"), py::arg("incoming_arcs"), py::arg("state_batches"));
 
   m.def(
       "get_leaving_arc_index_batches",
-      [](FsaVec &fsas, Ragged<int32_t> &state_batches) -> Ragged<int32_t> {
+      [](FsaVec &fsas, RaggedAny &state_batches) -> RaggedAny {
         DeviceGuard guard(fsas.Context());
-        return GetLeavingArcIndexBatches(fsas, state_batches);
+        return RaggedAny(GetLeavingArcIndexBatches(
+                             fsas, state_batches.any.Specialize<int32_t>())
+                             .Generic());
       },
       py::arg("fsas"), py::arg("state_batches"));
 
@@ -252,13 +270,14 @@ static void PybindGetForwardScores(py::module &m, const char *name) {
   //     - else it is a torch::Tensor of dtype torch.int32
   m.def(
       name,
-      [](FsaVec &fsas, Ragged<int32_t> &state_batches,
-         Ragged<int32_t> &entering_arc_batches, bool log_semiring)
+      [](FsaVec &fsas, RaggedAny &state_batches,
+         RaggedAny &entering_arc_batches, bool log_semiring)
           -> std::pair<torch::Tensor, torch::optional<torch::Tensor>> {
         DeviceGuard guard(fsas.Context());
         Array1<int32_t> entering_arcs;
         Array1<T> scores = GetForwardScores<T>(
-            fsas, state_batches, entering_arc_batches, log_semiring,
+            fsas, state_batches.any.Specialize<int32_t>(),
+            entering_arc_batches.any.Specialize<int32_t>(), log_semiring,
             log_semiring ? nullptr : &entering_arcs);
 
         torch::optional<torch::Tensor> entering_arcs_tensor;
@@ -275,9 +294,8 @@ static void PybindBackpropGetForwardScores(py::module &m, const char *name) {
   // entering_arcs is not empty only if log_semiring is false
   m.def(
       name,
-      [](FsaVec &fsas, Ragged<int32_t> &state_batches,
-         Ragged<int32_t> &leaving_arc_batches, bool log_semiring,
-         torch::optional<torch::Tensor> entering_arcs,
+      [](FsaVec &fsas, RaggedAny &state_batches, RaggedAny &leaving_arc_batches,
+         bool log_semiring, torch::optional<torch::Tensor> entering_arcs,
          torch::Tensor forward_scores,
          torch::Tensor forward_scores_deriv) -> torch::Tensor {
         DeviceGuard guard(fsas.Context());
@@ -294,7 +312,8 @@ static void PybindBackpropGetForwardScores(py::module &m, const char *name) {
           p_entering_arcs = &entering_arcs_array;
         }
         Array1<T> ans = BackpropGetForwardScores<T>(
-            fsas, state_batches, leaving_arc_batches, log_semiring,
+            fsas, state_batches.any.Specialize<int32_t>(),
+            leaving_arc_batches.any.Specialize<int32_t>(), log_semiring,
             p_entering_arcs, forward_scores_array, forward_scores_deriv_array);
 
         return ToTorch(ans);
@@ -308,12 +327,12 @@ template <typename T>
 static void PybindGetBackwardScores(py::module &m, const char *name) {
   m.def(
       name,
-      [](FsaVec &fsas, Ragged<int32_t> &state_batches,
-         Ragged<int32_t> &leaving_arc_batches,
+      [](FsaVec &fsas, RaggedAny &state_batches, RaggedAny &leaving_arc_batches,
          bool log_semiring = true) -> torch::Tensor {
         DeviceGuard guard(fsas.Context());
-        Array1<T> ans = GetBackwardScores<T>(fsas, state_batches,
-                                             leaving_arc_batches, log_semiring);
+        Array1<T> ans = GetBackwardScores<T>(
+            fsas, state_batches.any.Specialize<int32_t>(),
+            leaving_arc_batches.any.Specialize<int32_t>(), log_semiring);
 
         return ToTorch(ans);
       },
@@ -325,8 +344,8 @@ template <typename T>
 static void PybindBackpropGetBackwardScores(py::module &m, const char *name) {
   m.def(
       name,
-      [](FsaVec &fsas, Ragged<int32_t> &state_batches,
-         Ragged<int32_t> &entering_arc_batches, bool log_semiring,
+      [](FsaVec &fsas, RaggedAny &state_batches,
+         RaggedAny &entering_arc_batches, bool log_semiring,
          torch::Tensor backward_scores,
          torch::Tensor backward_scores_deriv) -> torch::Tensor {
         DeviceGuard guard(fsas.Context());
@@ -335,7 +354,8 @@ static void PybindBackpropGetBackwardScores(py::module &m, const char *name) {
             FromTorch<T>(backward_scores_deriv);
 
         Array1<T> ans = BackpropGetBackwardScores<T>(
-            fsas, state_batches, entering_arc_batches, log_semiring,
+            fsas, state_batches.any.Specialize<int32_t>(),
+            entering_arc_batches.any.Specialize<int32_t>(), log_semiring,
             backward_scores_array, backward_scores_deriv_array);
 
         return ToTorch(ans);
@@ -444,16 +464,16 @@ static void PybindBackpropGetArcPost(py::module &m, const char *name) {
   //   - backward_scores_deriv
   m.def(
       name,
-      [](FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
-         torch::Tensor arc_post_deriv)
+      [](FsaVec &fsas, RaggedAny &incoming_arcs, torch::Tensor arc_post_deriv)
           -> std::pair<torch::Tensor, torch::Tensor> {
         DeviceGuard guard(fsas.Context());
         Array1<T> arc_post_deriv_array = FromTorch<T>(arc_post_deriv);
         Array1<T> forward_scores_deriv;
         Array1<T> backward_scores_deriv;
 
-        BackpropGetArcPost<T>(fsas, incoming_arcs, arc_post_deriv_array,
-                              &forward_scores_deriv, &backward_scores_deriv);
+        BackpropGetArcPost<T>(fsas, incoming_arcs.any.Specialize<int32_t>(),
+                              arc_post_deriv_array, &forward_scores_deriv,
+                              &backward_scores_deriv);
         return std::make_pair(ToTorch(forward_scores_deriv),
                               ToTorch(backward_scores_deriv));
       },
@@ -472,14 +492,14 @@ static void PybindBackpropGetArcPost(py::module &m, const char *name) {
  */
 template <typename T>
 static torch::Tensor GetTotScoresTropicalBackward(
-    FsaVec &fsas, const Ragged<int32_t> &best_path_arc_indexes,
+    FsaVec &fsas, const RaggedAny &best_path_arc_indexes,
     torch::Tensor tot_scores_grad) {
   DeviceGuard guard(fsas.Context());
   K2_CHECK_EQ(fsas.NumAxes(), 3);
-  K2_CHECK_EQ(best_path_arc_indexes.NumAxes(), 2);
+  K2_CHECK_EQ(best_path_arc_indexes.any.NumAxes(), 2);
 
   int32_t num_fsas = fsas.Dim0();
-  K2_CHECK_EQ(best_path_arc_indexes.Dim0(), num_fsas);
+  K2_CHECK_EQ(best_path_arc_indexes.any.Dim0(), num_fsas);
   K2_CHECK_EQ(tot_scores_grad.sizes()[0], static_cast<int64_t>(num_fsas));
   K2_CHECK_EQ(tot_scores_grad.dim(), 1);
   K2_CHECK_EQ(tot_scores_grad.scalar_type(), ToScalarType<T>::value);
@@ -496,11 +516,13 @@ static torch::Tensor GetTotScoresTropicalBackward(
 
   const int32_t *fsas_row_ids1 = fsas.RowIds(1).Data();
   const int32_t *fsas_row_ids2 = fsas.RowIds(2).Data();
+  // Even if Specialize<int32_t>() returns a temp variable, but
+  // the underlying Data() is still valid after the temp goes out of scope.
   const int32_t *best_path_arc_indexes_data =
-      best_path_arc_indexes.values.Data();
+      best_path_arc_indexes.any.Specialize<int32_t>().values.Data();
 
   K2_EVAL(
-      fsas.Context(), best_path_arc_indexes.NumElements(), lambda,
+      fsas.Context(), best_path_arc_indexes.any.NumElements(), lambda,
       (int32_t best_path_arc_idx012)->void {
         int32_t arc_idx012 = best_path_arc_indexes_data[best_path_arc_idx012];
         int32_t state_idx01 = fsas_row_ids2[arc_idx012];
@@ -601,15 +623,15 @@ static void PybindRandomPaths(py::module &m, const char *name) {
   m.def(
       name,
       [](FsaVec &fsas, torch::Tensor arc_cdf, int32_t num_paths,
-         torch::Tensor tot_scores,
-         Ragged<int32_t> &state_batches) -> Ragged<int32_t> {
+         torch::Tensor tot_scores, RaggedAny &state_batches) -> RaggedAny {
         DeviceGuard guard(fsas.Context());
         Array1<T> arc_cdf_array = FromTorch<T>(arc_cdf);
         Array1<T> tot_scores_array = FromTorch<T>(tot_scores);
 
-        Ragged<int32_t> ans = RandomPaths(fsas, arc_cdf_array, num_paths,
-                                          tot_scores_array, state_batches);
-        return ans;
+        Ragged<int32_t> ans =
+            RandomPaths(fsas, arc_cdf_array, num_paths, tot_scores_array,
+                        state_batches.any.Specialize<int32_t>());
+        return RaggedAny(ans.Generic());
       },
       py::arg("fsas"), py::arg("arc_cdf"), py::arg("num_paths"),
       py::arg("tot_scores"), py::arg("state_batches"));
@@ -648,8 +670,8 @@ static void PybindRandomFsa(py::module &m) {
   m.def(
       "random_fsa_vec",
       [](int32_t min_num_fsas, int32_t max_num_fsas, bool acyclic,
-         int32_t max_symbol, int32_t min_num_arcs, int32_t max_num_arcs)
-      -> FsaVec {
+         int32_t max_symbol, int32_t min_num_arcs,
+         int32_t max_num_arcs) -> FsaVec {
         return RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
                             min_num_arcs, max_num_arcs);
       },

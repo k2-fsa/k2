@@ -80,9 +80,9 @@ class Fsa(object):
 
     aux_labels
      A 1-D `torch.Tensor` of dtype `torch.int32` or a ragged tensor with type
-     `_k2.RaggedInt`. It contains auxiliary labels per arc.  If it's a tensor,
+     `k2.RaggedTensor`. It contains auxiliary labels per arc.  If it's a tensor,
      `aux_labels.numel()` equals to the number of arcs.  if it's
-     `_k2.RaggedInt`, then `aux_labels.dim0()` equals to the number of arcs.
+     `k2.RaggedTensor`, then `aux_labels.dim0()` equals to the number of arcs.
 
     aux_symbols
       An instance of `k2.SymbolTable`. It maps an entry in
@@ -100,14 +100,14 @@ class Fsa(object):
       When an attribute is an instance of `torch.Tensor`, its `shape[0]`
       has to be equal to the number arcs. Otherwise, an assertion error
       will be thrown.
-      When an attribute is an instance of `_k2.RaggedInt`, its `dim0()`
+      When an attribute is an instance of `k2.RaggedTensor`, its `dim0`
       has to be equal to the number arcs. Otherwise, an assertion error
       will be thrown.
 
     NOTE:
       `symbols` and `aux_symbols` are symbol tables, while `labels`
       is instances of `torch.Tensor` and `aux_labels` is instances of
-      `torch.Tensor` or `_k2.RaggedInt`.
+      `torch.Tensor` or `k2.RaggedTensor`.
 
       Implementation note: most of this class's attributes are not
       real attributes in the object's dict; the real attributes are
@@ -119,7 +119,7 @@ class Fsa(object):
     def __init__(
             self,
             arcs: Union[torch.Tensor, RaggedArc],
-            aux_labels: Optional[Union[torch.Tensor, _k2.RaggedInt]] = None,
+            aux_labels: Optional[Union[torch.Tensor, k2.RaggedTensor]] = None,
             properties=None) -> None:
         '''Build an Fsa from a tensor with optional aux_labels.
 
@@ -140,7 +140,7 @@ class Fsa(object):
           aux_labels:
             Optional. If not None, it associates an aux_label with every arc,
             so it has as many rows as `tensor`. It is a 1-D tensor of dtype
-            `torch.int32` or `_k2.RaggedInt` whose `dim0()` equals to the
+            `torch.int32` or `k2.RaggedTensor` whose `dim0` equals to the
             number of arcs.
 
           properties:
@@ -165,8 +165,8 @@ class Fsa(object):
         #     attribute values have to be equal to the number of arcs
         #     in the FSA.  There are a couple of standard ones, 'aux_labels'
         #     (present for transducers), and 'scores'. It also saves
-        #     attribute values of type _k2.RaggedInt, e.g. `aux_labels` if
-        #     it has type of _k2.RaggedInt instead of torch.Tensor.
+        #     attribute values of type k2.RaggedTensor, e.g. `aux_labels` if
+        #     it has type of k2.RaggedTensor instead of torch.Tensor.
         #
         # - `_non_tensor_attr`
         #     It saves non-tensor attributes, e.g., :class:`SymbolTable`.
@@ -267,7 +267,7 @@ class Fsa(object):
         for name, value in sorted(self.named_tensor_attr(include_scores=False)):
             if isinstance(value, torch.Tensor) and value.dtype == torch.int32:
                 extra_labels.append(value)
-            elif isinstance(value, _k2.RaggedInt):
+            elif isinstance(value, k2.RaggedTensor):
                 ragged_labels.append(value)
 
         if self.arcs.num_axes() == 2:
@@ -408,9 +408,9 @@ class Fsa(object):
                 # to integer patterns here.
                 self.arcs.values()[:, -1] = _k2.as_int(value.detach())
                 self._invalidate_cache_()
-        elif isinstance(value, _k2.RaggedInt):
-            assert value.dim0() == self.arcs.values().shape[0], \
-                    f'value.dim0(): {value.dim0()}, shape[0]: {self.arcs.values().shape[0]}'  # noqa
+        elif isinstance(value, k2.RaggedTensor):
+            assert value.dim0 == self.arcs.values().shape[0], \
+                    f'value.dim0: {value.dim0}, shape[0]: {self.arcs.values().shape[0]}'  # noqa
             self._tensor_attr[name] = value
         else:
             self._non_tensor_attr[name] = value
@@ -520,7 +520,7 @@ class Fsa(object):
         else:
             raise AttributeError('No such attribute in Fsa: ' + name)
 
-    def _get_state_batches(self) -> _k2.RaggedInt:
+    def _get_state_batches(self) -> k2.RaggedTensor:
         '''Get (and compute if necessary) cached property `state_batches`.
 
         For use by internal k2 code.  Used in many algorithms.
@@ -540,7 +540,7 @@ class Fsa(object):
             cache[name] = _k2.get_dest_states(self.arcs, as_idx01=True)
         return cache[name]
 
-    def _get_incoming_arcs(self) -> _k2.RaggedInt:
+    def _get_incoming_arcs(self) -> k2.RaggedTensor:
         '''Get (and compute if necessary) cached property self.incoming_arcs.
 
         For use by internal k2 code, relates to best-path
@@ -551,7 +551,7 @@ class Fsa(object):
                                                 self._get_dest_states())
         return cache[name]
 
-    def _get_entering_arc_batches(self) -> _k2.RaggedInt:
+    def _get_entering_arc_batches(self) -> k2.RaggedTensor:
         '''Get (and compute if necessary) cached property
         `self.entering_arc_batches`.
 
@@ -565,7 +565,7 @@ class Fsa(object):
                 state_batches=self._get_state_batches())
         return cache[name]
 
-    def _get_leaving_arc_batches(self) -> _k2.RaggedInt:
+    def _get_leaving_arc_batches(self) -> k2.RaggedTensor:
         '''Get (and compute if necessary) cached property
         `self.leaving_arc_batches`.
 
@@ -1027,9 +1027,9 @@ class Fsa(object):
             if isinstance(value, torch.Tensor):
                 setattr(out_fsa, name, value[start:end])
             else:
-                assert isinstance(value, _k2.RaggedInt)
+                assert isinstance(value, k2.RaggedTensor)
                 setattr(out_fsa, name,
-                        _k2.ragged_int_arange(value, 0, start, end))
+                        value.arange(axis=0, begin=start, end=end))
 
         for name, value in self.named_non_tensor_attr():
             setattr(out_fsa, name, value)
@@ -1161,7 +1161,7 @@ class Fsa(object):
             if isinstance(value, torch.Tensor):
                 setattr(ans, name, value.detach())
             else:
-                assert isinstance(value, k2.RaggedInt)
+                assert isinstance(value, k2.RaggedTensor)
                 # For ragged tensors, they are copied over.
                 # Caution: Deep copy is not used!
                 setattr(ans, name, value)
@@ -1315,7 +1315,7 @@ class Fsa(object):
 
            src_state dest_state label [aux_label1 aux_label2...] [cost]
 
-       (the cost defaults to 0.0 if not present).
+        (the cost defaults to 0.0 if not present).
 
         The line for the final state consists of two fields::
 
@@ -1388,18 +1388,18 @@ class Fsa(object):
         assert scores.dtype == torch.float32
         assert scores.numel() == self.scores.numel()
 
-        ragged_scores = k2.ragged.RaggedFloat(
+        ragged_scores = k2.RaggedTensor(
             self.arcs.shape().to(scores.device), scores)
-        ragged_scores = k2.ragged.normalize_scores(ragged_scores, use_log=True)
+        ragged_scores = ragged_scores.normalize(use_log=True)
 
         # Note we use `to` here since `scores` and `self.scores` may not
         # be on the same device.
-        self.scores = ragged_scores.values.to(self.scores.device)
+        self.scores = ragged_scores.data.to(self.scores.device)
 
     def convert_attr_to_ragged_(self, name: str,
                                 remove_eps: bool = True) -> 'Fsa':
         '''Convert the attribute given by `name` from a 1-D torch.tensor
-        to a k2.RaggedInt.
+        to a k2.RaggedTensor.
 
         Caution:
           This function ends with an underscore, meaning it changes the FSA
@@ -1423,9 +1423,9 @@ class Fsa(object):
 
         shape = k2.ragged.regular_ragged_shape(dim0=value.numel(),
                                                dim1=1).to(value.device)
-        new_value = k2.RaggedInt(shape, value.contiguous())
+        new_value = k2.RaggedTensor(shape, value.contiguous())
         if remove_eps:
-            new_value = k2.ragged.remove_values_eq(new_value, target=0)
+            new_value = new_value.remove_values_eq(target=0)
 
         setattr(self, name, new_value)
 

@@ -50,7 +50,8 @@ class TestExpandArcs(unittest.TestCase):
                 src.int_attr = torch.tensor([1, 2, 3],
                                             dtype=torch.int32,
                                             device=device)
-                src.ragged_attr = k2.RaggedInt('[[1 2 3] [5 6] []]').to(device)
+                src.ragged_attr = k2.RaggedTensor([[1, 2, 3], [5, 6],
+                                                   []]).to(device)
 
                 src.attr1 = 'src'
                 src.attr2 = 'fsa'
@@ -126,8 +127,8 @@ class TestExpandArcs(unittest.TestCase):
                 src.int_attr = torch.tensor([1, 2, 3],
                                             dtype=torch.int32,
                                             device=device)
-                src.ragged_attr = k2.RaggedInt('[[1 2 3] [5 6] [1]]').to(
-                    device)
+                src.ragged_attr = k2.RaggedTensor([[1, 2, 3], [5, 6],
+                                                   [1]]).to(device)
 
                 src.attr1 = 'src'
                 src.attr2 = 'fsa'

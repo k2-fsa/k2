@@ -51,9 +51,9 @@ class TestCat(unittest.TestCase):
             fsa1.non_tensor_attr1 = 'fsa1'
 
             fsa1.ragged_tensor_attr1 = \
-                    k2.RaggedInt('[[1 2] [] [3 4 5]]').to(device)
+                    k2.RaggedTensor('[[1 2] [] [3 4 5]]').to(device)
             fsa1.ragged_tensor_attr2 = \
-                    k2.RaggedInt('[[1 20] [30] [5]]').to(device)
+                    k2.RaggedTensor('[[1 20] [30] [5]]').to(device)
 
             fsa2 = k2.Fsa.from_str(s).to(device)
             fsa2.tensor_attr1 = torch.tensor([10, 20, 30]).to(device)
@@ -62,9 +62,9 @@ class TestCat(unittest.TestCase):
             fsa2.non_tensor_attr2 = 'fsa2'
 
             fsa2.ragged_tensor_attr1 = \
-                    k2.RaggedInt('[[3] [4 5] [6 7]]').to(device)
+                    k2.RaggedTensor('[[3] [4 5] [6 7]]').to(device)
             fsa2.ragged_tensor_attr3 = \
-                    k2.RaggedInt('[[1 0] [0] [-1]]').to(device)
+                    k2.RaggedTensor('[[1 0] [0] [-1]]').to(device)
 
             fsa_vec1 = k2.create_fsa_vec([fsa1])
             fsa_vec2 = k2.create_fsa_vec([fsa2])
@@ -81,8 +81,14 @@ class TestCat(unittest.TestCase):
                 torch.eq(fsa_vec.tensor_attr1,
                          torch.tensor([1, 2, 3, 10, 20, 30]).to(device)))
 
-            assert str(fsa_vec.ragged_tensor_attr1) == \
-                    str(k2.RaggedInt('[[1 2] [] [3 4 5] [3] [4 5] [6 7]]'))
+            assert fsa_vec.ragged_tensor_attr1 == k2.RaggedTensor([
+                [1, 2],
+                [],
+                [3, 4, 5],
+                [3],
+                [4, 5],
+                [6, 7],
+            ]).to(device)
 
             assert not hasattr(fsa_vec, 'ragged_tensor_attr2')
             assert not hasattr(fsa_vec, 'ragged_tensor_attr3')

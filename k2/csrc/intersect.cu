@@ -847,7 +847,7 @@ class DeviceIntersector {
         constexpr int log_thread_group_size = 2,
             thread_group_size = (1 << log_thread_group_size);  // 4
         static_assert(thread_group_size > 1, "Bad thread_group_size");
-        // the "* 2" below is becaus pairs of thread groups handle the
+        // the "* 2" below is because pairs of thread groups handle the
         // (beginning, end) of ranges of arcs in a_fsas_; and we need
         // these groups to be within the same warp so we can sync them.
         static_assert(thread_group_size * 2 <= 32,
@@ -1049,7 +1049,7 @@ class DeviceIntersector {
             // The following linear search will probably be faster than
             // logarithmic search in the normal case where there are not many
             // matching arcs.  In the unusual case where there are many matching
-            // arcs per setate, it won't dominate the running time of the entire
+            // arcs per state, it won't dominate the running time of the entire
             // algorithm.
             while (range_end < a_end_arc_idx012 &&
                    uint32_t(a_arcs_data[range_end].label) == label)

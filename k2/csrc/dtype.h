@@ -25,9 +25,8 @@
 
 namespace k2 {
 
-
-class Any {  };  // We use this to represent "generic type" or "type not known"
-class Arc;       // Forward declaration
+class Any {};  // We use this to represent "generic type" or "type not known"
+class Arc;     // Forward declaration
 
 enum BaseType : int8_t {  // BaseType is the *general type*
   kUnknownBase = 0,       // e.g. can use this for structs
@@ -74,7 +73,7 @@ extern const DtypeTraits g_dtype_traits_array[];
 
 // It's just an enum, we can use TraitsOf(dtype).NumBytes() and so on..
 enum class Dtype {
-  kAnyDtype,   // for when dtype is unknown because it's a generic tensor
+  kAnyDtype,  // for when dtype is unknown because it's a generic tensor
   kHalfDtype,
   kFloatDtype,
   kDoubleDtype,
@@ -87,8 +86,8 @@ enum class Dtype {
   kUint32Dtype,
   kUint64Dtype,
   kArcDtype,
-  kOtherDtype,   // for when dtype is something we don't have an enum value for,
-                 // e.g. the dtype of a pointer.
+  kOtherDtype,  // for when dtype is something we don't have an enum value for,
+                // e.g. the dtype of a pointer.
 };
 
 // This is needed because the comma in std::is_same<T,Any>::value prevents it
@@ -195,7 +194,6 @@ struct DtypeOf {
                                            // dtypes.
 };
 
-
 /*
   Evaluates Expr for TypeName being all dtypes.  E.g.
      FOR_ALL_DTYPES(t.GetDtype(), T, SomeFuncCall<T>(a,b,c..));
@@ -249,7 +247,7 @@ struct DtypeOf {
             << " not covered in switch statement. Op not supported for " \
                "this type?";                                             \
         break;                                                           \
-    }                                                                   \
+    }                                                                    \
   } while (0)
 
 #define FOR_REAL_AND_INT32_TYPES(DtypeValue, TypeName, ...)              \
@@ -279,8 +277,7 @@ struct DtypeOf {
     }                                                                    \
   } while (0)
 
-
-#define FOR_SCALAR_TYPES(DtypeValue, TypeName, ...)                      \
+#define FOR_REAL_TYPES(DtypeValue, TypeName, ...)                        \
   do {                                                                   \
     switch (DtypeValue) {                                                \
       case kFloatDtype: {                                                \
@@ -293,31 +290,51 @@ struct DtypeOf {
         __VA_ARGS__;                                                     \
         break;                                                           \
       }                                                                  \
-      case kInt16Dtype: {                                                \
-        using TypeName = int16_t;                                        \
-        __VA_ARGS__;                                                     \
-        break;                                                           \
-      }                                                                  \
-      case kInt32Dtype: {                                                \
-        using TypeName = int32_t;                                        \
-        __VA_ARGS__;                                                     \
-        break;                                                           \
-      }                                                                  \
-      case kInt64Dtype: {                                                \
-        using TypeName = int64_t;                                        \
-        __VA_ARGS__;                                                     \
-        break;                                                           \
-      }                                                                  \
       default:                                                           \
         K2_LOG(FATAL)                                                    \
-           << "Dtype " << TraitsOf(DtypeValue).Name()                    \
-           << " not covered in switch statement.  Op not supported for " \
-              "this type?";                                              \
+            << "Dtype " << TraitsOf(DtypeValue).Name()                   \
+            << " not covered in switch statement. Op not supported for " \
+               "this type?";                                             \
         break;                                                           \
-    }                                                                   \
+    }                                                                    \
   } while (0)
 
-
+#define FOR_SCALAR_TYPES(DtypeValue, TypeName, ...)                       \
+  do {                                                                    \
+    switch (DtypeValue) {                                                 \
+      case kFloatDtype: {                                                 \
+        using TypeName = float;                                           \
+        __VA_ARGS__;                                                      \
+        break;                                                            \
+      }                                                                   \
+      case kDoubleDtype: {                                                \
+        using TypeName = double;                                          \
+        __VA_ARGS__;                                                      \
+        break;                                                            \
+      }                                                                   \
+      case kInt16Dtype: {                                                 \
+        using TypeName = int16_t;                                         \
+        __VA_ARGS__;                                                      \
+        break;                                                            \
+      }                                                                   \
+      case kInt32Dtype: {                                                 \
+        using TypeName = int32_t;                                         \
+        __VA_ARGS__;                                                      \
+        break;                                                            \
+      }                                                                   \
+      case kInt64Dtype: {                                                 \
+        using TypeName = int64_t;                                         \
+        __VA_ARGS__;                                                      \
+        break;                                                            \
+      }                                                                   \
+      default:                                                            \
+        K2_LOG(FATAL)                                                     \
+            << "Dtype " << TraitsOf(DtypeValue).Name()                    \
+            << " not covered in switch statement.  Op not supported for " \
+               "this type?";                                              \
+        break;                                                            \
+    }                                                                     \
+  } while (0)
 
 }  // namespace k2
 

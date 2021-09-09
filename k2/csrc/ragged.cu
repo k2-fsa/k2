@@ -170,7 +170,7 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
 }
 
 RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
-                               int32_t *value_offset /*= nullptr*/) {
+                               int32_t *value_offset /*= nullptr*/) const {
   NVTX_RANGE(K2_FUNC);
   // only support `axis == 0` for now
   K2_CHECK_EQ(axis, 0);

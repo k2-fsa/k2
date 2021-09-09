@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -31,6 +32,7 @@
 #include "k2/csrc/rm_epsilon.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
 
@@ -57,49 +59,57 @@ static void PybindTopSort(py::module &m) {
 static void PybindLinearFsa(py::module &m) {
   m.def(
       "linear_fsa",
-      [](const std::vector<int32_t> &labels, int32_t gpu_id = -1) -> Fsa {
-        ContextPtr context;
-        if (gpu_id < 0)
-          context = GetCpuContext();
-        else
-          context = GetCudaContext(gpu_id);
+      [](RaggedAny &labels, torch::optional<torch::Device> = {}) -> FsaVec {
+        DeviceGuard guard(labels.any.Context());
+        return LinearFsas(labels.any.Specialize<int32_t>());
+      },
+      py::arg("labels"), py::arg("device") = py::none());
+
+  m.def(
+      "linear_fsa",
+      [](const std::vector<int32_t> &labels,
+         torch::optional<torch::Device> device = {}) -> Fsa {
+        ContextPtr context =
+            GetContext(device.value_or(torch::Device(torch::kCPU)));
         DeviceGuard guard(context);
         Array1<int32_t> array(context, labels);
         return LinearFsa(array);  //
       },
-      py::arg("labels"), py::arg("gpu_id") = -1,
-      R"(
-  If gpu_id is -1, the returned FSA is on CPU.
-  If gpu_id >= 0, the returned FSA is on the specified GPU.
-  )");
+      py::arg("labels"), py::arg("device") = py::none());
+
+  m.def(
+      "linear_fsa",
+      [](const std::vector<int32_t> &labels,
+         torch::optional<std::string> device = {}) -> Fsa {
+        ContextPtr context = GetContext(torch::Device(device.value_or("cpu")));
+        DeviceGuard guard(context);
+        Array1<int32_t> array(context, labels);
+        return LinearFsa(array);  //
+      },
+      py::arg("labels"), py::arg("device") = py::none());
 
   m.def(
       "linear_fsa",
       [](const std::vector<std::vector<int32_t>> &labels,
-         int32_t gpu_id = -1) -> FsaVec {
-        ContextPtr context;
-        if (gpu_id < 0)
-          context = GetCpuContext();
-        else
-          context = GetCudaContext(gpu_id);
-
+         torch::optional<torch::Device> device = {}) -> FsaVec {
+        ContextPtr context =
+            GetContext(device.value_or(torch::Device(torch::kCPU)));
         DeviceGuard guard(context);
         Ragged<int32_t> ragged = CreateRagged2<int32_t>(labels).To(context);
         return LinearFsas(ragged);
       },
-      py::arg("labels"), py::arg("gpu_id") = -1,
-      R"(
-  If gpu_id is -1, the returned FsaVec is on CPU.
-  If gpu_id >= 0, the returned FsaVec is on the specified GPU.
-      )");
+      py::arg("labels"), py::arg("device") = py::none());
 
   m.def(
       "linear_fsa",
-      [](const Ragged<int32_t> &labels, int32_t /*unused_gpu_id*/) -> FsaVec {
-        DeviceGuard guard(labels.Context());
-        return LinearFsas(labels);
+      [](const std::vector<std::vector<int32_t>> &labels,
+         torch::optional<std::string> device = {}) -> FsaVec {
+        ContextPtr context = GetContext(torch::Device(device.value_or("cpu")));
+        DeviceGuard guard(context);
+        Ragged<int32_t> ragged = CreateRagged2<int32_t>(labels).To(context);
+        return LinearFsas(ragged);
       },
-      py::arg("labels"), py::arg("gpu_id"));
+      py::arg("labels"), py::arg("device") = py::none());
 }
 
 static void PybindIntersect(py::module &m) {
@@ -302,7 +312,7 @@ static void PybindShortestPath(py::module &m) {
   m.def(
       "shortest_path",
       [](FsaVec &fsas,
-         torch::Tensor entering_arcs) -> std::pair<Fsa, Ragged<int32_t>> {
+         torch::Tensor entering_arcs) -> std::pair<Fsa, RaggedAny> {
         DeviceGuard guard(fsas.Context());
         Array1<int32_t> entering_arcs_array = FromTorch<int32_t>(entering_arcs);
 
@@ -310,7 +320,7 @@ static void PybindShortestPath(py::module &m) {
             ShortestPath(fsas, entering_arcs_array);
 
         FsaVec out = FsaVecFromArcIndexes(fsas, best_path_arc_indexes);
-        return std::make_pair(out, best_path_arc_indexes);
+        return std::make_pair(out, RaggedAny(best_path_arc_indexes.Generic()));
       },
       py::arg("fsas"), py::arg("entering_arcs"));
 }
@@ -356,51 +366,49 @@ static void PybindUnion(py::module &m) {
 static void PybindRemoveEpsilon(py::module &m) {
   m.def(
       "remove_epsilon_host",
-      [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+      [](FsaOrVec &src) -> std::pair<FsaOrVec, RaggedAny> {
         DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilonHost(src, &dest, &arc_map);
-        return std::make_pair(dest, arc_map);
+        return std::make_pair(dest, RaggedAny(arc_map.Generic()));
       },
       py::arg("src"));
   m.def(
       "remove_epsilon_device",
-      [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+      [](FsaOrVec &src) -> std::pair<FsaOrVec, RaggedAny> {
         DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilonDevice(src, &dest, &arc_map);
-        return std::make_pair(dest, arc_map);
+        return std::make_pair(dest, RaggedAny(arc_map.Generic()));
       },
       py::arg("src"));
   m.def(
       "remove_epsilon",
-      [](FsaOrVec &src,
-         int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+      [](FsaOrVec &src, int32_t properties) -> std::pair<FsaOrVec, RaggedAny> {
         DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilon(src, properties, &dest, &arc_map);
-        return std::make_pair(dest, arc_map);
+        return std::make_pair(dest, RaggedAny(arc_map.Generic()));
       },
       py::arg("src"), py::arg("properties"));
   m.def(
       "remove_epsilon_and_add_self_loops",
-      [](FsaOrVec &src,
-         int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+      [](FsaOrVec &src, int32_t properties) -> std::pair<FsaOrVec, RaggedAny> {
         DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilonAndAddSelfLoops(src, properties, &dest, &arc_map);
-        return std::make_pair(dest, arc_map);
+        return std::make_pair(dest, RaggedAny(arc_map.Generic()));
       },
       py::arg("src"), py::arg("properties"));
 }
 
 static void PybindDeterminize(py::module &m) {
-  py::enum_<DeterminizeWeightPushingType>(m,
-      "DeterminizeWeightPushingType", py::arithmetic())
+  py::enum_<DeterminizeWeightPushingType>(m, "DeterminizeWeightPushingType",
+                                          py::arithmetic())
       .value("kTropicalWeightPushing",
              DeterminizeWeightPushingType::kTropicalWeightPushing)
       .value("kLogWeightPushing",
@@ -411,12 +419,12 @@ static void PybindDeterminize(py::module &m) {
   m.def(
       "determinize",
       [](FsaOrVec &src, DeterminizeWeightPushingType weight_pushing_type)
-      -> std::pair<FsaOrVec, Ragged<int32_t>> {
+          -> std::pair<FsaOrVec, RaggedAny> {
         DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         Determinize(src, weight_pushing_type, &dest, &arc_map);
-        return std::make_pair(dest, arc_map);
+        return std::make_pair(dest, RaggedAny(arc_map.Generic()));
       },
       py::arg("src"), py::arg("weight_pushing_type"));
 }
@@ -477,10 +485,15 @@ static void PybindExpandArcs(py::module &m) {
   // See doc-string below.
   m.def(
       "expand_arcs",
-      [](FsaOrVec &fsas, std::vector<Ragged<int32_t>> &ragged_labels)
+      [](FsaOrVec &fsas, std::vector<RaggedAny> &ragged)
           -> std::tuple<FsaOrVec, std::vector<torch::Tensor>, torch::Tensor> {
         DeviceGuard guard(fsas.Context());
+        std::vector<Ragged<int32_t>> ragged_labels(ragged.size());
         int32_t ragged_labels_size = ragged_labels.size();
+        for (int32_t i = 0; i != ragged_labels_size; ++i) {
+          ragged_labels[i] = ragged[i].any.Specialize<int32_t>();
+        }
+
         K2_CHECK_NE(ragged_labels_size, 0);
         K2_CHECK_LE(ragged_labels_size, 6);  // see SmallVec<...,6> below.
         ContextPtr c = fsas.Context();
@@ -677,8 +690,8 @@ static void PybindReplaceFsa(py::module &m) {
                         torch::optional<torch::Tensor>> {
         DeviceGuard guard(index.Context());
         Array1<int32_t> arc_map_src, arc_map_index;
-        FsaOrVec out = ReplaceFsa(src, index, symbol_begin_range,
-                                  &arc_map_src, &arc_map_index);
+        FsaOrVec out = ReplaceFsa(src, index, symbol_begin_range, &arc_map_src,
+                                  &arc_map_index);
         torch::optional<torch::Tensor> src_map_tensor, index_map_tensor;
         src_map_tensor = ToTorch(arc_map_src);
         index_map_tensor = ToTorch(arc_map_index);
@@ -690,70 +703,91 @@ static void PybindReplaceFsa(py::module &m) {
 static void PybindCtcGraph(py::module &m) {
   m.def(
       "ctc_graph",
+      [](RaggedAny &symbols, torch::optional<torch::Device> = {},
+         bool modified = false,
+         bool need_arc_map =
+             true) -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(symbols.any.Context());
+        Array1<int32_t> arc_map;
+        FsaVec graph = CtcGraphs(symbols.any.Specialize<int32_t>(), modified,
+                                 need_arc_map ? &arc_map : nullptr);
+        torch::optional<torch::Tensor> tensor;
+        if (need_arc_map) tensor = ToTorch(arc_map);
+        return std::make_pair(graph, tensor);
+      },
+      py::arg("symbols"), py::arg("device") = py::none(),
+      py::arg("modified") = false, py::arg("need_arc_map") = true);
+
+  m.def(
+      "ctc_graph",
       [](const std::vector<std::vector<int32_t>> &symbols,
-          int32_t gpu_id = -1, bool modified = false, bool need_arc_map = true)
-        -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
-        ContextPtr context;
-        if (gpu_id < 0)
-          context = GetCpuContext();
-        else
-          context = GetCudaContext(gpu_id);
+         torch::optional<torch::Device> device = {}, bool modified = false,
+         bool need_arc_map =
+             true) -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+        ContextPtr context =
+            GetContext(device.value_or(torch::Device(torch::kCPU)));
 
         DeviceGuard guard(context);
         Ragged<int32_t> ragged = CreateRagged2<int32_t>(symbols).To(context);
         Array1<int32_t> arc_map;
-        FsaVec graph = CtcGraphs(ragged, modified,
-                                 need_arc_map ? &arc_map : nullptr);
+        FsaVec graph =
+            CtcGraphs(ragged, modified, need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> tensor;
         if (need_arc_map) tensor = ToTorch(arc_map);
         return std::make_pair(graph, tensor);
       },
-      py::arg("symbols"), py::arg("gpu_id") = -1, py::arg("modified") = false,
-      py::arg("need_arc_map") = true,
-      R"(
-        If gpu_id is -1, the returned FsaVec is on CPU.
-        If gpu_id >= 0, the returned FsaVec is on the specified GPU.
-      )");
+      py::arg("symbols"), py::arg("device") = py::none(),
+      py::arg("modified") = false, py::arg("need_arc_map") = true);
 
   m.def(
       "ctc_graph",
-      [](const Ragged<int32_t> &symbols, int32_t gpu_id, /*unused_gpu_id*/
-         bool modified = false, bool need_arc_map = true)
-        -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
-        DeviceGuard guard(symbols.Context());
+      [](const std::vector<std::vector<int32_t>> &symbols,
+         torch::optional<std::string> device = {}, bool modified = false,
+         bool need_arc_map =
+             true) -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+        ContextPtr context = GetContext(torch::Device(device.value_or("cpu")));
+
+        DeviceGuard guard(context);
+        Ragged<int32_t> ragged = CreateRagged2<int32_t>(symbols).To(context);
         Array1<int32_t> arc_map;
-        FsaVec graph = CtcGraphs(symbols, modified,
-                                 need_arc_map ? &arc_map : nullptr);
+        FsaVec graph =
+            CtcGraphs(ragged, modified, need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> tensor;
         if (need_arc_map) tensor = ToTorch(arc_map);
         return std::make_pair(graph, tensor);
       },
-      py::arg("symbols"), py::arg("gpu_id"), py::arg("modified") = false,
-      py::arg("need_arc_map") = true);
+      py::arg("symbols"), py::arg("device") = py::none(),
+      py::arg("modified") = false, py::arg("need_arc_map") = true);
 }
 
 static void PybindCtcTopo(py::module &m) {
   m.def(
       "ctc_topo",
-      [](int32_t max_token, int32_t gpu_id = -1,
+      [](int32_t max_token, torch::optional<torch::Device> device = {},
          bool modified = false) -> std::pair<Fsa, torch::Tensor> {
-        ContextPtr context;
-        if (gpu_id < 0)
-          context = GetCpuContext();
-        else
-          context = GetCudaContext(gpu_id);
+        ContextPtr context = GetContext(device.value_or(torch::Device("cpu")));
         DeviceGuard guard(context);
         Array1<int32_t> aux_labels;
         Fsa fsa = CtcTopo(context, max_token, modified, &aux_labels);
         torch::Tensor tensor = ToTorch(aux_labels);
         return std::make_pair(fsa, tensor);
       },
-      py::arg("max_token"), py::arg("gpu_id") = -1,
-      py::arg("modified") = false,
-      R"(
-        If gpu_id is -1, the returned Fsa is on CPU.
-        If gpu_id >= 0, the returned Fsa is on the specified GPU.
-      )");
+      py::arg("max_token"), py::arg("device") = py::none(),
+      py::arg("modified") = false);
+
+  m.def(
+      "ctc_topo",
+      [](int32_t max_token, torch::optional<std::string> device = {},
+         bool modified = false) -> std::pair<Fsa, torch::Tensor> {
+        ContextPtr context = GetContext(torch::Device(device.value_or("cpu")));
+        DeviceGuard guard(context);
+        Array1<int32_t> aux_labels;
+        Fsa fsa = CtcTopo(context, max_token, modified, &aux_labels);
+        torch::Tensor tensor = ToTorch(aux_labels);
+        return std::make_pair(fsa, tensor);
+      },
+      py::arg("max_token"), py::arg("device") = py::none(),
+      py::arg("modified") = false);
 }
 }  // namespace k2
 

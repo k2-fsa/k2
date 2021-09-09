@@ -49,7 +49,7 @@ namespace k2 {
 */
 
 template <typename T, typename Op>
-void SegmentedReduce(Ragged<T> &src, T initial_value, Array1<T> *dst);
+void SegmentedReduce(const Ragged<T> &src, T initial_value, Array1<T> *dst);
 
 /*
   Output to an array `max_values` the maximum of each sub-list along the last
@@ -79,7 +79,8 @@ void MinPerSublist(Ragged<T> &src, T initial_value, Array1<T> *min_values) {
 
 // Same with `MaxPerSubList`, but output the sum of values in each sub-list.
 template <typename T>
-void SumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *sum_values) {
+void SumPerSublist(const Ragged<T> &src, T initial_value,
+                   Array1<T> *sum_values) {
   SegmentedReduce<T, PlusOp<T>>(src, initial_value, sum_values);
 }
 

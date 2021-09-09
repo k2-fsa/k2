@@ -27,16 +27,14 @@ import k2
 
 from . import fsa_properties
 from .fsa import Fsa
-from .ops import index
 from .ops import index_select
-from .ops import index_ragged
 
 from torch import Tensor
 
 # Note: look also in autograd.py, differentiable operations may be there.
 
 
-def linear_fsa(labels: Union[List[int], List[List[int]], k2.RaggedInt],
+def linear_fsa(labels: Union[List[int], List[List[int]], k2.RaggedTensor],
                device: Optional[Union[torch.device, str]] = None) -> Fsa:
     '''Construct an linear FSA from labels.
 
@@ -49,32 +47,23 @@ def linear_fsa(labels: Union[List[int], List[List[int]], k2.RaggedInt],
 
             - A list of integers, e.g., `[1, 2, 3]`
             - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
-            - An instance of :class:`k2.RaggedInt`. Must have `num_axes() == 2`.
+            - An instance of :class:`k2.RaggedTensor`.
+              Must have `num_axes == 2`.
       device:
-        Optional. It can be either a string (e.g., 'cpu',
-        'cuda:0') or a torch.device.
-        If it is None, then the returned FSA is on CPU. It has to be None
-        if `labels` is an instance of :class:`k2.RaggedInt`.
+        Optional. It can be either a string (e.g., 'cpu', 'cuda:0') or a
+        torch.device.
+        If it is ``None``, then the returned FSA is on CPU. It has to be None
+        if ``labels`` is an instance of :class:`k2.RaggedTensor`.
 
     Returns:
-      - If `labels` is a list of integers, return an FSA
-      - If `labels` is a list of list-of-integers, return an FsaVec
-      - If `labels` is an instance of :class:`k2.RaggedInt`, return an FsaVec
+      - If ``labels`` is a list of integers, return an FSA
+      - If ``labels`` is a list of list-of-integers, return an FsaVec
+      - If ``labels`` is an instance of :class:`k2.RaggedTensor`, return
+        an FsaVec
     '''
-    if isinstance(labels, k2.RaggedInt):
+    if isinstance(labels, k2.RaggedTensor):
         assert device is None
-        assert labels.num_axes() == 2
-
-    if device is not None:
-        device = torch.device(device)
-        if device.type == 'cpu':
-            gpu_id = -1
-        else:
-            assert device.type == 'cuda'
-            gpu_id = getattr(device, 'index', 0)
-    else:
-        gpu_id = -1
-    ragged_arc = _k2.linear_fsa(labels, gpu_id)
+    ragged_arc = _k2.linear_fsa(labels, device)
     fsa = Fsa(ragged_arc)
     return fsa
 
@@ -172,6 +161,10 @@ def intersect_device(
         Requires
             - `b_to_a_map.shape[0] == b_fsas.shape[0]`
             - `0 <= b_to_a_map[i] < a_fsas.shape[0]`
+      sorted_match_a:
+        If true, the arcs of a_fsas must be sorted by label (checked by
+        calling code via properties), and we'll use a matching approach
+        that requires this.
       ret_arc_maps:
         If False, return the resulting Fsa. If True, return a tuple
         containing three entries:
@@ -201,9 +194,8 @@ def intersect_device(
         a_fsas.arcs, a_fsas.properties, b_fsas.arcs, b_fsas.properties,
         b_to_a_map, need_arc_map, sorted_match_a)
 
-    out_fsas = k2.utils.fsa_from_binary_function_tensor(a_fsas, b_fsas,
-                                                        ragged_arc,
-                                                        a_arc_map, b_arc_map)
+    out_fsas = k2.utils.fsa_from_binary_function_tensor(
+        a_fsas, b_fsas, ragged_arc, a_arc_map, b_arc_map)
     if ret_arc_maps:
         return out_fsas, a_arc_map, b_arc_map
     else:
@@ -286,8 +278,9 @@ def intersect(a_fsa: Fsa,
         a_fsa.arcs, a_fsa.properties, b_fsa.arcs, b_fsa.properties,
         treat_epsilons_specially, need_arc_map)
 
-    out_fsa = k2.utils.fsa_from_binary_function_tensor(a_fsa, b_fsa, ragged_arc,
-                                                       a_arc_map, b_arc_map)
+    out_fsa = k2.utils.fsa_from_binary_function_tensor(a_fsa, b_fsa,
+                                                       ragged_arc, a_arc_map,
+                                                       b_arc_map)
     if ret_arc_maps:
         return out_fsa, a_arc_map, b_arc_map
     else:
@@ -307,7 +300,7 @@ def compose(a_fsa: Fsa,
 
     Note:
       `a_fsa.aux_labels` is required to be defined and it can be either
-      a `torch.Tensor` or a ragged tensor of type `k2.RaggedInt`.
+      a `torch.Tensor` or a ragged tensor of type `k2.RaggedTensor`.
       If it is a ragged tensor, then it requires that a_fsa.requires_grad is
       False.
 
@@ -334,7 +327,7 @@ def compose(a_fsa: Fsa,
         If False, epsilons will be treated as real, normal symbols (to have
         them treated as epsilons in this case you may have to add epsilon
         self-loops to whichever of the inputs is naturally epsilon-free).
-     inner_labels:
+      inner_labels:
         If specified (and if a_fsa has `aux_labels`), the labels that we matched
         on, which would normally be discarded, will instead be copied to
         this attribute name.
@@ -364,7 +357,8 @@ def compose(a_fsa: Fsa,
     # IntersectDevice(), according to various criteria such as CPU vs. GPU
     # and treat_epsilons_specially == true or not (true not supported
     # on GPU).
-    ans = intersect(a_fsa_inv, b_fsa,
+    ans = intersect(a_fsa_inv,
+                    b_fsa,
                     treat_epsilons_specially=treat_epsilons_specially)
 
     if inner_labels is not None:
@@ -472,7 +466,7 @@ def shortest_path(fsa: Fsa, use_double_scores: bool) -> Fsa:
     '''
     entering_arcs = fsa._get_entering_arcs(use_double_scores)
     ragged_arc, ragged_int = _k2.shortest_path(fsa.arcs, entering_arcs)
-    arc_map = ragged_int.values()
+    arc_map = ragged_int.data
 
     out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
     return out_fsa
@@ -559,12 +553,14 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
     '''
     ragged_arc, arc_map = _k2.remove_epsilon(fsa.arcs, fsa.properties)
 
-    out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map,
+    out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa,
+                                                      ragged_arc,
+                                                      arc_map,
                                                       remove_filler=True)
 
     if hasattr(out_fsa, 'aux_labels') and \
-            isinstance(out_fsa.aux_labels, k2.RaggedInt):
-        out_fsa.aux_labels = k2.ragged.remove_values_eq(out_fsa.aux_labels, 0)
+            isinstance(out_fsa.aux_labels, k2.RaggedTensor):
+        out_fsa.aux_labels = out_fsa.aux_labels.remove_values_eq(0)
 
     return out_fsa
 
@@ -604,8 +600,8 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa,
 
 
 def determinize(fsa: Fsa,
-                weight_pushing_type: _k2.DeterminizeWeightPushingType =
-                _k2.DeterminizeWeightPushingType.kNoWeightPushing) -> Fsa:
+                weight_pushing_type: _k2.DeterminizeWeightPushingType = _k2.
+                DeterminizeWeightPushingType.kNoWeightPushing) -> Fsa:
     '''Determinize the input Fsa.
 
     Caution:
@@ -739,7 +735,8 @@ def invert(fsa: Fsa,
                                    device=fsa.device)
             return fsa.invert(), arc_map
     else:
-        assert isinstance(fsa.aux_labels, k2.RaggedInt)
+        assert isinstance(fsa.aux_labels, k2.RaggedTensor)
+        assert fsa.aux_labels.dtype == torch.int32
         fsa, arc_map = expand_ragged_attributes(
             fsa, ret_arc_map=True, ragged_attribute_names=['aux_labels'])
         fsa = fsa.invert_()
@@ -750,7 +747,7 @@ def invert(fsa: Fsa,
 
 
 def random_paths(fsas: Fsa, use_double_scores: bool,
-                 num_paths: int) -> k2.RaggedInt:
+                 num_paths: int) -> k2.RaggedTensor:
     '''Compute pseudo-random paths through the FSAs in this vector of FSAs
     (this object must have 3 axes, `self.arcs.num_axes() == 3`)
 
@@ -775,7 +772,8 @@ def random_paths(fsas: Fsa, use_double_scores: bool,
         Number of paths requested through each FSA. FSAs that have no successful
         paths will have zero paths returned.
     Returns:
-      Returns a k2.RaggedInt with 3 axes: [fsa][path][arc_pos]; the final
+      Returns a k2.RaggedTensor (dtype is torch.int32) with 3 axes:
+      [fsa][path][arc_pos]; the final
       sub-lists (indexed with arc_pos) are sequences of arcs starting from the
       start state and terminating in the final state. The values are arc_idx012,
       i.e. arc indexes.
@@ -833,11 +831,10 @@ def prune_on_arc_post(fsas: Fsa, threshold_prob: float,
     return out_fsa
 
 
-def expand_ragged_attributes(
-        fsas: Fsa,
-        ret_arc_map: bool = False,
-        ragged_attribute_names: Optional[List[str]] = None
-) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
+def expand_ragged_attributes(fsas: Fsa,
+                             ret_arc_map: bool = False,
+                             ragged_attribute_names: Optional[List[str]] = None
+                            ) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
     '''
     Turn ragged labels attached to this FSA into linear (Tensor) labels,
     expanding arcs into sequences of arcs as necessary to achieve this.
@@ -847,7 +844,7 @@ def expand_ragged_attributes(
     Caution:
       This function will ensure that for final-arcs in the returned
       fsa, the corresponding labels for all ragged attributes are -1; it will
-      add an extra arc at the end is necessary to ensure this, if the
+      add an extra arc at the end if necessary to ensure this, if the
       original ragged attributes did not have -1 as their final element on
       final-arcs (note: our intention is that -1's on final arcs, like filler
       symbols, are removed when making attributes ragged; this is what
@@ -871,26 +868,29 @@ def expand_ragged_attributes(
         ragged_attribute_tensors = []
         ragged_attribute_names = []
         for name, value in fsas.named_tensor_attr(include_scores=False):
-            if isinstance(value, k2.RaggedInt):
+            if isinstance(value, k2.RaggedTensor):
                 ragged_attribute_tensors.append(value)
                 ragged_attribute_names.append(name)
+                assert value.dtype == torch.int32
     else:
-        ragged_attribute_tensors = [getattr(fsas, name)
-                                    for name in ragged_attribute_names]
+        ragged_attribute_tensors = [
+            getattr(fsas, name) for name in ragged_attribute_names
+        ]
         for t in ragged_attribute_tensors:
-            assert isinstance(t, k2.RaggedInt)
+            assert isinstance(t, k2.RaggedTensor)
+            assert t.dtype == torch.int32
 
     if len(ragged_attribute_tensors) == 0:
         if ret_arc_map:
-            arc_map = torch.arange(fsas.num_arcs, dtype=torch.int32,
+            arc_map = torch.arange(fsas.num_arcs,
+                                   dtype=torch.int32,
                                    device=fsas.device)
             return (fsas, arc_map)
         else:
             return fsas
 
-    (dest_arcs, dest_labels, arc_map) = _k2.expand_arcs(
-        fsas.arcs,
-        ragged_attribute_tensors)
+    (dest_arcs, dest_labels,
+     arc_map) = _k2.expand_arcs(fsas.arcs, ragged_attribute_tensors)
 
     # The rest of this function is a modified version of
     # `fsa_from_unary_function_tensor()`.
@@ -901,10 +901,15 @@ def expand_ragged_attributes(
     for name, value in fsas.named_tensor_attr(include_scores=False):
         if isinstance(value, torch.Tensor):
             filler = float(fsas.get_filler(name))
-            setattr(dest, name, index_select(value, arc_map,
-                                             default_value=filler))
+            new_value = index_select(value, arc_map, default_value=filler)
+            setattr(dest, name, new_value)
         elif name not in ragged_attribute_names:
-            setattr(dest, name, index(value, arc_map))
+            assert isinstance(value, k2.RaggedTensor)
+            assert value.dtype == torch.int32
+            new_value, _ = value.index(arc_map,
+                                       axis=0,
+                                       need_value_indexes=False)
+            setattr(dest, name, new_value)
 
     # Handle the attributes that were ragged but are now linear
     for name, value in zip(ragged_attribute_names, dest_labels):
@@ -931,9 +936,8 @@ def replace_fsa(
         src: Fsa,
         index: Fsa,
         symbol_begin_range: int = 1,
-        ret_arc_map: bool = False
+        ret_arc_map: bool = False,
 ) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:
-
     '''
     Replace arcs in index FSA with the corresponding fsas in a vector of
     FSAs(src). For arcs in `index` with label
@@ -966,8 +970,8 @@ def replace_fsa(
            arcs in `index` and `src` , with -1's for the arcs not mapped.
            If false, just returns new_fsas.
     '''
-    (dest_arc, arc_map_src, arc_map_index) = _k2.replace_fsa(
-        src.arcs, index.arcs, symbol_begin_range)
+    (dest_arc, arc_map_src,
+     arc_map_index) = _k2.replace_fsa(src.arcs, index.arcs, symbol_begin_range)
 
     dest = k2.utils.fsa_from_binary_function_tensor(src, index, dest_arc,
                                                     arc_map_src, arc_map_index)
@@ -977,7 +981,7 @@ def replace_fsa(
         return dest
 
 
-def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
+def ctc_graph(symbols: Union[List[List[int]], k2.RaggedTensor],
               modified: bool = False,
               device: Optional[Union[torch.device, str]] = None) -> Fsa:
     '''Construct ctc graphs from symbols.
@@ -990,7 +994,8 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
         It can be one of the following types:
 
             - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
-            - An instance of :class:`k2.RaggedInt`. Must have `num_axes() == 2`.
+            - An instance of :class:`k2.RaggedTensor`.
+              Must have `num_axes == 2`.
 
       standard:
         Option to specify the type of CTC topology: "standard" or "simplified",
@@ -1000,42 +1005,34 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedInt],
         Optional. It can be either a string (e.g., 'cpu', 'cuda:0') or a
         torch.device.
         If it is None, then the returned FSA is on CPU. It has to be None
-        if `symbols` is an instance of :class:`k2.RaggedInt`, the returned
-        FSA will on the same device as `k2.RaggedInt`.
+        if `symbols` is an instance of :class:`k2.RaggedTensor`, the returned
+        FSA will on the same device as `k2.RaggedTensor`.
 
     Returns:
         An FsaVec containing the returned ctc graphs, with "Dim0()" the same as
-        "len(symbols)"(List[List[int]]) or "Dim0()"(k2.RaggedInt)
+        "len(symbols)"(List[List[int]]) or "dim0"(k2.RaggedTensor)
     '''
-    if device is not None:
-        device = torch.device(device)
-        if device.type == 'cpu':
-            gpu_id = -1
-        else:
-            assert device.type == 'cuda'
-            gpu_id = getattr(device, 'index', 0)
-    else:
-        gpu_id = -1
-
     symbol_values = None
-    if isinstance(symbols, k2.RaggedInt):
+    if isinstance(symbols, k2.RaggedTensor):
         assert device is None
-        assert symbols.num_axes() == 2
-        symbol_values = symbols.values()
+        assert symbols.num_axes == 2
+        symbol_values = symbols.data
     else:
         symbol_values = torch.tensor(
-            [it for symbol in symbols for it in symbol], dtype=torch.int32,
+            [it for symbol in symbols for it in symbol],
+            dtype=torch.int32,
             device=device)
 
     need_arc_map = True
-    ragged_arc, arc_map = _k2.ctc_graph(symbols, gpu_id,
-                                        modified, need_arc_map)
-    aux_labels = k2.index(symbol_values, arc_map)
+    ragged_arc, arc_map = _k2.ctc_graph(symbols, device, modified,
+                                        need_arc_map)
+    aux_labels = k2.index_select(symbol_values, arc_map)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
 
 
-def ctc_topo(max_token: int, modified: bool = False,
+def ctc_topo(max_token: int,
+             modified: bool = False,
              device: Optional[Union[torch.device, str]] = None) -> k2.Fsa:
     '''Create a CTC topology.
 
@@ -1069,15 +1066,6 @@ def ctc_topo(max_token: int, modified: bool = False,
       Return either a standard or a modified CTC topology as an FSA
       depending on whether `standard` is True or False.
     '''
-    if device is not None:
-        device = torch.device(device)
-        if device.type == 'cpu':
-            gpu_id = -1
-        else:
-            assert device.type == 'cuda'
-            gpu_id = getattr(device, 'index', 0)
-    else:
-        gpu_id = -1
-    ragged_arc, aux_labels = _k2.ctc_topo(max_token, gpu_id, modified)
+    ragged_arc, aux_labels = _k2.ctc_topo(max_token, device, modified)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa

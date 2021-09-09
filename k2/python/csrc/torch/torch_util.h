@@ -28,7 +28,6 @@
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/pytorch_context.h"
-#include "torch/extension.h"
 
 namespace k2 {
 
@@ -244,15 +243,18 @@ PyClass To(PyClass &pyclass, py::object device) {
   return pyclass.To(GetCudaContext(device_index));
 }
 
-/* Create a k2 context from a torch tensor.
+/** Create a k2 context from a torch device.
 
-   @param [in] tensor  A torch::Tensor. It has to be
-                       either on CPU or on CUDA GPU.
+   @param [in] device   It must be either a CPU or a GPU.
 
-   @return Return either a CpuContext or a CudaContext
-           depending on where the given tensor resides.
+   @return Return either a CPU context or a CUDA context
+           depending on the given device.
  */
-ContextPtr GetContext(torch::Tensor tensor);
+ContextPtr GetContext(torch::Device device);
+
+inline ContextPtr GetContext(torch::Tensor tensor) {
+  return GetContext(tensor.device());
+}
 
 }  // namespace k2
 

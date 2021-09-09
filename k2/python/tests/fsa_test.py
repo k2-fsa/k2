@@ -154,9 +154,10 @@ class TestFsa(unittest.TestCase):
             fsa.labels = torch.tensor([-1, 10, 0, 1, -1, 1, 0, 2],
                                       dtype=torch.int32)
             assert torch.all(
-                torch.eq(fsa.labels,
-                         torch.tensor([0, 10, -1, 1, -1, 1, -1, 2],
-                                      dtype=torch.int32)))
+                torch.eq(
+                    fsa.labels,
+                    torch.tensor([0, 10, -1, 1, -1, 1, -1, 2],
+                                 dtype=torch.int32)))
 
     def test_acceptor_wo_arcs_from_str(self):
         s1 = '''
@@ -255,7 +256,8 @@ class TestFsa(unittest.TestCase):
             7
             6 -9.2
         '''
-        fsa = k2.Fsa.from_openfst(s, num_aux_labels=0,
+        fsa = k2.Fsa.from_openfst(s,
+                                  num_aux_labels=0,
                                   ragged_label_names=['ragged'])
 
         expected_str = '''
@@ -459,14 +461,14 @@ class TestFsa(unittest.TestCase):
             5 0  1  50  108 [] [] -8.2
             6
         '''
-        fsa = k2.Fsa.from_str(
-            s, aux_label_names=['aux_labels', 'aux_labels2'],
-            ragged_label_names=['ragged1', 'ragged2'])
+        fsa = k2.Fsa.from_str(s,
+                              aux_label_names=['aux_labels', 'aux_labels2'],
+                              ragged_label_names=['ragged1', 'ragged2'])
 
         assert fsa.aux_labels.dtype == torch.int32
         assert fsa.aux_labels.device.type == 'cpu'
-        assert isinstance(fsa.ragged1, _k2.RaggedInt)
-        assert isinstance(fsa.ragged2, _k2.RaggedInt)
+        assert isinstance(fsa.ragged1, k2.RaggedTensor)
+        assert isinstance(fsa.ragged2, k2.RaggedTensor)
 
         assert torch.all(
             torch.eq(
@@ -487,8 +489,9 @@ class TestFsa(unittest.TestCase):
 
         print("fsa.ragged1 = ", fsa.ragged1)
         print("fsa.ragged2 = ", fsa.ragged2)
-        assert fsa.ragged1 == _k2.RaggedInt('[ [] [] [20 30] [] [] [] [] [] ]')
-        assert fsa.ragged2 == _k2.RaggedInt('[ [] [] [40] [] [] [] [] [] ]')
+        assert fsa.ragged1 == k2.RaggedTensor(
+            '[ [] [] [20 30] [] [] [] [] [] ]')
+        assert fsa.ragged2 == k2.RaggedTensor('[ [] [] [40] [] [] [] [] [] ]')
 
         # only aux_labels will be printed right now..
         expected_str = '''
@@ -871,12 +874,13 @@ class TestFsa(unittest.TestCase):
         assert fsa.labels_sym.get(1) == 'a'
 
     def test_fsa_vec_as_dict_ragged(self):
-        r = k2.RaggedInt(k2.RaggedShape('[ [ x x ] [x] [ x x ] [x]]'),
-                         torch.tensor([3, 4, 5, 6, 7, 8], dtype=torch.int32))
+        r = k2.RaggedTensor(
+            k2.RaggedShape('[ [ x x ] [x] [ x x ] [x]]'),
+            torch.tensor([3, 4, 5, 6, 7, 8], dtype=torch.int32))
         g = k2.Fsa.from_str('0  1  3  0.0\n  1 2 -1 0.0\n  2')
         h = k2.create_fsa_vec([g, g])
         h.aux_labels = r
-        assert (h[0].aux_labels.dim0() == h[0].labels.shape[0])
+        assert (h[0].aux_labels.dim0 == h[0].labels.shape[0])
 
     def test_set_scores_stochastic(self):
         s = '''
@@ -978,9 +982,9 @@ class TestFsa(unittest.TestCase):
             1
         '''
         fsa1 = k2.Fsa.from_str(s1)
-        fsa1.aux_labels = k2.RaggedInt('[ [1 0 2] [3 5] ]')
+        fsa1.aux_labels = k2.RaggedTensor('[ [1 0 2] [3 5] ]')
         fsa2 = k2.Fsa.from_str(s2)
-        fsa2.aux_labels = k2.RaggedInt('[ [5 8 9] ]')
+        fsa2.aux_labels = k2.RaggedTensor('[ [5 8 9] ]')
         fsa = k2.create_fsa_vec([fsa1, fsa2])
         self.assertEqual(str(fsa.aux_labels),
                          '[ [ 1 0 2 ] [ 3 5 ] [ 5 8 9 ] ]')
@@ -1002,12 +1006,11 @@ class TestFsa(unittest.TestCase):
             '''
             fsa1 = k2.Fsa.from_str(s1)
             fsa1.tensor_attr = torch.tensor([10, 20], dtype=torch.int32)
-            fsa1.ragged_attr = k2.ragged.create_ragged2([[11, 12],
-                                                         [21, 22, 23]])
+            fsa1.ragged_attr = k2.RaggedTensor([[11, 12], [21, 22, 23]])
 
             fsa2 = k2.Fsa.from_str(s2)
             fsa2.tensor_attr = torch.tensor([100], dtype=torch.int32)
-            fsa2.ragged_attr = k2.ragged.create_ragged2([[111]])
+            fsa2.ragged_attr = k2.RaggedTensor([[111]])
 
             fsa1 = fsa1.to(device)
             fsa2 = fsa2.to(device)
@@ -1056,7 +1059,7 @@ class TestFsa(unittest.TestCase):
             fsa = k2.Fsa.from_str(s).to(device)
             fsa.non_tensor_attr1 = [10]
             fsa.tensor_attr1 = torch.tensor([10, 20, 30]).to(device)
-            fsa.ragged_attr1 = k2.RaggedInt('[[100] [] [-1]]').to(device)
+            fsa.ragged_attr1 = k2.RaggedTensor('[[100] [] [-1]]').to(device)
 
             fsa._cache['abc'] = [100]
 
@@ -1064,7 +1067,7 @@ class TestFsa(unittest.TestCase):
 
             fsa.non_tensor_attr1[0] = 0
             fsa.tensor_attr1[0] = 0
-            fsa.ragged_attr1 = k2.RaggedInt('[[] [] [-1]]')
+            fsa.ragged_attr1 = k2.RaggedTensor('[[] [] [-1]]')
             fsa._cache['abc'][0] = 1
 
             # we assume that non-tensor attributes are readonly
@@ -1077,7 +1080,7 @@ class TestFsa(unittest.TestCase):
                          torch.tensor([10, 20, 30]).to(device)))
 
             assert str(cloned.ragged_attr1) == str(
-                k2.RaggedInt('[[100] [] [-1]]'))
+                k2.RaggedTensor('[[100] [] [-1]]'))
 
     def test_detach_more_attributes(self):
         for device in self.devices:
@@ -1093,7 +1096,7 @@ class TestFsa(unittest.TestCase):
             fsa.tensor_attr1 = torch.tensor([10., 20, 30],
                                             device=device,
                                             requires_grad=True)
-            fsa.ragged_attr1 = k2.RaggedInt('[[100] [] [-1]]').to(device)
+            fsa.ragged_attr1 = k2.RaggedTensor('[[100] [] [-1]]').to(device)
             fsa._cache['abc'] = [100]
 
             detached = fsa.detach()
@@ -1121,14 +1124,14 @@ class TestFsa(unittest.TestCase):
                                             dtype=torch.int32,
                                             device=device)[::2]
             fsa.convert_attr_to_ragged_(name='tensor_attr1', remove_eps=False)
-            expected = k2.RaggedInt('[ [1] [3] [0] ]')
+            expected = k2.RaggedTensor('[ [1] [3] [0] ]')
             assert str(fsa.tensor_attr1) == str(expected)
 
             fsa.tensor_attr2 = torch.tensor([1, 0, -1],
                                             dtype=torch.int32,
                                             device=device)
             fsa.convert_attr_to_ragged_(name='tensor_attr2', remove_eps=True)
-            expected = k2.RaggedInt('[ [1] [] [-1] ]')
+            expected = k2.RaggedTensor('[ [1] [] [-1] ]')
             assert str(fsa.tensor_attr2) == str(expected)
 
     def test_invalidate_cache(self):

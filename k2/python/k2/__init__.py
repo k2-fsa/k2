@@ -1,16 +1,15 @@
 import torch  # noqa
 from _k2 import DeterminizeWeightPushingType
-from _k2 import RaggedFloat  # TODO(fangjun): move it to k2.ragged
-from _k2 import RaggedInt  # TODO(fangjun): move it to k2.ragged
 from _k2 import simple_ragged_index_select
+from .ragged import RaggedShape
+from .ragged import RaggedTensor
 
 from . import autograd
 from . import autograd_utils
 from . import dense_fsa_vec
 from . import fsa
-from . import ops
 from . import utils
-
+#
 from .autograd import intersect_dense
 from .autograd import intersect_dense_pruned
 from .autograd import union
@@ -45,15 +44,10 @@ from .fsa_properties import to_str as properties_to_str
 from .nbest import Nbest
 from .ops import cat
 from .ops import compose_arc_maps
-from .ops import index
 from .ops import index_add
-from .ops import index_and_sum
 from .ops import index_fsa
-from .ops import index_ragged
 from .ops import index_select
-from .ops import index_tensor
-from .ragged import create_ragged2
-from .ragged import RaggedShape
+#
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
 from .utils import create_sparse

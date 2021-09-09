@@ -186,6 +186,8 @@ class TestCtcTopo(unittest.TestCase):
         assert torch.all(torch.eq(aux_labels1, torch.tensor([1, 2, 2])))
 
 
+# TODO(fangjun): Add test for CUDA.
+
 if __name__ == '__main__':
     #  TestCtcTopo.visualize_ctc_topo()
     unittest.main()

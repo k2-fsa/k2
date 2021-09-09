@@ -422,7 +422,16 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
-            value = k2.index(a_value, arc_map_a)
+            if isinstance(a_value, torch.Tensor):
+                value = _k2.index_select(a_value, arc_map_a)
+            else:
+                assert isinstance(a_value, k2.RaggedTensor)
+                # Only integer types ragged attributes are supported now
+                assert a_value.dtype == torch.int32
+                value, _ = a_value.index(arc_map_a,
+                                         axis=0,
+                                         need_value_indexes=False)
+
             setattr(out_fsa[0], name, value)
 
         for name, a_value in a_fsas.named_non_tensor_attr():
@@ -560,7 +569,15 @@ class _IntersectDenseFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
-            value = k2.index(a_value, arc_map_a)
+            if isinstance(a_value, torch.Tensor):
+                value = _k2.index_select(a_value, arc_map_a)
+            else:
+                assert isinstance(a_value, k2.RaggedTensor)
+                assert a_value.dtype == torch.int32
+                value, _ = a_value.index(arc_map_a,
+                                         axis=0,
+                                         need_value_indexes=False)
+
             setattr(out_fsa[0], name, value)
 
         for name, a_value in a_fsas.named_non_tensor_attr():

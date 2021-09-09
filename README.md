@@ -1,7 +1,11 @@
 <div align="center">
-<img src="https://raw.githubusercontent.com/k2-fsa/k2/master/docs/source/_static/logo.png" width=376>
+<a href="https://k2-fsa.github.io/k2/">
+  <img src="https://raw.githubusercontent.com/k2-fsa/k2/master/docs/source/_static/logo.png" width=88>
+</a>
 
-[![Documentation Status](https://readthedocs.org/projects/k2/badge/?version=latest)](https://k2.readthedocs.io/en/latest/?badge=latest)
+<br/>
+
+[![Documentation Status](https://github.com/k2-fsa/k2/actions/workflows/build-doc.yml/badge.svg)](https://k2-fsa.github.io/k2/)
 
 </div>
 

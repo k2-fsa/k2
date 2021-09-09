@@ -44,7 +44,7 @@
 namespace k2 {
 
 template <typename T, typename Op>
-void SegmentedReduce(Ragged<T> &src, T initial_value, Array1<T> *dst) {
+void SegmentedReduce(const Ragged<T> &src, T initial_value, Array1<T> *dst) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(src.NumAxes(), 2);
   K2_CHECK(IsCompatible(src.shape, *dst));
@@ -193,7 +193,7 @@ template <typename T>
 Ragged<T> Cat(int32_t axis, int32_t num_srcs, Ragged<T> *src,
               Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(axis == 0 || axis == 1);
+  K2_CHECK(axis == 0 || axis == 1) << "Given: " << axis;
   K2_CHECK_GT(num_srcs, 0);
   std::vector<Ragged<T> *> temp(num_srcs);
   for (int32_t i = 0; i != num_srcs; ++i) temp[i] = src + i;
@@ -467,7 +467,7 @@ struct PairInputIterator {
   __device__ __forceinline__ PairInputIterator(const T *t, int32_t offset)
       : t_(t), offset_(offset) {}
   __device__ __forceinline__ Pair<T> operator[](int32_t idx) const {
-    return Pair<T>{t_[idx], idx + offset_};
+    return Pair<T>{t_[idx + offset_], idx + offset_};
   }
   __device__ __forceinline__ PairInputIterator operator+(int32_t offset) {
     return PairInputIterator{t_, offset + offset_};
@@ -498,7 +498,7 @@ struct PairOutputIterator {  // outputs just the index of the pair.
       int32_t idx) const {
     return PairOutputIteratorDeref<T>(i_ + idx);
   }
-  __device__ __forceinline__ PairOutputIterator operator+(size_t offset) {
+  __device__ __forceinline__ PairOutputIterator operator+(int32_t offset) {
     return PairOutputIterator{i_ + offset};
   }
   int32_t *i_;
@@ -584,6 +584,39 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
         d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
         num_rows, row_splits, row_splits + 1, op, initial_pair,
         c->GetCudaStream()));
+
+    // Do the same thing as the code above, but it need one more kernel to
+    // add offset to the result.
+#if 0
+    const Array1<int32_t> &row_ids_array = src.RowIds(last_axis);
+    const int32_t *row_ids = row_ids_array.Data();
+    size_t align = alignof(cub::KeyValuePair<int, T>);
+    Array1<int8_t> out_storage(c,
+        num_rows * sizeof(cub::KeyValuePair<int, T>) + align);
+    size_t shift = reinterpret_cast<std::intptr_t>(out_storage.Data()) % align;
+    shift = shift ? align - shift : 0;
+
+    cub::KeyValuePair<int, T> *d_out_data =
+      reinterpret_cast<cub::KeyValuePair<int, T>*>(out_storage.Data() + shift);
+
+    std::size_t temp_storage_bytes = 0;
+
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::ArgMax(
+        nullptr, temp_storage_bytes, values_data, d_out_data, num_rows,
+        row_splits, row_splits + 1));
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::ArgMax(
+        d_temp_storage.Data(), temp_storage_bytes, values_data, d_out_data,
+        num_rows, row_splits, row_splits + 1));
+
+    K2_EVAL(
+        c, num_rows, lambda_add_offset, (int32_t idx0) -> void {
+          if (row_splits[idx0 + 1] == row_splits[idx0])
+            output_data[idx0] = -1;
+          else
+            output_data[idx0] = d_out_data[idx0].key + row_splits[idx0];
+        });
+#endif
   }
 }
 
