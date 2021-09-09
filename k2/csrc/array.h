@@ -139,7 +139,7 @@ class Array1 {
          Dtype dtype = DtypeOf<T>::dtype)
       : dim_(dim), dtype_(dtype), byte_offset_(byte_offset), region_(region) {
     K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
-    K2_CHECK_GE(dim_, 0) << "Array dim MUST be great equal than 0, "
+    K2_CHECK_GE(dim_, 0) << "Array dim MUST be great than or equal to 0, "
                          << "given :" << dim;
   }
 
@@ -456,7 +456,7 @@ class Array1 {
 
   void Init(ContextPtr context, int32_t size, Dtype dtype) {
     K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
-    K2_CHECK_GE(size, 0) << "Array size MUST be great equal than 0, "
+    K2_CHECK_GE(size, 0) << "Array size MUST be great than or equal to 0, "
                          << "given :" << size;
     dtype_ = dtype;
     region_ = NewRegion(context, static_cast<size_t>(size) * ElementSize());

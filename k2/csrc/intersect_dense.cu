@@ -277,7 +277,7 @@ class MultiGraphDenseIntersect {
               if (forward_score + backward_score > cutoff) keep = 1;
             }
             keep_state_data[i] = keep;
-            state_arcs_data[i] = (int32_t)keep * num_arcs;
+            state_arcs_data[i] = keep * num_arcs;
           });
       int32_t tot_states = renumber_states.New2Old().Dim();
       if (tot_states > max_states_) {
@@ -569,10 +569,12 @@ class MultiGraphDenseIntersect {
     RowIdsToRowSplits(ans_row_ids3_subsampled, &ans_row_splits3_subsampled);
 
     // subsample the output shape, removing arcs that weren't kept
+    // TODO: make this more efficient, avoid constructing and_row_ids3.
     RaggedShape ans_shape = RaggedShape4(
-        &ans_row_splits1, nullptr, ans_row_ids1.Dim(),
-        &ans_row_splits2, nullptr, ans_row_ids2.Dim(),
-        &ans_row_splits3_subsampled, nullptr, ans_row_ids3_subsampled.Dim());
+        &ans_row_splits1, &ans_row_ids1, ans_row_ids1.Dim(),
+        &ans_row_splits2, &ans_row_ids2, ans_row_ids2.Dim(),
+        &ans_row_splits3_subsampled, &ans_row_ids3_subsampled,
+        ans_row_ids3_subsampled.Dim());
 
     // .. remove the 't' axis
     return Ragged<Arc>(RemoveAxis(ans_shape, 1), arcs);
