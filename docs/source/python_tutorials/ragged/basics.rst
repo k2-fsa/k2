@@ -1,72 +1,181 @@
 Basics
 ======
 
-A ragged tensor or ragged array in k2 can be used to store the following kinds of data:
+In this tutorial, we describe
 
-  1. A list of lists. Each sub list may contain different number of entries.
-     That is, they can have different lengths.
+  - What are ragged tensors?
 
-    .. code-block:: python
+     - What are the differences between ragged tensors and regular tensors?
+     - How to create ragged tensors?
 
-      a = [ [1, 2], [2, 3, 4], [], [1] ]
+  - Various concepts relevant to ragged tensors, including
 
-  2. A list-of-list of lists.
+     - What is ``RaggedShape``?
+     - What is ``row_splits`` ?
+     - What is ``row_ids`` ?
+     - What is ``dim0`` ?
+     - What is ``tot_size`` ?
 
-    .. code-block:: python
+What are ragged tensors?
+------------------------
 
-      b = [ [[1., 2.5], [2, 3, 4]], [[]], [[10, 20], []] ]
+Before talking about what ragged tensors are, let's look at what non-ragged
+tensors, i.e., regular tensors, look like.
 
-  3. A list-of-list-of-list-of... lists. List can be nested in any number of levels.
+  - 2-D regular tensors
 
+    .. literalinclude:: code/basics/regular-tensors.py
+       :language: python
+       :lines: 8-20
 
-.. Note::
+    The shape of the 2-D regular tensor ``a`` is ``(3, 4)``, meaning it has 3
+    rows and 4 columns. Each row has **exactly** 4 elements, no more, no less.
 
-  Ragged arrays are the **core** data structures in k2, designed by us
-  **independently**. We were later told that TensorFlow was using the same
-  ideas (See `tf.ragged <https://www.tensorflow.org/guide/ragged_tensor>`_).
+  - 3-D regular tensors
 
-In k2, a ragged tensor contains two parts:
+    .. literalinclude:: code/basics/regular-tensors.py
+       :language: python
+       :lines: 24-45
 
-  - a shape, which is of type :class:`k2.RaggedShape`
-  - a value, which can be accessed as a **contiguous**
-    `PyTorch tensor <https://pytorch.org/docs/stable/tensors.html>`_.
+    The shape of the 3-D regular tensor ``b`` is ``(3, 3, 2)``, meaning it has
+    3 planes. Each plane has **exactly** 3 rows, no more, no less. Each row has
+    **exactly** two entries, no more, no less.
 
-.. hint::
+  - N-D regular tensors (N >= 4)
 
-  The **value** is stored contiguously in memory.
+    We assume you know how to create N-D regular tensors.
 
+After looking at what non-ragged tensors look like, let's have a look at ragged
+tensors in ``k2``.
 
+  - 2-D ragged tensors
+
+    .. literalinclude:: code/basics/ragged-tensors.py
+       :language: python
+       :lines: 7-16
+
+    The 2-D ragged tensor ``c`` has 4 rows. However, unlike regular tensors,
+    each row in ``c`` can have different number of elements. In this case,
+
+      - Row 0 has 5 entries: ``[1, 2, 3, 6, -5]``
+      - Row 1 has 2 entries: ``[0, 1]``
+      - Row 2 is empty. It has no entries.
+      - Row 3 has only 1 entry: ``[3]``
+
+    .. Hint::
+
+      In ``k2``, we say that ``c`` is a ragged tensor with **two axes**.
+
+  - 3-D ragged tensors
+
+    .. literalinclude:: code/basics/ragged-tensors.py
+       :language: python
+       :lines: 20-40
+
+    The 3-D ragged tensor ``d`` has 4 planes. Different from regular tensors,
+    different planes in a ragged tensor can have different number of rows.
+    Moreover, different rows within a plane can also have different number
+    of entries.
+
+    .. Hint::
+
+      In ``k2``, we say that ``d`` is a ragged tensor with **three axes**.
+
+  - N-D ragged tensors (N >= 4)
+
+    Having seen how to create 2-D and 3-D ragged tensors, we assume you know how to
+    create N-D ragged tensors.
+
+A ragged tensor in ``k2`` has ``N`` (``N >= 2``) axes. Unlike regular tensors,
+each axis of a ragged tensor can have different number of elements.
+
+Ragged tensors are **the most important** data structures in ``k2``. FSAs are
+represented as ragged tensors. There are also various operations defined on ragged
+tensors.
+
+At this point, we assume you know how to create ``N-D`` ragged tensors in ``k2``.
+Let us do some exercises to check what you have learned.
+
+Exercise 1
+^^^^^^^^^^
 
 .. container:: toggle
 
     .. container:: header
 
-        .. attention::
+        .. Note::
 
-          What is the dimension of the **value** as a torch tensor? (Click ▶ to see it)
+          How to create a ragged tensor with 2 axes, satisfying the following
+          constraints:
 
-    It depends on the data type of of the ragged tensor. For instance,
+            - It has 3 rows.
+            - Row 0 has elements: ``1, 10, -1``
+            - Row 1 is empty, i.e., it has no elements.
+            - Row 2 has two elements: ``-1.5, 2``
 
-      - if the data type is ``int32_t``, the **value** is accessed as a **1-D** torch tensor with dtype ``torch.int32``.
-      - if the data type is ``float``, the **value** is accessed as a **1-D** torch tensor with dtype ``torch.float32``.
-      - if the data type is ``double``, the **value** is accessed as a **1-D** torch tensor with dtype ``torch.float64``.
+          (Click ▶ to see it)
 
-    If the data type is ``k2::Arc``, which has the following definition
-    `in C++ <https://github.com/k2-fsa/k2/blob/master/k2/csrc/fsa.h#L31>`_:
+    .. literalinclude:: code/basics/ragged-tensors.py
+       :language: python
+       :lines: 43-49
+
+Exercise 2
+^^^^^^^^^^
+
+.. container:: toggle
+
+    .. container:: header
+
+        .. Note::
+
+          How to create a ragged tensor with only 1 axis?
+
+          (Click ▶ to see it)
+
+    You **cannot** create a ragged tensor with only 1 axis. Ragged tensors
+    in ``k2`` have at least 2 axes.
+
+Concepts about ragged tensors
+-----------------------------
+
+A ragged tensor in ``k2`` consists of two parts:
+
+  - ``shape``, which is an instance of :class:`k2.RaggedTensor`
+
+    .. Caution::
+
+      It is assumed that a shape  within a ragged tensor in ``k2`` is a constant.
+      Once constructed, you are not expected to modify it. Otherwise, unexpected
+      things can happen; you will be SAD.
+
+  - ``data``, which is an **array** of type ``T``
+
+    .. Hint::
+
+      ``data`` is stored ``contiguously`` in memory, whose entries have to be
+      of the same type ``T``. ``T`` can be either primitive types, such as
+      ``int``, ``float``, and ``double`` or can be user defined types. For instance,
+      ``data`` in FSAs contains ``arcs``, which is defined in C++
+      `as follows <https://github.com/k2-fsa/k2/blob/master/k2/csrc/fsa.h#L31>`_:
 
       .. code-block:: c++
 
-        struct Arc {
-          int32_t src_state;
-          int32_t dest_state;
-          int32_t label;
-          float score;
-        };
+          struct Arc {
+            int32_t src_state;
+            int32_t dest_state;
+            int32_t label;
+            float score;
+          }
 
-    the **value** is acessed as a **2-D** torch tensor with dtype ``torch.int32``.
-    The **2-D** tensor has 4 columns: the first column contains ``src_state``,
-    the second column contains ``dest_state``, the third column contains ``label``,
-    and the fourth column contains ``score`` (The float type is **reinterpreted** as
-    int type without any conversions).
+In the following, we describe what is inside a ``shape`` and how to manipulate
+``data``.
 
-    There are only 1-D and 2-D **value** tensors in k2 at present.
+Shape
+^^^^^
+
+To be done.
+
+data
+^^^^
+
+TBD.
