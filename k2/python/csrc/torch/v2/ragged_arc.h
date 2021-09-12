@@ -56,7 +56,8 @@ struct RaggedArc {
                 extra labels. If it is empty, then the string represents
                 an acceptor.
    */
-  RaggedArc(const std::string &s, py::list extra_label_names = py::none());
+  RaggedArc(const std::string &s,
+            const std::vector<std::string> &extra_label_names = {});
 
   RaggedArc(const RaggedArc &other) = default;
 
@@ -69,6 +70,18 @@ struct RaggedArc {
   // Populate `this->scores` and return it
   const torch::Tensor &Scores() const;
   torch::Tensor &Scores();
+
+  /* Return a 2-D int32 torch tensor.
+     Each row represents an arc, where:
+      - column 0 is the source state
+      - column 1 is the dest state
+      - column 2 is the label
+      - column 3 is the score, reinterpreted cast from a float.
+
+    @caution You should not modify the returned tensor since it shares
+    the underlying memory with this FSA.
+   */
+  torch::Tensor Arcs() /*const*/;
 
   /* Enable/Disable requires_grad of this tensor
 
@@ -87,6 +100,59 @@ struct RaggedArc {
   std::string ToString() const;
 
   RaggedArc ArcSort() /*const*/;
+
+  /** Associate an attribute with a value.
+
+    If there is no attribute with the given `name`,
+      - If `value` is an instance of `torch::Tensor`, add it to `tensor_attrs`
+      - If `value` is an instance of `RaggedAny`, add it to
+        `ragged_tensor_attrs`
+      - Otherwise, add it to `other_attrs`.
+
+    If there is already an attribute with the given `name`, we first
+    remove this attribute and then add it using the above logic.
+
+    @param name  The attribute name.
+    @param value  The attribute value.
+   */
+  void SetAttr(const std::string &name, py::object value);
+
+  /** Get an attribute by its name.
+
+    Raise an Python exception "AttributeError" if there is no such attribute.
+
+    @param name The attribute name.
+    @return Return the value of the attribute.
+   */
+  py::object GetAttr(const std::string &name) const;
+
+  /** Delete an attribute by its name.
+
+    Raise an Python exception "AttributeError" if there is no such attribute.
+
+    @param name The attribute name.
+   */
+  void DeleteAttr(const std::string &name);
+
+  /** Query if an attribute exists.
+
+    @param name The attribute name.
+    @return Return `true` if the given attribute exists.
+            Return `false` otherwise.
+   */
+  bool HasAttr(const std::string &name) const;
+
+ private:
+  void SetAttr(const std::string &name, torch::Tensor value) {
+    K2_CHECK_EQ(value.size(0), fsa.NumElements())
+        << "shape[0] of the tensor MUST be equal to number of arcs";
+    tensor_attrs[name] = value;
+  }
+  void SetAttr(const std::string &name, const RaggedAny &value) {
+    K2_CHECK_EQ(value.any.Dim0(), fsa.NumElements())
+        << "dim0 of the tensor MUST be equal to number of arcs";
+    ragged_tensor_attrs[name] = value;
+  }
 };
 
 }  // namespace k2

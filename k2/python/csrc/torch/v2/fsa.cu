@@ -27,11 +27,18 @@
 namespace k2 {
 
 void PybindRaggedArc(py::module &m) {
+  // TODO(fangjun): Add more doc to doc/fsa.cu for k2.ragged.FSA
   py::class_<RaggedArc> fsa(m, "Fsa");
-  fsa.def(py::init<>());
 
-  fsa.def(py::init<const std::string &, py::list>(), py::arg("s"),
-          py::arg("extra_label_names") = py::none());
+  fsa.def(
+      py::init([](const std::string &s,
+                  torch::optional<std::vector<std::string>> extra_label_names =
+                      {}) -> std::unique_ptr<RaggedArc> {
+        return std::make_unique<RaggedArc>(
+            s, extra_label_names.value_or(std::vector<std::string>{}));
+      }),
+      py::arg("s"), py::arg("extra_label_names") = py::none());
+
   fsa.def("__str__", &RaggedArc::ToString);
   fsa.def("__repr__", &RaggedArc::ToString);
 
@@ -39,6 +46,11 @@ void PybindRaggedArc(py::module &m) {
           py::arg("requires_grad") = true);
 
   fsa.def("arc_sort", &RaggedArc::ArcSort);
+
+  fsa.def("__setattr__", (void (RaggedArc::*)(const std::string &, py::object))(
+                             &RaggedArc::SetAttr));
+  fsa.def("__getattr__", &RaggedArc::GetAttr);
+  fsa.def("__delattr__", &RaggedArc::DeleteAttr);
 
   fsa.def_property(
       "scores", [](RaggedArc &self) -> torch::Tensor { return self.Scores(); },
@@ -63,6 +75,10 @@ void PybindRaggedArc(py::module &m) {
       [](RaggedArc &self, bool requires_grad) -> void {
         self.SetRequiresGrad(requires_grad);
       });
+
+  fsa.def_property_readonly(
+      "arcs", &RaggedArc::Arcs,
+      "You should not modify the data of the returned arcs!");
 }
 
 }  // namespace k2
