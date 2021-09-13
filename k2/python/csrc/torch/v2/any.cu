@@ -76,9 +76,10 @@ void PybindRaggedAny(py::module &m) {
           return py::cast(ragged);
         } else {
           K2_CHECK_EQ(self.any.NumAxes(), 2);
-          const int32_t *row_split1_data = self.any.RowSplits(1).Data();
-          int32_t begin = row_split1_data[i],
-                  end = row_split1_data[i + 1];
+          Array1<int32_t> row_split = self.any.RowSplits(1).To(GetCpuContext());
+          const int32_t *row_split_data = row_split.Data();
+          int32_t begin = row_split_data[i],
+                  end = row_split_data[i + 1];
           Dtype t = self.any.GetDtype();
           FOR_REAL_AND_INT32_TYPES(t, T, {
             Array1<T> array =
@@ -108,7 +109,7 @@ void PybindRaggedAny(py::module &m) {
       }, kRaggedAnyGetItemSliceDoc);
 
   any.def("index",
-          static_cast<RaggedAny (RaggedAny::*)(RaggedAny &, bool)>(
+          static_cast<RaggedAny (RaggedAny::*)(RaggedAny &)>(
               &RaggedAny::Index),
           py::arg("indexes"),
           kRaggedAnyRaggedIndexDoc);
