@@ -145,6 +145,7 @@ class TestIndexRaggedTensor(unittest.TestCase):
                                         device=device)
             ragged_index = k2.RaggedTensor(index_shape, index_values)
             ans = src.index(ragged_index)
+            ans = ans.remove_axis(1)
             expected_row_splits = torch.tensor([0, 5, 5, 5, 9],
                                                dtype=torch.int32,
                                                device=device)

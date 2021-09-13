@@ -538,6 +538,7 @@ def fsa_from_unary_function_ragged(src: Fsa,
                 # We currently don't support float ragged attributes
                 assert value.dtype == torch.int32
                 new_value = value.index(arc_map)
+                new_value = new_value.remove_axis(new_value.num_axes - 2)
             setattr(dest, name, new_value)
 
     for name, value in src.named_non_tensor_attr():
