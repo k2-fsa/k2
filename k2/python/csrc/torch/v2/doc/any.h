@@ -350,9 +350,6 @@ Select the i-th sublist along axis 0.
 Caution:
   Support for autograd is to be implemented.
 
-Note:
-  It requires that this tensor has at least 3 axes.
-
 >>> import torch
 >>> import k2.ragged as k2r
 >>> a = k2r.RaggedTensor('[ [[1 3] [] [9]]  [[8]] ]')
@@ -363,11 +360,43 @@ Note:
 >>> a[1]
 [ [ 8 ] ]
 
+>>> a = k2r.RaggedTensor('[ [1 3] [9] [8] ]')
+>>> a
+[ [ 1 3 ] [ 9 ] [ 8 ] ]
+>>> a[0]
+tensor([1, 3], dtype=torch.int32)
+>>> a[1]
+tensor([9], dtype=torch.int32)
+
 Args:
   i:
     The i-th sublist along axis 0.
 Returns:
-  Return a new ragged tensor with one fewer axis.
+  Return a new ragged tensor with one fewer axis. If `num_axes == 2`, the
+  return value will be a 1D tensor.
+)doc";
+
+static constexpr const char *kRaggedAnyGetItemSliceDoc = R"doc(
+Slices sublists along axis 0 with the given range. Only support slicing step
+equals to 1.
+
+Caution:
+  Support for autograd is to be implemented.
+
+>>> import torch
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor('[ [[1 3] [] [9]]  [[8]] [[10 11]] ]')
+>>> a
+[ [ [ 1 3 ] [ ] [ 9 ] ] [ [ 8 ] ] [ [ 10 11 ] ] ]
+>>> a[0:2]
+[ [ [ 1 3 ] [ ] [ 9 ] [ [ 8 ] ] ] ]
+>>> a[1:2]
+[ [ [ 8 ] ] [ [ 10 11 ] ] ]
+
+Args:
+Returns:
+  Return a new ragged tensor with the same axes as original ragged tensor, but
+  only contains the sublists within the range.
 )doc";
 
 static constexpr const char *kRaggedAnyCloneDoc = R"doc(
@@ -1301,14 +1330,10 @@ Index a ragged tensor with a ragged tensor.
   >>> import k2.ragged as k2r
   >>> src = k2r.RaggedTensor([[10, 11], [12, 13.5]])
   >>> indexes = k2r.RaggedTensor([[0, 1]])
-  >>> src.index(indexes, remove_axis=True)
-  [ [ 10 11 12 13.5 ] ]
-  >>> src.index(indexes, remove_axis=False)
+  >>> src.index(indexes)
   [ [ [ 10 11 ] [ 12 13.5 ] ] ]
   >>> i = k2r.RaggedTensor([[0], [1], [0, 0]])
-  >>> src.index(i, remove_axis=True)
-  [ [ 10 11 ] [ 12 13.5 ] [ 10 11 10 11 ] ]
-  >>> src.index(i, remove_axis=False)
+  >>> src.index(i)
   [ [ [ 10 11 ] ] [ [ 12 13.5 ] ] [ [ 10 11 ] [ 10 11 ] ] ]
 
 **Example 2**:
@@ -1316,9 +1341,7 @@ Index a ragged tensor with a ragged tensor.
   >>> import k2.ragged as k2r
   >>> src = k2r.RaggedTensor([ [[1, 0], [], [2]], [[], [3], [0, 0, 1]], [[1, 2], [-1]]])
   >>> i = k2r.RaggedTensor([[[0, 2], [1]], [[0]]])
-  >>> src.index(i, remove_axis=True)
-  [ [ [ [ 1 0 2 ] [ 1 2 -1 ] ] [ [ 3 0 0 1 ] ] ] [ [ [ 1 0 2 ] ] ] ]
-  >>> src.index(i, remove_axis=False)
+  >>> src.index(i)
   [ [ [ [ [ 1 0 ] [ ] [ 2 ] ] [ [ 1 2 ] [ -1 ] ] ] [ [ [ ] [ 3 ] [ 0 0 1 ] ] ] ] [ [ [ [ 1 0 ] [ ] [ 2 ] ] ] ] ]
 
 Args:
@@ -1328,13 +1351,6 @@ Args:
     Caution:
       Its dtype has to be ``torch.int32``.
 
-  remove_axis:
-    If ``True``, then we remove the last-but-one axis,
-    which has the effect of appending lists, e.g.
-    if ``self`` is ``[[ 10 11 ] [ 12 13 ]]`` and ``indexes``
-    is ``[[0 1]]`, this function will give us ``[[ 10 11 12 13 ]]``.
-    If ``False`` the answer will have at least 3 axes, e.g., ``[[[10 11]] [12 13]]]`` ,
-    in this case.
 Returns:
   Return indexed tensor.
 )doc";

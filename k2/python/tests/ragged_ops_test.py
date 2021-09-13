@@ -591,11 +591,11 @@ class TestRaggedOps(unittest.TestCase):
             res.append([random.random() * -100])
         # sublist with huge elements
         res.append([random.random() * -100 for x in range(5000)])
-        ragged_cpu = k2.ragged.create_ragged2(res)
-        indexes_cpu = k2.ragged.argmax_per_sublist(ragged_cpu)
+        ragged_cpu = k2.RaggedTensor(res)
+        indexes_cpu = ragged_cpu.argmax()
         for device in self.devices:
             ragged = ragged_cpu.to(device)
-            indexes = k2.ragged.argmax_per_sublist(ragged).to("cpu")
+            indexes = ragged.argmax().to("cpu")
             assert torch.all(torch.eq(indexes, indexes_cpu))
 
     def test_max_per_sublist_two_axes(self):
