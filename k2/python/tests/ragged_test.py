@@ -49,7 +49,7 @@ class TestRagged(unittest.TestCase):
             print(ragged_int)
             assert torch.all(
                 torch.eq(ragged_int.values, torch.tensor([1, 2, 3],
-                         device=device)))
+                                                         device=device)))
             assert ragged_int.dim0 == 2
             assert torch.all(
                 torch.eq(ragged_int.shape.row_splits(1),
