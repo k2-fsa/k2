@@ -394,6 +394,8 @@ Caution:
 [ [ [ 8 ] ] [ [ 10 11 ] ] ]
 
 Args:
+  key:
+    Slice containing integer constants.
 Returns:
   Return a new ragged tensor with the same axes as original ragged tensor, but
   only contains the sublists within the range.

@@ -106,7 +106,7 @@ void PybindRaggedAny(py::module &m) {
                               << istep;
 
         return self.Arange(/*axis*/ 0, istart, istop);
-      }, kRaggedAnyGetItemSliceDoc);
+      }, py::arg("key"), kRaggedAnyGetItemSliceDoc);
 
   any.def("index",
           static_cast<RaggedAny (RaggedAny::*)(RaggedAny &)>(
