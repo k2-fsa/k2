@@ -714,11 +714,6 @@ unique
 
 .. automethod:: k2.RaggedTensor.unique
 
-data
-^^^^
-
-.. autoattribute:: k2.RaggedTensor.data
-
 device
 ^^^^^^
 
@@ -758,6 +753,11 @@ shape
 ^^^^^
 
 .. autoattribute:: k2.RaggedTensor.shape
+
+values
+^^^^^^
+
+.. autoattribute:: k2.RaggedTensor.values
 
 SymbolTable
 -----------
@@ -1093,11 +1093,6 @@ unique
 
 .. automethod:: k2.ragged.RaggedTensor.unique
 
-data
-^^^^
-
-.. autoattribute:: k2.ragged.RaggedTensor.data
-
 device
 ^^^^^^
 
@@ -1137,5 +1132,10 @@ shape
 ^^^^^
 
 .. autoattribute:: k2.ragged.RaggedTensor.shape
+
+values
+^^^^^^
+
+.. autoattribute:: k2.ragged.RaggedTensor.values
 
 
