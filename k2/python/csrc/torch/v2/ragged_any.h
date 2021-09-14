@@ -226,7 +226,7 @@ struct RaggedAny {
                                       bool need_new2old_indexes = false);
 
   /// Wrapper for k2::Index
-  RaggedAny Index(RaggedAny &indexes, bool remove_axis = true) /*const*/;
+  RaggedAny Index(RaggedAny &indexes) /*const*/;
 
   /// Wrapper for k2::Index
   std::pair<RaggedAny, torch::optional<torch::Tensor>> Index(

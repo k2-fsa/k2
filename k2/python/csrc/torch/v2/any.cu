@@ -70,15 +70,48 @@ void PybindRaggedAny(py::module &m) {
 
   any.def(
       "__getitem__",
-      [](RaggedAny &self, int32_t i) -> RaggedAny {
-        return self.Index(/*axis*/ 0, i);
+      [](RaggedAny &self, int32_t i) -> py::object {
+        if (self.any.NumAxes() > 2) {
+          RaggedAny ragged = self.Index(/*axis*/ 0, i);
+          return py::cast(ragged);
+        } else {
+          K2_CHECK_EQ(self.any.NumAxes(), 2);
+          Array1<int32_t> row_split = self.any.RowSplits(1).To(GetCpuContext());
+          const int32_t *row_split_data = row_split.Data();
+          int32_t begin = row_split_data[i],
+                  end = row_split_data[i + 1];
+          Dtype t = self.any.GetDtype();
+          FOR_REAL_AND_INT32_TYPES(t, T, {
+            Array1<T> array =
+                self.any.Specialize<T>().values.Arange(begin, end);
+            torch::Tensor tensor = ToTorch(array);
+            return py::cast(tensor);
+          });
+        }
+        // Unreachable code
+        return py::none();
       },
       py::arg("i"), kRaggedAnyGetItemDoc);
 
+  any.def(
+      "__getitem__",
+      [](RaggedAny &self, const py::slice &slice) -> RaggedAny {
+        py::ssize_t start = 0, stop = 0, step = 0, slicelength = 0;
+        if (!slice.compute(self.any.Dim0(), &start, &stop, &step, &slicelength))
+          throw py::error_already_set();
+        int32_t istart = static_cast<int32_t>(start);
+        int32_t istop  = static_cast<int32_t>(stop);
+        int32_t istep  = static_cast<int32_t>(step);
+        K2_CHECK_EQ(istep, 1) << "Only support slicing with step 1, given : "
+                              << istep;
+
+        return self.Arange(/*axis*/ 0, istart, istop);
+      }, py::arg("key"), kRaggedAnyGetItemSliceDoc);
+
   any.def("index",
-          static_cast<RaggedAny (RaggedAny::*)(RaggedAny &, bool)>(
+          static_cast<RaggedAny (RaggedAny::*)(RaggedAny &)>(
               &RaggedAny::Index),
-          py::arg("indexes"), py::arg("remove_axis") = true,
+          py::arg("indexes"),
           kRaggedAnyRaggedIndexDoc);
 
   any.def("index",
@@ -325,8 +358,8 @@ void PybindRaggedAny(py::module &m) {
   // Return the underlying memory of this tensor.
   // No data is copied. Memory is shared.
   any.def_property_readonly(
-      "data", [](RaggedAny &self) -> torch::Tensor { return self.Data(); },
-      kRaggedAnyDataDoc);
+      "values", [](RaggedAny &self) -> torch::Tensor { return self.Data(); },
+      kRaggedAnyValuesDoc);
 
   any.def_property_readonly(
       "shape", [](RaggedAny &self) -> RaggedShape { return self.any.shape; },
