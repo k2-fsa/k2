@@ -560,13 +560,13 @@ torch::optional<torch::Tensor> RaggedAny::Sort(
   return ans;
 }
 
-RaggedAny RaggedAny::Index(RaggedAny &indexes,
-                           bool remove_axis /* = true*/) /*const*/ {
+RaggedAny RaggedAny::Index(RaggedAny &indexes) /*const*/ {
   K2_CHECK_EQ(indexes.any.GetDtype(), kInt32Dtype)
       << "Unsupported dtype: " << TraitsOf(indexes.any.GetDtype()).Name();
 
   DeviceGuard guard(any.Context());
 
+  bool remove_axis = false;
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
     return RaggedAny(k2::Index<T>(any.Specialize<T>(),

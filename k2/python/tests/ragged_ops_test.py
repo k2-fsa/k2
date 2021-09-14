@@ -195,7 +195,7 @@ class TestRaggedOps(unittest.TestCase):
         for device in self.devices:
             for dtype in [torch.float32, torch.float64]:
                 src = k2.RaggedTensor(s, dtype).to(device)
-                saved = src.data.clone().detach()
+                saved = src.values.clone().detach()
                 saved.requires_grad_(True)
                 src.requires_grad_(True)
 
@@ -204,9 +204,9 @@ class TestRaggedOps(unittest.TestCase):
                 scale = torch.arange(ans.numel(), device=device)
 
                 # the stride of grad is not 0
-                (ans.data * scale).sum().backward()
+                (ans.values * scale).sum().backward()
 
-                expected = saved.new_zeros(*ans.data.shape)
+                expected = saved.new_zeros(*ans.values.shape)
 
                 normalizer = saved[:3].exp().sum().log()
                 expected[:3] = saved[:3] - normalizer
@@ -219,7 +219,7 @@ class TestRaggedOps(unittest.TestCase):
                 normalizer = saved[6:8].exp().sum().log()
                 expected[6:8] = saved[6:8] - normalizer
 
-                self.assertTrue(torch.allclose(expected, ans.data))
+                self.assertTrue(torch.allclose(expected, ans.values))
                 (expected * scale).sum().backward()
 
                 self.assertTrue(torch.allclose(saved.grad, src.grad))
@@ -231,16 +231,16 @@ class TestRaggedOps(unittest.TestCase):
         for device in self.devices:
             for dtype in [torch.float32, torch.float64]:
                 src = k2.RaggedTensor(s, dtype).to(device)
-                saved = src.data.clone().detach()
+                saved = src.values.clone().detach()
                 saved.requires_grad_(True)
                 src.requires_grad_(True)
 
                 ans = src.normalize(use_log=True)
 
                 # the stride of grad is 0
-                ans.data.sum().backward()
+                ans.values.sum().backward()
 
-                expected = saved.new_zeros(*ans.data.shape)
+                expected = saved.new_zeros(*ans.values.shape)
 
                 normalizer = saved[:3].exp().sum().log()
                 expected[:3] = saved[:3] - normalizer
@@ -253,7 +253,7 @@ class TestRaggedOps(unittest.TestCase):
                 normalizer = saved[6:8].exp().sum().log()
                 expected[6:8] = saved[6:8] - normalizer
 
-                self.assertTrue(torch.allclose(expected, ans.data))
+                self.assertTrue(torch.allclose(expected, ans.values))
                 expected.sum().backward()
 
                 self.assertTrue(torch.allclose(saved.grad, src.grad))
@@ -281,7 +281,7 @@ class TestRaggedOps(unittest.TestCase):
             normalized_scores = ragged_scores.normalize(use_log=True)
             assert normalized_scores.requires_grad is True
 
-            fsa.scores = normalized_scores.data
+            fsa.scores = normalized_scores.values
             assert fsa.scores.requires_grad is True
 
             # arcs leaving state 0
@@ -306,16 +306,16 @@ class TestRaggedOps(unittest.TestCase):
                     [ [1 3 5] [2 -1] [] [3] [5 2] ]
                 '''
                 src = k2.RaggedTensor(s, dtype=dtype).to(device)
-                saved = src.data
+                saved = src.values
 
                 ans = src.normalize(use_log=False)
-                expected = saved.new_zeros(*ans.data.shape)
+                expected = saved.new_zeros(*ans.values.shape)
                 expected[:3] = saved[:3] / saved[:3].sum()
                 expected[3:5] = saved[3:5] / saved[3:5].sum()
                 expected[5] = 1
                 expected[6:8] = saved[6:8] / saved[6:8].sum()
 
-                assert torch.allclose(ans.data, expected)
+                assert torch.allclose(ans.values, expected)
 
     def test_sum_per_sublist(self):
         s = '''
@@ -591,11 +591,11 @@ class TestRaggedOps(unittest.TestCase):
             res.append([random.random() * -100])
         # sublist with huge elements
         res.append([random.random() * -100 for x in range(5000)])
-        ragged_cpu = k2.ragged.create_ragged2(res)
-        indexes_cpu = k2.ragged.argmax_per_sublist(ragged_cpu)
+        ragged_cpu = k2.RaggedTensor(res)
+        indexes_cpu = ragged_cpu.argmax()
         for device in self.devices:
             ragged = ragged_cpu.to(device)
-            indexes = k2.ragged.argmax_per_sublist(ragged).to("cpu")
+            indexes = ragged.argmax().to("cpu")
             assert torch.all(torch.eq(indexes, indexes_cpu))
 
     def test_max_per_sublist_two_axes(self):
@@ -636,8 +636,8 @@ class TestRaggedOps(unittest.TestCase):
                 assert src == expected_src
                 assert torch.all(torch.eq(new2old, expected_new2old))
 
-                expected_sorted = k2.index_select(src_clone.data, new2old)
-                sorted = src.data
+                expected_sorted = k2.index_select(src_clone.values, new2old)
+                sorted = src.values
                 assert torch.all(torch.eq(expected_sorted, sorted))
 
     def test_sort_sublist_descending(self):
@@ -655,8 +655,8 @@ class TestRaggedOps(unittest.TestCase):
                 assert src == sorted_src
                 assert torch.all(torch.eq(new2old, expected_new2old))
 
-                expected_sorted = k2.index_select(src_clone.data, new2old)
-                sorted = src.data
+                expected_sorted = k2.index_select(src_clone.values, new2old)
+                sorted = src.values
                 assert torch.all(torch.eq(expected_sorted, sorted))
 
 
