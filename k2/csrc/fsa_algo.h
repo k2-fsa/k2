@@ -221,10 +221,20 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                  `IsMonotonic(*a_to_b_map)` (this requirement
                  is related to the length-sorting requirement of
                  b_fsas).
-     @param[in] output_beam   Beam with which we prune the output (analogous
+     @param[in] output_beam  Beam with which we prune the output (analogous
                   to lattice-beam in Kaldi), e.g. 8.  We discard arcs in
                   the output that are not on a path that's within
                  `output_beam` of the best path of the composed output.
+     @param[in] max_states  The max number of states with which we prune the
+                  output, mainly to avoid out-of-memory and numerical overflow.
+                  If number of states exceeds max_states, we'll decrease
+                  output_beam to prune out more states, util the number of
+                  states is less than max_states.
+     @param[in] max_arcs  The max number of arcs with which we prune the
+                  output, mainly to avoid out-of-memory and numerical overflow.
+                  If number of arcs exceeds max_arcs, we'll decrease
+                  output_beam to prune out more states, util the number of
+                  arcs is less than max_arcs.
      @param[out] out Output vector of composed, pruned FSAs, with same
                    Dim0() as a_fsas.  Elements of it may be empty if the
                    composed results was empty.  All states in the output will be
@@ -239,7 +249,7 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
  */
 void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                     const Array1<int32_t> *a_to_b_map,
-                    float output_beam,
+                    float output_beam, int32_t max_states, int32_t max_arcs,
                     FsaVec *out, Array1<int32_t> *arc_map_a,
                     Array1<int32_t> *arc_map_b);
 

@@ -243,7 +243,8 @@ static void PybindIntersectDense(py::module &m) {
   m.def(
       "intersect_dense",
       [](FsaVec &a_fsas, DenseFsaVec &b_fsas,
-         torch::optional<torch::Tensor> a_to_b_map, float output_beam)
+         torch::optional<torch::Tensor> a_to_b_map, float output_beam,
+         int32_t max_states, int32_t max_arcs)
           -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
         DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> arc_map_a;
@@ -260,12 +261,13 @@ static void PybindIntersectDense(py::module &m) {
         } else {
           a_to_b_map_array = Arange(a_fsa_vec.Context(), 0, a_fsa_vec.Dim0());
         }
-        IntersectDense(a_fsa_vec, b_fsas, &a_to_b_map_array, output_beam, &out,
-                       &arc_map_a, &arc_map_b);
+        IntersectDense(a_fsa_vec, b_fsas, &a_to_b_map_array, output_beam,
+                       max_states, max_arcs, &out, &arc_map_a, &arc_map_b);
         return std::make_tuple(out, ToTorch(arc_map_a), ToTorch(arc_map_b));
       },
       py::arg("a_fsas"), py::arg("b_fsas"), py::arg("a_to_b_map"),
-      py::arg("output_beam"));
+      py::arg("output_beam"), py::arg("max_states") = 15000000,
+      py::arg("max_arcs") = 1073741824 /* 2^30 */);
 }
 
 static void PybindConnect(py::module &m) {
