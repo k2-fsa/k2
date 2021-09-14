@@ -65,22 +65,22 @@ class TestRaggedTensor(unittest.TestCase):
         assert b.num_axes == 3
         assert b.dim0 == 2
 
-    def test_property_data(self):
+    def test_property_values(self):
         a = k2r.RaggedTensor([[1], [2], [], [3, 4]])
-        assert torch.all(torch.eq(a.data, torch.tensor([1, 2, 3, 4])))
+        assert torch.all(torch.eq(a.values, torch.tensor([1, 2, 3, 4])))
 
         with self.assertRaises(AttributeError):
-            # the `data` attribute is const. You cannot rebind it
-            a.data = 10
+            # the `values` attribute is const. You cannot rebind it
+            a.values = 10
 
-        # However, we can change the elements of a.data
-        a.data[0] = 10
-        a.data[-1] *= 2
+        # However, we can change the elements of a.values
+        a.values[0] = 10
+        a.values[-1] *= 2
 
         expected = k2r.RaggedTensor([[10], [2], [], [3, 8]])
         assert a == expected
 
-        a.data[0] = 1
+        a.values[0] = 1
         assert a != expected
 
     def test_clone(self):
@@ -88,7 +88,7 @@ class TestRaggedTensor(unittest.TestCase):
         b = a.clone()
 
         assert a == b
-        a.data[0] = 10
+        a.values[0] = 10
 
         assert a != b
 
@@ -181,7 +181,7 @@ class TestRaggedTensor(unittest.TestCase):
                                    dtype=torch.int32,
                                    device=device)
                 b_1 = "row_ids1"
-                b_2 = a.data
+                b_2 = a.values
 
                 assert torch.all(torch.eq(b[0], b_0))
                 assert b[1] == b_1
@@ -203,7 +203,7 @@ class TestRaggedTensor(unittest.TestCase):
                                    dtype=torch.int32,
                                    device=device)  # noqa
                 b_3 = "row_ids2"
-                b_4 = a.data
+                b_4 = a.values
 
                 assert torch.all(torch.eq(b[0], b_0))
                 assert b[1] == b_1

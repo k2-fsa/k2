@@ -466,7 +466,7 @@ def shortest_path(fsa: Fsa, use_double_scores: bool) -> Fsa:
     '''
     entering_arcs = fsa._get_entering_arcs(use_double_scores)
     ragged_arc, ragged_int = _k2.shortest_path(fsa.arcs, entering_arcs)
-    arc_map = ragged_int.data
+    arc_map = ragged_int.values
 
     out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
     return out_fsa
@@ -1016,7 +1016,7 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedTensor],
     if isinstance(symbols, k2.RaggedTensor):
         assert device is None
         assert symbols.num_axes == 2
-        symbol_values = symbols.data
+        symbol_values = symbols.values
     else:
         symbol_values = torch.tensor(
             [it for symbol in symbols for it in symbol],

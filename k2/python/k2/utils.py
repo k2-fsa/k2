@@ -169,7 +169,7 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':  # noqa
         if end == begin:
             return ':<eps>'
 
-        labels = aux_labels.data[begin:end]
+        labels = aux_labels.values[begin:end]
         ans = []
         for label in labels.tolist():
             if label == -1:

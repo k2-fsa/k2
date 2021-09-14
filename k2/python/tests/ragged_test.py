@@ -48,8 +48,8 @@ class TestRagged(unittest.TestCase):
             ragged_int = k2.RaggedTensor(s).to(device)
             print(ragged_int)
             assert torch.all(
-                torch.eq(ragged_int.data, torch.tensor([1, 2, 3],
-                                                       device=device)))
+                torch.eq(ragged_int.values, torch.tensor([1, 2, 3],
+                         device=device)))
             assert ragged_int.dim0 == 2
             assert torch.all(
                 torch.eq(ragged_int.shape.row_splits(1),

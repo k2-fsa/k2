@@ -673,23 +673,23 @@ device(type='cuda', index=0)
 >>> b.device == torch.device('cuda:0')
 )doc";
 
-static constexpr const char *kRaggedAnyDataDoc = R"doc(
+static constexpr const char *kRaggedAnyValuesDoc = R"doc(
 Return the underlying memory as a 1-D tensor.
 
 >>> import torch
 >>> import k2.ragged as k2r
 >>> a = k2r.RaggedTensor([[1, 2], [], [5], [], [8, 9, 10]])
->>> a.data
+>>> a.values
 tensor([ 1,  2,  5,  8,  9, 10], dtype=torch.int32)
->>> isinstance(a.data, torch.Tensor)
+>>> isinstance(a.values, torch.Tensor)
 True
->>> a.data[0] = -1
+>>> a.values[-2] = -1
 >>> a
 [ [ -1 2 ] [ ] [ 5 ] [ ] [ 8 9 10 ] ]
->>> a.data[3] = -3
+>>> a.values[3] = -3
 >>> a
 [ [ -1 2 ] [ ] [ 5 ] [ ] [ -3 9 10 ] ]
->>> a.data[2] = -2
+>>> a.values[2] = -2
 >>> a
 [ [ -1 2 ] [ ] [ -2 ] [ ] [ -3 9 10 ] ]
 )doc";

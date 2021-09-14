@@ -358,8 +358,8 @@ void PybindRaggedAny(py::module &m) {
   // Return the underlying memory of this tensor.
   // No data is copied. Memory is shared.
   any.def_property_readonly(
-      "data", [](RaggedAny &self) -> torch::Tensor { return self.Data(); },
-      kRaggedAnyDataDoc);
+      "values", [](RaggedAny &self) -> torch::Tensor { return self.Data(); },
+      kRaggedAnyValuesDoc);
 
   any.def_property_readonly(
       "shape", [](RaggedAny &self) -> RaggedShape { return self.any.shape; },
