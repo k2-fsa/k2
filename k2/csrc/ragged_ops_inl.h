@@ -412,6 +412,8 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
               : (row_splits[cur_level + 1].size() - 1));
       is.get();  // consume character 'c'
       if (cur_level == 0) break;
+    } else if (c == ',') {
+      is.get();  // consume character 'c'
     } else {
       InputFixer<T> t;
       is >> t;

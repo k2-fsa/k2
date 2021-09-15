@@ -106,9 +106,11 @@ class MultiGraphDenseIntersect {
    */
   MultiGraphDenseIntersect(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                            const Array1<int32_t> &a_to_b_map,
-                           float output_beam)
+                           float output_beam, int32_t max_states,
+                           int32_t max_arcs)
       : a_fsas_(a_fsas), b_fsas_(b_fsas), a_to_b_map_(a_to_b_map),
-        output_beam_(output_beam) {
+        output_beam_(output_beam), max_states_(max_states),
+        max_arcs_(max_arcs) {
     NVTX_RANGE(K2_FUNC);
     c_ = GetContext(a_fsas.shape, b_fsas.shape, a_to_b_map);
 
@@ -214,12 +216,9 @@ class MultiGraphDenseIntersect {
     int32_t product = ((size_t)(T_ + 1) * (size_t)num_states);
     Renumbering renumber_states;
     int32_t T = T_;
-    const int32_t *a_fsas_row_ids1_data = a_fsas_.RowIds(1).Data();
+    const int32_t *a_fsas_row_ids1_data = a_fsas_.RowIds(1).Data(),
+                  *a_fsas_row_splits2_data = a_fsas_.RowSplits(2).Data();
     FsaInfo *fsa_info_data = fsa_info_.Data();
-
-    // 15 million is max_states... this is to avoid out-of-memory conditions
-    // Eventually we can make this an option.
-    int32_t max_states = 15000000;
 
     while (1) {
       // This code is in a loop is in case we get too many states and have to
@@ -230,6 +229,8 @@ class MultiGraphDenseIntersect {
       score_cutoffs = GetScoreCutoffs();
       score_cutoffs_data = score_cutoffs.Data();
       float **state_scores_data = state_scores_.Data();
+      Array1<int64_t> state_arcs(c_, product);
+      int64_t *state_arcs_data = state_arcs.Data();
 
       // We'll do exclusive-sum on the following array, after setting its
       // elements to 1 if the corresponding state was not pruned away.  The
@@ -255,7 +256,10 @@ class MultiGraphDenseIntersect {
 
             int32_t idx_within_fsa = i - (T + 1) * fsa_info.state_offset,
                 t = idx_within_fsa / fsa_info.num_states,
-                state_idx1 = idx_within_fsa % fsa_info.num_states;
+                state_idx1 = idx_within_fsa % fsa_info.num_states,
+                state_idx01 = fsa_info.state_offset + state_idx1,
+                num_arcs = a_fsas_row_splits2_data[state_idx01 + 1] -
+                           a_fsas_row_splits2_data[state_idx01];
             // In the state_scores arrays, there are 2 copies of each FSA's
             // states, for backward and forward.
             int32_t backward_state_idx =
@@ -273,19 +277,25 @@ class MultiGraphDenseIntersect {
               if (forward_score + backward_score > cutoff) keep = 1;
             }
             keep_state_data[i] = keep;
+            state_arcs_data[i] = keep * num_arcs;
           });
       int32_t tot_states = renumber_states.New2Old().Dim();
-      if (tot_states > max_states) {
-        float cur_beam = output_beam_,
-            next_beam = cur_beam * sqrt(max_states * 1.0 / tot_states);
-        if (next_beam < cur_beam * 0.25)
-          next_beam = cur_beam * 0.25;
-        if (next_beam > cur_beam * 0.75)
-          next_beam = cur_beam * 0.75;
+      if (tot_states > max_states_) {
+        float cur_beam = output_beam_;
+        DecreaseBeam(max_states_, tot_states);
         K2_LOG(INFO) << "Num-states " << tot_states << " exceeds limit "
-                     << max_states << ", decreasing beam from " << cur_beam
-                     << " to " << next_beam;
-        output_beam_ = next_beam;
+                     << max_states_ << ", decreasing beam from " << cur_beam
+                     << " to " << output_beam_;
+        continue;
+      }
+
+      int64_t tot_arcs = Sum(state_arcs);
+      if (tot_arcs > max_arcs_) {
+        float cur_beam = output_beam_;
+        DecreaseBeam(max_arcs_, tot_arcs);
+        K2_LOG(INFO) << "Num-arcs " << tot_arcs << " exceeds limit "
+                     << max_arcs_ << ", decreasing beam from " << cur_beam
+                     << " to " << output_beam_;
       } else {
         break;
       }
@@ -328,7 +338,6 @@ class MultiGraphDenseIntersect {
     // the answer.
     Array1<int32_t> ans_state_idx01(c_, ans_tot_num_states);
     int32_t *ans_state_idx01_data = ans_state_idx01.Data();
-    const int32_t *a_fsas_row_splits2_data = a_fsas_.RowSplits(2).Data();
 
     // set ans_row_ids2_data, which contains an ans_idx01 that combines
     // FSA-index and time-index.
@@ -562,9 +571,10 @@ class MultiGraphDenseIntersect {
     // subsample the output shape, removing arcs that weren't kept
     // TODO: make this more efficient, avoid constructing and_row_ids3.
     RaggedShape ans_shape = RaggedShape4(
-        &ans_row_splits1, &ans_row_ids1, -1,
-        &ans_row_splits2, &ans_row_ids2, -1,
-        &ans_row_splits3_subsampled, &ans_row_ids3_subsampled, -1);
+        &ans_row_splits1, &ans_row_ids1, ans_row_ids1.Dim(),
+        &ans_row_splits2, &ans_row_ids2, ans_row_ids2.Dim(),
+        &ans_row_splits3_subsampled, &ans_row_ids3_subsampled,
+        ans_row_ids3_subsampled.Dim());
 
     // .. remove the 't' axis
     return Ragged<Arc>(RemoveAxis(ans_shape, 1), arcs);
@@ -806,6 +816,21 @@ class MultiGraphDenseIntersect {
   }
 
   /*
+     Decrease output beam according to num_states or num_arcs, `limit` would be
+     the max_states or max_arcs (mainly to avoid out-of-memory conditions),
+     `total` would be current total states or total arcs.
+   */
+  void DecreaseBeam(int64_t limit, int64_t total) {
+    float cur_beam = output_beam_,
+        next_beam = cur_beam * sqrt(limit * 1.0 / total);
+    if (next_beam < cur_beam * 0.25)
+      next_beam = cur_beam * 0.25;
+    if (next_beam > cur_beam * 0.75)
+      next_beam = cur_beam * 0.75;
+    output_beam_ = next_beam;
+  }
+
+  /*
     Called after DoStep() is done for all time steps, returns the total scores
     minus output_beam_.  (This is what it does in the absence of roundoff error
     making the forward and backward tot_scores differ; when they do, it tries to
@@ -825,8 +850,10 @@ class MultiGraphDenseIntersect {
     float **state_scores_data = state_scores_.Data();
 
     FsaInfo *fsa_info_data = fsa_info_.Data();
-    Array1<float> score_cutoffs(c_, num_fsas_);
-    float *score_cutoffs_data = score_cutoffs.Data();
+    Array1<float> score_cutoffs(c_, num_fsas_),
+                  score_diff(c_, num_fsas_);
+    float *score_cutoffs_data = score_cutoffs.Data(),
+          *score_diff_data = score_diff.Data();
     float output_beam = output_beam_;
     const float minus_inf = -std::numeric_limits<float>::infinity();
     K2_EVAL(
@@ -855,12 +882,13 @@ class MultiGraphDenseIntersect {
                 tot_score_min =
                     (tot_score_start < tot_score_end ? tot_score_start
                                                      : tot_score_end);
-          K2_CHECK(tot_score_end == tot_score_start ||
-                   fabs(tot_score_end - tot_score_start) < 1.0)
-              << tot_score_end << " vs "
-              << tot_score_start;  // TODO: remove this
           score_cutoffs_data[fsa_idx0] = tot_score_min - output_beam;
+          score_diff_data[fsa_idx0] = fabs(tot_score_end - tot_score_start);
         });
+    float max_diff = MaxValue(score_diff);
+    if (max_diff >= 1.0)
+      K2_LOG(WARNING) << "The difference between forward score and backward"
+                      << " score exceeds 1.0, the value is : " << max_diff;
     return score_cutoffs;
   }
 
@@ -978,11 +1006,14 @@ class MultiGraphDenseIntersect {
   float output_beam_;
 
   int32_t T_;  // == b_fsas_.MaxSize(1)
+
+  int32_t max_states_;  // number of max states to avoid out-of-memory
+  int32_t max_arcs_;    // number of max arcs to avoid out-of-memory
 };
 
 void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                     const Array1<int32_t> *a_to_b_map,
-                    float output_beam,
+                    float output_beam, int32_t max_states, int32_t max_arcs,
                     FsaVec *out, Array1<int32_t> *arc_map_a,
                     Array1<int32_t> *arc_map_b) {
   NVTX_RANGE("IntersectDense");
@@ -1001,7 +1032,9 @@ void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
 
   MultiGraphDenseIntersect intersector(a_fsas, b_fsas,
                                        *a_to_b_map,
-                                       output_beam);
+                                       output_beam,
+                                       max_states,
+                                       max_arcs);
 
   intersector.Intersect();
   FsaVec ret = intersector.FormatOutput(arc_map_a, arc_map_b);

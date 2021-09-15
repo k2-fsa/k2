@@ -40,23 +40,30 @@ void PybindRaggedAny(py::module &m) {
   //      k2.ragged.Tensor methods
   //--------------------------------------------------
 
-  any.def(
-      py::init([](py::list data,
-                  py::object dtype = py::none()) -> std::unique_ptr<RaggedAny> {
-        return std::make_unique<RaggedAny>(data, dtype);
-      }),
-      py::arg("data"), py::arg("dtype") = py::none(), kRaggedAnyInitDataDoc);
+  any.def(py::init<py::list, py::object, torch::Device>(), py::arg("data"),
+          py::arg("dtype") = py::none(),
+          py::arg("device") = torch::Device(torch::kCPU),
+          kRaggedAnyInitDataDeviceDoc);
 
-  any.def(
-      py::init([](const std::string &s,
-                  py::object dtype = py::none()) -> std::unique_ptr<RaggedAny> {
-        return std::make_unique<RaggedAny>(s, dtype);
-      }),
-      py::arg("s"), py::arg("dtype") = py::none(), kRaggedAnyInitStrDoc);
+  any.def(py::init<py::list, py::object, const std::string &>(),
+          py::arg("data"), py::arg("dtype") = py::none(),
+          py::arg("device") = "cpu", kRaggedAnyInitDataDeviceDoc);
 
-  // TODO(fangjun): add documentation for it
+  any.def(py::init<const std::string &, py::object, torch::Device>(),
+          py::arg("s"), py::arg("dtype") = py::none(),
+          py::arg("device") = torch::Device(torch::kCPU),
+          kRaggedAnyInitStrDeviceDoc);
+
+  any.def(py::init<const std::string &, py::object, const std::string &>(),
+          py::arg("s"), py::arg("dtype") = py::none(),
+          py::arg("device") = torch::Device(torch::kCPU),
+          kRaggedAnyInitStrDeviceDoc);
+
   any.def(py::init<const RaggedShape &, torch::Tensor>(), py::arg("shape"),
           py::arg("value"), kRaggedInitFromShapeAndTensorDoc);
+
+  any.def(py::init<torch::Tensor>(), py::arg("tensor"),
+          kRaggedAnyInitTensorDoc);
 
   any.def(
       "__str__",
@@ -70,16 +77,47 @@ void PybindRaggedAny(py::module &m) {
 
   any.def(
       "__getitem__",
-      [](RaggedAny &self, int32_t i) -> RaggedAny {
-        return self.Index(/*axis*/ 0, i);
+      [](RaggedAny &self, int32_t i) -> py::object {
+        if (self.any.NumAxes() > 2) {
+          RaggedAny ragged = self.Index(/*axis*/ 0, i);
+          return py::cast(ragged);
+        } else {
+          K2_CHECK_EQ(self.any.NumAxes(), 2);
+          Array1<int32_t> row_split = self.any.RowSplits(1).To(GetCpuContext());
+          const int32_t *row_split_data = row_split.Data();
+          int32_t begin = row_split_data[i], end = row_split_data[i + 1];
+          Dtype t = self.any.GetDtype();
+          FOR_REAL_AND_INT32_TYPES(t, T, {
+            Array1<T> array =
+                self.any.Specialize<T>().values.Arange(begin, end);
+            torch::Tensor tensor = ToTorch(array);
+            return py::cast(tensor);
+          });
+        }
+        // Unreachable code
+        return py::none();
       },
       py::arg("i"), kRaggedAnyGetItemDoc);
 
+  any.def(
+      "__getitem__",
+      [](RaggedAny &self, const py::slice &slice) -> RaggedAny {
+        py::ssize_t start = 0, stop = 0, step = 0, slicelength = 0;
+        if (!slice.compute(self.any.Dim0(), &start, &stop, &step, &slicelength))
+          throw py::error_already_set();
+        int32_t istart = static_cast<int32_t>(start);
+        int32_t istop = static_cast<int32_t>(stop);
+        int32_t istep = static_cast<int32_t>(step);
+        K2_CHECK_EQ(istep, 1)
+            << "Only support slicing with step 1, given : " << istep;
+
+        return self.Arange(/*axis*/ 0, istart, istop);
+      },
+      py::arg("key"), kRaggedAnyGetItemSliceDoc);
+
   any.def("index",
-          static_cast<RaggedAny (RaggedAny::*)(RaggedAny &, bool)>(
-              &RaggedAny::Index),
-          py::arg("indexes"), py::arg("remove_axis") = true,
-          kRaggedAnyRaggedIndexDoc);
+          static_cast<RaggedAny (RaggedAny::*)(RaggedAny &)>(&RaggedAny::Index),
+          py::arg("indexes"), kRaggedAnyRaggedIndexDoc);
 
   any.def("index",
           static_cast<std::pair<RaggedAny, torch::optional<torch::Tensor>> (
@@ -325,8 +363,8 @@ void PybindRaggedAny(py::module &m) {
   // Return the underlying memory of this tensor.
   // No data is copied. Memory is shared.
   any.def_property_readonly(
-      "data", [](RaggedAny &self) -> torch::Tensor { return self.Data(); },
-      kRaggedAnyDataDoc);
+      "values", [](RaggedAny &self) -> torch::Tensor { return self.Data(); },
+      kRaggedAnyValuesDoc);
 
   any.def_property_readonly(
       "shape", [](RaggedAny &self) -> RaggedShape { return self.any.shape; },
@@ -375,21 +413,48 @@ void PybindRaggedAny(py::module &m) {
   //      _k2.ragged.functions
   //--------------------------------------------------
 
-  // TODO: change the function name from "create_tensor" to "tensor"
   m.def(
       "create_ragged_tensor",
-      [](py::list data, py::object dtype = py::none()) -> RaggedAny {
-        return RaggedAny(data, dtype);
+      [](py::list data, py::object dtype = py::none(),
+         torch::Device device = torch::kCPU) -> RaggedAny {
+        return RaggedAny(data, dtype, device);
       },
       py::arg("data"), py::arg("dtype") = py::none(),
+      py::arg("device") = torch::Device(torch::kCPU),
       kCreateRaggedTensorDataDoc);
 
   m.def(
       "create_ragged_tensor",
-      [](const std::string &s, py::object dtype = py::none()) -> RaggedAny {
-        return RaggedAny(s, dtype);
+      [](py::list data, py::object dtype = py::none(),
+         const std::string &device = "cpu") -> RaggedAny {
+        return RaggedAny(data, dtype, device);
       },
-      py::arg("s"), py::arg("dtype") = py::none(), kCreateRaggedTensorStrDoc);
+      py::arg("data"), py::arg("dtype") = py::none(), py::arg("device") = "cpu",
+      kCreateRaggedTensorDataDoc);
+
+  m.def(
+      "create_ragged_tensor",
+      [](const std::string &s, py::object dtype = py::none(),
+         torch::Device device = torch::kCPU) -> RaggedAny {
+        return RaggedAny(s, dtype, device);
+      },
+      py::arg("s"), py::arg("dtype") = py::none(),
+      py::arg("device") = torch::Device(torch::kCPU),
+      kCreateRaggedTensorStrDoc);
+
+  m.def(
+      "create_ragged_tensor",
+      [](const std::string &s, py::object dtype = py::none(),
+         const std::string &device = "cpu") -> RaggedAny {
+        return RaggedAny(s, dtype, device);
+      },
+      py::arg("s"), py::arg("dtype") = py::none(), py::arg("device") = "cpu",
+      kCreateRaggedTensorStrDoc);
+
+  m.def(
+      "create_ragged_tensor",
+      [](torch::Tensor tensor) -> RaggedAny { return RaggedAny(tensor); },
+      py::arg("tensor"), kCreateRaggedTensorTensorDoc);
 }
 
 }  // namespace k2

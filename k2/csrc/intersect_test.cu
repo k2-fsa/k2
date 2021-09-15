@@ -84,12 +84,13 @@ TEST(Intersect, Simple) {
 
     fsa = FsaToFsaVec(fsa);
     float output_beam = 1000;
+    int32_t max_states = 15000000,
+            max_arcs = 1 << 30;
 
     FsaVec out_fsas;
     Array1<int32_t> arc_map_a, arc_map_b;
-    IntersectDense(fsa, dfsavec, nullptr,
-                   output_beam, &out_fsas, &arc_map_a,
-                   &arc_map_b);
+    IntersectDense(fsa, dfsavec, nullptr, output_beam, max_states, max_arcs,
+                   &out_fsas, &arc_map_a, &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
                  << ", arc_map_b = " << arc_map_b;
 
@@ -232,9 +233,10 @@ TEST(Intersect, RandomSingle) {
 
     FsaVec out_fsas;
     float output_beam = 1000.0;
-    IntersectDense(fsa, dfsavec, nullptr,
-                   output_beam, &out_fsas, &arc_map_a,
-                   &arc_map_b);
+    int32_t max_states = 15000000,
+            max_arcs = 1 << 30;
+    IntersectDense(fsa, dfsavec, nullptr, output_beam, max_states, max_arcs,
+                   &out_fsas, &arc_map_a, &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
 
     FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
@@ -305,9 +307,10 @@ TEST(Intersect, RandomFsaVec) {
 
     FsaVec out_fsas;
     float output_beam = 100000.0;  // TODO(Dan) ...
-    IntersectDense(fsavec, dfsavec, nullptr,
-                   output_beam, &out_fsas, &arc_map_a,
-                   &arc_map_b);
+    int32_t max_states = 15000000,
+            max_arcs = 1 << 30;
+    IntersectDense(fsavec, dfsavec, nullptr, output_beam, max_states, max_arcs,
+                   &out_fsas, &arc_map_a, &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas
                  << ", arc_map_a = " << arc_map_a
                  << ", arc_map_b = " << arc_map_b;

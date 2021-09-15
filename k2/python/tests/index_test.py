@@ -145,6 +145,7 @@ class TestIndexRaggedTensor(unittest.TestCase):
                                         device=device)
             ragged_index = k2.RaggedTensor(index_shape, index_values)
             ans = src.index(ragged_index)
+            ans = ans.remove_axis(1)
             expected_row_splits = torch.tensor([0, 5, 5, 5, 9],
                                                dtype=torch.int32,
                                                device=device)
@@ -153,7 +154,7 @@ class TestIndexRaggedTensor(unittest.TestCase):
             expected_values = torch.tensor([1, 2, 4, 5, 6, 3, 3, 1, 2],
                                            dtype=torch.int32,
                                            device=device)
-            self.assertTrue(torch.allclose(ans.data, expected_values))
+            self.assertTrue(torch.allclose(ans.values, expected_values))
 
             # index with tensor
             tensor_index = torch.tensor([0, 3, 2, 1, 2, 1],
@@ -168,7 +169,7 @@ class TestIndexRaggedTensor(unittest.TestCase):
             expected_values = torch.tensor([1, 2, 4, 5, 6, 3, 3],
                                            dtype=torch.int32,
                                            device=device)
-            self.assertTrue(torch.allclose(ans.data, expected_values))
+            self.assertTrue(torch.allclose(ans.values, expected_values))
 
 
 class TestIndexTensorWithRaggedInt(unittest.TestCase):
@@ -203,7 +204,7 @@ class TestIndexTensorWithRaggedInt(unittest.TestCase):
             expected_values = torch.tensor([1, 4, 3, 4, 6, 2, 4],
                                            dtype=torch.int32,
                                            device=device)
-            self.assertTrue(torch.allclose(ans.data, expected_values))
+            self.assertTrue(torch.allclose(ans.values, expected_values))
 
 
 if __name__ == '__main__':

@@ -169,7 +169,7 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':  # noqa
         if end == begin:
             return ':<eps>'
 
-        labels = aux_labels.data[begin:end]
+        labels = aux_labels.values[begin:end]
         ans = []
         for label in labels.tolist():
             if label == -1:
@@ -538,6 +538,7 @@ def fsa_from_unary_function_ragged(src: Fsa,
                 # We currently don't support float ragged attributes
                 assert value.dtype == torch.int32
                 new_value = value.index(arc_map)
+                new_value = new_value.remove_axis(new_value.num_axes - 2)
             setattr(dest, name, new_value)
 
     for name, value in src.named_non_tensor_attr():

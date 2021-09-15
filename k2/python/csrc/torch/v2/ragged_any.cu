@@ -35,6 +35,44 @@
 
 namespace k2 {
 
+static void PrintSpaces(std::ostream &os, int32_t num_spaces) {
+  K2_CHECK_GE(num_spaces, 0);
+  for (int32_t i = 0; i != num_spaces; ++i) os << " ";
+}
+
+template <typename T>
+void RaggedAnyToStringIter(std::ostream &os, const Ragged<T> ragged,
+                           int32_t axis, int32_t begin_pos, int32_t end_pos,
+                           int32_t num_indent) {
+  const auto &shape = ragged.shape;
+  K2_CHECK(axis >= 0 && axis < shape.NumAxes() && begin_pos >= 0 &&
+           begin_pos <= end_pos && end_pos <= shape.TotSize(axis));
+  std::string sep = "";
+  bool is_first_row = true;
+  for (int32_t d = begin_pos; d < end_pos; d++) {
+    if (axis == shape.NumAxes() - 1) {
+      os << sep << ragged.values[d];
+      sep = ", ";
+    } else {
+      const int32_t *row_splits = shape.RowSplits(axis + 1).Data();
+      K2_DCHECK_LE(d, shape.RowSplits(axis + 1).Dim());
+      int32_t row_start = row_splits[d], row_end = row_splits[d + 1];
+
+      if (!is_first_row) {
+        PrintSpaces(os, num_indent + 1);
+      }
+      is_first_row = false;
+
+      os << "[";
+
+      RaggedAnyToStringIter(os, ragged, axis + 1, row_start, row_end,
+                            num_indent + 1);
+      os << "]";
+      if (d != end_pos - 1) os << ",\n";
+    }
+  }
+}
+
 /** One iteration of RaggedAnyFromList.
 
   @param data It is a list or a list-of sublist(s).
@@ -154,21 +192,24 @@ RaggedAny::RaggedAny(const RaggedShape &shape, torch::Tensor value)
   K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
 }
 
-RaggedAny::RaggedAny(const std::string &s, py::object dtype /*=py::none()*/) {
+RaggedAny::RaggedAny(const std::string &s, py::object dtype /*=py::none()*/,
+                     torch::Device device /*=torch::kCPU*/) {
   if (!dtype.is_none() && !THPDtype_Check(dtype.ptr())) {
     K2_LOG(FATAL) << "Expect an instance of torch.dtype. "
                   << "Given: " << py::str(dtype);
   }
 
+  ContextPtr context = GetContext(device);
+
   if (dtype.is_none()) {
     try {
       // We try int first, if it fails, use float
-      any = Ragged<int32_t>(s, /*throw_on_failure*/ true).Generic();
+      any = Ragged<int32_t>(s, /*throw_on_failure*/ true).To(context).Generic();
       return;
     } catch (const std::runtime_error &) {
       // Use float. If it fails again, another exception
       // is thrown and it is propagated to the user
-      any = Ragged<float>(s).Generic();
+      any = Ragged<float>(s).To(context).Generic();
       return;
     }
   }
@@ -178,7 +219,7 @@ RaggedAny::RaggedAny(const std::string &s, py::object dtype /*=py::none()*/) {
   Dtype t = ScalarTypeToDtype(scalar_type);
 
   FOR_REAL_AND_INT32_TYPES(t, T, {
-    any = Ragged<T>(s).Generic();
+    any = Ragged<T>(s).To(context).Generic();
     return;
   });
 
@@ -187,21 +228,24 @@ RaggedAny::RaggedAny(const std::string &s, py::object dtype /*=py::none()*/) {
                 << "and torch.float64";
 }
 
-RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
+RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/,
+                     torch::Device device /*=torch::kCPU*/) {
   if (!dtype.is_none() && !THPDtype_Check(dtype.ptr())) {
     K2_LOG(FATAL) << "Expect an instance of torch.dtype. "
                   << "Given: " << py::str(dtype);
   }
 
+  ContextPtr context = GetContext(device);
+
   if (dtype.is_none()) {
     try {
       // We try int first; if it fails, use float
-      any = RaggedAnyFromList<int32_t>(data).Generic();
+      any = RaggedAnyFromList<int32_t>(data).To(context).Generic();
       return;
     } catch (const std::exception &) {
       // Use float. If it fails again, another exception
       // is thrown and it is propagated to the user
-      any = RaggedAnyFromList<float>(data).Generic();
+      any = RaggedAnyFromList<float>(data).To(context).Generic();
       return;
     }
   }
@@ -211,13 +255,58 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
   Dtype t = ScalarTypeToDtype(scalar_type);
 
   FOR_REAL_AND_INT32_TYPES(t, T, {
-    any = RaggedAnyFromList<T>(data).Generic();
+    any = RaggedAnyFromList<T>(data).To(context).Generic();
     return;
   });
 
   K2_LOG(FATAL) << "Unsupported dtype: " << scalar_type
                 << ". Supported dtypes are: torch.int32, torch.float32, "
                 << "and torch.float64";
+}
+
+RaggedAny::RaggedAny(torch::Tensor tensor) {
+  int32_t ndim = tensor.dim();
+  K2_CHECK_GE(ndim, 2) << "Expect a tensor with more than 1-D";
+  ContextPtr context = GetContext(tensor);
+  DeviceGuard guard(context);
+  std::vector<RaggedShape> shapes;
+  shapes.reserve(ndim - 1);
+  int32_t dim0 = tensor.size(0);
+  for (int32_t i = 1; i != ndim; ++i) {
+    int32_t dim1 = tensor.size(i);
+    shapes.push_back(RegularRaggedShape(context, dim0, dim1));
+    dim0 *= dim1;
+  }
+  while (shapes.size() > 2u) {
+    RaggedShape c = std::move(shapes.back());
+    shapes.pop_back();
+
+    RaggedShape b = std::move(shapes.back());
+    shapes.pop_back();
+
+    RaggedShape a = std::move(shapes.back());
+    shapes.pop_back();
+
+    RaggedShape abc = ComposeRaggedShapes3(a, b, c);
+    shapes.push_back(std::move(abc));
+  }
+
+  if (shapes.size() > 1u) {
+    RaggedShape b = std::move(shapes.back());
+    shapes.pop_back();
+
+    RaggedShape a = std::move(shapes.back());
+    shapes.pop_back();
+
+    RaggedShape ab = ComposeRaggedShapes(a, b);
+    shapes.push_back(std::move(ab));
+  }
+
+  Dtype t = ScalarTypeToDtype(tensor.scalar_type());
+  FOR_REAL_AND_INT32_TYPES(t, T, {
+    Array1<T> values = FromTorch<T>(tensor.contiguous().view({-1}));
+    any = Ragged<T>(shapes[0], values).Generic();
+  });
 }
 
 const torch::Tensor &RaggedAny::Data() const {
@@ -232,10 +321,33 @@ const torch::Tensor &RaggedAny::Data() const {
   return data;
 }
 
-std::string RaggedAny::ToString() const {
+std::string RaggedAny::ToString(int32_t device_id /*=-1*/) const {
+  ContextPtr context = any.Context();
+  if (context->GetDeviceType() != kCpu) {
+    return To("cpu").ToString(context->GetDeviceId());
+  }
+
   std::ostringstream os;
   Dtype t = any.GetDtype();
-  FOR_REAL_AND_INT32_TYPES(t, T, { os << any.Specialize<T>(); });
+  std::string dtype;
+  if (t == kInt32Dtype)
+    dtype = "torch.int32";
+  else if (t == kFloatDtype)
+    dtype = "torch.float32";
+  else if (t == kDoubleDtype)
+    dtype = "torch.float64";
+  else
+    K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
+
+  FOR_REAL_AND_INT32_TYPES(t, T, {
+    os << "RaggedTensor([";
+    // 13 is strlen("RaggedTensor(")
+    RaggedAnyToStringIter(os, any.Specialize<T>(), 0, 0, any.shape.Dim0(), 13);
+    os << "]";
+    if (device_id != -1) os << ", device='cuda:" << device_id << "'";
+    os << ", dtype=" << dtype;
+    os << ")";
+  });
   return os.str();
 }
 
@@ -560,13 +672,13 @@ torch::optional<torch::Tensor> RaggedAny::Sort(
   return ans;
 }
 
-RaggedAny RaggedAny::Index(RaggedAny &indexes,
-                           bool remove_axis /* = true*/) /*const*/ {
+RaggedAny RaggedAny::Index(RaggedAny &indexes) /*const*/ {
   K2_CHECK_EQ(indexes.any.GetDtype(), kInt32Dtype)
       << "Unsupported dtype: " << TraitsOf(indexes.any.GetDtype()).Name();
 
   DeviceGuard guard(any.Context());
 
+  bool remove_axis = false;
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
     return RaggedAny(k2::Index<T>(any.Specialize<T>(),

@@ -51,7 +51,8 @@ class TestRandomPaths(unittest.TestCase):
                                        use_double_scores=use_double_scores,
                                        num_paths=2)
                 assert path.num_axes == 3
-                self.assertEqual(str(path), '[ [ [ 0 1 ] [ 0 1 ] ] ]')
+                assert path == k2.RaggedTensor('[ [ [ 0 1 ] [ 0 1 ] ] ]',
+                                               device=device)
 
     def test_single_fsa_case2(self):
         for device in self.devices:
@@ -75,7 +76,8 @@ class TestRandomPaths(unittest.TestCase):
                 # iter 0, p is 0.5, select the second leaving arc of state 0
                 # iter 1, p is 0, select the first leaving arc of state 1
                 # iter 2, p is 0, select the first leaving arc of state 2
-                self.assertEqual(str(path), '[ [ [ 1 2 4 ] ] ]')
+                assert path == k2.RaggedTensor('[ [ [ 1 2 4 ] ] ]',
+                                               device=device)
 
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
@@ -93,7 +95,8 @@ class TestRandomPaths(unittest.TestCase):
                 #  iter 2, p is (0.5 - 0.5) / (1 - 0.5) = 0, select the
                 #          first leaving arc of state 2
                 assert path.num_axes == 3
-                self.assertEqual(str(path), '[ [ [ 0 3 4 ] [ 1 3 4 ] ] ]')
+                assert path == k2.RaggedTensor('[ [ [ 0 3 4 ] [ 1 3 4 ] ] ]',
+                                               device=device)
 
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
@@ -123,9 +126,9 @@ class TestRandomPaths(unittest.TestCase):
                 #  iter 2, p is 0.25/0.5=0.5, select the second leaving arc of
                 #          state 2
                 assert path.num_axes == 3
-                self.assertEqual(
-                    str(path),
-                    '[ [ [ 0 2 5 ] [ 0 3 5 ] [ 1 2 5 ] [ 1 3 5 ] ] ]')
+                assert path == k2.RaggedTensor(
+                    '[ [ [ 0 2 5 ] [ 0 3 5 ] [ 1 2 5 ] [ 1 3 5 ] ] ]',
+                    device=device)
 
     def test_fsa_vec(self):
         for device in self.devices:
@@ -171,8 +174,8 @@ class TestRandomPaths(unittest.TestCase):
                 #  iter 2, p is 0, select arc 7
                 #  iter 3, p is 0, select arc 9
                 #  path 1 is [2, 4, 7, 9] + 6 = [8, 10, 13, 15]
-                self.assertEqual(str(path),
-                                 '[ [ [ 1 2 4 ] ] [ [ 8 10 13 15 ] ] ]')
+                assert path == k2.RaggedTensor(
+                    '[ [ [ 1 2 4 ] ] [ [ 8 10 13 15 ] ] ]', device=device)
 
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
@@ -190,10 +193,9 @@ class TestRandomPaths(unittest.TestCase):
                 #    iter 2, p is 0, select arc 7
                 #    iter 3, p is 0, select arc 9
                 #    path 1 is [3, 4, 7, 9] + 6 = [9, 10, 13, 15]
-                self.assertEqual(
-                    str(path),
-                    '[ [ [ 0 3 4 ] [ 1 3 4 ] ] [ [ 7 10 13 15 ] [ 9 10 13 15 ] ] ]'  # noqa
-                )
+                assert path == k2.RaggedTensor(
+                    '[ [ [ 0 3 4 ] [ 1 3 4 ] ] [ [ 7 10 13 15 ] [ 9 10 13 15 ] ] ]',  # noqa
+                    device=device)  # noqa
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
                                        num_paths=4)
@@ -234,10 +236,9 @@ class TestRandomPaths(unittest.TestCase):
                 #             errors)
                 #    iter 3, p is 0.99911, select arc 9
                 #    path 3 is [3, 5, 7, 9] + 6 = [9, 11, 13, 15]
-                self.assertEqual(
-                    str(path),
-                    '[ [ [ 0 2 5 ] [ 0 3 5 ] [ 1 2 5 ] [ 1 3 5 ] ] [ [ 6 11 13 15 ] [ 7 11 13 15 ] [ 8 11 13 15 ] [ 9 11 13 15 ] ] ]'  # noqa
-                )
+                assert path == k2.RaggedTensor(
+                    '[ [ [ 0 2 5 ] [ 0 3 5 ] [ 1 2 5 ] [ 1 3 5 ] ] [ [ 6 11 13 15 ] [ 7 11 13 15 ] [ 8 11 13 15 ] [ 9 11 13 15 ] ] ]',  # noqa
+                    device=device)
 
 
 if __name__ == '__main__':

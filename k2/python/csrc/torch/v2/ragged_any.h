@@ -52,6 +52,18 @@ struct RaggedAny {
    */
   RaggedAny(const RaggedShape &shape, torch::Tensor value);
 
+  /* Create a ragged tensor from a torch tensor.
+
+     @note The resulting ragged tensor has a regular structure.
+
+     @params tensor An N-D PyTorch tensor, where N > 1. Supported dtypes are
+                    torch.int32, torch.float32, torch.float64.
+
+     @caution If the input tensor is contiguous, the ragged tensor shares the
+     underlying memory with the input tensor. Otherwise, memory is copied.
+   */
+  explicit RaggedAny(torch::Tensor tensor);
+
   RaggedAny(const RaggedAny &) = default;
   RaggedAny &operator=(const RaggedAny &) = default;
   RaggedAny(RaggedAny &&) = default;
@@ -75,7 +87,12 @@ struct RaggedAny {
 
      @note We can support other dtypes if needed.
    */
-  explicit RaggedAny(const std::string &s, py::object dtype = py::none());
+  explicit RaggedAny(const std::string &s, py::object dtype = py::none(),
+                     torch::Device device = torch::kCPU);
+
+  explicit RaggedAny(const std::string &s, py::object dtype = py::none(),
+                     const std::string &device = "cpu")
+      : RaggedAny(s, dtype, torch::Device(device)) {}
 
   /** Create a ragged tensor from a list of sublist(s).
 
@@ -88,16 +105,22 @@ struct RaggedAny {
 
      @note It supports `data` with number of axes >= 2.
    */
-  explicit RaggedAny(py::list data, py::object dtype = py::none());
+  explicit RaggedAny(py::list data, py::object dtype = py::none(),
+                     torch::Device device = torch::kCPU);
+
+  explicit RaggedAny(py::list data, py::object dtype = py::none(),
+                     const std::string device = "cpu")
+      : RaggedAny(data, dtype, torch::Device(device)) {}
 
   /// Populate `this->data` and return it
   const torch::Tensor &Data() const;
 
   /** Convert a ragged tensor to a string.
 
+     @param device_id -1 for CPU. 0 and above is for CUDA.
      @return Return a string representation of this tensor.
    */
-  std::string ToString() const;
+  std::string ToString(int device_id = -1) const;
 
   /* Move a ragged tensor to a given device.
 
@@ -226,7 +249,7 @@ struct RaggedAny {
                                       bool need_new2old_indexes = false);
 
   /// Wrapper for k2::Index
-  RaggedAny Index(RaggedAny &indexes, bool remove_axis = true) /*const*/;
+  RaggedAny Index(RaggedAny &indexes) /*const*/;
 
   /// Wrapper for k2::Index
   std::pair<RaggedAny, torch::optional<torch::Tensor>> Index(

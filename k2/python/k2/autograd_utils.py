@@ -105,7 +105,7 @@ class _PhantomIndexAndSumScoresFunction(torch.autograd.Function):
                           dtype=torch.float32,
                           device=unused_in_fsa_scores.device,
                           requires_grad=False)
-        _k2.index_add(arc_map.data, expanded, ans)
+        _k2.index_add(arc_map.values, expanded, ans)
 
         return (
             None,  # out_fsa

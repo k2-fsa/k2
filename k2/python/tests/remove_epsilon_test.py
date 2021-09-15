@@ -352,7 +352,7 @@ class TestRemoveEpsilonDeviceFillers(unittest.TestCase):
         self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
 
         print("After removing epsilons: ", dest)
-        assert torch.where(dest.foo.data == filler)[0].numel() == 0
+        assert torch.where(dest.foo.values == filler)[0].numel() == 0
 
 
 if __name__ == '__main__':
