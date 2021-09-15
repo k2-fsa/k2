@@ -453,6 +453,120 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols) {
       arcs);
 }
 
+FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
+                         float self_loop_weight /* = -1 */,
+                         Array1<int32_t> *aux_labels /*= nullptr*/,
+                         Array1<float> *weight_bias /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(symbols.NumAxes(), 2);
+  ContextPtr &c = symbols.Context();
+
+  // For each fsa, the number of states will be number of `symbols + 2`, we plus
+  // 2 because we need an extra super final arc for each fsa.
+  RaggedShape fsa_to_states = ChangeSublistSize(symbols.shape, 2);
+
+  int32_t num_states = fsa_to_states.NumElements();
+  Array1<int32_t> num_arcs_for(c, num_states + 1);
+  int32_t *num_arcs_for_data = num_arcs_for.Data();
+  // "fts" is short for fsa to states
+  const int32_t *fts_row_splits1_data = fsa_to_states.RowSplits(1).Data(),
+                *fts_row_ids1_data = fsa_to_states.RowIds(1).Data();
+  // set the arcs number for each state
+  K2_EVAL(
+      c, num_states, lambda_set_num_arcs, (int32_t state_idx01)->void {
+        int32_t fsa_idx0 = fts_row_ids1_data[state_idx01],
+                final_state = fts_row_splits1_data[fsa_idx0 + 1] - 1,
+                current_num_arcs = 3;  // normally there are three arcs,
+                                       // self-loop and two arcs pointing to
+                                       // the next state.
+        if (state_idx01 == final_state - 1)
+          current_num_arcs = 2;
+        if (state_idx01 == final_state)
+          current_num_arcs = 0;
+        num_arcs_for_data[state_idx01] = current_num_arcs;
+      });
+  ExclusiveSum(num_arcs_for, &num_arcs_for);
+  Array1<int32_t> &states_to_arcs_row_splits = num_arcs_for;
+  RaggedShape states_to_arcs =
+      RaggedShape2(&states_to_arcs_row_splits, nullptr, -1);
+
+  // shape with a index of [fsa][state][arc]
+  RaggedShape shape = ComposeRaggedShapes(fsa_to_states, states_to_arcs);
+  int32_t num_arcs = shape.NumElements();
+  Array1<Arc> arcs(c, num_arcs);
+  Arc *arcs_data = arcs.Data();
+  const int32_t *row_splits1_data = shape.RowSplits(1).Data(),
+                *row_ids1_data = shape.RowIds(1).Data(),
+                *row_splits2_data = shape.RowSplits(2).Data(),
+                *row_ids2_data = shape.RowIds(2).Data(),
+                *symbols_data = symbols.values.Data();
+
+  int32_t *aux_labels_data = nullptr;
+  if (aux_labels != nullptr) {
+    *aux_labels = Array1<int32_t>(c, num_arcs);
+    aux_labels_data = aux_labels->Data();
+  }
+  float *weight_bias_data = nullptr;
+  if (weight_bias != nullptr) {
+    *weight_bias = Array1<float>(c, num_arcs);
+    weight_bias_data = weight_bias->Data();
+  }
+
+  K2_EVAL(
+      c, num_arcs, lambda_set_arcs, (int32_t arc_idx012)->void {
+        int32_t state_idx01 = row_ids2_data[arc_idx012],
+                fsa_idx0 = row_ids1_data[state_idx01],
+                state_idx0x = row_splits1_data[fsa_idx0],
+                final_state_idx01 = row_splits1_data[fsa_idx0 + 1] - 1,
+                state_idx1 = state_idx01 - state_idx0x,
+                arc_idx01x = row_splits2_data[state_idx01],
+                arc_idx2 = arc_idx012 - arc_idx01x,
+                sym_state_idx01 = state_idx01 - 2 * fsa_idx0,
+                current_symbol = symbols_data[sym_state_idx01],
+                aux_labels_value = 0;
+
+        float weight_bias_value = 0;
+        Arc arc;
+        arc.src_state = state_idx1;
+
+        switch (arc_idx2) {
+          case 0:  // the self loop arc
+            arc.label = 0;
+            arc.dest_state = state_idx1;
+            arc.score = self_loop_weight;
+            aux_labels_value = 0;
+            // Actually, it is self_loop_weight - (-1)
+            weight_bias_value = self_loop_weight + 1;
+            break;
+          case 1:   // the arc pointing to next state with blank
+            if (state_idx01 == final_state_idx01 - 1) {  // the arc pointing to
+                                                         // final state
+              arc.label = -1;
+              arc.score = 0;
+              aux_labels_value = -1;
+            } else {
+              arc.label = 0;
+              arc.score = -1;
+              aux_labels_value = current_symbol;
+            }
+            arc.dest_state = state_idx1 + 1;
+            break;
+          case 2:  // the arc pointing to the next state with symbol
+            arc.label = current_symbol;
+            arc.dest_state = state_idx1 + 1;
+            arc.score = 0;
+            aux_labels_value = current_symbol;
+            break;
+          default:
+            K2_LOG(FATAL) << "Arc index must be less than 3";
+        }
+
+        arcs_data[arc_idx012] = arc;
+        if (aux_labels) aux_labels_data[arc_idx012] = aux_labels_value;
+        if (weight_bias) weight_bias_data[arc_idx012] = weight_bias_value;
+      });
+  return Ragged<Arc>(shape, arcs);
+}
 
 FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
                  Array1<int32_t> *arc_map /*= nullptr*/) {

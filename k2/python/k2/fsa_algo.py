@@ -1069,3 +1069,54 @@ def ctc_topo(max_token: int,
     ragged_arc, aux_labels = _k2.ctc_topo(max_token, device, modified)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
+
+def levenshtein_graph(symbols: Union[k2.RaggedTensor, List[List[int]]],
+        self_loop_weight: float = -1,
+        need_weight_bias: bool = False,
+        device: Optional[Union[torch.device, str]] = None
+) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:
+    '''Construct levenshtein graphs from symbols.
+
+    See https://github.com/k2-fsa/k2/pull/828 for more details about levenshtein
+    graph.
+
+    Args:
+      symbols:
+        It can be one of the following types:
+
+            - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
+            - An instance of :class:`k2.RaggedTensor`.
+              Must have `num_axes == 2`.
+
+      self_loop_weight:
+        The weight on the self loops arcs in the graphs, the main idea of this
+        weight is to set insertion and deletion penalty, which will affect the
+        shortest path searching produre.
+      need_weight_bias:
+        If set to True, a tensor with the bias to -1 on each arc will be
+        returned.
+      device:
+        Optional. It can be either a string (e.g., 'cpu', 'cuda:0') or a
+        torch.device.
+        If it is None, then the returned FSA is on CPU. It has to be None
+        if `symbols` is an instance of :class:`k2.RaggedTensor`, the returned
+        FSA will on the same device as `k2.RaggedTensor`.
+
+    Returns:
+        An FsaVec containing the returned levenshtein graphs, with "Dim0()"
+        the same as "len(symbols)"(List[List[int]]) or "dim0"(k2.RaggedTensor).
+        If `need_weight_bias` set to True, a tensor with weight bias on each arc
+        will be returned as well.
+    '''
+    if isinstance(symbols, k2.RaggedTensor):
+        assert device is None
+        assert symbols.num_axes == 2
+
+    ragged_arc, aux_labels, weight_bias = _k2.levenshtein_graph(
+        symbols, device, self_loop_weight, need_weight_bias)
+    fsa = Fsa(ragged_arc, aux_labels=aux_labels)
+    if need_weight_bias:
+        return fsa, weight_bias
+    else:
+        return fsa
+
