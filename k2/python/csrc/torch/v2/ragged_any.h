@@ -87,7 +87,12 @@ struct RaggedAny {
 
      @note We can support other dtypes if needed.
    */
-  explicit RaggedAny(const std::string &s, py::object dtype = py::none());
+  explicit RaggedAny(const std::string &s, py::object dtype = py::none(),
+                     torch::Device device = torch::kCPU);
+
+  explicit RaggedAny(const std::string &s, py::object dtype = py::none(),
+                     const std::string &device = "cpu")
+      : RaggedAny(s, dtype, torch::Device(device)) {}
 
   /** Create a ragged tensor from a list of sublist(s).
 
@@ -100,16 +105,22 @@ struct RaggedAny {
 
      @note It supports `data` with number of axes >= 2.
    */
-  explicit RaggedAny(py::list data, py::object dtype = py::none());
+  explicit RaggedAny(py::list data, py::object dtype = py::none(),
+                     torch::Device device = torch::kCPU);
+
+  explicit RaggedAny(py::list data, py::object dtype = py::none(),
+                     const std::string device = "cpu")
+      : RaggedAny(data, dtype, torch::Device(device)) {}
 
   /// Populate `this->data` and return it
   const torch::Tensor &Data() const;
 
   /** Convert a ragged tensor to a string.
 
+     @param device_id -1 for CPU. 0 and above is for CUDA.
      @return Return a string representation of this tensor.
    */
-  std::string ToString() const;
+  std::string ToString(int device_id = -1) const;
 
   /* Move a ragged tensor to a given device.
 
