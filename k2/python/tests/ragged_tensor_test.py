@@ -72,6 +72,7 @@ class TestRaggedTensor(unittest.TestCase):
                         2, 3, 4
                     )
                     b = func(a)
+                    assert b.shape.tot_sizes() == (2, 2 * 3, 2 * 3 * 4)
 
                     # a is contiguous, so memory is shared
                     c = a.reshape(-1)
@@ -91,9 +92,12 @@ class TestRaggedTensor(unittest.TestCase):
                     a = torch.arange(100, dtype=dtype, device=device).reshape(
                         10, 10
                     )[:, ::2]
+                    assert a.shape == (10, 5)
                     b = func(a)
                     assert b.dtype == dtype
                     assert b.device == device
+
+                    assert b.shape.tot_sizes() == (10, 10 * 5)
 
                     c = a.reshape(-1)
                     assert torch.all(torch.eq(c, b.values))
