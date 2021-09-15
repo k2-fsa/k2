@@ -1022,6 +1022,9 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedTensor],
             [it for symbol in symbols for it in symbol],
             dtype=torch.int32,
             device=device)
+        symbols = k2.RaggedTensor(symbols)
+        if device is not None:
+            symbols = symbols.to(device)
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.ctc_graph(symbols, device, modified,
@@ -1111,6 +1114,10 @@ def levenshtein_graph(symbols: Union[k2.RaggedTensor, List[List[int]]],
     if isinstance(symbols, k2.RaggedTensor):
         assert device is None
         assert symbols.num_axes == 2
+    else:
+        symbols = k2.RaggedTensor(symbols)
+        if device is not None:
+            symbols = symbols.to(device)
 
     ragged_arc, aux_labels, weight_bias = _k2.levenshtein_graph(
         symbols, device, self_loop_weight, need_weight_bias)

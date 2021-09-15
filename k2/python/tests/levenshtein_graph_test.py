@@ -88,7 +88,7 @@ class TestLevenshteinGraph(unittest.TestCase):
 
                 bias_ragged = bias_ragged.to('cpu')
                 bias = bias.to('cpu')
-                assert torch.all(torch.eq(expected_bias, bias_ragged))
+                assert torch.allclose(expected_bias, bias_ragged)
                 assert torch.allclose(expected_bias, bias)
 
 if __name__ == '__main__':
