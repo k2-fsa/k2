@@ -48,13 +48,15 @@ class TestRaggedOps(unittest.TestCase):
             [ [ [ 1 2 ] [ 0 ] ] [ [3 0 ] [ 2 ] ] ]
         '''
         for device in self.devices:
-            src = k2.RaggedTensor(s).to(device)
+            src = k2.RaggedTensor(s, device=device)
 
             ans = src.remove_axis(0)
-            self.assertEqual(str(ans), '[ [ 1 2 ] [ 0 ] [ 3 0 ] [ 2 ] ]')
+            assert ans == k2.RaggedTensor('[ [ 1 2 ] [ 0 ] [ 3 0 ] [ 2 ] ]',
+                                          device=device)
 
             ans = src.remove_axis(1)
-            self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] ]')
+            assert ans == k2.RaggedTensor('[ [ 1 2 0 ] [ 3 0 2 ] ]',
+                                          device=device)
 
     def test_remove_axis_ragged_shape(self):
         for device in self.devices:
@@ -151,19 +153,28 @@ class TestRaggedOps(unittest.TestCase):
         '''
         for device in self.devices:
             for dtype in self.dtypes:
-                src = k2.RaggedTensor(s, dtype).to(device)
+                src = k2.RaggedTensor(s, dtype=dtype, device=device)
 
                 ans = src.remove_values_leq(0)
-                self.assertEqual(str(ans), '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
+                assert ans == k2.RaggedTensor(
+                    '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]',
+                    device=device,
+                    dtype=dtype)
 
                 ans = src.remove_values_leq(1)
-                self.assertEqual(str(ans), '[ [ 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
+                assert ans == k2.RaggedTensor('[ [ 2 ] [ 3 2 ] [ 8 6 ] [ ] ]',
+                                              dtype=dtype,
+                                              device=device)
 
                 ans = src.remove_values_leq(6)
-                self.assertEqual(str(ans), '[ [ ] [ ] [ 8 ] [ ] ]')
+                assert ans == k2.RaggedTensor('[ [ ] [ ] [ 8 ] [ ] ]',
+                                              device=device,
+                                              dtype=dtype)
 
                 ans = src.remove_values_leq(8)
-                self.assertEqual(str(ans), '[ [ ] [ ] [ ] [ ] ]')
+                assert ans == k2.RaggedTensor('[ [ ] [ ] [ ] [ ] ]',
+                                              dtype=dtype,
+                                              device=device)
 
     def test_remove_values_eq(self):
         s = '''
@@ -171,22 +182,31 @@ class TestRaggedOps(unittest.TestCase):
         '''
         for device in self.devices:
             for dtype in self.dtypes:
-                src = k2.RaggedTensor(s).to(device)
+                src = k2.RaggedTensor(s, device=device, dtype=dtype)
 
                 ans = src.remove_values_eq(0)
-                self.assertEqual(str(ans), '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
+                assert ans == k2.RaggedTensor(
+                    '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]',
+                    device=device,
+                    dtype=dtype)
 
                 ans = src.remove_values_eq(1)
-                self.assertEqual(str(ans),
-                                 '[ [ 2 0 ] [ 3 0 2 ] [ 0 8 0 6 0 ] [ 0 ] ]')
+                assert ans == k2.RaggedTensor(
+                    '[ [ 2 0 ] [ 3 0 2 ] [ 0 8 0 6 0 ] [ 0 ] ]',
+                    device=device,
+                    dtype=dtype)
 
                 ans = src.remove_values_eq(6)
-                self.assertEqual(str(ans),
-                                 '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 8 0 0 ] [ 0 ] ]')
+                assert ans == k2.RaggedTensor(
+                    '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 8 0 0 ] [ 0 ] ]',
+                    device=device,
+                    dtype=dtype)
 
                 ans = src.remove_values_eq(8)
-                self.assertEqual(str(ans),
-                                 '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 0 6 0 ] [ 0 ] ]')
+                assert ans == k2.RaggedTensor(
+                    '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 0 6 0 ] [ 0 ] ]',
+                    device=device,
+                    dtype=dtype)
 
     def test_normalize_scores_use_log_non_zero_stride(self):
         s = '''
@@ -350,9 +370,10 @@ class TestRaggedOps(unittest.TestCase):
                 ragged2 = k2.RaggedTensor('[ [] [10 20] [30] [40 50] ]',
                                           dtype).to(device)
                 ragged = k2.ragged.cat([ragged1, ragged2], axis=0)
-                self.assertEqual(
-                    str(ragged),
-                    '[ [ 1 2 3 ] [ ] [ 4 5 ] [ ] [ 10 20 ] [ 30 ] [ 40 50 ] ]')
+                assert ragged == k2.RaggedTensor(
+                    '[ [ 1 2 3 ] [ ] [ 4 5 ] [ ] [ 10 20 ] [ 30 ] [ 40 50 ] ]',
+                    dtype=dtype,
+                    device=device)
 
     def test_cat_axis1(self):
         for device in self.devices:
@@ -362,8 +383,10 @@ class TestRaggedOps(unittest.TestCase):
                 ragged2 = k2.RaggedTensor('[ [10 20] [8] [9 10] ]',
                                           dtype).to(device)
                 ragged = k2.ragged.cat([ragged1, ragged2], axis=1)
-                self.assertEqual(str(ragged),
-                                 '[ [ 1 2 3 10 20 ] [ 8 ] [ 4 5 9 10 ] ]')
+                assert ragged == k2.RaggedTensor(
+                    '[ [ 1 2 3 10 20 ] [ 8 ] [ 4 5 9 10 ] ]',
+                    device=device,
+                    dtype=dtype)
 
     def test_get_layer_two_axes(self):
         for device in self.devices:
