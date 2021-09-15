@@ -52,6 +52,18 @@ struct RaggedAny {
    */
   RaggedAny(const RaggedShape &shape, torch::Tensor value);
 
+  /* Create a ragged tensor from a torch tensor.
+
+     @note The resulting ragged tensor has a regular structure.
+
+     @params tensor An N-D PyTorch tensor, where N > 1. Supported dtypes are
+                    torch.int32, torch.float32, torch.float64.
+
+     @caution If the input tensor is contiguous, the ragged tensor shares the
+     underlying memory with the input tensor. Otherwise, memory is copied.
+   */
+  explicit RaggedAny(torch::Tensor tensor);
+
   RaggedAny(const RaggedAny &) = default;
   RaggedAny &operator=(const RaggedAny &) = default;
   RaggedAny(RaggedAny &&) = default;

@@ -220,6 +220,50 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/) {
                 << "and torch.float64";
 }
 
+RaggedAny::RaggedAny(torch::Tensor tensor) {
+  int32_t ndim = tensor.dim();
+  K2_CHECK_GE(ndim, 2) << "Expect a tensor with more than 1-D";
+  ContextPtr context = GetContext(tensor);
+  std::vector<RaggedShape> shapes;
+  shapes.reserve(ndim - 1);
+  int32_t dim0 = tensor.size(0);
+  for (int32_t i = 1; i != ndim; ++i) {
+    int32_t dim1 = tensor.size(i);
+    shapes.push_back(RegularRaggedShape(context, dim0, dim1));
+    dim0 *= dim1;
+  }
+  while (shapes.size() > 2u) {
+    RaggedShape c = std::move(shapes.back());
+    shapes.pop_back();
+
+    RaggedShape b = std::move(shapes.back());
+    shapes.pop_back();
+
+    RaggedShape a = std::move(shapes.back());
+    shapes.pop_back();
+
+    RaggedShape abc = ComposeRaggedShapes3(a, b, c);
+    shapes.push_back(std::move(abc));
+  }
+
+  if (shapes.size() > 1u) {
+    RaggedShape b = std::move(shapes.back());
+    shapes.pop_back();
+
+    RaggedShape a = std::move(shapes.back());
+    shapes.pop_back();
+
+    RaggedShape ab = ComposeRaggedShapes(a, b);
+    shapes.push_back(std::move(ab));
+  }
+
+  Dtype t = ScalarTypeToDtype(tensor.scalar_type());
+  FOR_REAL_AND_INT32_TYPES(t, T, {
+    Array1<T> values = FromTorch<T>(tensor.contiguous().view({-1}));
+    any = Ragged<T>(shapes[0], values).Generic();
+  });
+}
+
 const torch::Tensor &RaggedAny::Data() const {
   DeviceGuard guard(any.Context());
   if (!data.defined()) {

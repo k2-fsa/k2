@@ -105,7 +105,7 @@ torch::Tensor ToTorch(Array1<Arc> &array) {
 }
 
 template <>
-Array1<Arc> FromTorch<Arc>(torch::Tensor &tensor) {
+Array1<Arc> FromTorch<Arc>(torch::Tensor tensor) {
   K2_CHECK_EQ(tensor.dim(), 2) << "Expected dim: 2. Given: " << tensor.dim();
   K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<int32_t>::value)
       << "Expected scalar type: " << ToScalarType<int32_t>::value
@@ -124,7 +124,7 @@ Array1<Arc> FromTorch<Arc>(torch::Tensor &tensor) {
   return ans;
 }
 
-Tensor FromTorch(torch::Tensor &tensor, TensorTag) {
+Tensor FromTorch(torch::Tensor tensor, TensorTag) {
   Dtype dtype = ScalarTypeToDtype(tensor.scalar_type());
   torch::IntArrayRef sizes = tensor.sizes();
   torch::IntArrayRef strides = tensor.strides();

@@ -22,6 +22,7 @@ on:
   push:
     branches:
     - master
+    - doc
 
 env:
   # debug is faster in terms of compilation time
