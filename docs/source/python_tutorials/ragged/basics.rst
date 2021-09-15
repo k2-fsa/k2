@@ -140,7 +140,7 @@ Concepts about ragged tensors
 
 A ragged tensor in ``k2`` consists of two parts:
 
-  - ``shape``, which is an instance of :class:`k2.RaggedTensor`
+  - ``shape``, which is an instance of :class:`k2.RaggedShape`
 
     .. Caution::
 
