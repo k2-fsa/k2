@@ -224,6 +224,7 @@ RaggedAny::RaggedAny(torch::Tensor tensor) {
   int32_t ndim = tensor.dim();
   K2_CHECK_GE(ndim, 2) << "Expect a tensor with more than 1-D";
   ContextPtr context = GetContext(tensor);
+  DeviceGuard guard(context);
   std::vector<RaggedShape> shapes;
   shapes.reserve(ndim - 1);
   int32_t dim0 = tensor.size(0);
