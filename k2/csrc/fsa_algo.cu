@@ -522,11 +522,14 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
                 arc_idx01x = row_splits2_data[state_idx01],
                 arc_idx2 = arc_idx012 - arc_idx01x,
                 sym_state_idx01 = state_idx01 - 2 * fsa_idx0,
-                current_symbol = symbols_data[sym_state_idx01],
+                current_symbol = 0,
                 aux_labels_value = 0;
 
-        K2_CHECK((current_symbol != 0) && (current_symbol != -1))
-          << "0 and -1 are not expected to be a symbol.";
+        if (state_idx01 != final_state_idx01 - 1) {
+          current_symbol = symbols_data[sym_state_idx01];
+          K2_CHECK((current_symbol != 0) && (current_symbol != -1))
+            << "0 and -1 are not expected to be a symbol.";
+        }
 
         float penalty_bias_value = 0;
         Arc arc;
