@@ -525,7 +525,8 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
                 current_symbol = 0,
                 aux_labels_value = 0;
 
-        if (state_idx01 != final_state_idx01 - 1) {
+        if (state_idx01 != final_state_idx01 - 1 &&
+            state_idx01 != final_state_idx01) {
           current_symbol = symbols_data[sym_state_idx01];
           K2_CHECK((current_symbol != 0) && (current_symbol != -1))
             << "0 and -1 are not expected to be a symbol.";
