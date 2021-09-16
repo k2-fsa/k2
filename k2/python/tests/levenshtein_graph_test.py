@@ -44,12 +44,12 @@ class TestLevenshteinGraph(unittest.TestCase):
                 [ [1 2 3] [ ] [4 5 6] ]
                 '''
                 ragged_int = k2.RaggedTensor(s).to(device)
-                fsa_vec_ragged, bias_ragged = k2.levenshtein_graph(
-                    ragged_int, self_loop_weight=weight, need_weight_bias=True)
+                fsa_vec_ragged = k2.levenshtein_graph(
+                    ragged_int, penalty=weight)
 
-                fsa_vec, bias = k2.levenshtein_graph(
+                fsa_vec = k2.levenshtein_graph(
                     [[1, 2, 3], [], [4, 5, 6]], device=device,
-                    self_loop_weight=weight, need_weight_bias=True)
+                    penalty=weight)
 
                 expected_str0 = '\n'.join([
                     f'0 0 0 0 {weight}', '0 1 0 1 -1', '0 1 1 1 0',
@@ -89,8 +89,8 @@ class TestLevenshteinGraph(unittest.TestCase):
                     bias_value, 0, 0, bias_value, 0, 0, bias_value, 0, 0,
                     bias_value, 0], dtype=torch.float32)
 
-                bias_ragged = bias_ragged.to('cpu')
-                bias = bias.to('cpu')
+                bias_ragged = fsa_vec_ragged.penalty_bias.to('cpu')
+                bias = fsa_vec.penalty_bias.to('cpu')
                 assert torch.allclose(expected_bias, bias_ragged)
                 assert torch.allclose(expected_bias, bias)
 
