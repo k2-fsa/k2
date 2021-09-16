@@ -23,14 +23,14 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
+    types: [labeled]
 
 env:
   BUILD_TYPE: Release
 
 jobs:
   build-cpu:
+    if: ${{ github.event.label.name == 'ready' }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
