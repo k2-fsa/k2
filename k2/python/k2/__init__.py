@@ -30,6 +30,7 @@ from .fsa_algo import expand_ragged_attributes
 from .fsa_algo import intersect
 from .fsa_algo import intersect_device
 from .fsa_algo import invert
+from .fsa_algo import levenshtein_distance
 from .fsa_algo import levenshtein_graph
 from .fsa_algo import linear_fsa
 from .fsa_algo import linear_fst

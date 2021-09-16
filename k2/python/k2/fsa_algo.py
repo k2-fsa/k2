@@ -1062,8 +1062,8 @@ def ctc_topo(max_token: int,
 
 def levenshtein_graph(
     symbols: Union[k2.RaggedTensor, List[List[int]]],
-    penalty: float = -1,
-    penalty_bias_attr: Optional[str] = "penalty_bias",
+    ins_del_score: float = -0.501,
+    ins_del_score_offset_attr: Optional[str] = "ins_del_score_offset",
     device: Optional[Union[torch.device, str]] = "cpu"
 ) -> Fsa:
     '''Construct levenshtein graphs from symbols.
@@ -1079,14 +1079,14 @@ def levenshtein_graph(
             - An instance of :class:`k2.RaggedTensor`.
               Must have `num_axes == 2`.
 
-      penalty:
-        The weight on the self loops arcs in the graphs, the main idea of this
-        weight is to set insertion and deletion penalty, which will affect the
+      ins_del_score:
+        The score on the self loops arcs in the graphs, the main idea of this
+        score is to set insertion and deletion penalty, which will affect the
         shortest path searching produre.
-      penalty_bias_attr:
+      ins_del_score_offset_attr:
         If not None, we'll add an attribute to the returned fsa with the name of
-        penalty_bias_attr. The attribute contains the penalty biases on each
-        arc, whose value will be `penalty - (-1)`
+        ins_del_score_offset_attr. The attribute contains the score offset on
+        each arc, whose value will be `ins_del_score - (-0.5)`
       device:
         Optional. It can be either a string (e.g., 'cpu', 'cuda:0') or a
         torch.device.
@@ -1101,9 +1101,67 @@ def levenshtein_graph(
     if not isinstance(symbols, k2.RaggedTensor):
         symbols = k2.RaggedTensor(symbols, device=device)
 
-    ragged_arc, aux_labels, penalty_bias = _k2.levenshtein_graph(
-        symbols, penalty, True)
+    ragged_arc, aux_labels, score_offsets = _k2.levenshtein_graph(
+        symbols, ins_del_score, True)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
-    if penalty_bias_attr is not None:
-        fsa.__setattr__(name=penalty_bias_attr, value=penalty_bias)
+    if ins_del_score_offset_attr is not None:
+        fsa.__setattr__(name=ins_del_score_offset_attr, value=score_offsets)
     return fsa
+
+
+def levenshtein_distance(
+        a_fsas: Fsa,
+        b_fsas: Fsa,
+        b_to_a_map: torch.Tensor,
+        sorted_match_a: bool = False,
+) -> Tuple[Fsa, torch.Tensor]:
+    '''Compute the levenshtein distance of two FsaVecs
+
+    This function supports both CPU and GPU. But it is very slow on CPU.
+
+    Args:
+      a_fsas:
+        An FsaVec (must have 3 axes, i.e., `len(a_fsas.shape) == 3`. It is the
+        output Fsa of the :func:`levenshtein_graph`.
+      b_fsas:
+        An FsaVec (must have 3 axes) on the same device as `a_fsas`. It is the
+        output Fsa of the :func:`levenshtein_graph`.
+      b_to_a_map:
+        A 1-D torch.Tensor with dtype torch.int32 on the same device
+        as `a_fsas`. Map from FSA-id in `b_fsas` to the corresponding
+        FSA-id in `a_fsas` that we want to compose it with.
+        E.g. might be an identity map, or all-to-zero, or something the
+        user chooses.
+
+        Requires
+            - `b_to_a_map.shape[0] == b_fsas.shape[0]`
+            - `0 <= b_to_a_map[i] < a_fsas.shape[0]`
+      sorted_match_a:
+        If true, the arcs of a_fsas must be sorted by label (checked by
+        calling code via properties), and we'll use a matching approach
+        that requires this.
+
+    Returns:
+      Returns a tuple contains an FsaVec and a torch.Tensor.
+      The FsaVec contains the alignment information and satisfies
+      `ans.Dim0() == b_fsas.Dim0()`.
+      The torch.Tensor contains the levenshtein distance, and its size equals to
+      `b_fsas.Dim0()`.
+    '''
+    assert hasattr(a_fsas, "aux_labels")
+    assert hasattr(b_fsas, "aux_labels")
+
+    b_fsas.rename_tensor_attribute_("aux_labels", "aux_labels_levenshtein")
+
+    lattice = k2.intersect_device(
+        a_fsas, b_fsas, b_to_a_map=b_to_a_map, sorted_match_a=sorted_match_a)
+    lattice = k2.remove_epsilon_self_loops(lattice)
+
+    alignment = k2.shortest_path(lattice, use_double_scores=True).invert_()
+    alignment.rename_tensor_attribute_("aux_labels_levenshtein", "aux_labels")
+
+    alignment.scores -= alignment.ins_del_score_offset
+    distance = -alignment.get_tot_scores(
+        use_double_scores=False, log_semiring=False)
+
+    return alignment, distance

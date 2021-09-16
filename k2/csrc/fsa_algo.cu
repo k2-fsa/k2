@@ -454,9 +454,9 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols) {
 }
 
 FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
-                         float penalty /* = -1 */,
+                         float ins_del_score /* = -0.501 */,
                          Array1<int32_t> *aux_labels /*= nullptr*/,
-                         Array1<float> *penalty_bias /*= nullptr*/) {
+                         Array1<float> *score_offsets /*= nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(symbols.NumAxes(), 2);
   ContextPtr &c = symbols.Context();
@@ -506,10 +506,10 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
     *aux_labels = Array1<int32_t>(c, num_arcs);
     aux_labels_data = aux_labels->Data();
   }
-  float *penalty_bias_data = nullptr;
-  if (penalty_bias != nullptr) {
-    *penalty_bias = Array1<float>(c, num_arcs);
-    penalty_bias_data = penalty_bias->Data();
+  float *score_offsets_data = nullptr;
+  if (score_offsets != nullptr) {
+    *score_offsets = Array1<float>(c, num_arcs);
+    score_offsets_data = score_offsets->Data();
   }
 
   K2_EVAL(
@@ -532,7 +532,7 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
             << "0 and -1 are not expected to be a symbol.";
         }
 
-        float penalty_bias_value = 0;
+        float score_offset_value = 0;
         Arc arc;
         arc.src_state = state_idx1;
 
@@ -540,10 +540,9 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
           case 0:  // the self loop arc
             arc.label = 0;
             arc.dest_state = state_idx1;
-            arc.score = penalty;
+            arc.score = ins_del_score;
             aux_labels_value = 0;
-            // Actually, it is penalty - (-1)
-            penalty_bias_value = penalty + 1;
+            score_offset_value = ins_del_score - (-0.5);
             break;
           case 1:   // the arc pointing to next state with blank
             if (state_idx01 == final_state_idx01 - 1) {  // the arc pointing to
@@ -553,7 +552,7 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
               aux_labels_value = -1;
             } else {
               arc.label = 0;
-              arc.score = -1;
+              arc.score = -0.5;
               aux_labels_value = current_symbol;
             }
             arc.dest_state = state_idx1 + 1;
@@ -570,7 +569,7 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
 
         arcs_data[arc_idx012] = arc;
         if (aux_labels) aux_labels_data[arc_idx012] = aux_labels_value;
-        if (penalty_bias) penalty_bias_data[arc_idx012] = penalty_bias_value;
+        if (score_offsets) score_offsets_data[arc_idx012] = score_offset_value;
       });
   return Ragged<Arc>(shape, arcs);
 }

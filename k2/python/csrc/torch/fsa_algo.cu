@@ -748,23 +748,23 @@ static void PybindCtcTopo(py::module &m) {
 static void PybindLevenshteinGraph(py::module &m) {
   m.def(
       "levenshtein_graph",
-      [](RaggedAny &symbols, float penalty = -1,
-         bool need_penalty_bias =
+      [](RaggedAny &symbols, float ins_del_score = -0.501,
+         bool need_score_offset =
              true) -> std::tuple<FsaVec, torch::Tensor,
                                  torch::optional<torch::Tensor>> {
         DeviceGuard guard(symbols.any.Context());
         Array1<int32_t> aux_labels;
-        Array1<float> penalty_bias;
+        Array1<float> score_offsets;
         FsaVec graph = LevenshteinGraphs(symbols.any.Specialize<int32_t>(),
-                                 penalty, &aux_labels,
-                                 need_penalty_bias ? &penalty_bias : nullptr);
+                                 ins_del_score, &aux_labels,
+                                 need_score_offset ? &score_offsets : nullptr);
         torch::Tensor aux_labels_tensor = ToTorch(aux_labels);
-        torch::optional<torch::Tensor> penalty_bias_tensor;
-        if (need_penalty_bias) penalty_bias_tensor = ToTorch(penalty_bias);
-        return std::make_tuple(graph, aux_labels_tensor, penalty_bias_tensor);
+        torch::optional<torch::Tensor> score_offsets_tensor;
+        if (need_score_offset) score_offsets_tensor = ToTorch(score_offsets);
+        return std::make_tuple(graph, aux_labels_tensor, score_offsets_tensor);
       },
-      py::arg("symbols"), py::arg("penalty") = -1,
-      py::arg("need_penalty_bias") = true);
+      py::arg("symbols"), py::arg("ins_del_score") = -0.501,
+      py::arg("need_score_offset") = true);
 }
 
 }  // namespace k2

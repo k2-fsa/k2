@@ -540,21 +540,22 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified = false,
 
     @param [in] symbols Input symbol sequences (must not contain
                 kFinalSymbol == -1 and blank == 0). Its num_axes is 2.
-    @param [in] penalty Specify the weight of the self loops in the
-                        graphs, the main idea of this weight is to set
-                        insertion and deletion penalty, which will
-                        affect the shortest path searching produre.
+    @param [in] ins_del_score Specify the score of the self loops in the
+                              graphs, the main idea of this score is to set
+                              insertion and deletion penalty, which will
+                              affect the shortest path searching produre.
     @param [out] aux_labels  If not null, it will contain the aux_labels of the
                              graphs.
-    @param [out] penalty_bias The weight bias of arcs, for self loop arcs, it
-                              will be `penalty - (-1)`, for other arcs,
-                              it will be zeros. The purpose of this penalty_bias
-                              is to calculate the levenshtein distance.
+    @param [out] score_offsets The score offset of arcs, for self loop arcs, it
+                               will be `ins_del_score - (-0.5)`, for other arcs,
+                               it will be zeros. The purpose of this
+                               score_offsets is to calculate the levenshtein
+                               distance.
  */
 FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
-                         float penalty = -1,
+                         float ins_del_score = -0.501,
                          Array1<int32_t> *aux_labels = nullptr,
-                         Array1<float> *penalty_bias = nullptr);
+                         Array1<float> *score_offsets = nullptr);
 
 /*
   Create ctc topology from max token id.
