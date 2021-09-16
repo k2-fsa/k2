@@ -703,20 +703,16 @@ static void PybindReplaceFsa(py::module &m) {
 static void PybindCtcGraph(py::module &m) {
   m.def(
       "ctc_graph",
-      [](RaggedAny &symbols, torch::optional<torch::Device> = {},
-         bool modified = false,
-         bool need_arc_map =
-             true) -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+      [](RaggedAny &symbols, bool modified = false)
+      -> std::pair<FsaVec, torch::Tensor> {
         DeviceGuard guard(symbols.any.Context());
-        Array1<int32_t> arc_map;
+        Array1<int32_t> aux_labels;
         FsaVec graph = CtcGraphs(symbols.any.Specialize<int32_t>(), modified,
-                                 need_arc_map ? &arc_map : nullptr);
-        torch::optional<torch::Tensor> tensor;
-        if (need_arc_map) tensor = ToTorch(arc_map);
+                                 &aux_labels);
+        torch::Tensor tensor = ToTorch(aux_labels);
         return std::make_pair(graph, tensor);
       },
-      py::arg("symbols"), py::arg("device") = py::none(),
-      py::arg("modified") = false, py::arg("need_arc_map") = true);
+      py::arg("symbols"), py::arg("modified") = false);
 }
 
 static void PybindCtcTopo(py::module &m) {
@@ -752,24 +748,23 @@ static void PybindCtcTopo(py::module &m) {
 static void PybindLevenshteinGraph(py::module &m) {
   m.def(
       "levenshtein_graph",
-      [](RaggedAny &symbols, torch::optional<torch::Device> = {},
-         float self_loop_weight = -1,
-         bool need_weight_bias =
+      [](RaggedAny &symbols, float penalty = -1,
+         bool need_penalty_bias =
              true) -> std::tuple<FsaVec, torch::Tensor,
                                  torch::optional<torch::Tensor>> {
         DeviceGuard guard(symbols.any.Context());
         Array1<int32_t> aux_labels;
-        Array1<float> weight_bias;
+        Array1<float> penalty_bias;
         FsaVec graph = LevenshteinGraphs(symbols.any.Specialize<int32_t>(),
-                                 self_loop_weight, &aux_labels,
-                                 need_weight_bias ? &weight_bias : nullptr);
+                                 penalty, &aux_labels,
+                                 need_penalty_bias ? &penalty_bias : nullptr);
         torch::Tensor aux_labels_tensor = ToTorch(aux_labels);
-        torch::optional<torch::Tensor> weight_bias_tensor;
-        if (need_weight_bias) weight_bias_tensor = ToTorch(weight_bias);
-        return std::make_tuple(graph, aux_labels_tensor, weight_bias_tensor);
+        torch::optional<torch::Tensor> penalty_bias_tensor;
+        if (need_penalty_bias) penalty_bias_tensor = ToTorch(penalty_bias);
+        return std::make_tuple(graph, aux_labels_tensor, penalty_bias_tensor);
       },
-      py::arg("symbols"), py::arg("device") = py::none(),
-      py::arg("self_loop_weight") = -1, py::arg("need_weight_bias") = true);
+      py::arg("symbols"), py::arg("penalty") = -1,
+      py::arg("need_penalty_bias") = true);
 }
 
 }  // namespace k2

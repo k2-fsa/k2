@@ -454,15 +454,15 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols) {
 }
 
 FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
-                         float self_loop_weight /* = -1 */,
+                         float penalty /* = -1 */,
                          Array1<int32_t> *aux_labels /*= nullptr*/,
-                         Array1<float> *weight_bias /*= nullptr*/) {
+                         Array1<float> *penalty_bias /*= nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(symbols.NumAxes(), 2);
   ContextPtr &c = symbols.Context();
 
-  // For each fsa, the number of states will be number of `symbols + 2`, we plus
-  // 2 because we need an extra super final arc for each fsa.
+  // For each fsa, the number of states will be number of symbols plus 2, we
+  // plus 2 because we need an extra super final arc for each fsa.
   RaggedShape fsa_to_states = ChangeSublistSize(symbols.shape, 2);
 
   int32_t num_states = fsa_to_states.NumElements();
@@ -481,7 +481,7 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
                                        // the next state.
         if (state_idx01 == final_state - 1)
           current_num_arcs = 2;
-        if (state_idx01 == final_state)
+        else if (state_idx01 == final_state)
           current_num_arcs = 0;
         num_arcs_for_data[state_idx01] = current_num_arcs;
       });
@@ -506,10 +506,10 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
     *aux_labels = Array1<int32_t>(c, num_arcs);
     aux_labels_data = aux_labels->Data();
   }
-  float *weight_bias_data = nullptr;
-  if (weight_bias != nullptr) {
-    *weight_bias = Array1<float>(c, num_arcs);
-    weight_bias_data = weight_bias->Data();
+  float *penalty_bias_data = nullptr;
+  if (penalty_bias != nullptr) {
+    *penalty_bias = Array1<float>(c, num_arcs);
+    penalty_bias_data = penalty_bias->Data();
   }
 
   K2_EVAL(
@@ -525,7 +525,10 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
                 current_symbol = symbols_data[sym_state_idx01],
                 aux_labels_value = 0;
 
-        float weight_bias_value = 0;
+        K2_CHECK((current_symbol != 0) && (current_symbol != -1))
+          << "0 and -1 are not expected to be a symbol.";
+
+        float penalty_bias_value = 0;
         Arc arc;
         arc.src_state = state_idx1;
 
@@ -533,10 +536,10 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
           case 0:  // the self loop arc
             arc.label = 0;
             arc.dest_state = state_idx1;
-            arc.score = self_loop_weight;
+            arc.score = penalty;
             aux_labels_value = 0;
-            // Actually, it is self_loop_weight - (-1)
-            weight_bias_value = self_loop_weight + 1;
+            // Actually, it is penalty - (-1)
+            penalty_bias_value = penalty + 1;
             break;
           case 1:   // the arc pointing to next state with blank
             if (state_idx01 == final_state_idx01 - 1) {  // the arc pointing to
@@ -563,13 +566,13 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
 
         arcs_data[arc_idx012] = arc;
         if (aux_labels) aux_labels_data[arc_idx012] = aux_labels_value;
-        if (weight_bias) weight_bias_data[arc_idx012] = weight_bias_value;
+        if (penalty_bias) penalty_bias_data[arc_idx012] = penalty_bias_value;
       });
   return Ragged<Arc>(shape, arcs);
 }
 
 FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
-                 Array1<int32_t> *arc_map /*= nullptr*/) {
+                 Array1<int32_t> *aux_labels /*= nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(symbols.NumAxes(), 2);
   ContextPtr &c = symbols.Context();
@@ -656,10 +659,10 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
                 *ctc_row_ids1_data = ctc_shape.RowIds(1).Data(),
                 *ctc_row_splits2_data = ctc_shape.RowSplits(2).Data(),
                 *ctc_row_ids2_data = ctc_shape.RowIds(2).Data();
-  int32_t *arc_map_data = nullptr;
-  if (arc_map != nullptr) {
-    *arc_map = Array1<int32_t>(c, num_arcs);
-    arc_map_data = arc_map->Data();
+  int32_t *aux_labels_data = nullptr;
+  if (aux_labels != nullptr) {
+    *aux_labels = Array1<int32_t>(c, num_arcs);
+    aux_labels_data = aux_labels->Data();
   }
 
   K2_EVAL(
@@ -679,7 +682,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
         Arc arc;
         arc.score = 0;
         arc.src_state = state_idx1;
-        int32_t arc_map_value = -1;
+        int32_t aux_labels_value = 0;
         if (remainder) {
           if (final_state) return;
           int32_t next_symbol = (sym_state_idx01 + 1) == sym_final_state ?
@@ -702,8 +705,8 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
                 break;
               case 2:  // the arc pointing to the next symbol state
                 arc.label = next_symbol;
-                arc_map_value = sym_state_idx01 + 1 == sym_final_state ?
-                    -1 : sym_state_idx01 + 1;
+                aux_labels_value = sym_state_idx01 + 1 == sym_final_state ?
+                    0 : next_symbol;
                 arc.dest_state = state_idx1 + 2;
                 break;
               default:
@@ -714,10 +717,11 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
           K2_CHECK_LT(arc_idx2, 2);
           arc.label = arc_idx2 == 0 ? 0 : current_symbol;
           arc.dest_state = arc_idx2 == 0 ? state_idx1 : state_idx1 + 1;
-          arc_map_value = (arc_idx2 == 0 || final_state) ? -1 : sym_state_idx01;
+          aux_labels_value = (arc_idx2 == 0 || final_state) ?
+              0 : current_symbol;
         }
         arcs_data[arc_idx012] = arc;
-        if (arc_map) arc_map_data[arc_idx012] = arc_map_value;
+        if (aux_labels) aux_labels_data[arc_idx012] = aux_labels_value;
       });
   return Ragged<Arc>(ctc_shape, arcs);
 }

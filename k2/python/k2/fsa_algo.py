@@ -983,7 +983,7 @@ def replace_fsa(
 
 def ctc_graph(symbols: Union[List[List[int]], k2.RaggedTensor],
               modified: bool = False,
-              device: Optional[Union[torch.device, str]] = None) -> Fsa:
+              device: Optional[Union[torch.device, str]] = "cpu") -> Fsa:
     '''Construct ctc graphs from symbols.
 
     Note:
@@ -1004,32 +1004,18 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedTensor],
       device:
         Optional. It can be either a string (e.g., 'cpu', 'cuda:0') or a
         torch.device.
-        If it is None, then the returned FSA is on CPU. It has to be None
-        if `symbols` is an instance of :class:`k2.RaggedTensor`, the returned
+        By default, the returned FSA is on CPU.
+        If `symbols` is an instance of :class:`k2.RaggedTensor`, the returned
         FSA will on the same device as `k2.RaggedTensor`.
 
     Returns:
         An FsaVec containing the returned ctc graphs, with "Dim0()" the same as
         "len(symbols)"(List[List[int]]) or "dim0"(k2.RaggedTensor)
     '''
-    symbol_values = None
-    if isinstance(symbols, k2.RaggedTensor):
-        assert device is None
-        assert symbols.num_axes == 2
-        symbol_values = symbols.values
-    else:
-        symbol_values = torch.tensor(
-            [it for symbol in symbols for it in symbol],
-            dtype=torch.int32,
-            device=device)
-        symbols = k2.RaggedTensor(symbols)
-        if device is not None:
-            symbols = symbols.to(device)
+    if not isinstance(symbols, k2.RaggedTensor):
+        symbols = k2.RaggedTensor(symbols, device=device)
 
-    need_arc_map = True
-    ragged_arc, arc_map = _k2.ctc_graph(symbols, device, modified,
-                                        need_arc_map)
-    aux_labels = k2.index_select(symbol_values, arc_map)
+    ragged_arc, aux_labels = _k2.ctc_graph(symbols, modified)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
 
@@ -1073,11 +1059,13 @@ def ctc_topo(max_token: int,
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
 
-def levenshtein_graph(symbols: Union[k2.RaggedTensor, List[List[int]]],
-        self_loop_weight: float = -1,
-        need_weight_bias: bool = False,
-        device: Optional[Union[torch.device, str]] = None
-) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:
+
+def levenshtein_graph(
+    symbols: Union[k2.RaggedTensor, List[List[int]]],
+    penalty: float = -1,
+    penalty_bias_attr: Optional[str] = "penalty_bias",
+    device: Optional[Union[torch.device, str]] = "cpu"
+) -> Fsa:
     '''Construct levenshtein graphs from symbols.
 
     See https://github.com/k2-fsa/k2/pull/828 for more details about levenshtein
@@ -1091,39 +1079,31 @@ def levenshtein_graph(symbols: Union[k2.RaggedTensor, List[List[int]]],
             - An instance of :class:`k2.RaggedTensor`.
               Must have `num_axes == 2`.
 
-      self_loop_weight:
+      penalty:
         The weight on the self loops arcs in the graphs, the main idea of this
         weight is to set insertion and deletion penalty, which will affect the
         shortest path searching produre.
-      need_weight_bias:
-        If set to True, a tensor with the bias to -1 on each arc will be
-        returned.
+      penalty_bias_attr:
+        If not None, we'll add an attribute to the returned fsa with the name of
+        penalty_bias_attr. The attribute contains the penalty biases on each
+        arc, whose value will be `penalty - (-1)`
       device:
         Optional. It can be either a string (e.g., 'cpu', 'cuda:0') or a
         torch.device.
-        If it is None, then the returned FSA is on CPU. It has to be None
-        if `symbols` is an instance of :class:`k2.RaggedTensor`, the returned
+        By default, the returned FSA is on CPU.
+        If `symbols` is an instance of :class:`k2.RaggedTensor`, the returned
         FSA will on the same device as `k2.RaggedTensor`.
 
     Returns:
         An FsaVec containing the returned levenshtein graphs, with "Dim0()"
         the same as "len(symbols)"(List[List[int]]) or "dim0"(k2.RaggedTensor).
-        If `need_weight_bias` set to True, a tensor with weight bias on each arc
-        will be returned as well.
     '''
-    if isinstance(symbols, k2.RaggedTensor):
-        assert device is None
-        assert symbols.num_axes == 2
-    else:
-        symbols = k2.RaggedTensor(symbols)
-        if device is not None:
-            symbols = symbols.to(device)
+    if not isinstance(symbols, k2.RaggedTensor):
+        symbols = k2.RaggedTensor(symbols, device=device)
 
-    ragged_arc, aux_labels, weight_bias = _k2.levenshtein_graph(
-        symbols, device, self_loop_weight, need_weight_bias)
+    ragged_arc, aux_labels, penalty_bias = _k2.levenshtein_graph(
+        symbols, penalty, True)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
-    if need_weight_bias:
-        return fsa, weight_bias
-    else:
-        return fsa
-
+    if penalty_bias_attr is not None:
+        fsa.__setattr__(name=penalty_bias_attr, value=penalty_bias)
+    return fsa

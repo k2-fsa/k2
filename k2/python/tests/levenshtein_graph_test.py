@@ -66,9 +66,12 @@ class TestLevenshteinGraph(unittest.TestCase):
                     f'2 2 0 0 {weight}', '2 3 0 6 -1', '2 3 6 6 0',
                     f'3 3 0 0 {weight}', '3 4 -1 -1 0', '4'
                 ])
-                actual_str_ragged0 = k2.to_str_simple(fsa_vec_ragged[0].to('cpu'))
-                actual_str_ragged1 = k2.to_str_simple(fsa_vec_ragged[1].to('cpu'))
-                actual_str_ragged2 = k2.to_str_simple(fsa_vec_ragged[2].to('cpu'))
+                actual_str_ragged0 = k2.to_str_simple(
+                    fsa_vec_ragged[0].to('cpu'))
+                actual_str_ragged1 = k2.to_str_simple(
+                    fsa_vec_ragged[1].to('cpu'))
+                actual_str_ragged2 = k2.to_str_simple(
+                    fsa_vec_ragged[2].to('cpu'))
                 actual_str0 = k2.to_str_simple(fsa_vec[0].to('cpu'))
                 actual_str1 = k2.to_str_simple(fsa_vec[1].to('cpu'))
                 actual_str2 = k2.to_str_simple(fsa_vec[2].to('cpu'))
@@ -90,6 +93,7 @@ class TestLevenshteinGraph(unittest.TestCase):
                 bias = bias.to('cpu')
                 assert torch.allclose(expected_bias, bias_ragged)
                 assert torch.allclose(expected_bias, bias)
+
 
 if __name__ == '__main__':
     unittest.main()
