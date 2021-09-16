@@ -27,7 +27,7 @@ on:
 
 jobs:
   run-tests-cpu:
-    if: ${{ github.event.label.name == 'ready' }}
+    if: github.event.label.name == 'ready' || github.event_name == 'push'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
