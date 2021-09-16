@@ -23,11 +23,11 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
+    types: [labeled]
 
 jobs:
   run-tests:
+    if: ${{ github.event.label.name == 'ready' }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
