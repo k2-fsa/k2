@@ -1077,7 +1077,7 @@ def levenshtein_graph(
 
             - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
             - An instance of :class:`k2.RaggedTensor`.
-              Must have `num_axes == 2`.
+              Must have `num_axes == 2` and with dtype `torch.int32`.
 
       ins_del_score:
         The score on the self loops arcs in the graphs, the main idea of this
@@ -1105,7 +1105,7 @@ def levenshtein_graph(
         symbols, ins_del_score, True)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     if ins_del_score_offset_attr is not None:
-        fsa.__setattr__(name=ins_del_score_offset_attr, value=score_offsets)
+        setattr(fsa, ins_del_score_offset_attr, score_offsets)
     return fsa
 
 
