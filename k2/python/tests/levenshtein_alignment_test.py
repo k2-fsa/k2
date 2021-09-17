@@ -18,7 +18,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R levenshtein_distance_test_py
+#  ctest --verbose -R levenshtein_alignment_test_py
 
 from typing import List
 
@@ -63,32 +63,36 @@ class TestLevenshteinDistance(unittest.TestCase):
             refs = k2.levenshtein_graph(refs_vec, device=device)
             hyps = k2.levenshtein_graph(hyps_vec, device=device)
 
-            alignment, distance = k2.levenshtein_distance(
+            alignment = k2.levenshtein_alignment(
                 refs,
                 hyps,
-                b_to_a_map=torch.tensor(
+                hyp_to_ref_map=torch.tensor(
                     [0, 0, 0], dtype=torch.int32, device=device
                 ),
-                sorted_match_a=True,
+                sorted_match_ref=True,
             )
 
-            distance_refs = torch.tensor([1.0, 1.0, 1.0])
-            assert torch.allclose(distance.to("cpu"), distance_refs)
-
-            align_refs = torch.tensor(
+            labels_refs = torch.tensor(
+                [1, 2, 3, 0, 5, -1, 1, 2, 0, 4, 5, -1, 1, 2, 3, 4, 5, 0, -1],
+                dtype=torch.int32,
+            )
+            ref_labels_refs = torch.tensor(
                 [1, 2, 3, 4, 5, -1, 1, 2, 3, 4, 5, -1, 1, 2, 3, 4, 5, 0, -1],
                 dtype=torch.int32,
             )
-            align_hyps = torch.tensor(
+            hyp_labels_refs = torch.tensor(
                 [1, 2, 3, 3, 5, -1, 1, 2, 0, 4, 5, -1, 1, 2, 3, 4, 5, 6, -1],
                 dtype=torch.int32,
             )
-            assert torch.all(torch.eq(alignment.labels.to("cpu"), align_refs))
+            assert torch.all(torch.eq(alignment.labels.to("cpu"), labels_refs))
             assert torch.all(
-                torch.eq(alignment.aux_labels.to("cpu"), align_hyps)
+                torch.eq(alignment.ref_labels.to("cpu"), ref_labels_refs)
+            )
+            assert torch.all(
+                torch.eq(alignment.hyp_labels.to("cpu"), hyp_labels_refs)
             )
 
-    def test_random(self):
+    def test_distance(self):
         for device in self.devices:
             refs_num = random.randint(2, 10)
             hyps_num = random.randint(2, 10)
@@ -100,13 +104,13 @@ class TestLevenshteinDistance(unittest.TestCase):
             refs = k2.levenshtein_graph(refs_vec, device=device)
             hyps = k2.levenshtein_graph(hyps_vec, device=device)
 
-            alignment, distance = k2.levenshtein_distance(
+            alignment = k2.levenshtein_alignment(
                 refs,
                 hyps,
-                b_to_a_map=torch.tensor(
+                hyp_to_ref_map=torch.tensor(
                     [0] * hyps_num, dtype=torch.int32, device=device
                 ),
-                sorted_match_a=True,
+                sorted_match_ref=True,
             )
             distance_vec = []
             for i in range(hyps_num):
@@ -115,6 +119,9 @@ class TestLevenshteinDistance(unittest.TestCase):
                 )
 
             distance_refs = torch.tensor(distance_vec, dtype=torch.float32)
+            distance = -alignment.get_tot_scores(
+                use_double_scores=False, log_semiring=False
+            )
             assert torch.allclose(distance.to("cpu"), distance_refs)
 
 

@@ -1109,59 +1109,82 @@ def levenshtein_graph(
     return fsa
 
 
-def levenshtein_distance(
-        a_fsas: Fsa,
-        b_fsas: Fsa,
-        b_to_a_map: torch.Tensor,
-        sorted_match_a: bool = False,
-) -> Tuple[Fsa, torch.Tensor]:
-    '''Compute the levenshtein distance of two FsaVecs
+def levenshtein_alignment(
+        refs: Fsa,
+        hyps: Fsa,
+        hyp_to_ref_map: torch.Tensor,
+        sorted_match_ref: bool = False,
+        ins_del_score_offset_attr: str = "ins_del_score_offset",
+) -> Fsa:
+    '''Get the levenshtein alignment of two FsaVecs
 
     This function supports both CPU and GPU. But it is very slow on CPU.
 
     Args:
-      a_fsas:
-        An FsaVec (must have 3 axes, i.e., `len(a_fsas.shape) == 3`. It is the
+      refs:
+        An FsaVec (must have 3 axes, i.e., `len(refs.shape) == 3`. It is the
         output Fsa of the :func:`levenshtein_graph`.
-      b_fsas:
-        An FsaVec (must have 3 axes) on the same device as `a_fsas`. It is the
+      hyps:
+        An FsaVec (must have 3 axes) on the same device as `refs`. It is the
         output Fsa of the :func:`levenshtein_graph`.
-      b_to_a_map:
+      hyp_to_ref_map:
         A 1-D torch.Tensor with dtype torch.int32 on the same device
-        as `a_fsas`. Map from FSA-id in `b_fsas` to the corresponding
-        FSA-id in `a_fsas` that we want to compose it with.
+        as `refs`. Map from FSA-id in `hpys` to the corresponding
+        FSA-id in `refs` that we want to get levenshtein alignment with.
         E.g. might be an identity map, or all-to-zero, or something the
         user chooses.
 
         Requires
-            - `b_to_a_map.shape[0] == b_fsas.shape[0]`
-            - `0 <= b_to_a_map[i] < a_fsas.shape[0]`
-      sorted_match_a:
-        If true, the arcs of a_fsas must be sorted by label (checked by
+            - `hyp_to_ref_map.shape[0] == hyps.shape[0]`
+            - `0 <= hyp_to_ref_map[i] < refs.shape[0]`
+      sorted_match_ref:
+        If true, the arcs of refs must be sorted by label (checked by
         calling code via properties), and we'll use a matching approach
         that requires this.
+      ins_del_score_offset_attr:
+        The attribute name used to name ins_del_score_offset.
+        See :func:`levenshtein_graph` for more details about the attribute.
+        You are expected to use the same `ins_del_score_offset_attr` with the
+        one that used to construct `refs` and `hyps`.
 
     Returns:
-      Returns a tuple contains an FsaVec and a torch.Tensor.
-      The FsaVec contains the alignment information and satisfies
-      `ans.Dim0() == b_fsas.Dim0()`.
-      The torch.Tensor contains the levenshtein distance, and its size equals to
-      `b_fsas.Dim0()`.
-    '''
-    assert hasattr(a_fsas, "aux_labels")
-    assert hasattr(b_fsas, "aux_labels")
+      Returns an FsaVec containing the alignment information and satisfing
+      `ans.Dim0() == hyps.Dim0()`. Two attributes named `ref_labels` and
+      `hyp_labels` will be added to the returned FsaVec. `ref_labels` contains
+      the aligned sequences of refs and `hyp_labels` contains the aligned
+      sequences of hyps. You can get the levenshtein distance by calling
+      `get_tot_scores` on the returned FsaVec.
 
-    b_fsas.rename_tensor_attribute_("aux_labels", "aux_labels_levenshtein")
+    Examples:
+      >>> hyps = k2.levenshtein_graph([[1, 2, 3], [1, 3, 3, 2]])
+      >>> refs = k2.levenshtein_graph([[1, 2, 4]])
+      >>> alignment = k2.levenshtein_alignment(
+              refs, hyps,
+              hyp_to_ref_map=torch.tensor([0, 0], dtype=torch.int32),
+              sorted_match_ref=True)
+      >>> alignment.labels
+      tensor([ 1,  2,  0, -1,  1,  0,  0,  0, -1], dtype=torch.int32)
+      >>> alignment.ref_labels
+      tensor([ 1,  2,  4, -1,  1,  2,  4,  0, -1], dtype=torch.int32)
+      >>> alignment.hyp_labels
+      tensor([ 1,  2,  3, -1,  1,  3,  3,  2, -1], dtype=torch.int32)
+      >>> -alignment.get_tot_scores(
+              use_double_scores=False, log_semiring=False))
+      tensor([1., 3.])
+    '''
+    assert hasattr(refs, "aux_labels")
+    assert hasattr(hyps, "aux_labels")
+
+    hyps.rename_tensor_attribute_("aux_labels", "hyp_labels")
 
     lattice = k2.intersect_device(
-        a_fsas, b_fsas, b_to_a_map=b_to_a_map, sorted_match_a=sorted_match_a)
+        refs, hyps, b_to_a_map=hyp_to_ref_map, sorted_match_a=sorted_match_ref)
     lattice = k2.remove_epsilon_self_loops(lattice)
 
     alignment = k2.shortest_path(lattice, use_double_scores=True).invert_()
-    alignment.rename_tensor_attribute_("aux_labels_levenshtein", "aux_labels")
+    alignment.rename_tensor_attribute_("labels", "ref_labels")
+    alignment.rename_tensor_attribute_("aux_labels", "labels")
 
-    alignment.scores -= alignment.ins_del_score_offset
-    distance = -alignment.get_tot_scores(
-        use_double_scores=False, log_semiring=False)
+    alignment.scores -= getattr(alignment, ins_del_score_offset_attr)
 
-    return alignment, distance
+    return alignment
