@@ -43,7 +43,7 @@ static void PrintSpaces(std::ostream &os, int32_t num_spaces) {
 template <typename T>
 void RaggedAnyToStringIter(std::ostream &os, const Ragged<T> ragged,
                            int32_t axis, int32_t begin_pos, int32_t end_pos,
-                           int32_t num_indent) {
+                           int32_t num_indent, bool compact) {
   const auto &shape = ragged.shape;
   K2_CHECK(axis >= 0 && axis < shape.NumAxes() && begin_pos >= 0 &&
            begin_pos <= end_pos && end_pos <= shape.TotSize(axis));
@@ -58,7 +58,7 @@ void RaggedAnyToStringIter(std::ostream &os, const Ragged<T> ragged,
       K2_DCHECK_LE(d, shape.RowSplits(axis + 1).Dim());
       int32_t row_start = row_splits[d], row_end = row_splits[d + 1];
 
-      if (!is_first_row) {
+      if (!compact && !is_first_row) {
         PrintSpaces(os, num_indent + 1);
       }
       is_first_row = false;
@@ -66,9 +66,14 @@ void RaggedAnyToStringIter(std::ostream &os, const Ragged<T> ragged,
       os << "[";
 
       RaggedAnyToStringIter(os, ragged, axis + 1, row_start, row_end,
-                            num_indent + 1);
+                            num_indent + 1, compact);
       os << "]";
-      if (d != end_pos - 1) os << ",\n";
+      if (d != end_pos - 1) {
+        if (compact)
+          os << ", ";
+        else
+          os << ",\n";
+      }
     }
   }
 }
@@ -326,7 +331,8 @@ const torch::Tensor &RaggedAny::Data() const {
   return data;
 }
 
-std::string RaggedAny::ToString(int32_t device_id /*=-1*/) const {
+std::string RaggedAny::ToString(bool compact /*=false*/,
+                                int32_t device_id /*=-1*/) const {
   ContextPtr context = any.Context();
   if (context->GetDeviceType() != kCpu) {
     return To("cpu").ToString(context->GetDeviceId());
@@ -347,7 +353,8 @@ std::string RaggedAny::ToString(int32_t device_id /*=-1*/) const {
   FOR_REAL_AND_INT32_TYPES(t, T, {
     os << "RaggedTensor([";
     // 13 is strlen("RaggedTensor(")
-    RaggedAnyToStringIter(os, any.Specialize<T>(), 0, 0, any.shape.Dim0(), 13);
+    RaggedAnyToStringIter(os, any.Specialize<T>(), 0, 0, any.shape.Dim0(), 13,
+                          compact);
     os << "]";
     if (device_id != -1) os << ", device='cuda:" << device_id << "'";
     os << ", dtype=" << dtype;

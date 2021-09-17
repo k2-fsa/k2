@@ -1078,8 +1078,8 @@ class TestFsa(unittest.TestCase):
                 torch.eq(cloned.tensor_attr1,
                          torch.tensor([10, 20, 30]).to(device)))
 
-            assert str(cloned.ragged_attr1) == str(
-                k2.RaggedTensor('[[100] [] [-1]]', device=device))
+            assert cloned.ragged_attr1 == \
+                    k2.RaggedTensor('[[100] [] [-1]]', device=device)
 
     def test_detach_more_attributes(self):
         for device in self.devices:
@@ -1124,14 +1124,14 @@ class TestFsa(unittest.TestCase):
                                             device=device)[::2]
             fsa.convert_attr_to_ragged_(name='tensor_attr1', remove_eps=False)
             expected = k2.RaggedTensor('[ [1] [3] [0] ]', device=device)
-            assert str(fsa.tensor_attr1) == str(expected)
+            assert fsa.tensor_attr1 == expected
 
             fsa.tensor_attr2 = torch.tensor([1, 0, -1],
                                             dtype=torch.int32,
                                             device=device)
             fsa.convert_attr_to_ragged_(name='tensor_attr2', remove_eps=True)
             expected = k2.RaggedTensor('[ [1] [] [-1] ]', device=device)
-            assert str(fsa.tensor_attr2) == str(expected)
+            assert fsa.tensor_attr2 == expected
 
     def test_invalidate_cache(self):
         s = '''

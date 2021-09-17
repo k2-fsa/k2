@@ -595,6 +595,28 @@ RaggedTensor([[1],
 RaggedTensor([[1, 2]], device='cuda:0', dtype=torch.int32)
 )doc";
 
+static constexpr const char *kRaggedAnyToStrSimpleDoc = R"doc(
+Convert a ragged tensor to a string representation, which
+is more compact than ``self.__str__``.
+
+An example output is given below::
+
+  RaggedTensor([[[1, 2, 3], [], [0]], [[2], [3, 10.5]]], dtype=torch.float32)
+
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([ [[1, 2, 3], [], [0]], [[2], [3, 10.5]] ])
+>>> a
+RaggedTensor([[[1, 2, 3],
+               [],
+               [0]],
+              [[2],
+               [3, 10.5]]], dtype=torch.float32)
+>>> str(a)
+'RaggedTensor([[[1, 2, 3],\n               [],\n               [0]],\n              [[2],\n               [3, 10.5]]], dtype=torch.float32)'
+>>> a.to_str_simple()
+'RaggedTensor([[[1, 2, 3], [], [0]], [[2], [3, 10.5]]], dtype=torch.float32)'
+)doc";
+
 static constexpr const char *kRaggedAnyGetItemDoc = R"doc(
 Select the i-th sublist along axis 0.
 
