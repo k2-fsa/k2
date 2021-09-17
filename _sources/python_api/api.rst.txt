@@ -699,6 +699,11 @@ to
 
 .. automethod:: k2.RaggedTensor.to
 
+to_str_simple
+^^^^^^^^^^^^^
+
+.. automethod:: k2.RaggedTensor.to_str_simple
+
 tolist
 ^^^^^^
 
@@ -1077,6 +1082,11 @@ to
 ^^
 
 .. automethod:: k2.ragged.RaggedTensor.to
+
+to_str_simple
+^^^^^^^^^^^^^
+
+.. automethod:: k2.ragged.RaggedTensor.to_str_simple
 
 tolist
 ^^^^^^
