@@ -159,7 +159,7 @@ class TestRandomPaths(unittest.TestCase):
 
                 fsa1 = k2.Fsa.from_str(s1)
                 fsa2 = k2.Fsa.from_str(s2)
-                fsa_vec = k2.create_fsa_vec([fsa1, fsa2])
+                fsa_vec = k2.create_fsa_vec([fsa1, fsa2]).to(device)
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
                                        num_paths=1)
