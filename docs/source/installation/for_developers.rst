@@ -9,7 +9,7 @@ First, you have to install CMake, CUDA toolkit (with cuDNN), and PyTorch:
   - CMake 3.11.0 and 3.18.0 are known to work. Other CMake versions may work
     but they are not tested.
 
-  - Install PyTorch. PyTorch 1.5.x and above are known to work. Other PyTorch
+  - Install PyTorch. PyTorch 1.4.x and above are known to work. Other PyTorch
     versions may work, but they are not tested.
 
   - Install CUDA toolkit and cuDNN. CUDA 10.1 and above are known to work.
@@ -43,7 +43,7 @@ To build a release version, use:
   python3 -c "import k2; print(k2.__file__)"
   # It should print /some/path/k2/k2/python/k2/__init.py
 
-  python3 -c "import _k2; print(_k2.__file__)"
+  python3 -c "import torch; import _k2; print(_k2.__file__)"
   # It should print /some/path/k2/build_release/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
 
@@ -63,9 +63,44 @@ To build a debug version, use:
   python3 -c "import k2; print(k2.__file__)"
   # It should print /some/path/k2/k2/python/k2/__init.py
 
-  python3 -c "import _k2; print(_k2.__file__)"
+  python3 -c "import torch; import _k2; print(_k2.__file__)"
   # It should print /some/path/k2/build_debug/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
+
+.. HINT::
+
+  You can pass the option ``-DK2_WITH_CUDA=OFF`` to ``cmake`` to build
+  a CPU only version of k2.
+
+  It is much faster to build a CPU version than that of building a CUDA
+  version. When you are adding new features to k2, we recommend you to
+  create a diretory to build a CPU version to test your code. Once it is
+  working on CPU, you can create a new directory to build a CUDA version
+  to test your code.
+
+  That is, while adding and testing new features, use:
+
+    .. code-block:: bash
+
+      cd k2
+      mkdir build-cpu
+      cd build-cpu
+      cmake -DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Debug ..
+      make -j5
+      export PYTHONPATH=$PWD/../k2/python:$PWD/lib:$PYTHONPATH
+      # make test # to test your code
+
+  After it is working for CPU, you can use:
+
+    .. code-block:: bash
+
+      cd k2
+      mkdir build-cuda
+      cd build-cuda
+      cmake -DCMAKE_BUILD_TYPE=Debug ..
+      make -j5
+      export PYTHONPATH=$PWD/../k2/python:$PWD/lib:$PYTHONPATH
+      # make test # to test your code
 
 To run tests, use:
 
@@ -154,16 +189,16 @@ To run a specific Python test, use:
 
   To check whether you are using a release version or a debug version, run:
 
-    .. code-block::
+    .. code-block:: bash
 
-      python3 -c "import _k2; print(_k2.__file__)"
+      python3 -c "import torch; import _k2; print(_k2.__file__)"
 
   It should print the directory where k2 was built. That is,
   the above output contains a string ``build_release`` or ``build_debug``.
 
   Alternatively, you can run:
 
-    .. code-block::
+    .. code-block:: bash
 
       python3 -m k2.version
 

@@ -157,8 +157,8 @@ class TestRandomPaths(unittest.TestCase):
                     4
                 '''
 
-                fsa1 = k2.Fsa.from_str(s1)
-                fsa2 = k2.Fsa.from_str(s2)
+                fsa1 = k2.Fsa.from_str(s1).to(device)
+                fsa2 = k2.Fsa.from_str(s2).to(device)
                 fsa_vec = k2.create_fsa_vec([fsa1, fsa2])
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
@@ -175,7 +175,9 @@ class TestRandomPaths(unittest.TestCase):
                 #  iter 3, p is 0, select arc 9
                 #  path 1 is [2, 4, 7, 9] + 6 = [8, 10, 13, 15]
                 assert path == k2.RaggedTensor(
-                    '[ [ [ 1 2 4 ] ] [ [ 8 10 13 15 ] ] ]', device=device)
+                    '[ [ [ 1 2 4 ] ] [ [ 8 10 13 15 ] ] ]',
+                    device=device,
+                    dtype=path.dtype)
 
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
@@ -195,7 +197,8 @@ class TestRandomPaths(unittest.TestCase):
                 #    path 1 is [3, 4, 7, 9] + 6 = [9, 10, 13, 15]
                 assert path == k2.RaggedTensor(
                     '[ [ [ 0 3 4 ] [ 1 3 4 ] ] [ [ 7 10 13 15 ] [ 9 10 13 15 ] ] ]',  # noqa
-                    device=device)  # noqa
+                    device=device,
+                    dtype=path.dtype)  # noqa
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
                                        num_paths=4)
@@ -238,7 +241,8 @@ class TestRandomPaths(unittest.TestCase):
                 #    path 3 is [3, 5, 7, 9] + 6 = [9, 11, 13, 15]
                 assert path == k2.RaggedTensor(
                     '[ [ [ 0 2 5 ] [ 0 3 5 ] [ 1 2 5 ] [ 1 3 5 ] ] [ [ 6 11 13 15 ] [ 7 11 13 15 ] [ 8 11 13 15 ] [ 9 11 13 15 ] ] ]',  # noqa
-                    device=device)
+                    device=device,
+                    dtype=path.dtype)
 
 
 if __name__ == '__main__':

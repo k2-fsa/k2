@@ -29,77 +29,80 @@ versions of Python, CUDA, and PyTorch.
   automagically. You don't need to pre-install PyTorch and cudatoolkit when using
   ``conda install``.
 
-The following commands install k2 with different CUDA versions:
+The following commands install k2 with different versions of CUDA and PyTorch:
 
 .. code-block:: bash
 
-  # Install k2 0.3.3 with CUDA 10.2 built on 20210509
+  # Install k2 1.8 with CUDA 10.1 built on 20210916
   #
-  # cu102 means CUDA 10.2
+  # You don't need to specifiy the Python version
   #
-  pip install k2==0.3.3+cu102.dev20210509 -f https://k2-fsa.org/nightly/
+  pip install k2==1.8.dev20210916+cuda10.1.torch1.7.1 -f https://k2-fsa.org/nightly/
 
-  # Install k2 0.3.3 with CUDA 11.0 built on 20210509
+  # Install k2 1.8 with CUDA 10.2 built on 20210916
   #
-  # cu110 means CUDA 11.0
   #
-  pip install k2==0.3.3+cu110.dev20210509 -f https://k2-fsa.org/nightly/
+  pip install k2==1.8.dev20210916+cuda10.2.torch1.7.1 -f https://k2-fsa.org/nightly/
 
-  # Install k2 0.3.3 with CUDA 10.1 built on 20210509
+  # Install k2 1.8 with CUDA 11.0 built on 20210916
   #
-  # CAUTION: you don't need to specify cu101 since CUDA 10.1 is the default
-  # CUDA version
-  #
-  pip install k2==0.3.3.dev20210509 -f https://k2-fsa.org/nightly/
+  pip install k2==1.8.dev20210916+cuda11.0.torch1.7.1 -f https://k2-fsa.org/nightly/
 
-  #
-  # dev20210509 means that version is built on 2021.05.09
-  #
   # Please always select the latest version. That is, the version
   # with the latest date.
+
+.. Caution::
+
+  We only provide pre-compiled versions of k2 with torch 1.7.1. If you need
+  other versions of PyTorch, please consider one of the following alternatives
+  to install k2:
+
+    - :ref:`install using conda`
+    - :ref:`install k2 from source`
 
 The following is the log for installing k2:
 
 .. code-block::
 
-  $ pip install k2==0.3.3.dev20210509 -f https://k2-fsa.org/nightly/
-  Looking in links: https://k2-fsa.org/nightly/
-  Collecting k2==0.3.3.dev20210509
-    Downloading https://k2-fsa.org/nightly/whl/k2-0.3.3.dev20210509-cp38-cp38-linux_x86_64.whl (54.4 MB)
-       |________________________________| 54.4 MB 487 kB/s
-  Requirement already satisfied: torch in ./py38/lib/python3.8/site-packages (from k2==0.3.3.dev20210509) (1.7.1+cu101)
-  Requirement already satisfied: graphviz in ./py38/lib/python3.8/site-packages (from k2==0.3.3.dev20210509) (0.15)
-  Requirement already satisfied: numpy in ./py38/lib/python3.8/site-packages (from torch->k2==0.3.3.dev20210509) (1.19.5)
-  Requirement already satisfied: typing-extensions in ./py38/lib/python3.8/site-packages (from torch->k2==0.3.3.dev20210509) (3.7.4.3)
-  Installing collected packages: k2
-  Successfully installed k2-0.3.3.dev20210509
-  WARNING: You are using pip version 21.0.1; however, version 21.1.1 is available.
-  You should consider upgrading via the '/xxx/bin/python3.8 -m pip install --upgrade pip' command.
+  $ pip install k2==1.8.dev20210916+cuda10.1.torch1.7.1 -f https://k2-fsa.org/nightly
+
+  Looking in links: https://k2-fsa.org/nightly
+  Collecting k2==1.8.dev20210916+cuda10.1.torch1.7.1
+    Downloading https://k2-fsa.org/nightly/whl/k2-1.8.dev20210916%2Bcuda10.1.torch1.7.1-cp38-cp38-linux_x86_64.whl (77.7 MB)
+       |________________________________| 77.7 MB 1.6 MB/s
+  Collecting torch==1.7.1
+    Using cached torch-1.7.1-cp38-cp38-manylinux1_x86_64.whl (776.8 MB)
+  Collecting graphviz
+    Using cached graphviz-0.17-py3-none-any.whl (18 kB)
+  Collecting typing-extensions
+    Downloading typing_extensions-3.10.0.2-py3-none-any.whl (26 kB)
+  Collecting numpy
+    Using cached numpy-1.21.2-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl (15.8 MB)
+  Installing collected packages: typing-extensions, numpy, torch, graphviz, k2
+  Successfully installed graphviz-0.17 k2-1.8.dev20210916+cuda10.1.torch1.7.1 numpy-1.21.2 torch-1.7.1 typing-extensions-3.10.0.2
 
 To verify that k2 is installed successfully, run:
 
 .. code-block::
 
   $ python3 -m k2.version
-  /xxx/lib/python3.8/runpy.py:127: RuntimeWarning: 'k2.version' found in sys.modules after import of package 'k2', but prior to execution of 'k2.version'; this may result in unpredictable behaviour
-    warn(RuntimeWarning(msg))
-  Collecting environment information...
 
-  k2 version: 0.3.3
+  k2 version: 1.8
   Build type: Release
-  Git SHA1: 8e2fa82dca767782351fec57ec187aa04015dcf2
-  Git date: Thu May 6 18:55:15 2021
+  Git SHA1: 646704e142438bcd1aaf4a6e32d95e5ccd93a174
+  Git date: Thu Sep 16 13:05:12 2021
   Cuda used to build k2: 10.1
   cuDNN used to build k2: 8.0.2
   Python version used to build k2: 3.8
   OS used to build k2: Ubuntu 18.04.5 LTS
-  CMake version: 3.20.2
+  CMake version: 3.21.2
   GCC version: 7.5.0
-  CMAKE_CUDA_FLAGS:  -D_GLIBCXX_USE_CXX11_ABI=0  --expt-extended-lambda -gencode arch=compute_35,code=sm_35 --expt-extended-lambda -gencode arch=compute_50,code=sm_50 --expt-extended-lambda -gencode arch=compute_60,code=sm_60 --expt-extended-lambda -gencode arch=compute_61,code=sm_61 --expt-extended-lambda -gencode arch=compute_70,code=sm_70 --expt-extended-lambda -gencode arch=compute_75,code=sm_75 --compiler-options -Wall --compiler-options -Wno-unknown-pragmas
-  CMAKE_CXX_FLAGS:  -D_GLIBCXX_USE_CXX11_ABI=0
+  CMAKE_CUDA_FLAGS:  --expt-extended-lambda -gencode arch=compute_35,code=sm_35 --expt-extended-lambda -gencode arch=compute_50,code=sm_50 --expt-extended-lambda -gencode arch=compute_60,code=sm_60 --expt-extended-lambda -gencode arch=compute_61,code=sm_61 --expt-extended-lambda -gencode arch=compute_70,code=sm_70 --expt-extended-lambda -gencode arch=compute_75,code=sm_75 -D_GLIBCXX_USE_CXX11_ABI=0 --compiler-options -Wall --compiler-options -Wno-unknown-pragmas --compiler-options -Wno-strict-overflow
+  CMAKE_CXX_FLAGS:  -D_GLIBCXX_USE_CXX11_ABI=0 -Wno-strict-overflow
   PyTorch version used to build k2: 1.7.1+cu101
   PyTorch is using Cuda: 10.1
   NVTX enabled: True
+  With CUDA: True
   Disable debug: True
   Sync kernels : False
   Disable checks: False

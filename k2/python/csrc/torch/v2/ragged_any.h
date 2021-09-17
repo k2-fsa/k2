@@ -117,10 +117,24 @@ struct RaggedAny {
 
   /** Convert a ragged tensor to a string.
 
+     An example output for ``compact==false``:
+
+        RaggedTensor([[[1, 2, 3],
+                       [],
+                       [0]],
+                      [[2],
+                       [3, 10.5]]], dtype=torch.float32)
+
+     An example output for ``compact==true``:
+
+     RaggedTensor([[[1, 2, 3], [], [0]], [[2], [3, 10.5]]], dtype=torch.float32)
+
      @param device_id -1 for CPU. 0 and above is for CUDA.
+     @param compact If false, each sublist occupies a row. If true, all sublists
+                    occupies only one row.
      @return Return a string representation of this tensor.
    */
-  std::string ToString(int device_id = -1) const;
+  std::string ToString(bool compact = false, int device_id = -1) const;
 
   /* Move a ragged tensor to a given device.
 

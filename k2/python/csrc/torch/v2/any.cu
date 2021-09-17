@@ -71,6 +71,13 @@ void PybindRaggedAny(py::module &m) {
       kRaggedAnyStrDoc);
 
   any.def(
+      "to_str_simple",
+      [](const RaggedAny &self) -> std::string {
+        return self.ToString(/*compact*/ true);
+      },
+      kRaggedAnyToStrSimpleDoc);
+
+  any.def(
       "__repr__",
       [](const RaggedAny &self) -> std::string { return self.ToString(); },
       kRaggedAnyStrDoc);
