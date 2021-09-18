@@ -89,8 +89,11 @@ class TestLevenshteinGraph(unittest.TestCase):
                     offset_value, 0, 0, offset_value, 0, 0, offset_value, 0, 0,
                     offset_value, 0], dtype=torch.float32)
 
-                offset_ragged = fsa_vec_ragged.ins_del_score_offset.to('cpu')
-                offset = fsa_vec.ins_del_score_offset.to('cpu')
+                offset_ragged = getattr(
+                    fsa_vec_ragged, "__ins_del_score_offset_internal_attr_")
+                offset_ragged = offset_ragged.to('cpu')
+                offset = getattr(
+                    fsa_vec, "__ins_del_score_offset_internal_attr_").to('cpu')
                 assert torch.allclose(expected_offset, offset_ragged)
                 assert torch.allclose(expected_offset, offset)
 

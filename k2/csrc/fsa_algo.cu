@@ -487,12 +487,12 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
       });
   ExclusiveSum(num_arcs_for, &num_arcs_for);
   Array1<int32_t> &states_to_arcs_row_splits = num_arcs_for;
+  int32_t num_arcs = symbols.NumElements() * 3 + symbols.Dim0() * 2;
   RaggedShape states_to_arcs =
-      RaggedShape2(&states_to_arcs_row_splits, nullptr, -1);
+      RaggedShape2(&states_to_arcs_row_splits, nullptr, num_arcs);
 
   // shape with a index of [fsa][state][arc]
   RaggedShape shape = ComposeRaggedShapes(fsa_to_states, states_to_arcs);
-  int32_t num_arcs = shape.NumElements();
   Array1<Arc> arcs(c, num_arcs);
   Arc *arcs_data = arcs.Data();
   const int32_t *row_splits1_data = shape.RowSplits(1).Data(),

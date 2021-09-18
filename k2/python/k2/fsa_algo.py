@@ -1063,7 +1063,6 @@ def ctc_topo(max_token: int,
 def levenshtein_graph(
     symbols: Union[k2.RaggedTensor, List[List[int]]],
     ins_del_score: float = -0.501,
-    ins_del_score_offset_attr: Optional[str] = "ins_del_score_offset",
     device: Optional[Union[torch.device, str]] = "cpu"
 ) -> Fsa:
     '''Construct levenshtein graphs from symbols.
@@ -1083,10 +1082,6 @@ def levenshtein_graph(
         The score on the self loops arcs in the graphs, the main idea of this
         score is to set insertion and deletion penalty, which will affect the
         shortest path searching produre.
-      ins_del_score_offset_attr:
-        If not None, we'll add an attribute to the returned fsa with the name of
-        ins_del_score_offset_attr. The attribute contains the score offset on
-        each arc, whose value will be `ins_del_score - (-0.5)`
       device:
         Optional. It can be either a string (e.g., 'cpu', 'cuda:0') or a
         torch.device.
@@ -1104,8 +1099,9 @@ def levenshtein_graph(
     ragged_arc, aux_labels, score_offsets = _k2.levenshtein_graph(
         symbols, ins_del_score, True)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
-    if ins_del_score_offset_attr is not None:
-        setattr(fsa, ins_del_score_offset_attr, score_offsets)
+    # Use the complicated name to avoid conflicts with user defined
+    # attribute names
+    setattr(fsa, "__ins_del_score_offset_internal_attr_", score_offsets)
     return fsa
 
 
@@ -1114,7 +1110,6 @@ def levenshtein_alignment(
         hyps: Fsa,
         hyp_to_ref_map: torch.Tensor,
         sorted_match_ref: bool = False,
-        ins_del_score_offset_attr: str = "ins_del_score_offset",
 ) -> Fsa:
     '''Get the levenshtein alignment of two FsaVecs
 
@@ -1141,11 +1136,6 @@ def levenshtein_alignment(
         If true, the arcs of refs must be sorted by label (checked by
         calling code via properties), and we'll use a matching approach
         that requires this.
-      ins_del_score_offset_attr:
-        The attribute name used to name ins_del_score_offset.
-        See :func:`levenshtein_graph` for more details about the attribute.
-        You are expected to use the same `ins_del_score_offset_attr` with the
-        one that used to construct `refs` and `hyps`.
 
     Returns:
       Returns an FsaVec containing the alignment information and satisfing
@@ -1185,6 +1175,7 @@ def levenshtein_alignment(
     alignment.rename_tensor_attribute_("labels", "ref_labels")
     alignment.rename_tensor_attribute_("aux_labels", "labels")
 
-    alignment.scores -= getattr(alignment, ins_del_score_offset_attr)
+    alignment.scores -= getattr(
+        alignment, "__ins_del_score_offset_internal_attr_")
 
     return alignment
