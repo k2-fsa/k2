@@ -986,12 +986,11 @@ class TestFsa(unittest.TestCase):
         fsa2 = k2.Fsa.from_str(s2)
         fsa2.aux_labels = k2.RaggedTensor('[ [5 8 9] ]')
         fsa = k2.create_fsa_vec([fsa1, fsa2])
-        self.assertEqual(str(fsa.aux_labels),
-                         '[ [ 1 0 2 ] [ 3 5 ] [ 5 8 9 ] ]')
+        assert fsa.aux_labels == k2.RaggedTensor('[ [ 1 0 2 ] [ 3 5 ] [ 5 8 9 ] ]')  # noqa
 
         fsa = k2.Fsa.from_fsas([fsa1, fsa2])
-        self.assertEqual(str(fsa.aux_labels),
-                         '[ [ 1 0 2 ] [ 3 5 ] [ 5 8 9 ] ]')
+        assert fsa.aux_labels == k2.RaggedTensor(
+            '[ [ 1 0 2 ] [ 3 5 ] [ 5 8 9 ] ]')
 
     def test_index_fsa(self):
         for device in self.devices:
@@ -1079,8 +1078,8 @@ class TestFsa(unittest.TestCase):
                 torch.eq(cloned.tensor_attr1,
                          torch.tensor([10, 20, 30]).to(device)))
 
-            assert str(cloned.ragged_attr1) == str(
-                k2.RaggedTensor('[[100] [] [-1]]'))
+            assert cloned.ragged_attr1 == \
+                    k2.RaggedTensor('[[100] [] [-1]]', device=device)
 
     def test_detach_more_attributes(self):
         for device in self.devices:
@@ -1124,15 +1123,15 @@ class TestFsa(unittest.TestCase):
                                             dtype=torch.int32,
                                             device=device)[::2]
             fsa.convert_attr_to_ragged_(name='tensor_attr1', remove_eps=False)
-            expected = k2.RaggedTensor('[ [1] [3] [0] ]')
-            assert str(fsa.tensor_attr1) == str(expected)
+            expected = k2.RaggedTensor('[ [1] [3] [0] ]', device=device)
+            assert fsa.tensor_attr1 == expected
 
             fsa.tensor_attr2 = torch.tensor([1, 0, -1],
                                             dtype=torch.int32,
                                             device=device)
             fsa.convert_attr_to_ragged_(name='tensor_attr2', remove_eps=True)
-            expected = k2.RaggedTensor('[ [1] [] [-1] ]')
-            assert str(fsa.tensor_attr2) == str(expected)
+            expected = k2.RaggedTensor('[ [1] [] [-1] ]', device=device)
+            assert fsa.tensor_attr2 == expected
 
     def test_invalidate_cache(self):
         s = '''

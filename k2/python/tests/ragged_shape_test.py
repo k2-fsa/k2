@@ -118,7 +118,7 @@ class TestRaggedShape(unittest.TestCase):
             abshape2 = ashape.compose(bshape)
             assert abshape == prod.shape
             assert abshape2 == prod.shape
-            prod2 = k2.RaggedTensor(abshape2, b.data)
+            prod2 = k2.RaggedTensor(abshape2, b.values)
             assert prod == prod2
 
 
