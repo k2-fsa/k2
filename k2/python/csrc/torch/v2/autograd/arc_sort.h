@@ -20,8 +20,10 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_ARC_SORT_H
-#define K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_ARC_SORT_H
+#ifndef K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_ARC_SORT_H_
+#define K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_ARC_SORT_H_
+
+#include <utility>
 
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/ragged_ops.h"
@@ -29,8 +31,6 @@
 #include "k2/csrc/tensor_ops.h"
 #include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/ragged_arc.h"
-
-using namespace torch::autograd;
 
 namespace k2 {
 
@@ -47,7 +47,7 @@ class ArcSortFunction : public torch::autograd::Function<ArcSortFunction> {
 
      @return Return a 1-D unused tensor, which is out->scores.
    */
-  static torch::Tensor forward(AutogradContext *ctx,
+  static torch::Tensor forward(torch::autograd::AutogradContext *ctx,
                                /*const*/ RaggedArc &ragged,
                                torch::Tensor /*dummy*/, RaggedArc *out) {
     Array1<int32_t> arc_map;
@@ -58,7 +58,9 @@ class ArcSortFunction : public torch::autograd::Function<ArcSortFunction> {
     return out->Scores();
   }
 
-  static tensor_list backward(AutogradContext *ctx, tensor_list grad_outputs) {
+  static torch::autograd::tensor_list backward(
+      torch::autograd::AutogradContext *ctx,
+      torch::autograd::tensor_list grad_outputs) {
     auto saved = ctx->get_saved_variables();
     torch::Tensor arc_map_tensor = saved[0];
     Array1<int32_t> arc_map = FromTorch<int32_t>(arc_map_tensor);
@@ -78,4 +80,4 @@ class ArcSortFunction : public torch::autograd::Function<ArcSortFunction> {
 
 }  // namespace k2
 
-#endif  // K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_ARC_SORT_H
+#endif  // K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_ARC_SORT_H_

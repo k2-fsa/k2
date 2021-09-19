@@ -20,9 +20,13 @@
  * limitations under the License.
  */
 
+#include <string>
+#include <vector>
+
 #include "k2/csrc/fsa_utils.h"
 #include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/autograd/arc_sort.h"
+#include "k2/python/csrc/torch/v2/autograd/get_forward_scores.h"
 #include "k2/python/csrc/torch/v2/ragged_arc.h"
 
 namespace k2 {
@@ -115,7 +119,6 @@ std::string RaggedArc::ToString() const {
   // TODO: support fsa.NumAxes() == 3
   K2_CHECK_EQ(fsa.NumAxes(), 2);
 
-  int32_t num_extra_labels = 0;
   std::vector<Array1<int32_t>> extra_labels;
   for (auto &p : tensor_attrs) {
     if (p.second.scalar_type() == torch::kInt) {
@@ -135,14 +138,21 @@ std::string RaggedArc::ToString() const {
 RaggedArc RaggedArc::CreateFsaVec(std::vector<RaggedArc> &fsas) {
   DeviceGuard guard(fsas[0].fsa.Context());
   std::vector<Fsa *> tmp_fsas;
+  std::vector<torch::Tensor> tmp_scores;
+
   tmp_fsas.reserve(fsas.size());
   for (auto &f : fsas) {
     tmp_fsas.push_back(&f.fsa);
+    tmp_scores.push_back(f.Scores());
   }
   FsaVec fsa_vec = k2::CreateFsaVec(tmp_fsas.size(), tmp_fsas.data());
 
+  // TODO(fangjun): Don't handle scores specially, treat it
+  // like other tensor attributes
+  torch::Tensor scores = torch::cat(tmp_scores, 0);
+
   // TODO(fangjun): support propagating attributes
-  return RaggedArc(fsa_vec);
+  return RaggedArc(fsa_vec, scores);
 }
 
 RaggedArc RaggedArc::ArcSort() /*const*/ {
@@ -152,6 +162,18 @@ RaggedArc RaggedArc::ArcSort() /*const*/ {
 }
 
 void RaggedArc::SetAttr(const std::string &name, py::object value) {
+  if (name == "grad") {
+    // Note we don't use pybind11's def_property since it does not allow
+    // to use argument annotions, which means it is not possible to
+    // run: fsa.grad = None
+    if (value.is_none()) {
+      Scores().mutable_grad() = {};
+    } else {
+      Scores().mutable_grad() = value.cast<torch::Tensor>();
+    }
+    return;
+  }
+
   if (HasAttr(name)) DeleteAttr(name);
 
   all_attr_names.insert(name);
@@ -175,6 +197,10 @@ void RaggedArc::SetAttr(const std::string &name, py::object value) {
 }
 
 py::object RaggedArc::GetAttr(const std::string &name) const {
+  if (name == "grad") {
+    return py::cast(Scores().grad());
+  }
+
   if (!HasAttr(name)) {
     std::ostringstream os;
     os << "No such attribute '" << name << "'";
@@ -325,9 +351,22 @@ Array1<int32_t> RaggedArc::GetEnteringArcs(bool use_double_scores) {
   return cached_tensor.at(name);
 }
 
+Ragged<int32_t> RaggedArc::GetLeavingArcIndexBatches() {
+  std::string name = "leaving_arc_index_batches";
+  auto it = cached_ragged_tensor.find(name);
+  if (it != cached_ragged_tensor.end()) {
+    return it->second;
+  }
+
+  Ragged<int32_t> state_batches = GetStateBatches(/*transpose*/ true);
+  Ragged<int32_t> value = k2::GetLeavingArcIndexBatches(fsa, state_batches);
+  cached_ragged_tensor[name] = value;
+  return value;
+}
+
 // TODO(fangjun): Implement autograd for get forward scores
-torch::Tensor RaggedArc::GetForwardScores(bool use_double_scores,
-                                          bool log_semiring) {
+torch::Tensor RaggedArc::GetForwardScoresImpl(bool use_double_scores,
+                                              bool log_semiring) {
   Array1<int32_t> entering_arcs;
 
   Array1<int32_t> *p_entering_arcs = nullptr;
@@ -348,12 +387,18 @@ torch::Tensor RaggedArc::GetForwardScores(bool use_double_scores,
                                 log_semiring, p_entering_arcs);
     if (!log_semiring) {
       cached_tensor["entering_arcs"] = entering_arcs;
-      return ToTorch(forward_scores);
     }
+    return ToTorch(forward_scores);
   });
 
   // Unreachable code
   return {};
 }
+
+torch::Tensor RaggedArc::GetForwardScores(bool use_double_scores,
+                                          bool log_semiring) {
+  return GetForwardScoresFunction::apply(*this, use_double_scores, log_semiring,
+                                         Scores());
+};
 
 }  // namespace k2

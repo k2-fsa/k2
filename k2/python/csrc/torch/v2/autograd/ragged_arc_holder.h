@@ -1,5 +1,5 @@
 /**
- * @brief python wrapper for Ragged<Arc>
+ * @brief A wrapper around k2::RaggedArc to support autograd.
  *
  * @copyright
  * Copyright      2021  Xiaomi Corp.  (authors: Fangjun Kuang)
@@ -20,14 +20,21 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_V2_FSA_H_
-#define K2_PYTHON_CSRC_TORCH_V2_FSA_H_
+#ifndef K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_RAGGED_ARC_HOLDER_H_
+#define K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_RAGGED_ARC_HOLDER_H_
 
-#include "k2/python/csrc/torch.h"
+#include "k2/python/csrc/torch/v2/ragged_arc.h"
+#include "torch/torch.h"
 
 namespace k2 {
 
-void PybindRaggedArc(py::module &m);
+// We need this wrapper so that we can save an instance
+// of RaggedArc into `torch::autograd::AutogradContext *ctx`
+struct RaggedArcHolder : public torch::CustomClassHolder {
+  RaggedArc *fsas = nullptr;  // not owned by this class
+  explicit RaggedArcHolder(RaggedArc *fsas) : fsas(fsas) {}
+};
 
 }  // namespace k2
-#endif  // K2_PYTHON_CSRC_TORCH_V2_FSA_H_
+
+#endif  // K2_PYTHON_CSRC_TORCH_V2_AUTOGRAD_RAGGED_ARC_HOLDER_H_

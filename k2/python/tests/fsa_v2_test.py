@@ -47,7 +47,9 @@ class TestFsa(unittest.TestCase):
         fsa = k2r.Fsa(s)
 
         arcs = fsa.arcs
-        expected_arcs = torch.tensor([[0, 1, 1], [1, 2, 2], [2, 3, -1]]).to(fsa.arcs)
+        expected_arcs = torch.tensor([[0, 1, 1], [1, 2, 2], [2, 3, -1]]).to(
+            fsa.arcs
+        )
         assert torch.all(torch.eq(arcs[:, :3], expected_arcs))
 
         scores = fsa.scores
@@ -58,6 +60,7 @@ class TestFsa(unittest.TestCase):
 
         with self.assertRaises(AttributeError):
             attr1 = fsa.attr1
+            del attr1
 
         # Non-tensor attribute
         assert hasattr(fsa, "attr1") is False
@@ -114,10 +117,12 @@ class TestFsa(unittest.TestCase):
             3
         """
         for device in self.devices:
+            if device.type == "cuda":
+                continue  # no implmented yet
             for use_double_scores in (True, False):
                 #  fsa = k2r.Fsa(s).to(device).requires_grad_(True)
                 # TODO(fangjun): Implement `To` and autograd
-                fsa = k2r.Fsa(s)
+                fsa = k2r.Fsa(s).requires_grad_(True)
                 fsa_vec = k2r.Fsa.from_fsas([fsa])
                 forward_scores = fsa_vec.get_forward_scores(
                     use_double_scores=use_double_scores, log_semiring=False
@@ -131,6 +136,35 @@ class TestFsa(unittest.TestCase):
                     ]
                 ).to(forward_scores)
                 assert torch.allclose(forward_scores, expected_forward_scores)
+                scale = torch.arange(forward_scores.numel()).to(device)
+                (scale * forward_scores).sum().backward()
+                expected_grad = torch.tensor([0, 4, 2, 0, 0, 3, 0]).to(fsa.grad)
+                assert torch.allclose(fsa.grad, expected_grad)
+
+                # now for log semiring
+                fsa.grad = None
+                fsa_vec = k2r.Fsa.from_fsas([fsa])
+                forward_scores = fsa_vec.get_forward_scores(
+                    use_double_scores=use_double_scores, log_semiring=True
+                )
+                scores = fsa.scores.detach().clone().requires_grad_(True)
+                expected_forward_scores = torch.empty_like(forward_scores)
+                expected_forward_scores[0] = 0
+                expected_forward_scores[1] = scores[:2].exp().sum().log()
+                expected_forward_scores[2] = (
+                    scores[2].exp()
+                    + (expected_forward_scores[1] + scores[3]).exp()
+                    + (expected_forward_scores[1] + scores[4]).exp()
+                ).log()
+                expected_forward_scores[3] = (
+                    (expected_forward_scores[1] + scores[5]).exp()
+                    + (expected_forward_scores[2] + scores[6]).exp()
+                ).log()
+                assert torch.allclose(forward_scores, expected_forward_scores)
+
+                (scale * forward_scores).sum().backward()
+                (scale * expected_forward_scores).sum().backward()
+                assert torch.allclose(fsa.grad, scores.grad)
 
 
 if __name__ == "__main__":

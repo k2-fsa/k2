@@ -20,6 +20,10 @@
  * limitations under the License.
  */
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/torch/v2/fsa.h"
 #include "k2/python/csrc/torch/v2/ragged_arc.h"
@@ -63,12 +67,20 @@ void PybindRaggedArc(py::module &m) {
         self.Scores().copy_(scores);
       });
 
-  fsa.def_property_readonly(
-      "grad", [](RaggedArc &self) -> torch::optional<torch::Tensor> {
-        if (!self.scores.defined()) return {};
-
-        return self.Scores().grad();
-      });
+  fsa.def_property_readonly("shape", [](RaggedArc &self) -> py::tuple {
+    if (self.fsa.NumAxes() == 2) {
+      py::tuple ans(2);
+      ans[0] = self.fsa.Dim0();
+      ans[1] = py::none();
+      return ans;
+    } else {
+      py::tuple ans(3);
+      ans[0] = self.fsa.Dim0();
+      ans[1] = py::none();
+      ans[2] = py::none();
+      return ans;
+    }
+  });
 
   fsa.def_property(
       "requires_grad",

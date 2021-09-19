@@ -21,6 +21,7 @@
  */
 
 #include "k2/python/csrc/torch/v2/any.h"
+#include "k2/python/csrc/torch/v2/autograd/ragged_arc_holder.h"
 #include "k2/python/csrc/torch/v2/fsa.h"
 #include "k2/python/csrc/torch/v2/k2.h"
 #include "k2/python/csrc/torch/v2/ragged_shape.h"
@@ -38,6 +39,14 @@ void PybindV2(py::module &m) {
   PybindRaggedAny(ragged);
   PybindRaggedArc(ragged);
   m.attr("RaggedArc") = ragged.attr("Fsa");  // TODO: remove it
+
+  // The following **static** variable is to resolve the following exception:
+  //
+  // RuntimeError: Trying to instantiate a class that isn't a registered custom
+  // class: k2::RaggedArcHolder
+  //
+  static auto register_ragged_arc_holder =
+      torch::class_<RaggedArcHolder>("MyRaggedArcHolder", "RaggedArcHolder");
 }
 
 }  // namespace k2
