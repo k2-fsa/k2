@@ -703,61 +703,16 @@ static void PybindReplaceFsa(py::module &m) {
 static void PybindCtcGraph(py::module &m) {
   m.def(
       "ctc_graph",
-      [](RaggedAny &symbols, torch::optional<torch::Device> = {},
-         bool modified = false,
-         bool need_arc_map =
-             true) -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+      [](RaggedAny &symbols, bool modified = false)
+      -> std::pair<FsaVec, torch::Tensor> {
         DeviceGuard guard(symbols.any.Context());
-        Array1<int32_t> arc_map;
+        Array1<int32_t> aux_labels;
         FsaVec graph = CtcGraphs(symbols.any.Specialize<int32_t>(), modified,
-                                 need_arc_map ? &arc_map : nullptr);
-        torch::optional<torch::Tensor> tensor;
-        if (need_arc_map) tensor = ToTorch(arc_map);
+                                 &aux_labels);
+        torch::Tensor tensor = ToTorch(aux_labels);
         return std::make_pair(graph, tensor);
       },
-      py::arg("symbols"), py::arg("device") = py::none(),
-      py::arg("modified") = false, py::arg("need_arc_map") = true);
-
-  m.def(
-      "ctc_graph",
-      [](const std::vector<std::vector<int32_t>> &symbols,
-         torch::optional<torch::Device> device = {}, bool modified = false,
-         bool need_arc_map =
-             true) -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
-        ContextPtr context =
-            GetContext(device.value_or(torch::Device(torch::kCPU)));
-
-        DeviceGuard guard(context);
-        Ragged<int32_t> ragged = CreateRagged2<int32_t>(symbols).To(context);
-        Array1<int32_t> arc_map;
-        FsaVec graph =
-            CtcGraphs(ragged, modified, need_arc_map ? &arc_map : nullptr);
-        torch::optional<torch::Tensor> tensor;
-        if (need_arc_map) tensor = ToTorch(arc_map);
-        return std::make_pair(graph, tensor);
-      },
-      py::arg("symbols"), py::arg("device") = py::none(),
-      py::arg("modified") = false, py::arg("need_arc_map") = true);
-
-  m.def(
-      "ctc_graph",
-      [](const std::vector<std::vector<int32_t>> &symbols,
-         torch::optional<std::string> device = {}, bool modified = false,
-         bool need_arc_map =
-             true) -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
-        ContextPtr context = GetContext(torch::Device(device.value_or("cpu")));
-
-        DeviceGuard guard(context);
-        Ragged<int32_t> ragged = CreateRagged2<int32_t>(symbols).To(context);
-        Array1<int32_t> arc_map;
-        FsaVec graph =
-            CtcGraphs(ragged, modified, need_arc_map ? &arc_map : nullptr);
-        torch::optional<torch::Tensor> tensor;
-        if (need_arc_map) tensor = ToTorch(arc_map);
-        return std::make_pair(graph, tensor);
-      },
-      py::arg("symbols"), py::arg("device") = py::none(),
-      py::arg("modified") = false, py::arg("need_arc_map") = true);
+      py::arg("symbols"), py::arg("modified") = false);
 }
 
 static void PybindCtcTopo(py::module &m) {
@@ -789,6 +744,29 @@ static void PybindCtcTopo(py::module &m) {
       py::arg("max_token"), py::arg("device") = py::none(),
       py::arg("modified") = false);
 }
+
+static void PybindLevenshteinGraph(py::module &m) {
+  m.def(
+      "levenshtein_graph",
+      [](RaggedAny &symbols, float ins_del_score = -0.501,
+         bool need_score_offset =
+             true) -> std::tuple<FsaVec, torch::Tensor,
+                                 torch::optional<torch::Tensor>> {
+        DeviceGuard guard(symbols.any.Context());
+        Array1<int32_t> aux_labels;
+        Array1<float> score_offsets;
+        FsaVec graph = LevenshteinGraphs(symbols.any.Specialize<int32_t>(),
+                                 ins_del_score, &aux_labels,
+                                 need_score_offset ? &score_offsets : nullptr);
+        torch::Tensor aux_labels_tensor = ToTorch(aux_labels);
+        torch::optional<torch::Tensor> score_offsets_tensor;
+        if (need_score_offset) score_offsets_tensor = ToTorch(score_offsets);
+        return std::make_tuple(graph, aux_labels_tensor, score_offsets_tensor);
+      },
+      py::arg("symbols"), py::arg("ins_del_score") = -0.501,
+      py::arg("need_score_offset") = true);
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -806,6 +784,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindIntersectDensePruned(m);
   k2::PybindIntersectDevice(m);
   k2::PybindInvert(m);
+  k2::PybindLevenshteinGraph(m);
   k2::PybindLinearFsa(m);
   k2::PybindRemoveEpsilon(m);
   k2::PybindRemoveEpsilonSelfLoops(m);

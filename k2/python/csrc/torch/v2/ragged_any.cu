@@ -186,6 +186,9 @@ static Ragged<T> RaggedAnyFromList(py::list data) {
 
 RaggedAny::RaggedAny(const RaggedShape &shape, torch::Tensor value)
     : data(value) {
+  ContextPtr context = GetContext(value);
+  DeviceGuard guard(context);
+
   Dtype t = ScalarTypeToDtype(value.scalar_type());
   FOR_REAL_AND_INT32_TYPES(t, T, {
     Array1<T> array = FromTorch<T>(value);
@@ -205,6 +208,7 @@ RaggedAny::RaggedAny(const std::string &s, py::object dtype /*=py::none()*/,
   }
 
   ContextPtr context = GetContext(device);
+  DeviceGuard guard(context);
 
   if (dtype.is_none()) {
     try {
@@ -241,6 +245,7 @@ RaggedAny::RaggedAny(py::list data, py::object dtype /*= py::none()*/,
   }
 
   ContextPtr context = GetContext(device);
+  DeviceGuard guard(context);
 
   if (dtype.is_none()) {
     try {
