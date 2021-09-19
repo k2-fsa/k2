@@ -132,6 +132,19 @@ std::string RaggedArc::ToString() const {
   return os.str();
 }
 
+RaggedArc RaggedArc::CreateFsaVec(std::vector<RaggedArc> &fsas) {
+  DeviceGuard guard(fsas[0].fsa.Context());
+  std::vector<Fsa *> tmp_fsas;
+  tmp_fsas.reserve(fsas.size());
+  for (auto &f : fsas) {
+    tmp_fsas.push_back(&f.fsa);
+  }
+  FsaVec fsa_vec = k2::CreateFsaVec(tmp_fsas.size(), tmp_fsas.data());
+
+  // TODO(fangjun): support propagating attributes
+  return RaggedArc(fsa_vec);
+}
+
 RaggedArc RaggedArc::ArcSort() /*const*/ {
   RaggedArc out;
   (void)ArcSortFunction::apply(*this, Scores(), &out);
@@ -235,6 +248,112 @@ void RaggedArc::DeleteAttr(const std::string &name) {
 
 bool RaggedArc::HasAttr(const std::string &name) const {
   return all_attr_names.count(name) > 0;
+}
+
+Ragged<int32_t> RaggedArc::GetStateBatches(bool transpose /*= true*/) {
+  std::string name;
+  if (transpose) {
+    name = "state_batches_true";
+  } else {
+    name = "state_batches_false";
+  }
+  auto it = cached_ragged_tensor.find(name);
+  if (it != cached_ragged_tensor.end()) {
+    return it->second;
+  }
+
+  Ragged<int32_t> value = k2::GetStateBatches(fsa, transpose);
+  cached_ragged_tensor[name] = value;
+  return value;
+}
+
+Array1<int32_t> RaggedArc::GetDestStates(bool as_idx01) {
+  std::string name;
+  if (as_idx01) {
+    name = "dest_states_true";
+  } else {
+    name = "dest_states_false";
+  }
+  auto it = cached_tensor.find(name);
+  if (it != cached_tensor.end()) {
+    return it->second;
+  }
+
+  Array1<int32_t> value = k2::GetDestStates(fsa, as_idx01);
+  cached_tensor[name] = value;
+  return value;
+}
+
+Ragged<int32_t> RaggedArc::GetIncomingArcs() {
+  std::string name = "incoming_arcs";
+  auto it = cached_ragged_tensor.find(name);
+  if (it != cached_ragged_tensor.end()) {
+    return it->second;
+  }
+
+  Array1<int32_t> dest_states = GetDestStates(/*as_idx01*/ true);
+  Ragged<int32_t> value = k2::GetIncomingArcs(fsa, dest_states);
+  cached_ragged_tensor[name] = value;
+  return value;
+}
+
+Ragged<int32_t> RaggedArc::GetEnteringArcIndexBatches() {
+  std::string name = "entering_arc_index_batches";
+  auto it = cached_ragged_tensor.find(name);
+  if (it != cached_ragged_tensor.end()) {
+    return it->second;
+  }
+
+  Ragged<int32_t> incoming_arcs = GetIncomingArcs();
+  Ragged<int32_t> state_batches = GetStateBatches(/*transpose*/ true);
+  Ragged<int32_t> value =
+      k2::GetEnteringArcIndexBatches(fsa, incoming_arcs, state_batches);
+  cached_ragged_tensor[name] = value;
+  return value;
+}
+
+Array1<int32_t> RaggedArc::GetEnteringArcs(bool use_double_scores) {
+  std::string name = "entering_arcs";
+  auto it = cached_tensor.find(name);
+  if (it != cached_tensor.end()) {
+    return it->second;
+  }
+
+  // This function will compute and fill in cached_tensor[name]
+  (void)GetForwardScores(use_double_scores, /*log_semiring*/ false);
+
+  return cached_tensor.at(name);
+}
+
+// TODO(fangjun): Implement autograd for get forward scores
+torch::Tensor RaggedArc::GetForwardScores(bool use_double_scores,
+                                          bool log_semiring) {
+  Array1<int32_t> entering_arcs;
+
+  Array1<int32_t> *p_entering_arcs = nullptr;
+  if (!log_semiring) {
+    p_entering_arcs = &entering_arcs;
+  }
+
+  Ragged<int32_t> state_batches = GetStateBatches(/*transpose*/ true);
+  Ragged<int32_t> entering_arc_batches = GetEnteringArcIndexBatches();
+  Dtype t = kFloatDtype;
+  if (use_double_scores) {
+    t = kDoubleDtype;
+  }
+
+  FOR_REAL_TYPES(t, T, {
+    Array1<T> forward_scores =
+        k2::GetForwardScores<T>(fsa, state_batches, entering_arc_batches,
+                                log_semiring, p_entering_arcs);
+    if (!log_semiring) {
+      cached_tensor["entering_arcs"] = entering_arcs;
+      return ToTorch(forward_scores);
+    }
+  });
+
+  // Unreachable code
+  return {};
 }
 
 }  // namespace k2

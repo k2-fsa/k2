@@ -101,6 +101,37 @@ class TestFsa(unittest.TestCase):
         expected_t1 = k2.RaggedTensor([[], [10], [2, 3, 5.5]])
         assert fsa.t1 == expected_t1
 
+    def test_get_forward_scores_simple_fsa_case_1(self):
+        # see https://git.io/JtttZ
+        s = """
+            0 1 1 0.0
+            0 1 2 0.1
+            0 2 3 2.2
+            1 2 4 0.5
+            1 2 5 0.6
+            1 3 -1 3.0
+            2 3 -1 0.8
+            3
+        """
+        for device in self.devices:
+            for use_double_scores in (True, False):
+                #  fsa = k2r.Fsa(s).to(device).requires_grad_(True)
+                # TODO(fangjun): Implement `To` and autograd
+                fsa = k2r.Fsa(s)
+                fsa_vec = k2r.Fsa.from_fsas([fsa])
+                forward_scores = fsa_vec.get_forward_scores(
+                    use_double_scores=use_double_scores, log_semiring=False
+                )
+                expected_forward_scores = torch.tensor(
+                    [
+                        0,  # start state
+                        0.1,  # state 1, arc: 0 -> 1 (2/0.1)
+                        2.2,  # state 2, arc: 0 -> 2 (3/2.2)
+                        3.1,  # state 3, arc: 1 -> 3 (-1/3.0)
+                    ]
+                ).to(forward_scores)
+                assert torch.allclose(forward_scores, expected_forward_scores)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -52,6 +52,11 @@ void PybindRaggedArc(py::module &m) {
   fsa.def("__getattr__", &RaggedArc::GetAttr);
   fsa.def("__delattr__", &RaggedArc::DeleteAttr);
 
+  fsa.def("get_forward_scores", &RaggedArc::GetForwardScores,
+          py::arg("use_double_scores"), py::arg("log_semiring"));
+
+  fsa.def_static("from_fsas", &RaggedArc::CreateFsaVec, py::arg("fsas"));
+
   fsa.def_property(
       "scores", [](RaggedArc &self) -> torch::Tensor { return self.Scores(); },
       [](RaggedArc &self, torch::Tensor scores) {

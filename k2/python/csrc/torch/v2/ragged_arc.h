@@ -37,10 +37,17 @@ struct RaggedArc {
   Ragged<Arc> fsa;
   torch::Tensor scores;  // shares the same memory with fsa.values
 
+  /// It contains all tensor attributes of this FSA
   std::unordered_map<std::string, torch::Tensor> tensor_attrs;
+
+  /// It contains all ragged tensor attributes of this FSA
+  /// It supports only ragged tensor attributes with dtype==torch.int32
   std::unordered_map<std::string, RaggedAny> ragged_tensor_attrs;
 
+  /// All attributes of other types of this FSA
   std::unordered_map<std::string, py::object> other_attrs;
+
+  /// The name of all attributes of this FSA
   std::unordered_set<std::string> all_attr_names;
 
   // The default constructor initializes an invalid ragged tensor.
@@ -99,6 +106,8 @@ struct RaggedArc {
    */
   std::string ToString() const;
 
+  static RaggedArc CreateFsaVec(std::vector<RaggedArc> &fsas);
+
   RaggedArc ArcSort() /*const*/;
 
   /** Associate an attribute with a value.
@@ -142,6 +151,19 @@ struct RaggedArc {
    */
   bool HasAttr(const std::string &name) const;
 
+  /** Wrapper for k2::GetForwardScores
+
+    @param use_double_scores True to use double for computation.
+                             False to use float.
+    @param log_semiring   True to use log semiring.
+                          False to use tropical semiring.
+
+    @return Return a 1-D tensor containing the forward scores of each state.
+            If use_double_scores is True, the dtype of the returned tensor is
+            torch.float64; otherwise, the dtype is torch.float32.
+   */
+  torch::Tensor GetForwardScores(bool use_double_scores, bool log_semiring);
+
  private:
   void SetAttr(const std::string &name, torch::Tensor value) {
     K2_CHECK_EQ(value.size(0), fsa.NumElements())
@@ -153,6 +175,68 @@ struct RaggedArc {
         << "dim0 of the tensor MUST be equal to number of arcs";
     ragged_tensor_attrs[name] = value;
   }
+
+  /* Wrapper for k2::GetStateBatches.
+
+     If `cached_ragged_tensor` already contains the value, no
+     computation is performed and the value is return directly
+
+     If `cached_ragged_tensor` does not contain the value, it
+     computes the state batches, saves it into `cached_ragged_tensor`,
+     and returns it.
+   */
+  Ragged<int32_t> GetStateBatches(bool transpose = true);
+
+  /* Wrapper for k2::GetDestStates.
+
+     If `cached_tensor` already contains the value, no
+     computation is performed and the value is return directly
+
+     If `cached_tensor` does not contain the value, it
+     computes the dest states, saves it into `cached_tensor`,
+     and returns it.
+   */
+  Array1<int32_t> GetDestStates(bool as_idx01);
+
+  /* Wrapper for k2::GetIncomingArcs.
+
+     If `cached_ragged_tensor` already contains the value, no
+     computation is performed and the value is return directly
+
+     If `cached_ragged_tensor` does not contain the value, it
+     computes the incoming arcs, saves it into `cached_ragged_tensor`,
+     and returns it.
+   */
+  Ragged<int32_t> GetIncomingArcs();
+
+  /* Wrapper for k2::GetIncomingArcIndexBatches.
+
+     If `cached_ragged_tensor` already contains the value, no
+     computation is performed and the value is return directly
+
+     If `cached_ragged_tensor` does not contain the value, it
+     computes the incoming arcs, saves it into `cached_ragged_tensor`,
+     and returns it.
+   */
+  Ragged<int32_t> GetEnteringArcIndexBatches();
+
+  /* It uses k2::GetForwardScores() to compute `entering_arcs`.
+
+     If `cached_tensor` already contains the value, no
+     computation is performed and the value is return directly
+
+     If `cached_tensor` does not contain the value, it
+     computes the entering arcs, saves it into `cached_tensor`,
+     and returns it.
+   */
+  Array1<int32_t> GetEnteringArcs(bool use_double_scores);
+
+ private:
+  /// It saves intermediate results for various FSA operations
+  std::unordered_map<std::string, Ragged<int32_t>> cached_ragged_tensor;
+
+  /// It saves intermediate results for various FSA operations
+  std::unordered_map<std::string, Array1<int32_t>> cached_tensor;
 };
 
 }  // namespace k2
