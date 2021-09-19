@@ -42,7 +42,7 @@ message(STATUS "Enabled languages: ${languages}")
 
 project(k2 ${languages})
 
-set(K2_VERSION "1.8")
+set(K2_VERSION "1.9")
 
 # ----------------- Supported build types for K2 project -----------------
 set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
