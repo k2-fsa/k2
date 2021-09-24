@@ -207,6 +207,7 @@ setuptools.setup(
     long_description_content_type='text/markdown',
     url='https://github.com/k2-fsa/k2',
     package_dir={
+        '': 'k2/python',
         'k2': 'k2/python/k2',
         'k2.ragged': 'k2/python/k2/ragged',
         'k2.sparse': 'k2/python/k2/sparse',
