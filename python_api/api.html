@@ -3997,6 +3997,59 @@ equals to 1.</p>
 only contains the sublists within the range.</p>
 </dd>
 </dl>
+<ol class="arabic simple" start="3">
+<li><p>__getitem__(self: k2.ragged.RaggedTensor, key: torch.Tensor) -&gt; k2.ragged.RaggedTensor</p></li>
+</ol>
+<p>Slice a ragged tensor along axis 0 using a 1-D torch.int32 tensor.</p>
+<p><strong>Example 1</strong>:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span> <span class="p">[</span><span class="mi">300</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="go">tensor([1, 2, 0], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="p">[</span><span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+<span class="go">RaggedTensor([[300],</span>
+<span class="go">              [-10, 0, -1],</span>
+<span class="go">              [10, 20]], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="go">tensor([0, 1], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="p">[</span><span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+<span class="go">RaggedTensor([[10, 20],</span>
+<span class="go">              [300]], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+<span class="go">tensor([2, 3], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="p">[</span><span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
+<span class="go">RaggedTensor([[-10, 0, -1],</span>
+<span class="go">              [-2, 4, 5]], dtype=torch.int32)</span>
+</pre></div>
+</div>
+<p><strong>Example 2</strong>:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="p">[[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+<span class="go">RaggedTensor([[[1],</span>
+<span class="go">               [2, 3],</span>
+<span class="go">               [0]],</span>
+<span class="go">              [[10, 20]],</span>
+<span class="go">              [[],</span>
+<span class="go">               [2]],</span>
+<span class="go">              [[1],</span>
+<span class="go">               [2, 3],</span>
+<span class="go">               [0]]], dtype=torch.int32)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>key</strong> – A 1-D torch.int32 tensor containing the indexes to select along
+axis 0.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a new ragged tensor with the same number of axes as <code class="docutils literal notranslate"><span class="pre">self</span></code> but
+only contains the specified sublists.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -7644,6 +7697,59 @@ equals to 1.</p>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>Return a new ragged tensor with the same axes as original ragged tensor, but
 only contains the sublists within the range.</p>
+</dd>
+</dl>
+<ol class="arabic simple" start="3">
+<li><p>__getitem__(self: k2.ragged.RaggedTensor, key: torch.Tensor) -&gt; k2.ragged.RaggedTensor</p></li>
+</ol>
+<p>Slice a ragged tensor along axis 0 using a 1-D torch.int32 tensor.</p>
+<p><strong>Example 1</strong>:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span> <span class="p">[</span><span class="mi">300</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="go">tensor([1, 2, 0], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="p">[</span><span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+<span class="go">RaggedTensor([[300],</span>
+<span class="go">              [-10, 0, -1],</span>
+<span class="go">              [10, 20]], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="go">tensor([0, 1], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="p">[</span><span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+<span class="go">RaggedTensor([[10, 20],</span>
+<span class="go">              [300]], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+<span class="go">tensor([2, 3], dtype=torch.int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span><span class="p">[</span><span class="n">a</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
+<span class="go">RaggedTensor([[-10, 0, -1],</span>
+<span class="go">              [-2, 4, 5]], dtype=torch.int32)</span>
+</pre></div>
+</div>
+<p><strong>Example 2</strong>:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="p">[[],</span> <span class="p">[</span><span class="mi">2</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]]</span> <span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+<span class="go">RaggedTensor([[[1],</span>
+<span class="go">               [2, 3],</span>
+<span class="go">               [0]],</span>
+<span class="go">              [[10, 20]],</span>
+<span class="go">              [[],</span>
+<span class="go">               [2]],</span>
+<span class="go">              [[1],</span>
+<span class="go">               [2, 3],</span>
+<span class="go">               [0]]], dtype=torch.int32)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>key</strong> – A 1-D torch.int32 tensor containing the indexes to select along
+axis 0.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a new ragged tensor with the same number of axes as <code class="docutils literal notranslate"><span class="pre">self</span></code> but
+only contains the specified sublists.</p>
 </dd>
 </dl>
 </dd></dl>
