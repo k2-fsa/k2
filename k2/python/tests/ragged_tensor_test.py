@@ -227,7 +227,7 @@ class TestRaggedTensor(unittest.TestCase):
 
                 assert torch.all(torch.eq(b, expected_sum))
 
-    def test_getitem(self):
+    def test_getitem_scalar(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 a = k2r.RaggedTensor(
@@ -243,6 +243,44 @@ class TestRaggedTensor(unittest.TestCase):
                 b = a[1]
                 expected = k2r.RaggedTensor("[[3] [5]]", dtype=dtype).to(device)
                 assert b == expected
+
+    def test_getitem_1d_tensor(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                a = k2r.RaggedTensor([[1, 2, 0], [0, 1], [2, 3]], device=device)
+                b = k2.RaggedTensor(
+                    #   0        1        2             3
+                    [[10, 20], [300], [-10, 0, -1], [-2, 4, 5]],
+                    dtype=dtype,
+                    device=device,
+                )
+
+                # for a[0]
+                index = torch.tensor(
+                    [1, 2, 0], dtype=torch.int32, device=device
+                )
+                assert torch.all(torch.eq(a[0], index))
+                expected = k2.RaggedTensor(
+                    [[300], [-10, 0, -1], [10, 20]], dtype=dtype, device=device
+                )
+
+                assert b[a[0]] == expected
+
+                # for a[1]
+                index = torch.tensor([0, 1], dtype=torch.int32, device=device)
+                assert torch.all(torch.eq(a[1], index))
+                expected = k2.RaggedTensor(
+                    [[10, 20], [300]], dtype=dtype, device=device
+                )
+                assert b[a[1]] == expected
+
+                # for a[2]
+                index = torch.tensor([2, 3], dtype=torch.int32, device=device)
+                assert torch.all(torch.eq(a[2], index))
+                expected = k2.RaggedTensor(
+                    [[-10, 0, -1], [-2, 4, 5]], dtype=dtype, device=device
+                )
+                assert b[a[2]] == expected
 
     def test_getstate_2axes(self):
         for device in self.devices:
