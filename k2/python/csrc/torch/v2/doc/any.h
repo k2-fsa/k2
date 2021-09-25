@@ -692,6 +692,59 @@ Returns:
   only contains the sublists within the range.
 )doc";
 
+static constexpr const char *kRaggedAnyGetItem1DTensorDoc = R"doc(
+Slice a ragged tensor along axis 0 using a 1-D torch.int32 tensor.
+
+**Example 1**:
+
+  >>> import k2
+  >>> a = k2.RaggedTensor([[1, 2, 0], [0, 1], [2, 3]])
+  >>> b = k2.RaggedTensor([[10, 20], [300], [-10, 0, -1], [-2, 4, 5]])
+  >>> a[0]
+  tensor([1, 2, 0], dtype=torch.int32)
+  >>> b[a[0]]
+  RaggedTensor([[300],
+                [-10, 0, -1],
+                [10, 20]], dtype=torch.int32)
+  >>> a[1]
+  tensor([0, 1], dtype=torch.int32)
+  >>> b[a[1]]
+  RaggedTensor([[10, 20],
+                [300]], dtype=torch.int32)
+  >>> a[2]
+  tensor([2, 3], dtype=torch.int32)
+  >>> b[a[2]]
+  RaggedTensor([[-10, 0, -1],
+                [-2, 4, 5]], dtype=torch.int32)
+
+**Example 2**:
+
+  >>> import torch
+  >>> import k2
+  >>> a = k2.RaggedTensor([ [[1], [2, 3], [0]], [[], [2]], [[10, 20]] ])
+  >>> i = torch.tensor([0, 2, 1, 0], dtype=torch.int32)
+  >>> a[i]
+  RaggedTensor([[[1],
+                 [2, 3],
+                 [0]],
+                [[10, 20]],
+                [[],
+                 [2]],
+                [[1],
+                 [2, 3],
+                 [0]]], dtype=torch.int32)
+
+Args:
+  key:
+    A 1-D torch.int32 tensor containing the indexes to select along
+    axis 0.
+
+Return:
+  Return a new ragged tensor with the same number of axes as ``self`` but
+  only contains the specified sublists.
+
+)doc";
+
 static constexpr const char *kRaggedAnyCloneDoc = R"doc(
 Return a copy of this tensor.
 
