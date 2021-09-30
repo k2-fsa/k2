@@ -1,6 +1,15 @@
 import torch  # noqa
-from _k2 import DeterminizeWeightPushingType
-from _k2 import simple_ragged_index_select
+try:
+    from _k2 import DeterminizeWeightPushingType
+    from _k2 import simple_ragged_index_select
+except ImportError as e:
+    import sys
+    major_v, minor_v = sys.version_info[:2]
+    raise ImportError(
+        str(e) + "\nNote: If you're using anaconda and importing k2 on MacOS,"
+        "\n      you can probably fix this by setting the environment variable:"
+        f"\n  export DYLD_LIBRARY_PATH=$CONDA_PREFIX/lib/python{major_v}.{minor_v}/site-packages:$DYLD_LIBRARY_PATH"
+    )
 from .ragged import RaggedShape
 from .ragged import RaggedTensor
 
