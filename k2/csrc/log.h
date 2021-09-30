@@ -151,7 +151,13 @@ class Logger {
     Some bad things happened. Please read the above error messages and stack
     trace. If you are using Python, the following command may be helpful:
 
-      gdb --args python /path/to/your/code.py
+      $ gdb --args python /path/to/your/code.py
+      (gdb) catch throw
+      (gdb) b k2::SomeFunctionName
+      # For instance
+      (gdb) b k2::ShortestPath
+      (gdb) run
+      (gdb) bt
 
     (You can use `gdb` to debug the code. Please consider compiling
     a debug version of k2.).

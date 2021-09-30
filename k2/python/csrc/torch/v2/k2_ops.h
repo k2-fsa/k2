@@ -1,13 +1,8 @@
 /**
- * @brief index_add for k2.
- *
- * It has identical semantics as torch.Tensor.index_add_
- * except that it requires the dtype of the input index
- * to be torch.int32, whereas PyTorch expects the dtype to be
- * torch.int64. Furthermore, it ignores index[i] == -1.
+ * @brief python wrapper for k2 ops 
  *
  * @copyright
- * Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ * Copyright      2021  Xiaomi Corp.  (authors: Wei Kang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -25,11 +20,14 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_INDEX_ADD_H_
-#define K2_PYTHON_CSRC_TORCH_INDEX_ADD_H_
+#ifndef K2_PYTHON_CSRC_TORCH_V2_K2_OPS_H_
+#define K2_PYTHON_CSRC_TORCH_V2_K2_OPS_H_
 
 #include "k2/python/csrc/torch.h"
 
-void PybindIndexAdd(py::module &m);
+namespace k2 {
 
-#endif  //  K2_PYTHON_CSRC_TORCH_INDEX_ADD_H_
+void PybindK2Ops(py::module &m);
+
+}  // namespace k2
+#endif  // K2_PYTHON_CSRC_TORCH_V2_K2_OPS_H_

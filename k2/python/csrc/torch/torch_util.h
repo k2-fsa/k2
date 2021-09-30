@@ -38,7 +38,18 @@ namespace k2 {
 
    @return torch::kCUDA or torch.kCPU.
  */
-torch::DeviceType ToTorchDeviceType(DeviceType type);
+inline torch::DeviceType ToTorchDeviceType(DeviceType type) {
+  switch (type) {
+    case kCuda:
+      return torch::kCUDA;
+    case kCpu:
+      return torch::kCPU;
+    case kUnk:  // fall-through
+    default:
+      K2_LOG(FATAL) << "kUnk is not supported!";
+      return torch::kCPU;  // unreachable code
+  }
+}
 
 /* Convert torch::DeviceType to k2::DeviceType.
    Abort on failure.
@@ -113,7 +124,7 @@ torch::Tensor ToTorch(Array1<T> &array) {
            input tensor.
  */
 template <typename T>
-Array1<T> FromTorch(torch::Tensor &tensor) {
+Array1<T> FromTorch(torch::Tensor tensor) {
   K2_CHECK_EQ(tensor.dim(), 1) << "Expected dim: 1. Given: " << tensor.dim();
   K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<T>::value)
       << "Expected scalar type: " << ToScalarType<T>::value
@@ -158,12 +169,12 @@ torch::Tensor ToTorch(Array1<Arc> &array);
           the input tensor.
  */
 template <>
-Array1<Arc> FromTorch<Arc>(torch::Tensor &tensor);
+Array1<Arc> FromTorch<Arc>(torch::Tensor tensor);
 
 struct Array2Tag {};
 
 template <typename T>
-Array2<T> FromTorch(torch::Tensor &tensor, Array2Tag) {
+Array2<T> FromTorch(torch::Tensor tensor, Array2Tag) {
   K2_CHECK_EQ(tensor.dim(), 2) << "Expected dim: 2. Given: " << tensor.dim();
   K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<T>::value)
       << "Expected scalar type: " << ToScalarType<T>::value
@@ -199,7 +210,7 @@ torch::Tensor ToTorch(Array2<T> &array) {
 
 struct TensorTag {};
 
-Tensor FromTorch(torch::Tensor &tensor, TensorTag);
+Tensor FromTorch(torch::Tensor tensor, TensorTag);
 torch::Tensor ToTorch(Tensor &tensor);
 
 /* Transfer an object to a specific device.
@@ -251,6 +262,18 @@ PyClass To(PyClass &pyclass, py::object device) {
            depending on the given device.
  */
 ContextPtr GetContext(torch::Device device);
+
+/** Create a torch device from a k2 context.
+
+   @param [in] context   It must be a CPU or a CUDA context.
+
+   @return Return a CPU or a GPU device depending on the given context.
+ */
+inline torch::Device GetDevice(ContextPtr context) {
+  auto device_type = ToTorchDeviceType(context->GetDeviceType());
+  int32_t device_id = context->GetDeviceId();
+  return torch::Device(device_type, device_id);
+}
 
 inline ContextPtr GetContext(torch::Tensor tensor) {
   return GetContext(tensor.device());

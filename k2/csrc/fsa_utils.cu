@@ -114,9 +114,13 @@ static Fsa K2FsaFromStream(std::istringstream &is,
                     << ": src-state < 0 or dest-state < 0.";
     }
     for (int32_t i = 0; i < num_aux_labels; i++) {
-      int32_t aux;
+      float aux;
       line_is >> aux;
-      aux_labels.push_back(aux);
+      if ((int32_t)aux != aux) {
+        K2_LOG(FATAL) << "Invalid line " << line
+                      << ": Expected an integer for aux_labels";
+      }
+      aux_labels.push_back((int32_t)aux);
     }
     for (int32_t i = 0; i < num_ragged_labels; i++) {
       line_is >> std::ws;

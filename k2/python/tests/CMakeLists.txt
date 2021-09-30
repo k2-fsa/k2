@@ -48,6 +48,8 @@ set(py_test_files
   intersect_device_test.py
   intersect_test.py
   invert_test.py
+  levenshtein_alignment_test.py
+  levenshtein_graph_test.py
   linear_fsa_test.py
   linear_fst_test.py
   multi_gpu_test.py
@@ -66,6 +68,9 @@ set(py_test_files
   top_sort_test.py
   union_test.py
   replace_fsa_test.py
+
+  # k2 v2
+  fsa_v2_test.py
 )
 
 foreach(source IN LISTS py_test_files)

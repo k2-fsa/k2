@@ -507,6 +507,8 @@ class _IntersectDenseFunction(torch.autograd.Function):
                 b_fsas: DenseFsaVec,
                 out_fsa: List[Fsa],
                 output_beam: float,
+                max_states: int,
+                max_arcs: int,
                 unused_scores_a: torch.Tensor,
                 unused_scores_b: torch.Tensor,
                 a_to_b_map: Optional[torch.Tensor] = None,
@@ -560,7 +562,9 @@ class _IntersectDenseFunction(torch.autograd.Function):
             a_fsas=a_fsas.arcs,
             b_fsas=b_fsas.dense_fsa_vec,
             a_to_b_map=a_to_b_map,
-            output_beam=output_beam)
+            output_beam=output_beam,
+            max_states=max_states,
+            max_arcs=max_arcs)
 
         out_fsa[0] = Fsa(ragged_arc)
 
@@ -631,6 +635,8 @@ class _IntersectDenseFunction(torch.autograd.Function):
             None,  # b_fsas
             None,  # out_fsa
             None,  # output_beam
+            None,  # max_states
+            None,  # max_arcs
             grad_a,  # unused_scores_a
             grad_b,  # unused_scores_b
             None,  # a_to_b_map
@@ -766,6 +772,8 @@ def intersect_dense_pruned(a_fsas: Fsa,
 def intersect_dense(a_fsas: Fsa,
                     b_fsas: DenseFsaVec,
                     output_beam: float,
+                    max_states: int = 15000000,
+                    max_arcs: int = 1073741824,
                     a_to_b_map: Optional[torch.Tensor] = None,
                     seqframe_idx_name: Optional[str] = None,
                     frame_idx_name: Optional[str] = None) -> Fsa:
@@ -783,8 +791,14 @@ def intersect_dense(a_fsas: Fsa,
       b_fsas:
         Input FSAs that correspond to neural network output.
       output_beam:
-         Beam to prune output, similar to lattice-beam in Kaldi.  Relative
-         to best path of output.
+        Beam to prune output, similar to lattice-beam in Kaldi.  Relative
+        to best path of output.
+      max_states:
+        The max number of states to prune the output, mainly to avoid
+        out-of-memory and numerical overflow, default 15,000,000.
+      max_arcs:
+        The max number of arcs to prune the output, mainly to avoid
+        out-of-memory and numerical overflow, default 1073741824(2^30).
       a_to_b_map:
          Maps from FSA-index in a to FSA-index in b to use for it.
          If None, then we expect the number of FSAs in a_fsas to equal
@@ -825,6 +839,7 @@ def intersect_dense(a_fsas: Fsa,
     # the following return value is discarded since it is already contained
     # in `out_fsa[0].scores`
     _IntersectDenseFunction.apply(a_fsas, b_fsas, out_fsa, output_beam,
+                                  max_states, max_arcs,
                                   a_fsas.scores, b_fsas.scores, a_to_b_map,
                                   seqframe_idx_name, frame_idx_name)
     return out_fsa[0]

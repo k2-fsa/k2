@@ -31,7 +31,6 @@ import torch
 
 
 class TestRaggedTensor(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device("cpu")]
@@ -45,50 +44,125 @@ class TestRaggedTensor(unittest.TestCase):
     def test_create_ragged_tensor(self):
         funcs = [k2r.create_ragged_tensor, k2r.RaggedTensor]
         for func in funcs:
-            a = func([[1000, 2], [3]])
-            assert isinstance(a, k2r.RaggedTensor)
-            assert a.dtype == torch.int32
+            for device in self.devices:
+                a = func([[1000, 2], [3]], device=device)
+                assert isinstance(a, k2r.RaggedTensor)
+                assert a.dtype == torch.int32
+                assert a.device == device
 
-            a = func([[1000, 2], [3]], dtype=torch.float32)
-            assert a.dtype == torch.float32
+                a = func([[1000, 2], [3]], dtype=torch.float32, device=device)
+                assert a.dtype == torch.float32
+                assert a.device == device
 
-            a = func([[1000, 2], [3]], dtype=torch.float64)
-            assert a.dtype == torch.float64
+                a = func([[1000, 2], [3]], dtype=torch.float64, device=device)
+                assert a.dtype == torch.float64
+                assert a.device == device
+                for dtype in self.dtypes:
+                    a = func([[1000, 2], [3]], dtype=dtype, device=device)
+                    assert a.dtype == dtype
+                    assert a.device == device
 
     def test_create_ragged_tensor_from_string(self):
-        a = k2r.RaggedTensor([[1], [2, 3, 4, 5], []])
-        b = k2r.RaggedTensor("[[1] [2 3 4 5] []]")
-        assert a == b
-        assert b.dim0 == 3
+        funcs = [k2r.create_ragged_tensor, k2r.RaggedTensor]
+        for func in funcs:
+            for device in self.devices:
+                for dtype in self.dtypes:
+                    a = func(
+                        [[1], [2, 3, 4, 5], []], dtype=dtype, device=device
+                    )
+                    b = func("[[1] [2 3 4 5] []]", dtype=dtype, device=device)
+                    assert a == b
+                    assert b.dim0 == 3
+                    assert a.dtype == dtype
+                    assert a.device == device
 
-        b = k2r.RaggedTensor("[[[1] [2 3] []] [[10]]]")
-        assert b.num_axes == 3
-        assert b.dim0 == 2
+                    b = k2r.RaggedTensor(
+                        "[[[1] [2 3] []] [[10]]]", dtype=dtype, device=device
+                    )
+                    assert b.num_axes == 3
+                    assert b.dim0 == 2
+                    assert b.dtype == dtype
+                    assert b.device == device
 
-    def test_property_data(self):
-        a = k2r.RaggedTensor([[1], [2], [], [3, 4]])
-        assert torch.all(torch.eq(a.data, torch.tensor([1, 2, 3, 4])))
+    def test_create_ragged_tensor_from_torch_tensor(self):
+        for device in self.devices:
+            for func in [k2r.create_ragged_tensor, k2r.RaggedTensor]:
+                for dtype in self.dtypes:
+                    a = torch.arange(24, dtype=dtype, device=device).reshape(
+                        2, 3, 4
+                    )
+                    b = func(a)
+                    assert b.shape.tot_sizes() == (2, 2 * 3, 2 * 3 * 4)
 
-        with self.assertRaises(AttributeError):
-            # the `data` attribute is const. You cannot rebind it
-            a.data = 10
+                    # a is contiguous, so memory is shared
+                    c = a.reshape(-1)
+                    c[0] = 10
+                    assert b.values[0] == 10
+                    b.values[1] = 100
+                    assert c[1] == 100
 
-        # However, we can change the elements of a.data
-        a.data[0] = 10
-        a.data[-1] *= 2
+                    assert b.dtype == dtype
+                    assert b.device == device
 
-        expected = k2r.RaggedTensor([[10], [2], [], [3, 8]])
-        assert a == expected
+                    assert torch.all(torch.eq(c, b.values))
 
-        a.data[0] = 1
-        assert a != expected
+        for device in self.devices:
+            for func in [k2r.create_ragged_tensor, k2r.RaggedTensor]:
+                for dtype in self.dtypes:
+                    a = torch.arange(100, dtype=dtype, device=device).reshape(
+                        10, 10
+                    )[:, ::2]
+                    assert a.shape == (10, 5)
+                    b = func(a)
+                    assert b.dtype == dtype
+                    assert b.device == device
+
+                    assert b.shape.tot_sizes() == (10, 10 * 5)
+
+                    c = a.reshape(-1)
+                    assert torch.all(torch.eq(c, b.values))
+
+                    # a is not contiguous, so memory is copied
+                    c[0] = -10
+                    assert b.values[0] != -10
+                    b.values[1] = -100
+                    assert c[1] != -100
+
+    def test_property_values(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                a = k2r.RaggedTensor(
+                    [[1], [2], [], [3, 4]], device=device, dtype=dtype
+                )
+                assert torch.all(
+                    torch.eq(
+                        a.values,
+                        torch.tensor([1, 2, 3, 4], dtype=dtype, device=device),
+                    )
+                )
+
+                with self.assertRaises(AttributeError):
+                    # the `values` attribute is const. You cannot rebind it
+                    a.values = 10
+
+                # However, we can change the elements of a.values
+                a.values[0] = 10
+                a.values[-1] *= 2
+
+                expected = k2r.RaggedTensor(
+                    [[10], [2], [], [3, 8]], dtype=dtype, device=device
+                )
+                assert a == expected
+
+                a.values[0] = 1
+                assert a != expected
 
     def test_clone(self):
         a = k2r.RaggedTensor([[1, 2], [], [3]])
         b = a.clone()
 
         assert a == b
-        a.data[0] = 10
+        a.values[0] = 10
 
         assert a != b
 
@@ -128,17 +202,17 @@ class TestRaggedTensor(unittest.TestCase):
                 a = a.to(device)
                 a.requires_grad_(True)
                 b = a.sum()
-                expected_sum = torch.tensor([3, 0, 5],
-                                            dtype=dtype,
-                                            device=device)
+                expected_sum = torch.tensor(
+                    [3, 0, 5], dtype=dtype, device=device
+                )
 
                 assert torch.all(torch.eq(b, expected_sum))
 
                 c = b[0] * 10 + b[1] * 20 + b[2] * 30
                 c.backward()
-                expected_grad = torch.tensor([10, 10, 30],
-                                             device=device,
-                                             dtype=dtype)
+                expected_grad = torch.tensor(
+                    [10, 10, 30], device=device, dtype=dtype
+                )
                 assert torch.all(torch.eq(a.grad, expected_grad))
 
     def test_sum_no_grad(self):
@@ -147,26 +221,27 @@ class TestRaggedTensor(unittest.TestCase):
                 a = k2r.RaggedTensor([[1, 2], [], [5]], dtype=dtype)
                 a = a.to(device)
                 b = a.sum()
-                expected_sum = torch.tensor([3, 0, 5],
-                                            dtype=dtype,
-                                            device=device)
+                expected_sum = torch.tensor(
+                    [3, 0, 5], dtype=dtype, device=device
+                )
 
                 assert torch.all(torch.eq(b, expected_sum))
 
     def test_getitem(self):
         for device in self.devices:
             for dtype in self.dtypes:
-                a = k2r.RaggedTensor("[ [[1 2] [] [10]] [[3] [5]] ]",
-                                     dtype=dtype)
+                a = k2r.RaggedTensor(
+                    "[ [[1 2] [] [10]] [[3] [5]] ]", dtype=dtype
+                )
                 a = a.to(device)
                 b = a[0]
-                expected = k2r.RaggedTensor("[[1 2] [] [10]]",
-                                            dtype=dtype).to(device)
+                expected = k2r.RaggedTensor("[[1 2] [] [10]]", dtype=dtype).to(
+                    device
+                )
                 assert b == expected
 
                 b = a[1]
-                expected = k2r.RaggedTensor("[[3] [5]]",
-                                            dtype=dtype).to(device)
+                expected = k2r.RaggedTensor("[[3] [5]]", dtype=dtype).to(device)
                 assert b == expected
 
     def test_getstate_2axes(self):
@@ -177,11 +252,11 @@ class TestRaggedTensor(unittest.TestCase):
                 assert isinstance(b, tuple)
                 assert len(b) == 3
                 # b contains (row_splits, "row_ids1", values)
-                b_0 = torch.tensor([0, 2, 3, 3],
-                                   dtype=torch.int32,
-                                   device=device)
+                b_0 = torch.tensor(
+                    [0, 2, 3, 3], dtype=torch.int32, device=device
+                )
                 b_1 = "row_ids1"
-                b_2 = a.data
+                b_2 = a.values
 
                 assert torch.all(torch.eq(b[0], b_0))
                 assert b[1] == b_1
@@ -190,8 +265,9 @@ class TestRaggedTensor(unittest.TestCase):
     def test_getstate_3axes(self):
         for device in self.devices:
             for dtype in self.dtypes:
-                a = k2r.RaggedTensor("[[[1 2] [3] []] [[4] [5 6]]]",
-                                     dtype=dtype).to(device)
+                a = k2r.RaggedTensor(
+                    "[[[1 2] [3] []] [[4] [5 6]]]", dtype=dtype
+                ).to(device)
                 b = a.__getstate__()
                 assert isinstance(b, tuple)
                 assert len(b) == 5
@@ -199,11 +275,11 @@ class TestRaggedTensor(unittest.TestCase):
                 # "row_ids2", values)
                 b_0 = torch.tensor([0, 3, 5], dtype=torch.int32, device=device)
                 b_1 = "row_ids1"
-                b_2 = torch.tensor([0, 2, 3, 3, 4, 6],
-                                   dtype=torch.int32,
-                                   device=device)  # noqa
+                b_2 = torch.tensor(
+                    [0, 2, 3, 3, 4, 6], dtype=torch.int32, device=device
+                )  # noqa
                 b_3 = "row_ids2"
-                b_4 = a.data
+                b_4 = a.values
 
                 assert torch.all(torch.eq(b[0], b_0))
                 assert b[1] == b_1
@@ -255,7 +331,8 @@ class TestRaggedTensor(unittest.TestCase):
             for dtype in self.dtypes:
                 a = k2r.RaggedTensor(
                     "[ [[1 2 3] [] [5 8]] [[] [1 5 9 10 -1] [] [] []] ]",
-                    dtype=dtype)
+                    dtype=dtype,
+                )
                 a = a.to(device)
 
                 assert a.tot_size(0) == 2

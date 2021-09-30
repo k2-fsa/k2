@@ -24,19 +24,6 @@
 
 namespace k2 {
 
-torch::DeviceType ToTorchDeviceType(DeviceType type) {
-  switch (type) {
-    case kCuda:
-      return torch::kCUDA;
-    case kCpu:
-      return torch::kCPU;
-    case kUnk:  // fall-through
-    default:
-      K2_LOG(FATAL) << "kUnk is not supported!";
-      return torch::kCPU;  // unreachable code
-  }
-}
-
 DeviceType FromTorchDeviceType(const torch::DeviceType &type) {
   switch (type) {
     case torch::kCUDA:
@@ -86,9 +73,7 @@ torch::ScalarType ScalarTypeFromDtype(Dtype dtype) {
 
 template <>
 torch::Tensor ToTorch(Array1<Arc> &array) {
-  auto device_type = ToTorchDeviceType(array.Context()->GetDeviceType());
-  int32_t device_id = array.Context()->GetDeviceId();
-  auto device = torch::Device(device_type, device_id);
+  auto device = GetDevice(array.Context());
   auto scalar_type = ToScalarType<int32_t>::value;
   // an Arc has 4 members
   K2_STATIC_ASSERT(sizeof(Arc) == 4 * sizeof(int32_t));
@@ -105,7 +90,7 @@ torch::Tensor ToTorch(Array1<Arc> &array) {
 }
 
 template <>
-Array1<Arc> FromTorch<Arc>(torch::Tensor &tensor) {
+Array1<Arc> FromTorch<Arc>(torch::Tensor tensor) {
   K2_CHECK_EQ(tensor.dim(), 2) << "Expected dim: 2. Given: " << tensor.dim();
   K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<int32_t>::value)
       << "Expected scalar type: " << ToScalarType<int32_t>::value
@@ -124,7 +109,7 @@ Array1<Arc> FromTorch<Arc>(torch::Tensor &tensor) {
   return ans;
 }
 
-Tensor FromTorch(torch::Tensor &tensor, TensorTag) {
+Tensor FromTorch(torch::Tensor tensor, TensorTag) {
   Dtype dtype = ScalarTypeToDtype(tensor.scalar_type());
   torch::IntArrayRef sizes = tensor.sizes();
   torch::IntArrayRef strides = tensor.strides();
@@ -134,9 +119,7 @@ Tensor FromTorch(torch::Tensor &tensor, TensorTag) {
   return Tensor(dtype, shape, region, 0);
 }
 torch::Tensor ToTorch(Tensor &tensor) {
-  auto device_type = ToTorchDeviceType(tensor.Context()->GetDeviceType());
-  int32_t device_id = tensor.Context()->GetDeviceId();
-  auto device = torch::Device(device_type, device_id);
+  auto device = GetDevice(tensor.Context());
   auto scalar_type = ScalarTypeFromDtype(tensor.GetDtype());
   auto options = torch::device(device).dtype(scalar_type);
 

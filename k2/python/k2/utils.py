@@ -22,7 +22,7 @@ from typing import Union
 import torch
 
 from .fsa import Fsa
-from .ops import index_select
+from k2 import index_select
 from .symbol_table import SymbolTable
 import k2
 import k2.ragged
@@ -169,7 +169,7 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':  # noqa
         if end == begin:
             return ':<eps>'
 
-        labels = aux_labels.data[begin:end]
+        labels = aux_labels.values[begin:end]
         ans = []
         for label in labels.tolist():
             if label == -1:
@@ -538,6 +538,7 @@ def fsa_from_unary_function_ragged(src: Fsa,
                 # We currently don't support float ragged attributes
                 assert value.dtype == torch.int32
                 new_value = value.index(arc_map)
+                new_value = new_value.remove_axis(new_value.num_axes - 2)
             setattr(dest, name, new_value)
 
     for name, value in src.named_non_tensor_attr():
@@ -693,8 +694,8 @@ def random_fsa_vec(min_num_fsas: int = 1,
 
 
 def get_best_matching_stats(
-        tokens: k2.RaggedTensor, scores: torch.Tensor, counts: torch.Tensor,
-        eos: int, min_token: int, max_token: int, max_order: int
+    tokens: k2.RaggedTensor, scores: torch.Tensor, counts: torch.Tensor,
+    eos: int, min_token: int, max_token: int, max_order: int
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:  # noqa
     '''For "query" sentences, this function gets the mean and variance of
     scores from the best matching words-in-context in a set of provided "key"

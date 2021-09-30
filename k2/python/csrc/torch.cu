@@ -28,8 +28,6 @@
 #include "k2/python/csrc/torch/discounted_cum_sum.h"
 #include "k2/python/csrc/torch/fsa.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
-#include "k2/python/csrc/torch/index_add.h"
-#include "k2/python/csrc/torch/index_select.h"
 #include "k2/python/csrc/torch/nbest.h"
 #include "k2/python/csrc/torch/ragged.h"
 #include "k2/python/csrc/torch/ragged_ops.h"
@@ -40,8 +38,6 @@ void PybindTorch(py::module &m) {
   PybindDiscountedCumSum(m);
   PybindFsa(m);
   PybindFsaAlgo(m);
-  PybindIndexAdd(m);
-  PybindIndexSelect(m);
   PybindNbest(m);
   PybindRagged(m);
   PybindRaggedOps(m);
