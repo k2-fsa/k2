@@ -1,6 +1,8 @@
-import torch  # noqa
 from _k2 import DeterminizeWeightPushingType
-from _k2 import simple_ragged_index_select
+# from _k2 import simple_ragged_index_select
+from _k2.v2 import index_add
+from _k2.v2 import index_select
+from _k2.v2 import simple_ragged_index_select
 from .ragged import RaggedShape
 from .ragged import RaggedTensor
 
@@ -46,9 +48,9 @@ from .fsa_properties import to_str as properties_to_str
 from .nbest import Nbest
 from .ops import cat
 from .ops import compose_arc_maps
-from .ops import index_add
+# from .ops import index_add
 from .ops import index_fsa
-from .ops import index_select
+# from .ops import index_select
 #
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec

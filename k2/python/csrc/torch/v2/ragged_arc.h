@@ -36,9 +36,10 @@
 namespace k2 {
 
 // It is a wrapper of Ragged<Arc> to support backward props in PyTorch
-struct RaggedArc {
+struct __attribute__((__visibility__("default"))) RaggedArc {
   Ragged<Arc> fsa;
   torch::Tensor scores;  // shares the same memory with fsa.values
+  int32_t properties = 0;
 
   /// It contains all tensor attributes of this FSA
   std::unordered_map<std::string, torch::Tensor> tensor_attrs;
@@ -52,6 +53,10 @@ struct RaggedArc {
 
   /// The name of all attributes of this FSA
   std::unordered_set<std::string> all_attr_names;
+
+  /// It contains the fillers of all attributes.
+  /// It shares the same key with attributes.
+  std::unordered_map<std::string, float> fillers;
 
   // The default constructor initializes an invalid ragged tensor.
   RaggedArc() = default;
@@ -79,9 +84,93 @@ struct RaggedArc {
 
   RaggedArc &operator=(RaggedArc &&other) = default;
 
+  /**
+    Create an Fsa object, including autograd logic and propagating
+    properties from the source FSA.
+
+    This is intended to be called from unary functions on FSAs where the arc_map
+    is a Tensor of int32 (i.e. not ragged).
+
+    @param src The source Fsa, i.e. the arg to the unary function.
+    @param arcs The raw output of the unary function, as output by whatever C++
+                algorithm we used.
+    @param arc_map A map from arcs in `arcs` to the corresponding arc-index in
+                   `src`, or -1 if the arc had no source arc
+                   (e.g. added epsilon self-loops).
+   */
+  static RaggedArc FromUnaryFunctionTensor(const RaggedArc &src,
+                                           const Ragged<Arc> &arcs,
+                                           torch::Tensor arc_map);
+
+  /**
+    Create an Fsa object, including autograd logic and propagating
+    properties from the source FSA.
+
+    This is intended to be called from unary functions on FSAs where the arc_map
+    is an instance of k2.RaggedTensor (with dtype torch.int32).
+
+    @param src  The source Fsa, i.e. the arg to the unary function.
+    @param arcs The raw output of the unary function, as output by whatever C++
+                 algorithm we used.
+    @param arc_map A map from arcs in `arcs` to the corresponding arc-index in
+                   `src`, or -1 if the arc had no source arc
+                   (e.g. :func:`remove_epsilon`).
+    @param remove_filler If true, for each attribute that is linear in `src`
+                         and ragged in the result, after turning it into a
+                         ragged tensor we will remove all items that are equal
+                         to the filler for that attribute.
+                         (0 by default; see Fsa.GetFiller()).
+                         Attribute values on final-arcs that are equal to -1
+                         will also be treated as fillers and removed,
+                         if remove_filler==True.
+   */
+  static RaggedArc FromUnaryFunctionRagged(RaggedArc &src,
+                                           const Ragged<Arc> &arcs,
+                                           Ragged<int32_t> &arc_map,
+                                           bool remove_filler = true);
+
+  /**
+    Create an Fsa object, including autograd logic and propagating
+    properties from the source FSAs.
+
+    This is intended to be called from binary functions on FSAs where the
+    arc_map is a Tensor of int32 (i.e. not ragged).
+
+    Caution: Only the attributes with dtype `torch.float32` will be merged,
+             other kinds of attributes with the same name are discarded.
+
+    @param a_src  The source Fsa, i.e. the arg to the binary function.
+    @param b_src  The other source Fsa.
+    @param arcs The raw output of the binary function, as output by whatever C++
+                algorithm we used.
+    @param a_arc_map A map from arcs in `arcs` to the corresponding
+                     arc-index in `a_fsa` or -1 if the arc had no source arc
+                     (e.g. added epsilon self-loops).
+    @param a_arc_map A map from arcs in `dest_arcs` to the corresponding
+                     arc-index in `b_fsa` or -1 if the arc had no source arc
+                     (e.g. added epsilon self-loops).
+   */
+  static RaggedArc FromBinaryFunctionTensor(const RaggedArc &a_src,
+                                            const RaggedArc &b_src,
+                                            const Ragged<Arc> &arcs,
+                                            torch::Tensor a_arc_map,
+                                            torch::Tensor b_arc_map);
+
   // Populate `this->scores` and return it
-  const torch::Tensor &Scores() const;
   torch::Tensor &Scores();
+  const torch::Tensor &Scores() const;
+  // Set scores, will modify scores in fsa.arcs
+  void SetScores(torch::Tensor scores);
+
+  // Get fsa properties.
+  int32_t Properties();
+  // Get fsa properties as string format.
+  std::string PropertiesStr() const;
+
+  // Transfer current fsa to another device.
+  RaggedArc To(torch::Device device) const;
+  RaggedArc To(const std::string &device) const;
+  RaggedArc To(const ContextPtr &context) const;
 
   /* Return a 2-D int32 torch tensor.
      Each row represents an arc, where:
@@ -94,6 +183,16 @@ struct RaggedArc {
     the underlying memory with this FSA.
    */
   torch::Tensor Arcs() /*const*/;
+
+  /* Return a 1-D int32 torch tensor.
+
+    @caution You should not modify the returned tensor since it shares
+    the underlying memory with this FSA.
+   */
+  torch::Tensor Labels() /*const*/;
+
+  // Set labels, will modify labels in fsa.arcs
+  void SetLabels(torch::Tensor labels);
 
   /* Enable/Disable requires_grad of this tensor
 
@@ -156,6 +255,20 @@ struct RaggedArc {
    */
   bool HasAttr(const std::string &name) const;
 
+  /** Set filler by its attribute name.
+
+    @param name The attribute name.
+    @param filler The filler value.
+   */
+  void SetFiller(const std::string &name, float filler);
+
+  /** Get a filler by its attribute name.
+
+    @param name The attribute name.
+    @return Return the filler of the attribute if found, otherwise 0.
+   */
+  float GetFiller(const std::string &name) const;
+
   /** Wrapper for k2::GetForwardScores
 
     @param use_double_scores True to use double for computation.
@@ -176,18 +289,44 @@ struct RaggedArc {
   void SetAttr(const std::string &name, torch::Tensor value) {
     K2_CHECK_EQ(value.size(0), fsa.NumElements())
         << "shape[0] of the tensor MUST be equal to number of arcs";
+    all_attr_names.insert(name);
     tensor_attrs[name] = value;
   }
   void SetAttr(const std::string &name, const RaggedAny &value) {
     K2_CHECK_EQ(value.any.Dim0(), fsa.NumElements())
         << "dim0 of the tensor MUST be equal to number of arcs";
+    all_attr_names.insert(name);
     ragged_tensor_attrs[name] = value;
   }
+
+  /* Propagate tensor attributes from src.
+   *
+   * if `over_write` is true, attributes in current fsa with the same name as
+   * attributes in src will be overworted by attributes in src.
+   */
+  void CopyTensorAttrs(const RaggedArc &src, torch::Tensor arc_map,
+                       bool over_write = true);
+
+  /* Propagate other attributes from src.
+   *
+   * if `over_write` is true, attributes in current fsa with the same name as
+   * attributes in src will be overworted by attributes in src.
+   */
+  void CopyOtherAttrs(const RaggedArc &src, bool over_write = true);
+
+  /* Propagate ragged attributes from src.
+   *
+   * if `over_write` is true, attributes in current fsa with the same name as
+   * attributes in src will be overworted by attributes in src.
+   */
+  void CopyRaggedTensorAttrs(const RaggedArc &src, torch::Tensor arc_map,
+                             bool over_write = true);
+  void CopyRaggedTensorAttrs(const RaggedArc &src, RaggedAny &arc_map,
+                             bool over_write = true);
 
  public:  // we make these functions public since they are called in autograd
           // related functions
   /** Wrapper for k2::GetStateBatches.
-
      If `cached_ragged_tensor` already contains the value, no
      computation is performed and the value is return directly
 

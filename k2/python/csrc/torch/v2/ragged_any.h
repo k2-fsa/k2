@@ -39,7 +39,7 @@ namespace k2 {
  Ragged<Any> unifies Ragged<int32_t>, Ragged<float>, and Ragged<double>
  so that Python only sees Ragged<Any>.
 */
-struct RaggedAny {
+struct __attribute__((__visibility__("default"))) RaggedAny {
   Ragged<Any> any;
   torch::Tensor data;  //!< shares the underlying memory with any.values
 

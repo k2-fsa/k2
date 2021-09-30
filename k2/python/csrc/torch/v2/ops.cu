@@ -1,12 +1,9 @@
 /**
- * @brief Index select for k2.
- *
- * Unlike torch.index_select, when an entry is -1, it sets
- * the destination entry to 0.
- *
  * @copyright
  * Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang)
- *                      Xiaomi Corp.       (author: Daniel Povey, Haowen Qiu)
+ *                2021  Xiaomi Corp.       (author: Daniel Povey,
+ *                                                  Haowen Qiu,
+ *                                                  Wei Kang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -23,7 +20,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vector>
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/device_guard.h"
@@ -32,11 +28,19 @@
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/tensor_ops.h"
-#include "k2/python/csrc/torch/index_select.h"
-#include "k2/python/csrc/torch/torch_util.h"
-#include "k2/python/csrc/torch/v2/ragged_any.h"
+#include "k2/python/csrc/torch/v2/ops.h"
 
 namespace k2 {
+
+void IndexAdd(torch::Tensor index, torch::Tensor value, torch::Tensor *in_out) {
+  NVTX_RANGE(K2_FUNC);
+  DeviceGuard guard(GetContext(index));
+
+  Array1<int32_t> indexes = FromTorch<int32_t>(index);
+  Tensor src = FromTorch(value, TensorTag{});
+  Tensor dest = FromTorch(*in_out, TensorTag{});
+  IndexAdd(src, indexes, true, &dest);
+}
 
 /* Returns a 1-D tensor which indexes the src tensor using entries
    from `index`.
@@ -46,7 +50,8 @@ namespace k2 {
                         It has to satisfy:
                             -1 <= index[i] < src.numel()
                             for i in [0, index.numel())
-                        CAUTION: We require that index.is_contiguous() is true.
+                        CAUTION: We require that index.is_contiguous()
+                                 is true.
    @param [in] default_value  The value for ans[i] when index[i] is -1.
    @return
       Returns a 1-D contiguous tensor such that:
@@ -54,8 +59,8 @@ namespace k2 {
           ans[i] = default_value if index[i] is -1
  */
 template <typename T>
-static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
-                                   T default_value) {
+torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
+                            T default_value) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
   K2_CHECK_EQ(src.scalar_type(), ToScalarType<T>::value)
@@ -100,7 +105,8 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
                         It has to satisfy:
                             -1 <= index[i] < src.shape()[0]
                             for i in [0, index.numel())
-                        CAUTION: We require that index.is_contiguous() is true.
+                        CAUTION: We require that index.is_contiguous()
+                                 is true.
    @return
       Returns a 2-D contiguous tensor such that:
           ans[i] = src[index[i]] if index[i] > 0
@@ -108,7 +114,7 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
                    if index[i] is -1
  */
 template <typename T>
-static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
+torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.dim(), 2) << "Expected dim: 2. Given: " << src.dim();
   K2_CHECK_EQ(src.scalar_type(), ToScalarType<T>::value);
@@ -121,8 +127,8 @@ static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
   Array2<T> src_array = FromTorch<T>(src, Array2Tag{});
   Array1<int32_t> index_array = FromTorch<int32_t>(index);
   // If index_array.Dim() equals to zero, the `IndexRows` below would produce
-  // an ans with `ans.Data()` be a nullptr, which will cause crash when calling
-  // `torch::from_blob`. Just return an empty tensor here.
+  // an ans with `ans.Data()` be a nullptr, which will cause crash when
+  // calling `torch::from_blob`. Just return an empty tensor here.
   // If src is an empty tensor, we should return an empty torch.
   if (index_array.Dim() == 0 || src.sizes()[0] == 0)
     return torch::empty({0, src.sizes()[1]}, src.options());
@@ -132,8 +138,8 @@ static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
   return ToTorch(ans_array);
 }
 
-static torch::Tensor IndexSelectWrapper(torch::Tensor src, torch::Tensor index,
-                                        double default_value = 0) {
+torch::Tensor IndexSelect(torch::Tensor src, torch::Tensor index,
+                          double default_value /*= 0*/) {
   NVTX_RANGE(K2_FUNC);
   DeviceGuard guard(GetContext(src));
   auto scalar_type = src.scalar_type();
@@ -179,10 +185,10 @@ static torch::Tensor IndexSelectWrapper(torch::Tensor src, torch::Tensor index,
 }
 
 /*
-  Returns a 1-D Tensor that is a result of indexing 1-D `src` with Ragged array
-  `indexes` whose NumAxes() is 2. ans.numel() will equal to indexes.Dim0() as we
-  suppose there is at most one non-zero element in `src` for any indexes
-  sub-list in `indexes`.
+  Returns a 1-D Tensor that is a result of indexing 1-D `src` with Ragged
+  array `indexes` whose NumAxes() is 2. ans.numel() will equal to
+  indexes.Dim0() as we suppose there is at most one non-zero element in `src`
+  for any indexes sub-list in `indexes`.
 
      @param [in] src  Source tensor, to be indexed.
      @param [in] indexes   Indexes to use whose NumAxes() == 2, for any
@@ -198,8 +204,8 @@ static torch::Tensor IndexSelectWrapper(torch::Tensor src, torch::Tensor index,
                      is not contiguous.
  */
 template <typename T>
-static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
-                                               Ragged<int32_t> &indexes) {
+torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
+                                        Ragged<int32_t> &indexes) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
   K2_CHECK_EQ(src.scalar_type(), ToScalarType<T>::value);
@@ -212,8 +218,7 @@ static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
   return ToTorch(ans);
 }
 
-static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
-                                                    RaggedAny &ragged) {
+torch::Tensor SimpleRaggedIndexSelect(torch::Tensor src, RaggedAny &ragged) {
   DeviceGuard guard(GetContext(src));
   Ragged<int32_t> indexes = ragged.any.Specialize<int32_t>();
   auto scalar_type = src.scalar_type();
@@ -234,32 +239,4 @@ static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
   }
 }
 
-static void IndexSelect(py::module &m) {
-  m.def("index_select", &IndexSelectWrapper, py::arg("src"), py::arg("index"),
-        py::arg("default_value") = 0,
-        R"(
-      Args:
-        src:
-          It can be either a 1-D or a 2-D tensor. Supported dtypes are:
-          `torch.int32`, `torch.int64`, `torch.float32`, and `torch.float64`.
-        index:
-          It has to be a 1-D **contiguous** tensor with dtype `torch.int32`.
-          Must satisfy `-1 <= index[i] < src.shape[0]`.
-        default_value:
-          It is the default value for ans[i] if index[i] is -1.
-          Used only when `src` is a 1-D tensor.
-      Returns:
-        Return a tensor:
-          - `ans.ndim == src.ndim`
-          - `ans.shape[0] == index.shape[0]`
-          - If `ans.ndim == 2`, then `ans.shape[1] == src.shape[1]`
-          - `ans[i] = src[index[i]]` if `index[i] != -1`.
-          - `ans[i] = default_value` if `index[i] == -1`
-      )");
-  m.def("simple_ragged_index_select", &SimpleRaggedIndexSelectWrapper,
-        py::arg("src"), py::arg("indexes"));
-}
-
 }  // namespace k2
-
-void PybindIndexSelect(py::module &m) { k2::IndexSelect(m); }

@@ -22,7 +22,7 @@ from typing import Union
 import torch
 
 from .fsa import Fsa
-from .ops import index_select
+from k2 import index_select
 from .symbol_table import SymbolTable
 import k2
 import k2.ragged
@@ -694,8 +694,8 @@ def random_fsa_vec(min_num_fsas: int = 1,
 
 
 def get_best_matching_stats(
-        tokens: k2.RaggedTensor, scores: torch.Tensor, counts: torch.Tensor,
-        eos: int, min_token: int, max_token: int, max_order: int
+    tokens: k2.RaggedTensor, scores: torch.Tensor, counts: torch.Tensor,
+    eos: int, min_token: int, max_token: int, max_order: int
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:  # noqa
     '''For "query" sentences, this function gets the mean and variance of
     scores from the best matching words-in-context in a set of provided "key"
