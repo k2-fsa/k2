@@ -12,6 +12,7 @@ set(torch_srcs
   v2/any.cu
   v2/doc/doc.cu
   v2/fsa.cu
+  v2/fsa_algo.cu
   v2/k2.cu
   v2/k2_ops.cu
   v2/ops.cu

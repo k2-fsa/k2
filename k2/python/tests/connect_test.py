@@ -53,10 +53,9 @@ class TestConnect(unittest.TestCase):
 
             loss = connected_fsa.scores.sum()
             loss.backward()
-            assert torch.allclose(fsa.scores.grad,
-                                  torch.tensor([1, 0, 1, 0],
-                                               dtype=torch.float32,
-                                               device=device))
+            assert torch.allclose(
+                fsa.scores.grad,
+                torch.tensor([1, 0, 1, 0], dtype=torch.float32, device=device))
 
             actual_str = k2.to_str_simple(connected_fsa.to('cpu'))
             assert actual_str.strip() == expected_str

@@ -213,6 +213,9 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
   static RaggedArc CreateFsaVec(std::vector<RaggedArc> &fsas);
 
   RaggedArc ArcSort() /*const*/;
+  RaggedArc Connect() /*const*/;
+  RaggedArc TopSort() /*const*/;
+  RaggedArc AddEpsilonSelfLoops() /*const*/;
 
   /** Associate an attribute with a value.
 
@@ -306,6 +309,7 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
    */
   void CopyTensorAttrs(const RaggedArc &src, torch::Tensor arc_map,
                        bool over_write = true);
+  void CopyTensorAttrs(std::vector<RaggedArc> &srcs);
 
   /* Propagate other attributes from src.
    *
@@ -313,6 +317,7 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
    * attributes in src will be overworted by attributes in src.
    */
   void CopyOtherAttrs(const RaggedArc &src, bool over_write = true);
+  void CopyOtherAttrs(std::vector<RaggedArc> &srcs);
 
   /* Propagate ragged attributes from src.
    *
@@ -323,6 +328,7 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
                              bool over_write = true);
   void CopyRaggedTensorAttrs(const RaggedArc &src, RaggedAny &arc_map,
                              bool over_write = true);
+  void CopyRaggedTensorAttrs(std::vector<RaggedArc> &srcs);
 
  public:  // we make these functions public since they are called in autograd
           // related functions

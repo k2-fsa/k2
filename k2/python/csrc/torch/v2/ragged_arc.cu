@@ -196,6 +196,28 @@ void RaggedArc::CopyOtherAttrs(const RaggedArc &src,
   }
 }
 
+void RaggedArc::CopyOtherAttrs(std::vector<RaggedArc> &srcs) {
+  std::unordered_set<std::string> other_attr_names;
+  for (const auto &fsa : srcs) {
+    for (const auto &attr : fsa.other_attrs) {
+      other_attr_names.insert(attr.first);
+    }
+  }
+  for (const auto &name : other_attr_names) {
+    for (const auto &fsa : srcs) {
+      auto iter = fsa.other_attrs.find(name);
+      if (iter != fsa.other_attrs.end()) {
+        auto self_iter = other_attrs.find(name);
+        if (self_iter != other_attrs.end()) {
+          K2_CHECK_EQ(*iter, *self_iter);
+        } else {
+          SetAttr(name, *iter);
+        }
+      }
+    }
+  }
+}
+
 void RaggedArc::CopyRaggedTensorAttrs(const RaggedArc &src,
                                       torch::Tensor arc_map,
                                       bool over_write /*= true*/) {
@@ -261,16 +283,16 @@ int32_t RaggedArc::Properties() {
     } else {
       GetFsaVecBasicProperties(fsa, nullptr, &properties);
     }
-  }
-  if (properties & 1 != 1) {
-    K2_LOG(FATAL) << "Fsa is not valid, properties are : " << properties
-                  << " = " << PropertiesStr() << ", arcs are : " << fsa;
+    if (properties & 1 != 1) {
+      K2_LOG(FATAL) << "Fsa is not valid, properties are : " << properties
+                    << " = " << PropertiesStr() << ", arcs are : " << fsa;
+    }
   }
   return properties;
 }
 
 std::string RaggedArc::PropertiesStr() const {
-  return FsaPropertiesAsString(properties);
+  return FsaPropertiesAsString(const_cast<RaggedArc *>(this)->Properties());
 }
 
 torch::Tensor RaggedArc::Arcs() {
@@ -384,6 +406,7 @@ RaggedArc RaggedArc::CreateFsaVec(std::vector<RaggedArc> &fsas) {
 
   tmp_fsas.reserve(fsas.size());
   for (auto &f : fsas) {
+    K2_CHECK_EQ(f.fsa.NumAxes(), 2);
     tmp_fsas.push_back(&f.fsa);
     tmp_scores.push_back(f.Scores());
   }
@@ -395,13 +418,90 @@ RaggedArc RaggedArc::CreateFsaVec(std::vector<RaggedArc> &fsas) {
 
   // TODO(fangjun): support propagating attributes
   return RaggedArc(fsa_vec, scores);
+
+  //    ragged_arc_list = list()
+  //    for fsa in fsas:
+  //        assert len(fsa.shape) == 2
+  //        ragged_arc_list.append(fsa.arcs)
+  //
+  //    ragged_arcs = _k2.create_fsa_vec(ragged_arc_list)
+  //    fsa_vec = Fsa(ragged_arcs)
+  //
+  //    tensor_attr_names = set(
+  //        name for name, _ in fsa.named_tensor_attr() for fsa in fsas)
+  //    for name in tensor_attr_names:
+  //        values = []
+  //        for fsa in fsas:
+  //            values.append(getattr(fsa, name))
+  //        if isinstance(values[0], torch.Tensor):
+  //            value = torch.cat(values)
+  //        else:
+  //            assert isinstance(values[0], k2.RaggedTensor)
+  //            value = k2.ragged.cat(values, axis=0)
+  //        setattr(fsa_vec, name, value)
+  //
+}
+
+void CopyTensorAttrs(std::vector<RaggedArc> &srcs) {
+  std::unordered_set<std::string> tensor_attr_names;
+  for (const auto &fsa : srcs)
+    for (const auto &attr : fsa.tensor_attrs)
+      tensor_attr_names.insert(attr.first);
+
+  std::vector<torch::Tensor> values;
+  for (const auto &name : tensor_attr_names) {
+    for (const auto &fsa : srcs) {
+      auto &iter = fsa.tensor_attrs.find(name);
+      K2_CHECK_NE(iter, fsa.tensor_attrs.end());
+      values.emplace_back(iter->second);
+    }
+    torch::Tensor value = torch::cat(values, 0);
+    SetAttr(name, value);
+  }
+}
+
+RaggedArc RaggedArc::AddEpsilonSelfLoops() /*const*/ {
+  DeviceGuard guard(fsa.Context());
+  Array1<int32_t> arc_map;
+  Ragged<Arc> arcs;
+  k2::AddEpsilonSelfLoops(fsa, &arcs, &arc_map);
+  return FromUnaryFunctionTensor(*this, arcs, ToTorch<int32_t>(arc_map));
 }
 
 RaggedArc RaggedArc::ArcSort() /*const*/ {
+  if ((Properties() & kFsaPropertiesArcSorted) != 0) return *this;
+
+  DeviceGuard guard(fsa.Context());
   Array1<int32_t> arc_map;
   Ragged<Arc> arcs;
   k2::ArcSort(fsa, &arcs, &arc_map);
   return FromUnaryFunctionTensor(*this, arcs, ToTorch<int32_t>(arc_map));
+}
+
+RaggedArc RaggedArc::Connect() /*const*/ {
+  if ((Properties() & kFsaPropertiesMaybeAccessible) != 0 &&
+      (Properties() & kFsaPropertiesMaybeCoaccessible) != 0)
+    return *this;
+
+  DeviceGuard guard(fsa.Context());
+  Array1<int32_t> arc_map;
+  Ragged<Arc> out;
+  k2::Connect(fsa, &out, &arc_map);
+  RaggedArc dest =
+      FromUnaryFunctionTensor(*this, out, ToTorch<int32_t>(arc_map));
+  return dest;
+}
+
+RaggedArc RaggedArc::TopSort() /*const*/ {
+  if ((Properties() & kFsaPropertiesTopSorted) != 0) return *this;
+
+  DeviceGuard guard(fsa.Context());
+  Array1<int32_t> arc_map;
+  Ragged<Arc> out;
+  k2::TopSort(fsa, &out, &arc_map);
+  RaggedArc dest =
+      FromUnaryFunctionTensor(*this, out, ToTorch<int32_t>(arc_map));
+  return dest;
 }
 
 void RaggedArc::SetAttr(const std::string &name, py::object value) {

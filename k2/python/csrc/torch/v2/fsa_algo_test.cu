@@ -1,0 +1,184 @@
+/**
+ * Copyright (c)  2021  Xiaomi Corporation (authors: Wei Kang)
+ *
+ * See LICENSE for clarification regarding multiple authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <limits>
+#include <string>
+#include <vector>
+
+#include "gtest/gtest.h"
+#include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/fsa_algo.h"
+#include "k2/python/csrc/torch/v2/ragged_arc.h"
+
+namespace k2 {
+
+TEST(FsaAlgoTest, AddEpsilonSelfLoopsSingle) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    auto device = GetDevice(c);
+    std::string s = R"(
+        0 1 1 0.1
+        0 2 1 0.2
+        1 3 2 0.3
+        2 3 3 0.4
+        3 4 -1 0.5
+        4)";
+    RaggedArc fsa = RaggedArc(s).To(device);
+    fsa.SetRequiresGrad(true);
+    RaggedArc new_fsa = fsa.AddEpsilonSelfLoops();
+
+    EXPECT_TRUE(torch::equal(
+        new_fsa.Arcs().index(
+            {"...", torch::indexing::Slice(torch::indexing::None, 3)}),
+        torch::tensor({{0, 0, 0},
+                       {0, 1, 1},
+                       {0, 2, 1},
+                       {1, 1, 0},
+                       {1, 3, 2},
+                       {2, 2, 0},
+                       {2, 3, 3},
+                       {3, 3, 0},
+                       {3, 4, -1}},
+                      torch::dtype(torch::kInt32).device(device))));
+    EXPECT_TRUE(torch::allclose(
+        new_fsa.Scores(),
+        torch::tensor({0.0, 0.1, 0.2, 0.0, 0.3, 0.0, 0.4, 0.0, 0.5},
+                      torch::dtype(torch::kFloat32).device(device))));
+
+    torch::Tensor scale =
+        torch::arange(new_fsa.Scores().numel(), torch::device(device));
+    torch::Tensor scores_sum = (new_fsa.Scores() * scale).sum();
+    torch::autograd::backward({scores_sum}, {});
+
+    EXPECT_TRUE(torch::allclose(
+        fsa.Scores().grad(),
+        torch::tensor({1.0, 2.0, 4.0, 6.0, 8.0},
+                      torch::dtype(torch::kFloat32).device(device))));
+  }
+}
+
+//
+//    def test_two_fsas(self):
+//        s1 = '''
+//            0 1 1 0.1
+//            0 2 1 0.2
+//            1 3 2 0.3
+//            2 3 3 0.4
+//            3 4 -1 0.5
+//            4
+//        '''
+//        s2 = '''
+//            0 1 1 0.1
+//            0 2 2 0.2
+//            1 2 3 0.3
+//            2 3 -1 0.4
+//            3
+//        '''
+//
+//        for device in self.devices:
+//            fsa1 = k2.Fsa.from_str(s1).to(device)
+//            fsa2 = k2.Fsa.from_str(s2).to(device)
+//
+//            fsa1.requires_grad_(True)
+//            fsa2.requires_grad_(True)
+//
+//            fsa_vec = k2.create_fsa_vec([fsa1, fsa2])
+//            new_fsa_vec = k2.add_epsilon_self_loops(fsa_vec)
+//            assert torch.all(
+//                torch.eq(
+//                    new_fsa_vec.arcs.values()[:, :3],
+//                    torch.tensor([[0, 0, 0], [0, 1, 1], [0, 2, 1], [1, 1, 0],
+//                                  [1, 3, 2], [2, 2, 0], [2, 3, 3], [3, 3, 0],
+//                                  [3, 4, -1], [0, 0, 0], [0, 1, 1], [0, 2, 2],
+//                                  [1, 1, 0], [1, 2, 3], [2, 2, 0], [2, 3,
+//                                  -1]],
+//                                 dtype=torch.int32,
+//                                 device=device)))
+//
+//            assert torch.allclose(
+//                new_fsa_vec.scores,
+//                torch.tensor([
+//                    0, 0.1, 0.2, 0, 0.3, 0, 0.4, 0, 0.5, 0, 0.1, 0.2, 0, 0.3,
+//                    0, 0.4
+//                ]).to(device))
+//
+//            scale = torch.arange(new_fsa_vec.scores.numel(), device=device)
+//            (new_fsa_vec.scores * scale).sum().backward()
+//
+//            assert torch.allclose(
+//                fsa1.scores.grad,
+//                torch.tensor([1., 2., 4., 6., 8.], device=device))
+//
+//            assert torch.allclose(
+//                fsa2.scores.grad,
+//                torch.tensor([10., 11., 13., 15.], device=device))
+
+TEST(FsaAlgoTest, Connect) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    std::string s = R"(0 1 1 0.1
+        0 2 2 0.2
+        1 4 -1 0.3
+        3 4 -1 0.4
+        4)";
+    auto device = GetDevice(c);
+    RaggedArc fsa = RaggedArc(s).To(device);
+    fsa.SetRequiresGrad(true);
+    RaggedArc connected_fsa = fsa.Connect();
+    torch::Tensor loss = connected_fsa.Scores().sum();
+    torch::autograd::backward({loss}, {});
+    EXPECT_TRUE(torch::allclose(
+        fsa.Scores().grad(),
+        torch::tensor({1, 0, 1, 0},
+                      torch::dtype(torch::kFloat32).device(device))));
+    std::string expected_str = "k2.Fsa: 0 1 1 0.1\n1 2 -1 0.3\n2\n";
+
+    EXPECT_EQ(connected_fsa.ToString(), expected_str);
+  }
+}
+
+TEST(FsaAlgoTest, Topsort) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    auto device = GetDevice(c);
+    // arc 0: 0 -> 1, weight 1
+    // arc 1: 0 -> 2, weight 2
+    // arc 2: 1 -> 3, weight 3
+    // arc 3: 2 -> 1, weight 4
+    // the shortest path is 0 -> 1 -> 3, weight is 4
+    // That is, (arc 0) -> (arc 2)
+    std::string s = R"(0 1 1 1
+        0 2 2 2
+        1 3 -1 3
+        2 1 3 4
+        3)";
+    RaggedArc fsa = RaggedArc(s).To(device);
+    fsa.SetRequiresGrad(true);
+    auto sorted_fsa = fsa.TopSort();
+    // the shortest path in the sorted fsa is(arc 0)->(arc 3)
+    torch::Tensor loss = (sorted_fsa.Scores()[0] + sorted_fsa.Scores()[3]) / 2;
+    torch::autograd::backward({loss}, {});
+    torch::Tensor expected = torch::tensor(
+        {0.5, 0.0, 0.5, 0.0}, torch::dtype(torch::kFloat32).device(device));
+    EXPECT_TRUE(torch::allclose(fsa.Scores().grad(), expected));
+  }
+}
+
+}  // namespace k2
+
+int main(int argc, char *argv[]) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

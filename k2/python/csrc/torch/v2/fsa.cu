@@ -61,6 +61,7 @@ void PybindRaggedArc(py::module &m) {
           py::arg("device"));
 
   fsa.def("arc_sort", &RaggedArc::ArcSort);
+  fsa.def("connect", &RaggedArc::Connect);
 
   fsa.def("__setattr__", (void (RaggedArc::*)(const std::string &, py::object))(
                              &RaggedArc::SetAttr));
