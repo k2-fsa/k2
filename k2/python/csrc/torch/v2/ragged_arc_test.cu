@@ -22,6 +22,7 @@
 
 #include "gtest/gtest.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/test_utils.h"
 #include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
 #include "k2/python/csrc/torch/v2/ragged_arc.h"
@@ -524,6 +525,108 @@ TEST(RaggedArcTest, FromBinaryFunctionTensor) {
 
     EXPECT_TRUE(torch::allclose(a_fsa.Scores().grad(), scores_a.grad()));
     EXPECT_TRUE(torch::allclose(b_fsa.Scores().grad(), scores_b.grad()));
+  }
+}
+
+TEST(RaggedArcTest, CreateFsaVec) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    auto device = GetDevice(c);
+    std::string s1 = R"(0 1 1 0.1
+        0 2 1 0.2
+        1 3 2 0.3
+        2 3 3 0.4
+        3 4 -1 0.5
+        4)";
+    std::string s2 = R"(0 1 1 0.1
+        0 2 2 0.2
+        1 2 3 0.3
+        2 3 -1 0.4
+        3)";
+    RaggedArc fsa1 = RaggedArc(s1).To(device);
+    RaggedArc fsa2 = RaggedArc(s2).To(device);
+    fsa1.SetRequiresGrad(true);
+    fsa2.SetRequiresGrad(true);
+
+    torch::Tensor float_attr1 = torch::tensor(
+        {0.1, 0.2, 0.3, 0.4, 0.5},
+        torch::dtype(torch::kFloat32).device(device).requires_grad(true));
+    torch::Tensor float_attr2 = torch::tensor(
+        {0.11, 0.12, 0.13, 0.14},
+        torch::dtype(torch::kFloat32).device(device).requires_grad(true));
+    fsa1.SetAttr("float_attr", py::cast(float_attr1));
+    fsa2.SetAttr("float_attr", py::cast(float_attr2));
+
+    RaggedAny ragged_attr_1 = RaggedAny("[[1 2] [3] [4 5] [6] [7 8 9]]",
+                                        py::cast(torch::kInt32), device);
+    RaggedAny ragged_attr_2 = RaggedAny("[[11 12] [13 14 15] [16] [17 18]]",
+                                        py::cast(torch::kInt32), device);
+    fsa1.SetAttr("ragged_attr", py::cast(ragged_attr_1));
+    fsa2.SetAttr("ragged_attr", py::cast(ragged_attr_2));
+
+    fsa1.SetAttr("attr1", py::str("hello"));
+    fsa1.SetAttr("attr2", py::str("world"));
+    fsa2.SetAttr("attr1", py::str("hello"));
+    fsa2.SetAttr("attr3", py::str("k2"));
+
+    std::vector<RaggedArc> fsas;
+    fsas.emplace_back(fsa1);
+    fsas.emplace_back(fsa2);
+    RaggedArc fsa_vec = RaggedArc::CreateFsaVec(fsas);
+
+    Ragged<Arc> fsa_vec_ref(c,
+                            "[ [ [ 0 1 1 0.1 0 2 1 0.2 ] [ 1 3 2 0.3 ] "
+                            "    [ 2 3 3 0.4 ] [ 3 4 -1 0.5 ] [ ] ] "
+                            "  [ [ 0 1 1 0.1 0 2 2 0.2 ] [ 1 2 3 0.3 ] "
+                            "    [ 2 3 -1 0.4 ] [ ] ] ]");
+
+    EXPECT_TRUE(Equal(fsa_vec.fsa, fsa_vec_ref));
+
+    EXPECT_TRUE(torch::allclose(
+        fsa_vec.GetAttr("float_attr").cast<torch::Tensor>(),
+        torch::tensor({0.1, 0.2, 0.3, 0.4, 0.5, 0.11, 0.12, 0.13, 0.14},
+                      torch::dtype(torch::kFloat32).device(device))));
+
+    EXPECT_EQ(
+        fsa_vec.GetAttr("ragged_attr").cast<RaggedAny>().ToString(),
+        RaggedAny(
+            "[[1 2] [3] [4 5] [6] [7 8 9] [11 12] [13 14 15] [16] [17 18]]",
+            py::cast(torch::kInt32), device)
+            .ToString());
+
+    EXPECT_EQ(fsa_vec.GetAttr("attr1").cast<std::string>(), "hello");
+    EXPECT_EQ(fsa_vec.GetAttr("attr2").cast<std::string>(), "world");
+    EXPECT_EQ(fsa_vec.GetAttr("attr3").cast<std::string>(), "k2");
+
+    torch::Tensor scale =
+        torch::tensor({1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0},
+                      torch::dtype(torch::kFloat32).device(device));
+
+    torch::Tensor scores_sum = (fsa_vec.Scores() * scale).sum();
+    torch::Tensor float_attr_sum =
+        (fsa_vec.GetAttr("float_attr").cast<torch::Tensor>() * scale).sum();
+    {
+      py::gil_scoped_release no_gil;
+      torch::autograd::backward({scores_sum}, {});
+      torch::autograd::backward({float_attr_sum}, {});
+    }
+
+    EXPECT_TRUE(torch::allclose(
+        fsa1.Scores().grad(),
+        torch::tensor({1.0, 2.0, 3.0, 4.0, 5.0},
+                      torch::dtype(torch::kFloat32).device(device))));
+    EXPECT_TRUE(torch::allclose(
+        fsa2.Scores().grad(),
+        torch::tensor({6.0, 7.0, 8.0, 9.0},
+                      torch::dtype(torch::kFloat32).device(device))));
+
+    EXPECT_TRUE(torch::allclose(
+        fsa1.GetAttr("float_attr").cast<torch::Tensor>().grad(),
+        torch::tensor({1.0, 2.0, 3.0, 4.0, 5.0},
+                      torch::dtype(torch::kFloat32).device(device))));
+    EXPECT_TRUE(torch::allclose(
+        fsa2.GetAttr("float_attr").cast<torch::Tensor>().grad(),
+        torch::tensor({6.0, 7.0, 8.0, 9.0},
+                      torch::dtype(torch::kFloat32).device(device))));
   }
 }
 

@@ -48,6 +48,7 @@ function(torch_add_cuda_test source)
     context
     fsa
     gtest
+    test_utils
   )
 
   # NOTE: We set the working directory here so that

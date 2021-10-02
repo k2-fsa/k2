@@ -71,61 +71,70 @@ TEST(FsaAlgoTest, AddEpsilonSelfLoopsSingle) {
   }
 }
 
-//
-//    def test_two_fsas(self):
-//        s1 = '''
-//            0 1 1 0.1
-//            0 2 1 0.2
-//            1 3 2 0.3
-//            2 3 3 0.4
-//            3 4 -1 0.5
-//            4
-//        '''
-//        s2 = '''
-//            0 1 1 0.1
-//            0 2 2 0.2
-//            1 2 3 0.3
-//            2 3 -1 0.4
-//            3
-//        '''
-//
-//        for device in self.devices:
-//            fsa1 = k2.Fsa.from_str(s1).to(device)
-//            fsa2 = k2.Fsa.from_str(s2).to(device)
-//
-//            fsa1.requires_grad_(True)
-//            fsa2.requires_grad_(True)
-//
-//            fsa_vec = k2.create_fsa_vec([fsa1, fsa2])
-//            new_fsa_vec = k2.add_epsilon_self_loops(fsa_vec)
-//            assert torch.all(
-//                torch.eq(
-//                    new_fsa_vec.arcs.values()[:, :3],
-//                    torch.tensor([[0, 0, 0], [0, 1, 1], [0, 2, 1], [1, 1, 0],
-//                                  [1, 3, 2], [2, 2, 0], [2, 3, 3], [3, 3, 0],
-//                                  [3, 4, -1], [0, 0, 0], [0, 1, 1], [0, 2, 2],
-//                                  [1, 1, 0], [1, 2, 3], [2, 2, 0], [2, 3,
-//                                  -1]],
-//                                 dtype=torch.int32,
-//                                 device=device)))
-//
-//            assert torch.allclose(
-//                new_fsa_vec.scores,
-//                torch.tensor([
-//                    0, 0.1, 0.2, 0, 0.3, 0, 0.4, 0, 0.5, 0, 0.1, 0.2, 0, 0.3,
-//                    0, 0.4
-//                ]).to(device))
-//
-//            scale = torch.arange(new_fsa_vec.scores.numel(), device=device)
-//            (new_fsa_vec.scores * scale).sum().backward()
-//
-//            assert torch.allclose(
-//                fsa1.scores.grad,
-//                torch.tensor([1., 2., 4., 6., 8.], device=device))
-//
-//            assert torch.allclose(
-//                fsa2.scores.grad,
-//                torch.tensor([10., 11., 13., 15.], device=device))
+TEST(FsaAlgoTest, AddEpsilonSelfLoopsVector) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    auto device = GetDevice(c);
+    std::string s1 = R"(0 1 1 0.1
+        0 2 1 0.2
+        1 3 2 0.3
+        2 3 3 0.4
+        3 4 -1 0.5
+        4)";
+    std::string s2 = R"(0 1 1 0.1
+        0 2 2 0.2
+        1 2 3 0.3
+        2 3 -1 0.4
+        3)";
+    RaggedArc fsa1 = RaggedArc(s1).To(device);
+    RaggedArc fsa2 = RaggedArc(s2).To(device);
+    fsa1.SetRequiresGrad(true);
+    fsa2.SetRequiresGrad(true);
+    std::vector<RaggedArc> fsas;
+    fsas.emplace_back(fsa1);
+    fsas.emplace_back(fsa2);
+    RaggedArc fsa_vec = RaggedArc::CreateFsaVec(fsas);
+    RaggedArc new_fsa_vec = fsa_vec.AddEpsilonSelfLoops();
+    EXPECT_TRUE(torch::equal(
+        new_fsa_vec.Arcs().index(
+            {"...", torch::indexing::Slice(torch::indexing::None, 3)}),
+        torch::tensor({{0, 0, 0},
+                       {0, 1, 1},
+                       {0, 2, 1},
+                       {1, 1, 0},
+                       {1, 3, 2},
+                       {2, 2, 0},
+                       {2, 3, 3},
+                       {3, 3, 0},
+                       {3, 4, -1},
+                       {0, 0, 0},
+                       {0, 1, 1},
+                       {0, 2, 2},
+                       {1, 1, 0},
+                       {1, 2, 3},
+                       {2, 2, 0},
+                       {2, 3, -1}},
+                      torch::dtype(torch::kInt32).device(device))));
+    EXPECT_TRUE(torch::allclose(
+        new_fsa_vec.Scores(),
+        torch::tensor({0.0, 0.1, 0.2, 0.0, 0.3, 0.0, 0.4, 0.0, 0.5, 0.0, 0.1,
+                       0.2, 0.0, 0.3, 0.0, 0.4},
+                      torch::dtype(torch::kFloat32).device(device))));
+    torch::Tensor scale =
+        torch::arange(new_fsa_vec.Scores().numel(), torch::device(device));
+
+    torch::Tensor scores_sum = (new_fsa_vec.Scores() * scale).sum();
+    torch::autograd::backward({scores_sum}, {});
+
+    EXPECT_TRUE(torch::allclose(
+        fsa1.Scores().grad(),
+        torch::tensor({1.0, 2.0, 4.0, 6.0, 8.0},
+                      torch::dtype(torch::kFloat32).device(device))));
+    EXPECT_TRUE(torch::allclose(
+        fsa2.Scores().grad(),
+        torch::tensor({10.0, 11.0, 13.0, 15.0},
+                      torch::dtype(torch::kFloat32).device(device))));
+  }
+}
 
 TEST(FsaAlgoTest, Connect) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {

@@ -189,6 +189,24 @@ void RaggedArc::CopyTensorAttrs(const RaggedArc &src, torch::Tensor arc_map,
   }
 }
 
+void RaggedArc::CopyTensorAttrs(std::vector<RaggedArc> &srcs) {
+  std::unordered_set<std::string> tensor_attr_names;
+  for (const auto &fsa : srcs)
+    for (const auto &attr : fsa.tensor_attrs)
+      tensor_attr_names.insert(attr.first);
+
+  std::vector<torch::Tensor> values;
+  for (const auto &name : tensor_attr_names) {
+    for (const auto &fsa : srcs) {
+      auto iter = fsa.tensor_attrs.find(name);
+      K2_CHECK(iter != fsa.tensor_attrs.end());
+      values.emplace_back(iter->second);
+    }
+    torch::Tensor value = torch::cat(values, 0);
+    SetAttr(name, value);
+  }
+}
+
 void RaggedArc::CopyOtherAttrs(const RaggedArc &src,
                                bool over_write /*= true*/) {
   for (const auto &iter : src.other_attrs) {
@@ -209,9 +227,9 @@ void RaggedArc::CopyOtherAttrs(std::vector<RaggedArc> &srcs) {
       if (iter != fsa.other_attrs.end()) {
         auto self_iter = other_attrs.find(name);
         if (self_iter != other_attrs.end()) {
-          K2_CHECK_EQ(*iter, *self_iter);
+          // TODO: Check the values iter & self_iter pointing to are identical.
         } else {
-          SetAttr(name, *iter);
+          SetAttr(name, iter->second);
         }
       }
     }
@@ -242,6 +260,24 @@ void RaggedArc::CopyRaggedTensorAttrs(const RaggedArc &src, RaggedAny &arc_map,
       new_value = new_value.RemoveAxis(new_value.any.NumAxes() - 2);
       SetAttr(iter.first, new_value);
     }
+  }
+}
+
+void RaggedArc::CopyRaggedTensorAttrs(std::vector<RaggedArc> &srcs) {
+  std::unordered_set<std::string> tensor_attr_names;
+  for (const auto &fsa : srcs)
+    for (const auto &attr : fsa.ragged_tensor_attrs)
+      tensor_attr_names.insert(attr.first);
+
+  std::vector<RaggedAny> values;
+  for (const auto &name : tensor_attr_names) {
+    for (const auto &fsa : srcs) {
+      auto iter = fsa.ragged_tensor_attrs.find(name);
+      K2_CHECK(iter != fsa.ragged_tensor_attrs.end());
+      values.emplace_back(iter->second);
+    }
+    RaggedAny value = RaggedAny::Cat(values, 0);
+    SetAttr(name, value);
   }
 }
 
@@ -416,48 +452,18 @@ RaggedArc RaggedArc::CreateFsaVec(std::vector<RaggedArc> &fsas) {
   // like other tensor attributes
   torch::Tensor scores = torch::cat(tmp_scores, 0);
 
-  // TODO(fangjun): support propagating attributes
-  return RaggedArc(fsa_vec, scores);
+  RaggedArc dest = RaggedArc(fsa_vec, scores);
 
-  //    ragged_arc_list = list()
-  //    for fsa in fsas:
-  //        assert len(fsa.shape) == 2
-  //        ragged_arc_list.append(fsa.arcs)
-  //
-  //    ragged_arcs = _k2.create_fsa_vec(ragged_arc_list)
-  //    fsa_vec = Fsa(ragged_arcs)
-  //
-  //    tensor_attr_names = set(
-  //        name for name, _ in fsa.named_tensor_attr() for fsa in fsas)
-  //    for name in tensor_attr_names:
-  //        values = []
-  //        for fsa in fsas:
-  //            values.append(getattr(fsa, name))
-  //        if isinstance(values[0], torch.Tensor):
-  //            value = torch.cat(values)
-  //        else:
-  //            assert isinstance(values[0], k2.RaggedTensor)
-  //            value = k2.ragged.cat(values, axis=0)
-  //        setattr(fsa_vec, name, value)
-  //
-}
+  // Check the validation of the fsa, will trigger a fatal error if the fsa
+  // is not valid.
+  dest.Properties();
 
-void CopyTensorAttrs(std::vector<RaggedArc> &srcs) {
-  std::unordered_set<std::string> tensor_attr_names;
-  for (const auto &fsa : srcs)
-    for (const auto &attr : fsa.tensor_attrs)
-      tensor_attr_names.insert(attr.first);
+  dest.CopyTensorAttrs(fsas);
 
-  std::vector<torch::Tensor> values;
-  for (const auto &name : tensor_attr_names) {
-    for (const auto &fsa : srcs) {
-      auto &iter = fsa.tensor_attrs.find(name);
-      K2_CHECK_NE(iter, fsa.tensor_attrs.end());
-      values.emplace_back(iter->second);
-    }
-    torch::Tensor value = torch::cat(values, 0);
-    SetAttr(name, value);
-  }
+  dest.CopyRaggedTensorAttrs(fsas);
+
+  dest.CopyOtherAttrs(fsas);
+  return dest;
 }
 
 RaggedArc RaggedArc::AddEpsilonSelfLoops() /*const*/ {
