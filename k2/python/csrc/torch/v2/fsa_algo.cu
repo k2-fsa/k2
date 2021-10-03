@@ -19,9 +19,44 @@
  * limitations under the License.
  */
 
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_algo.h"
 #include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/fsa_algo.h"
+#include "k2/python/csrc/torch/v2/ragged_arc.h"
 
-namespace k2 {}  // namespace k2
+namespace k2 {
+
+void PybindFsaAlgorithms(py::module &m) {
+  m.def(
+      "arc_sort",
+      [](RaggedArc &src) -> RaggedArc {
+        DeviceGuard guard(src.fsa.Context());
+        return src.ArcSort();
+      },
+      py::arg("src"));
+
+  m.def(
+      "connect",
+      [](RaggedArc &src) -> RaggedArc {
+        DeviceGuard guard(src.fsa.Context());
+        return src.Connect();
+      },
+      py::arg("src"));
+
+  m.def(
+      "top_sort",
+      [](RaggedArc &src) -> RaggedArc {
+        DeviceGuard guard(src.fsa.Context());
+        return src.TopSort();
+      },
+      py::arg("src"));
+
+  m.def(
+      "add_epsilon_self_loops",
+      [](RaggedArc &src) -> RaggedArc {
+        DeviceGuard guard(src.fsa.Context());
+        return src.AddEpsilonSelfLoops();
+      },
+      py::arg("src"));
+}
+
+}  // namespace k2

@@ -22,8 +22,11 @@
 #ifndef K2_PYTHON_CSRC_TORCH_V2_FSA_ALGO_H_
 #define K2_PYTHON_CSRC_TORCH_V2_FSA_ALGO_H_
 
-#include "k2/python/csrc/torch/v2/ragged_arc.h"
+#include "k2/python/csrc/torch.h"
 
-namespace k2 {}  // namespace k2
+namespace k2 {
 
+void PybindFsaAlgorithms(py::module &m);
+
+}  // namespace k2
 #endif  // K2_PYTHON_CSRC_TORCH_V2_FSA_ALGO_H_

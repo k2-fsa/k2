@@ -23,6 +23,7 @@
 #include "k2/python/csrc/torch/v2/any.h"
 #include "k2/python/csrc/torch/v2/autograd/ragged_arc_holder.h"
 #include "k2/python/csrc/torch/v2/fsa.h"
+#include "k2/python/csrc/torch/v2/fsa_algo.h"
 #include "k2/python/csrc/torch/v2/k2.h"
 #include "k2/python/csrc/torch/v2/k2_ops.h"
 #include "k2/python/csrc/torch/v2/ragged_shape.h"
@@ -46,6 +47,7 @@ void PybindV2(py::module &m) {
   py::module v2 = m.def_submodule(
       "v2", "Sub module containing operations for v2 ops in k2");
   PybindK2Ops(v2);
+  PybindFsaAlgorithms(v2);
 
   // The following **static** variable is to resolve the following exception:
   //

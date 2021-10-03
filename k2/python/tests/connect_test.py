@@ -23,6 +23,7 @@
 import unittest
 
 import k2
+import k2.ragged as k2r
 import torch
 
 
@@ -46,19 +47,25 @@ class TestConnect(unittest.TestCase):
             4
         '''
         for device in self.devices:
-            fsa = k2.Fsa.from_str(s).to(device)
-            fsa.requires_grad_(True)
-            expected_str = '\n'.join(['0 1 1 0.1', '1 2 -1 0.3', '2'])
-            connected_fsa = k2.connect(fsa)
+            for t in [0, 1]:
+                fsa = k2r.Fsa(s).to(device)
+                fsa.requires_grad_(True)
+                expected_str = '\n'.join(['0 1 1 0.1', '1 2 -1 0.3', '2'])
+                if t:
+                    connected_fsa = fsa.connect()
+                else:
+                    connected_fsa = k2.connect(fsa)
 
-            loss = connected_fsa.scores.sum()
-            loss.backward()
-            assert torch.allclose(
-                fsa.scores.grad,
-                torch.tensor([1, 0, 1, 0], dtype=torch.float32, device=device))
+                loss = connected_fsa.scores.sum()
+                loss.backward()
+                assert torch.allclose(
+                    fsa.scores.grad,
+                    torch.tensor([1, 0, 1, 0],
+                                 dtype=torch.float32,
+                                 device=device))
 
-            actual_str = k2.to_str_simple(connected_fsa.to('cpu'))
-            assert actual_str.strip() == expected_str
+                actual_str = connected_fsa.to_str_simple()
+                assert actual_str.strip() == expected_str
 
 
 if __name__ == '__main__':

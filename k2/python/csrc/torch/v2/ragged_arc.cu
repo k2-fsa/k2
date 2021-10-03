@@ -409,29 +409,82 @@ RaggedArc RaggedArc::To(const std::string &device) const {
   return this->To(d);
 }
 
+std::string RaggedArc::ToStringSimple() const {
+  std::ostringstream os;
+  // TODO: Handle aux_label
+  if (fsa.NumAxes() == 2) {
+    os << FsaToString(fsa, /*openfst*/ false,
+                      /*num_extra_labels*/ 0,
+                      /*extra_labels*/ nullptr,
+                      /*num_ragged_labels*/ 0,
+                      /*ragged_labels*/ nullptr);
+  } else {
+    for (int32_t i = 0; i < fsa.Dim0(); ++i) {
+      Ragged<Arc> sub_fsa = fsa.Index(0, i);
+      os << FsaToString(sub_fsa, /*openfst*/ false,
+                        /*num_extra_labels*/ 0,
+                        /*extra_labels*/ nullptr,
+                        /*num_ragged_labels*/ 0,
+                        /*ragged_labels*/ nullptr);
+    }
+  }
+  return os.str();
+}
+
 std::string RaggedArc::ToString() const {
   std::ostringstream os;
-  if (fsa.NumAxes() == 2)
-    os << "k2.Fsa: ";
-  else
-    os << "k2.FsaVec: ";
-
-  // TODO: support fsa.NumAxes() == 3
-  K2_CHECK_EQ(fsa.NumAxes(), 2);
-
   std::vector<Array1<int32_t>> extra_labels;
+  std::vector<Ragged<int32_t>> ragged_labels;
   for (auto &p : tensor_attrs) {
     if (p.second.scalar_type() == torch::kInt) {
       extra_labels.push_back(
           FromTorch<int32_t>(const_cast<torch::Tensor &>(p.second)));
     }
   }
+  for (const auto &p : ragged_tensor_attrs) {
+    if (p.second.any.GetDtype() == kInt32Dtype) {
+      ragged_labels.push_back(p.second.any.Specialize<int32_t>());
+    }
+  }
+  if (fsa.NumAxes() == 2) {
+    os << "k2.Fsa: "
+       << FsaToString(fsa, /*openfst*/ false,
+                      /*num_extra_labels*/ extra_labels.size(),
+                      /*extra_labels*/ extra_labels.data(),
+                      /*num_ragged_labels*/ ragged_labels.size(),
+                      /*ragged_labels*/ ragged_labels.data());
+  } else {
+    os << "k2.FsaVec: \n";
+    for (int32_t i = 0; i < fsa.Dim0(); ++i) {
+      Ragged<Arc> sub_fsa = fsa.Index(0, i);
+      int32_t start = sub_fsa.values.Data() - fsa.values.Data(),
+              end = start + sub_fsa.values.Dim();
 
-  os << FsaToString(fsa, /*openfst*/ false,
-                    /*num_extra_labels*/ extra_labels.size(),
-                    /*extra_labels*/ extra_labels.data(),
-                    /*num_ragged_labels*/ 0,
-                    /*ragged_labels*/ nullptr);
+      std::vector<Array1<int32_t>> sub_extra_labels;
+      for (auto &v : extra_labels)
+        sub_extra_labels.emplace_back(v.Arange(start, end));
+
+      std::vector<Ragged<int32_t>> sub_ragged_labels;
+      for (auto &v : ragged_labels)
+        sub_ragged_labels.emplace_back(Arange(v, 0, start, end));
+
+      os << "FsaVec[ " << i << " ]: "
+         << FsaToString(sub_fsa, /*openfst*/ false,
+                        /*num_extra_labels*/ sub_extra_labels.size(),
+                        /*extra_labels*/ sub_extra_labels.data(),
+                        /*num_ragged_labels*/ sub_ragged_labels.size(),
+                        /*ragged_labels*/ sub_ragged_labels.data());
+    }
+  }
+
+  os << "properties_str = " << PropertiesStr() << ".";
+  for (const auto &v : tensor_attrs) os << "\n" << v.first << ": " << v.second;
+  for (const auto &v : ragged_tensor_attrs) {
+    os << "\n"
+       << v.first << ": " << const_cast<RaggedAny &>(v.second).ToString();
+  }
+  for (const auto &v : other_attrs) os << "\n" << v.first << ": " << v.second;
+
   return os.str();
 }
 

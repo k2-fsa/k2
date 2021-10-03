@@ -46,66 +46,73 @@ class TestArcSort(unittest.TestCase):
             2
         '''
         for device in self.devices:
-            src = k2r.Fsa(s).to(device)
-            src.requires_grad_(True)
+            for t in [0, 1]:
+                src = k2r.Fsa(s).to(device)
+                src.requires_grad_(True)
 
-            scores_copy = src.scores.detach().clone().requires_grad_(True)
+                scores_copy = src.scores.detach().clone().requires_grad_(True)
 
-            src.attr1 = "hello"
-            src.attr2 = "k2"
-            float_attr = torch.tensor([0.1, 0.2, 0.3],
-                                      dtype=torch.float32,
-                                      requires_grad=True,
-                                      device=device)
-            src.float_attr = float_attr.detach().clone().requires_grad_(True)
-            src.int_attr = torch.tensor([1, 2, 3],
-                                        dtype=torch.int32,
-                                        device=device)
-            src.ragged_attr = k2.RaggedTensor([[10, 20], [30, 40, 50],
-                                               [60, 70]]).to(device)
+                src.attr1 = "hello"
+                src.attr2 = "k2"
+                float_attr = torch.tensor([0.1, 0.2, 0.3],
+                                          dtype=torch.float32,
+                                          requires_grad=True,
+                                          device=device)
+                src.float_attr = float_attr.detach().clone().requires_grad_(
+                    True)
+                src.int_attr = torch.tensor([1, 2, 3],
+                                            dtype=torch.int32,
+                                            device=device)
+                src.ragged_attr = k2.RaggedTensor([[10, 20], [30, 40, 50],
+                                                   [60, 70]]).to(device)
 
-            dest = src.arc_sort()
+                if t:
+                    dest = src.arc_sort()
+                else:
+                    dest = k2.arc_sort(src)
 
-            assert dest.attr1 == src.attr1
-            assert dest.attr2 == src.attr2
+                assert dest.attr1 == src.attr1
+                assert dest.attr2 == src.attr2
 
-            # actual_str = dest.to_str_simple()
-            # expected_str = '\n'.join(
-            # ['0 1 1 0.2', '0 1 2 0.1', '1 2 -1 0.3', '2'])
-            # assert actual_str.strip() == expected_str
+                actual_str = dest.to_str_simple()
+                expected_str = '\n'.join(
+                    ['0 1 1 0.2', '0 1 2 0.1', '1 2 -1 0.3', '2'])
+                assert actual_str.strip() == expected_str
 
-            expected_int_attr = torch.tensor([2, 1, 3],
-                                             dtype=torch.int32,
-                                             device=device)
-            assert torch.all(torch.eq(dest.int_attr, expected_int_attr))
+                expected_int_attr = torch.tensor([2, 1, 3],
+                                                 dtype=torch.int32,
+                                                 device=device)
+                assert torch.all(torch.eq(dest.int_attr, expected_int_attr))
 
-            expected_ragged_attr = k2.RaggedTensor([[30, 40, 50], [10, 20],
-                                                    [60, 70]]).to(device)
-            assert dest.ragged_attr == expected_ragged_attr
+                expected_ragged_attr = k2.RaggedTensor([[30, 40, 50], [10, 20],
+                                                        [60, 70]]).to(device)
+                assert dest.ragged_attr == expected_ragged_attr
 
-            expected_float_attr = torch.empty_like(dest.float_attr)
-            expected_float_attr[0] = float_attr[1]
-            expected_float_attr[1] = float_attr[0]
-            expected_float_attr[2] = float_attr[2]
+                expected_float_attr = torch.empty_like(dest.float_attr)
+                expected_float_attr[0] = float_attr[1]
+                expected_float_attr[1] = float_attr[0]
+                expected_float_attr[2] = float_attr[2]
 
-            assert torch.all(torch.eq(dest.float_attr, expected_float_attr))
+                assert torch.all(torch.eq(dest.float_attr,
+                                          expected_float_attr))
 
-            expected_scores = torch.empty_like(dest.scores)
-            expected_scores[0] = scores_copy[1]
-            expected_scores[1] = scores_copy[0]
-            expected_scores[2] = scores_copy[2]
+                expected_scores = torch.empty_like(dest.scores)
+                expected_scores[0] = scores_copy[1]
+                expected_scores[1] = scores_copy[0]
+                expected_scores[2] = scores_copy[2]
 
-            assert torch.all(torch.eq(dest.scores, expected_scores))
+                assert torch.all(torch.eq(dest.scores, expected_scores))
 
-            scale = torch.tensor([10, 20, 30]).to(float_attr)
+                scale = torch.tensor([10, 20, 30]).to(float_attr)
 
-            (dest.float_attr * scale).sum().backward()
-            (expected_float_attr * scale).sum().backward()
-            assert torch.all(torch.eq(src.float_attr.grad, float_attr.grad))
+                (dest.float_attr * scale).sum().backward()
+                (expected_float_attr * scale).sum().backward()
+                assert torch.all(torch.eq(src.float_attr.grad,
+                                          float_attr.grad))
 
-            (dest.scores * scale).sum().backward()
-            (expected_scores * scale).sum().backward()
-            assert torch.all(torch.eq(src.scores.grad, scores_copy.grad))
+                (dest.scores * scale).sum().backward()
+                (expected_scores * scale).sum().backward()
+                assert torch.all(torch.eq(src.scores.grad, scores_copy.grad))
 
 
 if __name__ == '__main__':

@@ -287,13 +287,6 @@ static void PybindConnect(py::module &m) {
         return std::make_pair(out, tensor);
       },
       py::arg("src"), py::arg("need_arc_map") = true);
-  m.def(
-      "connect",
-      [](RaggedArc &src) -> RaggedArc {
-        DeviceGuard guard(src.fsa.Context());
-        return src.Connect();
-      },
-      py::arg("src"));
 }
 
 static void PybindArcSort(py::module &m) {

@@ -23,6 +23,7 @@
 import unittest
 
 import k2
+import k2.ragged as k2r
 import torch
 
 
@@ -52,18 +53,22 @@ class TestTopSort(unittest.TestCase):
             3
         '''
         for device in self.devices:
-            fsa = k2.Fsa.from_str(s).to(device)
-            fsa.requires_grad_(True)
-            sorted_fsa = k2.top_sort(fsa)
+            for t in [0, 1]:
+                fsa = k2r.Fsa(s).to(device)
+                fsa.requires_grad_(True)
+                if t:
+                    sorted_fsa = k2.top_sort(fsa)
+                else:
+                    sorted_fsa = fsa.top_sort()
 
-            # the shortest path in the sorted fsa is (arc 0) -> (arc 3)
-            loss = (sorted_fsa.scores[0] + sorted_fsa.scores[3]) / 2
-            loss.backward()
-            assert torch.allclose(
-                fsa.scores.grad,
-                torch.tensor([0.5, 0, 0.5, 0],
-                             dtype=torch.float32,
-                             device=device))
+                # the shortest path in the sorted fsa is (arc 0) -> (arc 3)
+                loss = (sorted_fsa.scores[0] + sorted_fsa.scores[3]) / 2
+                loss.backward()
+                assert torch.allclose(
+                    fsa.scores.grad,
+                    torch.tensor([0.5, 0, 0.5, 0],
+                                 dtype=torch.float32,
+                                 device=device))
 
 
 if __name__ == '__main__':

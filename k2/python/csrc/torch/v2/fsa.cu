@@ -46,6 +46,8 @@ void PybindRaggedArc(py::module &m) {
 
   fsa.def("__str__", &RaggedArc::ToString);
   fsa.def("__repr__", &RaggedArc::ToString);
+  fsa.def("to_str", &RaggedArc::ToString);
+  fsa.def("to_str_simple", &RaggedArc::ToStringSimple);
 
   fsa.def("requires_grad_", &RaggedArc::SetRequiresGrad,
           py::arg("requires_grad") = true);
@@ -62,6 +64,8 @@ void PybindRaggedArc(py::module &m) {
 
   fsa.def("arc_sort", &RaggedArc::ArcSort);
   fsa.def("connect", &RaggedArc::Connect);
+  fsa.def("top_sort", &RaggedArc::TopSort);
+  fsa.def("add_epsilon_self_loops", &RaggedArc::AddEpsilonSelfLoops);
 
   fsa.def("__setattr__", (void (RaggedArc::*)(const std::string &, py::object))(
                              &RaggedArc::SetAttr));

@@ -209,6 +209,7 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
      @return Return a string representation of the ragged arc.
    */
   std::string ToString() const;
+  std::string ToStringSimple() const;
 
   static RaggedArc CreateFsaVec(std::vector<RaggedArc> &fsas);
 
