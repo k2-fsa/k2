@@ -26,6 +26,7 @@
 
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/doc/fsa.h"
 #include "k2/python/csrc/torch/v2/fsa.h"
 #include "k2/python/csrc/torch/v2/ragged_arc.h"
 
@@ -62,10 +63,11 @@ void PybindRaggedArc(py::module &m) {
               &RaggedArc::To),
           py::arg("device"));
 
-  fsa.def("arc_sort", &RaggedArc::ArcSort);
-  fsa.def("connect", &RaggedArc::Connect);
-  fsa.def("top_sort", &RaggedArc::TopSort);
-  fsa.def("add_epsilon_self_loops", &RaggedArc::AddEpsilonSelfLoops);
+  fsa.def("arc_sort", &RaggedArc::ArcSort, kFsaAlgoArcSortDoc);
+  fsa.def("connect", &RaggedArc::Connect, kFsaAlgoConnectDoc);
+  fsa.def("top_sort", &RaggedArc::TopSort, kFsaAlgoTopSortDoc);
+  fsa.def("add_epsilon_self_loops", &RaggedArc::AddEpsilonSelfLoops,
+          kFsaAlgoAddEpsilonSelfLoopsDoc);
 
   fsa.def("__setattr__", (void (RaggedArc::*)(const std::string &, py::object))(
                              &RaggedArc::SetAttr));

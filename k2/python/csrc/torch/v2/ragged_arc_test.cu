@@ -629,7 +629,6 @@ TEST(RaggedArcTest, CreateFsaVec) {
                       torch::dtype(torch::kFloat32).device(device))));
   }
 }
-
 }  // namespace k2
 
 int main(int argc, char *argv[]) {
