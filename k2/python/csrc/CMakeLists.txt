@@ -48,6 +48,18 @@ function(torch_add_cuda_test source)
     fsa
     gtest
   )
+  target_include_directories(${target_name} PRIVATE ${PYTHON_INCLUDE_DIRS})
+  if(UNIX AND NOT APPLE)
+    target_link_libraries(${target_name} PUBLIC ${TORCH_DIR}/lib/libtorch_python.so)
+    # CAUTION: It is PYTHON_LIBRARY on unix
+    target_link_libraries(${target_name} PUBLIC ${PYTHON_LIBRARY})
+    message(STATUS "PYTHON_LIBRARY: ${PYTHON_LIBRARY}")
+  elseif(WIN32)
+    target_link_libraries(${target_name} PUBLIC ${TORCH_DIR}/lib/torch_python.lib)
+    # CAUTION: It is PYTHON_LIBRARIES on Windows
+    target_link_libraries(${target_name} PUBLIC ${PYTHON_LIBRARIES})
+    message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
+  endif()
 
   # NOTE: We set the working directory here so that
   # it works also on windows. The reason is that

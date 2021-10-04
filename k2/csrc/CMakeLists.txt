@@ -109,20 +109,7 @@ target_link_libraries(context PUBLIC k2_log)
 target_link_libraries(context PUBLIC k2_nvtx)
 if(K2_USE_PYTORCH)
   target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
-  if(UNIX AND NOT APPLE)
-    # It causes errors on macOS
-    target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/libtorch_python.so)
-    # CAUTION: It is PYTHON_LIBRARY on unix
-    target_link_libraries(context PUBLIC ${PYTHON_LIBRARY})
-    message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARY}")
-  elseif(WIN32)
-    target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/torch_python.lib)
-    # CAUTION: It is PYTHON_LIBRARIES on Windows
-    target_link_libraries(context PUBLIC ${PYTHON_LIBRARIES})
-    message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
-  endif()
 endif()
-target_include_directories(context PUBLIC ${PYTHON_INCLUDE_DIRS})
 
 #---------------------------- Test K2 CUDA sources ----------------------------
 
