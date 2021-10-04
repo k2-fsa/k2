@@ -46,7 +46,7 @@ DenseFsaVec CreateDenseFsaVec(torch::Tensor log_probs,
   // linear_indexes contains indexes along axis 0
   // for the tensor obtained from log_probs.view(-1, C)
   std::vector<int64_t> linear_indexes;
-  linear_indexes.reserve(num_utt * T);  // the worse case
+  linear_indexes.reserve(num_utt * (T + 1));  // the worse case
 
   // It contains the index of the extra frame of each utterance
   // that will be set to [0, -inf, -inf, -inf, ... ]
@@ -55,7 +55,6 @@ DenseFsaVec CreateDenseFsaVec(torch::Tensor log_probs,
 
   int32_t duration_in_total = 0;
 
-  int32_t cur_frame_linear_lindex = 0;
   for (int32_t i = 0; i != num_utt; ++i) {
     const int32_t *this_row = p_sup + i * stride;
     int32_t utt_index = this_row[0];

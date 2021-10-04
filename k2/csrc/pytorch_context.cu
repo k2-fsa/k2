@@ -22,6 +22,7 @@
 #ifdef K2_WITH_CUDA
 #include "c10/cuda/CUDACachingAllocator.h"
 #include "c10/cuda/CUDAFunctions.h"
+#include "torch/cuda.h"
 #endif
 
 #include "k2/csrc/context.h"
@@ -77,7 +78,7 @@ static void InitHasCuda() {
   else
     K2_LOG(WARNING) << "CUDA is not available. Return a CPU context.";
 #else
-    K2_LOG(WARNING) << "k2 was not compiled with CUDA. Return a CPU context.";
+  K2_LOG(WARNING) << "k2 was not compiled with CUDA. Return a CPU context.";
 #endif
 }
 

@@ -1,6 +1,9 @@
 #include <cassert>
 #include <cstdio>
 
+#include "k2/csrc/fsa_algo.h"
+#include "k2/torch/csrc/dense_fsa_vec.h"
+#include "k2/torch/csrc/utils.h"
 #include "torch/script.h"
 #include "torch/utils.h"
 
@@ -40,7 +43,7 @@ static torch::IValue Load(const std::string &filename) {
 //                     - start_frame: torch.Tensor
 //                     - num_frames: torch.Tensor
 // @return Return a 2-D torch.int32 tensor that can be used to construct a
-// DenseFsaVec
+//  DenseFsaVec. See `k2::CreateDenseFsaVec()`
 static torch::Tensor GetSupervisionSegments(torch::IValue supervisions,
                                             int32_t subsampling_factor) {
   torch::Dict<torch::IValue, torch::IValue> dict = supervisions.toGenericDict();
@@ -52,16 +55,15 @@ static torch::Tensor GetSupervisionSegments(torch::IValue supervisions,
       torch::floor_divide(dict.at("num_frames").toTensor(), subsampling_factor);
 
   torch::Tensor supervision_segments =
-      torch::stack({sequence_idx, start_frame, num_frames}, 1);
-  std::cout << "supervision_segments: " << supervision_segments << "\n";
+      torch::stack({sequence_idx, start_frame, num_frames}, 1).to(torch::kCPU);
   return supervision_segments;
 }
 
 int main(int argc, char *argv[]) {
   // see
   // https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html
-  at::set_num_threads(1);
-  at::set_num_interop_threads(1);
+  torch::set_num_threads(1);
+  torch::set_num_interop_threads(1);
 
   std::string usage = R"(
     ./bin/decode.py \
@@ -119,12 +121,33 @@ int main(int argc, char *argv[]) {
   auto memory = outputs->elements()[1].toTensor();
   auto memory_key_padding_mask = outputs->elements()[2].toTensor();
 
-  std::cout << nnet_output.sum() << "\n";
-  std::cout << nnet_output.mean() << "\n";
-  std::cout << nnet_output.sizes() << "\n";
-  std::cout << memory.sum() << "\n";
-  std::cout << memory.mean() << "\n";
-  std::cout << memory_key_padding_mask.sum() << "\n";
+  torch::Tensor supervision_segments =
+      GetSupervisionSegments(supervisions, subsampling_factor);
+
+  k2::DenseFsaVec dense_fsa_vec = k2::CreateDenseFsaVec(
+      nnet_output, supervision_segments, subsampling_factor - 1);
+
+  k2::ContextPtr ctx = k2::ContextFromTensor(nnet_output);
+
+  // We first try CTC decoding
+  k2::Array1<int32_t> aux_labels;
+  k2::Fsa ctc_topo = k2::CtcTopo(ctx, nnet_output.size(2) - 1,
+                                 /*modified*/ false, &aux_labels);
+  ctc_topo = k2::FsaToFsaVec(ctc_topo);
+
+  float search_beam = 20;
+  float output_beam = 8;
+  int32_t min_activate_states = 30;
+  int32_t max_activate_states = 10000;
+  k2::FsaVec lattice;
+  k2::Array1<int32_t> arc_map_a;
+  k2::Array1<int32_t> arc_map_b;
+  k2::IntersectDensePruned(ctc_topo, dense_fsa_vec, search_beam, output_beam,
+                           min_activate_states, max_activate_states, &lattice,
+                           &arc_map_a, &arc_map_b);
+  // TODO:
+  // Get aux_labels from the lattice and use sentence piece APIs to turn them
+  // into words
 
   // clang-format off
   // TODO(fangjun):
