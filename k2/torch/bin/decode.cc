@@ -1,14 +1,21 @@
 #include <cassert>
 #include <cstdio>
 
+#include "k2/csrc/array.h"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/ragged.h"
+#include "k2/csrc/ragged_ops.h"
 #include "k2/torch/csrc/dense_fsa_vec.h"
 #include "k2/torch/csrc/utils.h"
+#include "sentencepiece_processor.h"
 #include "torch/script.h"
 #include "torch/utils.h"
 
 C10_DEFINE_string(jit_pt, "", "Path to exported jit filename.");
 C10_DEFINE_string(feature_pt, "", "Path to pre-computed feature filename.");
+C10_DEFINE_string(bpe_model, "", "Path to a pretrained BPE model.");
 // TODO: add more options
 
 // Load a file saved by torch.save(x, filename), where
@@ -66,9 +73,10 @@ int main(int argc, char *argv[]) {
   torch::set_num_interop_threads(1);
 
   std::string usage = R"(
-    ./bin/decode.py \
+    ./bin/decode \
       --jit_pt <path to exported torch script pt file> \
-      --feature_pt <path to precomputed feature pt file>
+      --feature_pt <path to precomputed feature pt file> \
+      --bpe_model <path to pretrained BPE model>
   )";
   torch::SetUsageMessage(usage);
 
@@ -82,6 +90,13 @@ int main(int argc, char *argv[]) {
 
   if (FLAGS_feature_pt.empty()) {
     std::cout << "Please provide --feature_pt"
+              << "\n";
+    std::cout << torch::UsageMessage() << "\n";
+    return -1;
+  }
+
+  if (FLAGS_bpe_model.empty()) {
+    std::cout << "Please provide --bpe_model"
               << "\n";
     std::cout << torch::UsageMessage() << "\n";
     return -1;
@@ -145,6 +160,45 @@ int main(int argc, char *argv[]) {
   k2::IntersectDensePruned(ctc_topo, dense_fsa_vec, search_beam, output_beam,
                            min_activate_states, max_activate_states, &lattice,
                            &arc_map_a, &arc_map_b);
+  // see Index() in array_ops.h
+  aux_labels = k2::Index(aux_labels, arc_map_a, /*allow_minus_one*/ false,
+                         /*default_value*/ 0);
+
+  k2::Ragged<int32_t> state_batches = k2::GetStateBatches(lattice, true);
+  k2::Array1<int32_t> dest_states = k2::GetDestStates(lattice, true);
+  k2::Ragged<int32_t> incoming_arcs = k2::GetIncomingArcs(lattice, dest_states);
+  k2::Ragged<int32_t> entering_arc_batches =
+      k2::GetEnteringArcIndexBatches(lattice, incoming_arcs, state_batches);
+
+  bool log_semiring = false;
+  k2::Array1<int32_t> entering_arcs;
+  k2::GetForwardScores<float>(lattice, state_batches, entering_arc_batches,
+                              log_semiring, &entering_arcs);
+
+  k2::Ragged<int32_t> best_path_arc_indexes =
+      k2::ShortestPath(lattice, entering_arcs);
+
+  // See Index() in ragged_ops.h
+  k2::Ragged<int32_t> ragged_aux_labels =
+      k2::Index(aux_labels, best_path_arc_indexes);
+  ragged_aux_labels = k2::RemoveValuesLeq(ragged_aux_labels, 0);
+
+  // TODO: convert a Ragged<int32_t> to a std::vector<std::vector<int32_t>>
+
+  std::vector<int32_t> aux_labels_vec(
+      ragged_aux_labels.values.Data(),
+      ragged_aux_labels.values.Data() + ragged_aux_labels.values.Dim());
+
+  sentencepiece::SentencePieceProcessor processor;
+  const auto status = processor.Load(FLAGS_bpe_model);
+  if (!status.ok()) {
+    K2_LOG(FATAL) << status.ToString();
+  }
+  std::string text;
+  processor.Decode(aux_labels_vec, &text);
+  // NOTE: text contains the concatenated transcripts from all utterances.
+  K2_LOG(INFO) << text;
+
   // TODO:
   // Get aux_labels from the lattice and use sentence piece APIs to turn them
   // into words

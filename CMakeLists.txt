@@ -61,7 +61,7 @@ string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
 if("${CMAKE_BUILD_TYPE_UPPERCASE}" STREQUAL "DEBUG")
   # refer to https://docs.nvidia.com/cuda/cuda-memcheck/index.html#compilation-options
   # The two options are to make cuda-memcheck's stack backtrace feature more useful.
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -rdynamic --compiler-options -lineinfo")
+  string(APPEND CMAKE_CUDA_FLAGS " --compiler-options -rdynamic --compiler-options -lineinfo")
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -222,7 +222,7 @@ if(K2_WITH_CUDA)
   message(STATUS "K2_COMPUTE_ARCHS: ${K2_COMPUTE_ARCHS}")
 
   foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
+    string(APPEND CMAKE_CUDA_FLAGS " --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
     set(CMAKE_CUDA_ARCHITECTURES "${COMPUTE_ARCH}-real;${COMPUTE_ARCH}-virtual;${CMAKE_CUDA_ARCHITECTURES}")
   endforeach()
 # ========= Settings for CUB end=========
@@ -260,18 +260,19 @@ if(K2_WITH_CUDA)
 endif()
 
 include(googletest)
+include(sentencepiece)
 
 if(K2_WITH_CUDA)
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -Wall --compiler-options -Wno-unknown-pragmas --compiler-options -Wno-strict-overflow")
+  string(APPEND CMAKE_CUDA_FLAGS " --compiler-options -Wall --compiler-options -Wno-unknown-pragmas --compiler-options -Wno-strict-overflow")
   message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 endif()
 
 if(NOT K2_WITH_CUDA AND NOT WIN32)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable")
+  string(APPEND CMAKE_CXX_FLAGS " -Wno-unused-variable")
 endif()
 
 if(NOT WIN32)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
+  string(APPEND CMAKE_CXX_FLAGS " -Wno-strict-overflow")
 endif()
 
 if(WIN32)
@@ -291,7 +292,7 @@ if(WIN32)
   # 4005: macro redefinition
   # 4722: destructor never returns
   # 4018: signed/unsigned mismatch
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4996 /wd4224 /wd4099 /wd4267 /wd4305 /wd4244 /wd4624 /wd4551 /wd4067 /wd4819 /wd4005 /wd4722 /wd4018")
+  string(APPEND CMAKE_CXX_FLAGS " /wd4068 /wd4996 /wd4224 /wd4099 /wd4267 /wd4305 /wd4244 /wd4624 /wd4551 /wd4067 /wd4819 /wd4005 /wd4722 /wd4018")
 endif()
 
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
