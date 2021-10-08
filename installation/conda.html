@@ -5,7 +5,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Install using conda (Linux/macOS/Windows) &mdash; k2 1.9 documentation</title>
+  <title>Install using conda (Linux/macOS) &mdash; k2 1.9 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -45,7 +45,7 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Installation</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Install using conda (Linux/macOS/Windows)</a><ul>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Install using conda (Linux/macOS)</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#supported-versions">Supported versions</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#search-for-available-versions">Search for available versions</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#detailed-installation-instructions">Detailed installation instructions</a></li>
@@ -78,7 +78,7 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
           <li><a href="index.html">Installation</a> &raquo;</li>
-      <li>Install using conda (Linux/macOS/Windows)</li>
+      <li>Install using conda (Linux/macOS)</li>
       <li class="wy-breadcrumbs-aside">
               <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/installation/conda.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
@@ -88,8 +88,12 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="install-using-conda-linux-macos-windows">
-<span id="install-using-conda"></span><h1>Install using conda (Linux/macOS/Windows)<a class="headerlink" href="#install-using-conda-linux-macos-windows" title="Permalink to this headline"></a></h1>
+  <section id="install-using-conda-linux-macos">
+<span id="install-using-conda"></span><h1>Install using conda (Linux/macOS)<a class="headerlink" href="#install-using-conda-linux-macos" title="Permalink to this headline"></a></h1>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>Windows is currently not supported.</p>
+</div>
 <p>All you need is the following line</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda install -c k2-fsa -c pytorch -c conda-forge k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.1 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
 </pre></div>
@@ -116,6 +120,17 @@ python3 -m k2.version  <span class="c1"># now it should work</span>
 </pre></div>
 </div>
 </div></blockquote>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>If you encounter the following error:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ne">ModuleNotFoundError</span><span class="p">:</span> <span class="n">no</span> <span class="n">module</span> <span class="n">named</span> <span class="n">graphviz</span>
+</pre></div>
+</div>
+<p>Please run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">c</span> <span class="n">anaconda</span> <span class="n">graphviz</span>
+</pre></div>
+</div>
 </div>
 <p>Read the following if you want to learn more.</p>
 <section id="supported-versions">
