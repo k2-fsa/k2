@@ -26,10 +26,19 @@ target_include_directories(_k2 PRIVATE ${CMAKE_SOURCE_DIR})
 target_include_directories(_k2 PRIVATE ${CMAKE_BINARY_DIR})
 set_property(TARGET _k2 PROPERTY CXX_VISIBILITY_PRESET "default")
 
+# To make symbols visible in unit test right now, will remove it when we fix
+# the python dependencies.
+add_library(k2_internal ${k2_srcs})
+target_link_libraries(k2_internal PUBLIC context)
+target_link_libraries(k2_internal PUBLIC fsa)
+target_include_directories(k2_internal PUBLIC ${CMAKE_SOURCE_DIR})
+target_include_directories(k2_internal PUBLIC ${CMAKE_BINARY_DIR})
+
 #---------------------------- Test torch CUDA sources ----------------------------
 
 # please sort the source files alphabetically
 set(torch_cuda_test_srcs
+  torch/v2/graph_test.cu
   torch/v2/ragged_arc_test.cu
 )
 if(NOT K2_WITH_CUDA)
@@ -43,10 +52,9 @@ function(torch_add_cuda_test source)
   set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
   target_link_libraries(${target_name}
     PRIVATE
-    _k2
-    context
-    fsa
+    k2_internal
     gtest
+    test_utils
   )
 
   # NOTE: We set the working directory here so that

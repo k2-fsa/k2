@@ -62,8 +62,10 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
   RaggedArc() = default;
 
   explicit RaggedArc(const Ragged<Arc> &fsa) : fsa(fsa) {}
-  RaggedArc(const Ragged<Arc> &fsa, torch::Tensor scores)
-      : fsa(fsa), scores(scores) {}
+  // RaggedArc(const Ragged<Arc> &fsa, torch::Tensor scores)
+  //: fsa(fsa), scores(scores) {}
+  RaggedArc(const Ragged<Arc> &fsa, torch::Tensor aux_labels);
+  RaggedArc(const Ragged<Arc> &fsa, RaggedAny &aux_labels);
 
   // TODO: support more options, e.g.,
   /* Construct a RaggedArc from a string.
