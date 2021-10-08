@@ -74,7 +74,20 @@ RaggedArc CtcTopo(int32_t max_token, torch::optional<torch::Device> device = {},
           the same as `symbols.any.Dim0()` and on the same device as symbols.
  */
 RaggedArc CtcGraphs(RaggedAny &symbols, bool modified = false);
+RaggedArc CtcGraphs(const std::vector<std::vector<int32_t>> &symbols,
+                    torch::optional<torch::Device> device = {},
+                    bool modified = false);
 
+RaggedArc LinearFsa(RaggedAny &lables);
+RaggedArc LinearFsa(const std::vector<int32_t> &labels,
+                    torch::optional<torch::Device> device = {});
+RaggedArc LinearFsa(const std::vector<std::vector<int32_t>> &labels,
+                    torch::optional<torch::Device> device = {});
+
+RaggedArc LevenshteinGraphs(RaggedAny &symbols, float ins_del_score = -0.501);
+RaggedArc LevenshteinGraphs(const std::vector<std::vector<int32_t>> &symbols,
+                            float ins_del_score = -0.501,
+                            torch::optional<torch::Device> deivce = {});
 }  // namespace k2
 
 #endif  // K2_PYTHON_CSRC_TORCH_V2_GRAPH_H_

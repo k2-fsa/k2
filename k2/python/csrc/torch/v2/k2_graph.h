@@ -20,8 +20,8 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_V2_K2_GRAPHS_H_
-#define K2_PYTHON_CSRC_TORCH_V2_K2_GRAPHS_H_
+#ifndef K2_PYTHON_CSRC_TORCH_V2_K2_GRAPH_H_
+#define K2_PYTHON_CSRC_TORCH_V2_K2_GRAPH_H_
 
 #include "k2/python/csrc/torch.h"
 
@@ -30,4 +30,4 @@ namespace k2 {
 void PybindK2Graphs(py::module &m);
 
 }  // namespace k2
-#endif  // K2_PYTHON_CSRC_TORCH_V2_K2_GRAPHS_H_
+#endif  // K2_PYTHON_CSRC_TORCH_V2_K2_GRAPH_H_

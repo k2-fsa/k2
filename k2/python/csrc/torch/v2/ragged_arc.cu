@@ -72,13 +72,11 @@ RaggedArc::RaggedArc(
 RaggedArc::RaggedArc(const Ragged<Arc> &fsa, torch::Tensor aux_labels)
     : fsa(fsa) {
   K2_CHECK_EQ(fsa.NumElements(), aux_labels.numel());
-  if (HasAttr("aux_labels")) DeleteAttr("aux_labels");
   SetAttr("aux_labels", aux_labels);
 }
 
 RaggedArc::RaggedArc(const Ragged<Arc> &fsa, RaggedAny &aux_labels) : fsa(fsa) {
   K2_CHECK_EQ(fsa.NumElements(), aux_labels.any.Dim0());
-  if (HasAttr("aux_labels")) DeleteAttr("aux_labels");
   SetAttr("aux_labels", aux_labels);
 }
 

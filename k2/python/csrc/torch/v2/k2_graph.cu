@@ -34,10 +34,96 @@
 namespace k2 {
 
 void PybindK2Graphs(py::module &m) {
-  m.def("ctc_topo", &CtcTopo, py::arg("max_token"), py::arg("device"),
-        py::arg("modified"));
+  m.def("ctc_topo", &CtcTopo, py::arg("max_token"),
+        py::arg("device") = py::none(), py::arg("modified") = false);
 
-  m.def("ctc_graph", &CtcGraphs, py::arg("symbols"), py::arg("modified"));
+  m.def(
+      "ctc_graph",
+      [](RaggedAny &symbols, torch::optional<torch::Device> device = {},
+         bool modified = false) -> RaggedArc {
+        return CtcGraphs(symbols, modified);
+      },
+      py::arg("symbols"), py::arg("device") = py::none(),
+      py::arg("modified") = false);
+
+  m.def(
+      "ctc_graph",
+      [](std::vector<std::vector<int32_t>> &symbols,
+         torch::optional<torch::Device> device = {},
+         bool modified = false) -> RaggedArc {
+        return CtcGraphs(symbols, device, modified);
+      },
+      py::arg("symbols"), py::arg("device") = py::none(),
+      py::arg("modified") = false);
+
+  m.def(
+      "linear_fsa",
+      [](RaggedAny &labels, torch::optional<torch::Device> = {}) -> RaggedArc {
+        return LinearFsa(labels);
+      },
+      py::arg("labels"), py::arg("device") = py::none());
+
+  m.def(
+      "linear_fsa",
+      [](const std::vector<int32_t> &labels,
+         torch::optional<torch::Device> device = {}) -> RaggedArc {
+        return LinearFsa(labels, device);
+      },
+      py::arg("labels"), py::arg("device") = py::none());
+
+  m.def(
+      "linear_fsa",
+      [](const std::vector<int32_t> &labels,
+         torch::optional<std::string> device = {}) -> RaggedArc {
+        return LinearFsa(labels, torch::Device(device.value_or("cpu")));
+      },
+      py::arg("labels"), py::arg("device") = py::none());
+
+  m.def(
+      "linear_fsa",
+      [](const std::vector<std::vector<int32_t>> &labels,
+         torch::optional<torch::Device> device = {}) -> RaggedArc {
+        return LinearFsa(labels);
+      },
+      py::arg("labels"), py::arg("device") = py::none());
+
+  m.def(
+      "linear_fsa",
+      [](const std::vector<std::vector<int32_t>> &labels,
+         torch::optional<std::string> device = {}) -> RaggedArc {
+        return LinearFsa(labels, torch::Device(device.value_or("cpu")));
+      },
+      py::arg("labels"), py::arg("device") = py::none());
+
+  m.def(
+      "levenshtein_graph",
+      [](const std::vector<std::vector<int32_t>> &symbols,
+         float ins_del_score = -0.501,
+         torch::optional<torch::Device> device = {}) -> RaggedArc {
+        return LevenshteinGraphs(symbols, ins_del_score, device);
+      },
+      py::arg("symbols"), py::arg("ins_del_score") = -0.501,
+      py::arg("device") = py::none());
+
+  m.def(
+      "levenshtein_graph",
+      [](const std::vector<std::vector<int32_t>> &symbols,
+         float ins_del_score = -0.501,
+         torch::optional<std::string> device = {}) -> RaggedArc {
+        return LevenshteinGraphs(symbols, ins_del_score,
+                                 torch::Device(device.value_or("cpu")));
+      },
+      py::arg("symbols"), py::arg("ins_del_score") = -0.501,
+      py::arg("device") = py::none());
+
+  m.def(
+      "levenshtein_graph",
+      [](RaggedAny &symbols, float ins_del_score = -0.501,
+         torch::optional<torch::Device> device = {}) -> RaggedArc {
+        return LevenshteinGraphs(symbols, ins_del_score);
+      },
+      py::arg("symbols"), py::arg("ins_del_score") = -0.501,
+      py::arg("device") = py::none());
 }
 
 }  // namespace k2
