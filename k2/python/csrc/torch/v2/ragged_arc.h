@@ -162,6 +162,9 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
   // Set scores, will modify scores in fsa.arcs
   void SetScores(torch::Tensor scores);
 
+  RaggedArc Index(int32_t index);
+  // RaggedArc Arange(int32_t start, int32_t end);
+
   // Get fsa properties.
   int32_t Properties();
   // Get fsa properties as string format.
@@ -306,6 +309,7 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
    */
   void CopyTensorAttrs(const RaggedArc &src, torch::Tensor arc_map,
                        bool over_write = true);
+  void CopyTensorAttrs(const RaggedArc &src, int32_t start, int32_t end);
 
   /* Propagate other attributes from src.
    *
@@ -323,6 +327,7 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
                              bool over_write = true);
   void CopyRaggedTensorAttrs(const RaggedArc &src, RaggedAny &arc_map,
                              bool over_write = true);
+  void CopyRaggedTensorAttrs(const RaggedArc &src, int32_t start, int32_t end);
 
  public:  // we make these functions public since they are called in autograd
           // related functions

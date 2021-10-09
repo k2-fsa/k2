@@ -200,6 +200,30 @@ void RaggedArc::CopyTensorAttrs(const RaggedArc &src, torch::Tensor arc_map,
   }
 }
 
+void RaggedArc::CopyTensorAttrs(const RaggedArc &src, int32_t start,
+                                int32_t end) {
+  K2_CHECK_EQ(fsa.NumAxes(), 3);
+  K2_CHECK_GE(start, 0);
+  K2_CHECK_GE(end, start);
+  K2_CHECK_LT(end, fsa.NumElements());
+  for (const auto &iter : src.tensor_attrs) {
+    auto value = (iter.second).index({torch::indexing::Slice(start, end)});
+    SetAttr(iter.first, value);
+  }
+}
+
+void RaggedArc::CopyRaggedTensorAttrs(const RaggedArc &src, int32_t start,
+                                      int32_t end) {
+  K2_CHECK_EQ(fsa.NumAxes(), 3);
+  K2_CHECK_GE(start, 0);
+  K2_CHECK_GE(end, start);
+  K2_CHECK_LT(end, fsa.NumElements());
+  for (const auto &iter : src.ragged_tensor_attrs) {
+    auto value = const_cast<RaggedAny &>(iter.second).Arange(0, start, end);
+    SetAttr(iter.first, value);
+  }
+}
+
 void RaggedArc::CopyOtherAttrs(const RaggedArc &src,
                                bool over_write /*= true*/) {
   for (const auto &iter : src.other_attrs) {
@@ -537,6 +561,26 @@ void RaggedArc::DeleteAttr(const std::string &name) {
 
 bool RaggedArc::HasAttr(const std::string &name) const {
   return all_attr_names.count(name) > 0;
+}
+
+RaggedArc RaggedArc::Index(int32_t index) {
+  K2_CHECK_EQ(fsa.NumAxes(), 3);
+  K2_CHECK_GE(index, 0);
+  K2_CHECK_LT(index, fsa.Dim0());
+  Ragged<Arc> sub_fsa = fsa.Index(0, index);
+  int32_t start = sub_fsa.values.Data() - fsa.values.Data(),
+          end = start + sub_fsa.values.Dim();
+
+  RaggedArc dest(sub_fsa);
+  // Check the validation of the fsa, will trigger a fatal error if the fsa
+  // is not valid.
+  dest.Properties();
+  dest.CopyTensorAttrs(*this, start, end);
+  dest.CopyRaggedTensorAttrs(*this, start, end);
+  dest.CopyOtherAttrs(*this);
+  PhantomSetScoresFunction::apply(
+      dest, Scores().index({torch::indexing::Slice(start, end)}));
+  return dest;
 }
 
 void RaggedArc::SetFiller(const std::string &name, float filler) {

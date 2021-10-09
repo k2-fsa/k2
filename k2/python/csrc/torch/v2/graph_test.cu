@@ -30,7 +30,7 @@ TEST(GraphTest, CtcTopo) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     auto device = GetDevice(c);
     // Test standard topology
-    RaggedArc topo = CtcTopo(3, device, false);
+    RaggedArc topo = CtcTopo(3, false, device);
 
     torch::Tensor expected_arcs =
         torch::tensor({{0, 0, 0}, {0, 1, 1}, {0, 2, 2}, {0, 3, 3}, {0, 4, -1},
@@ -55,7 +55,7 @@ TEST(GraphTest, CtcTopo) {
                              aux_label_ref));
 
     // Test simplified topology
-    topo = CtcTopo(3, device, true);
+    topo = CtcTopo(3, true, device);
     expected_arcs = torch::tensor({{0, 0, 0},
                                    {0, 0, 1},
                                    {0, 0, 2},
@@ -121,7 +121,7 @@ TEST(GraphTest, CtcGraphs) {
 
     std::vector<std::vector<int32_t>> symbols2({{1, 2, 2, 3}, {1, 2, 3}});
 
-    graph = CtcGraphs(symbols2, device, false);
+    graph = CtcGraphs(symbols2, false, device);
     EXPECT_TRUE(
         torch::allclose(graph.Scores(), torch::zeros_like(graph.Scores())));
 
@@ -160,7 +160,7 @@ TEST(GraphTest, CtcGraphs) {
     EXPECT_TRUE(torch::equal(graph.GetAttr("aux_labels").cast<torch::Tensor>(),
                              aux_labels_ref));
 
-    graph = CtcGraphs(symbols2, device, true);
+    graph = CtcGraphs(symbols2, true, device);
     EXPECT_TRUE(
         torch::allclose(graph.Scores(), torch::zeros_like(graph.Scores())));
 

@@ -28,9 +28,8 @@
 
 namespace k2 {
 
-RaggedArc CtcTopo(int32_t max_token,
-                  torch::optional<torch::Device> device /*= {}*/,
-                  bool modified /*= false*/) {
+RaggedArc CtcTopo(int32_t max_token, bool modified /*= false*/,
+                  torch::optional<torch::Device> device /*= {}*/) {
   ContextPtr context = GetContext(device.value_or(torch::Device(torch::kCPU)));
   DeviceGuard guard(context);
   Array1<int32_t> aux_labels;
@@ -48,8 +47,8 @@ RaggedArc CtcGraphs(RaggedAny &symbols, bool modified /*= false*/) {
 }
 
 RaggedArc CtcGraphs(const std::vector<std::vector<int32_t>> &symbols,
-                    torch::optional<torch::Device> device /*= {}*/,
-                    bool modified /*= false*/) {
+                    bool modified /*= false*/,
+                    torch::optional<torch::Device> device /*= {}*/) {
   ContextPtr context = GetContext(device.value_or(torch::Device(torch::kCPU)));
   Ragged<int32_t> ragged = CreateRagged2<int32_t>(symbols).To(context);
   RaggedAny ragged_any = RaggedAny(ragged.Generic());
