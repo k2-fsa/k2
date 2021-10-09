@@ -8,6 +8,7 @@
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/torch/csrc/dense_fsa_vec.h"
+#include "k2/torch/csrc/deserialization.h"
 #include "k2/torch/csrc/utils.h"
 #include "sentencepiece_processor.h"
 #include "torch/script.h"
@@ -16,6 +17,7 @@
 C10_DEFINE_string(jit_pt, "", "Path to exported jit filename.");
 C10_DEFINE_string(feature_pt, "", "Path to pre-computed feature filename.");
 C10_DEFINE_string(bpe_model, "", "Path to a pretrained BPE model.");
+C10_DEFINE_string(hlg, "", "Path to HLG.pt.");
 // TODO: add more options
 
 // Load a file saved by torch.save(x, filename), where
@@ -76,7 +78,8 @@ int main(int argc, char *argv[]) {
     ./bin/decode \
       --jit_pt <path to exported torch script pt file> \
       --feature_pt <path to precomputed feature pt file> \
-      --bpe_model <path to pretrained BPE model>
+      --bpe_model <path to pretrained BPE model> \
+      --hlg <path to HLG.pt> \
   )";
   torch::SetUsageMessage(usage);
 
@@ -101,6 +104,19 @@ int main(int argc, char *argv[]) {
     std::cout << torch::UsageMessage() << "\n";
     return -1;
   }
+
+  if (FLAGS_hlg.empty()) {
+    std::cout << "Please provide --hlg"
+              << "\n";
+    std::cout << torch::UsageMessage() << "\n";
+    return -1;
+  }
+
+  k2::Fsa HLG = k2::LoadFsa(FLAGS_hlg);
+  K2_LOG(INFO) << k2::FsaToString(HLG);
+  // TODO(fangjun): attach aux labels to HLG
+  // and use HLG for decoding
+  return 0;
 
   torch::jit::script::Module module;
   module = torch::jit::load(FLAGS_jit_pt);

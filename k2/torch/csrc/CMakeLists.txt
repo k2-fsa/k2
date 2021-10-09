@@ -4,6 +4,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 include(transform)
 set(k2_torch_srcs
   dense_fsa_vec.cu
+  deserialization.cu
   utils.cu
 )
 

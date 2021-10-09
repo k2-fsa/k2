@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include "k2/csrc/array.h"
 #include "k2/torch/csrc/utils.h"
 
 namespace k2 {
@@ -53,6 +54,26 @@ ContextPtr ContextFromDevice(torch::Device device) {
 
   K2_CHECK_EQ(device.type(), torch::kCUDA);
   return GetCudaContext(device.index());
+}
+
+template <>
+Array1<Arc> Array1FromTorch<Arc>(torch::Tensor tensor) {
+  K2_CHECK_EQ(tensor.dim(), 2) << "Expected dim: 2. Given: " << tensor.dim();
+  K2_CHECK(tensor.dtype().Match<int32_t>())
+      << "Expected dtype type: " << caffe2::TypeMeta::Make<int32_t>()
+      << ". Given: " << tensor.scalar_type();
+
+  K2_CHECK_EQ(tensor.stride(0), 4) << "Expected stride: 4. "
+                                   << "Given: " << tensor.stride(0);
+
+  K2_CHECK_EQ(tensor.stride(1), 1) << "Expected stride: 1. "
+                                   << "Given: " << tensor.stride(1);
+
+  K2_CHECK_EQ(tensor.numel() % 4, 0);
+
+  auto region = NewRegion(tensor);
+  Array1<Arc> ans(tensor.numel() / 4, region, 0);
+  return ans;
 }
 
 }  // namespace k2
