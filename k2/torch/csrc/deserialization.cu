@@ -31,6 +31,7 @@ namespace k2 {
 
 namespace {
 
+// copied & modified from torch/csrc/jit/serialization/unpickler.cpp
 void restoreAccurateTypeTags(const torch::IValue &root,
                              const torch::jit::TypePtr &type_tag) {
   struct Work {
@@ -143,7 +144,7 @@ void restoreAccurateTypeTags(const torch::IValue &root,
           Work elem = {typ->getAttribute(i), obj->getSlot(i)};
           to_process.emplace_back(std::move(elem));
         }
-      };
+      }
     }
   }
 }
@@ -275,9 +276,9 @@ static void RegisterRaggedInt() {
 // This function is modified from torch::jit::load()
 // See torch/csrc/jit/serialization/import.cpp
 //
-k2::FsaOrVec LoadFsa(const std::string &filename) {
+k2::FsaOrVec LoadFsa(const std::string &filename,
+                     Ragged<int32_t> *ragged_aux_labels /*=nullptr*/) {
   static std::once_flag register_ragged_int_flag;
-
   std::call_once(register_ragged_int_flag, RegisterRaggedInt);
 
   auto rai = std::make_unique<caffe2::serialize::FileAdapter>(filename);
@@ -356,7 +357,7 @@ k2::FsaOrVec LoadFsa(const std::string &filename) {
   // We assume torch.save(fsa.as_dict(), filename) was used
   auto dict = ivalue.toGenericDict();
   Array1<Arc> arcs = Array1FromTorch<Arc>(dict.at("arcs").toTensor());
-  K2_LOG(INFO) << "arcs: " << arcs;
+  // K2_LOG(INFO) << "arcs: " << arcs;
 
   // TODO(fangjun):
   // Handle the following cases:
@@ -368,10 +369,14 @@ k2::FsaOrVec LoadFsa(const std::string &filename) {
   //
   // We are using this function to load HLG.pt, whose aux_labels are ragged
   // tensors.
-  Ragged<int32_t> aux_labels =
-      *dict.at("aux_labels").toCustomClass<RaggedIntHelper>();
+  if (ragged_aux_labels != nullptr && dict.contains("aux_labels") &&
+      dict.at("aux_labels").type() ==
+          c10::getCustomClassType<c10::intrusive_ptr<RaggedIntHelper>>()) {
+    *ragged_aux_labels =
+        *dict.at("aux_labels").toCustomClass<RaggedIntHelper>();
+  }
   // todo: attach aux_labels to the returned FSA
-  K2_LOG(INFO) << "aux_labels:" << aux_labels;
+  // K2_LOG(INFO) << "aux_labels:" << aux_labels;
   bool error = false;
   Fsa fsa = FsaFromArray1(arcs, &error);
   K2_CHECK_EQ(error, false);

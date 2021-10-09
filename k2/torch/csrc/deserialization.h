@@ -33,9 +33,12 @@ namespace k2 {
   Note: `_use_new_zipfile_serialization` is True by default
 
   @param filename Path to the filename produced in Python by `torch.save()`.
+  @param ragged_aux_labels If it is not NULL and the file contains aux_labels as
+            ragged tensors, then return it via this parameter.
   @return Return the FSA contained in the filename.
  */
-k2::FsaOrVec LoadFsa(const std::string &filename);
+k2::FsaOrVec LoadFsa(const std::string &filename,
+                     Ragged<int32_t> *ragged_aux_labels = nullptr);
 
 }  // namespace k2
 

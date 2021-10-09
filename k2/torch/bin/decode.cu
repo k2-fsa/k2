@@ -1,5 +1,7 @@
 #include <cassert>
 #include <cstdio>
+#include <string>
+#include <vector>
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/array_ops.h"
@@ -68,6 +70,64 @@ static torch::Tensor GetSupervisionSegments(torch::IValue supervisions,
   return supervision_segments;
 }
 
+static k2::FsaVec CtcDecoding(k2::FsaVec &ctc_topo,
+                              k2::DenseFsaVec &dense_fsa_vec,
+                              k2::Array1<int32_t> &in_aux_labels,
+                              k2::Array1<int32_t> *out_aux_labels) {
+  K2_CHECK_NE(out_aux_labels, nullptr);
+
+  float search_beam = 20;
+  float output_beam = 8;
+  int32_t min_activate_states = 30;
+  int32_t max_activate_states = 10000;
+  k2::FsaVec lattice;
+  k2::Array1<int32_t> arc_map_a;
+  k2::Array1<int32_t> arc_map_b;
+  k2::IntersectDensePruned(ctc_topo, dense_fsa_vec, search_beam, output_beam,
+                           min_activate_states, max_activate_states, &lattice,
+                           &arc_map_a, &arc_map_b);
+
+  // see Index() in array_ops.h
+  *out_aux_labels =
+      k2::Index(in_aux_labels, arc_map_a, /*allow_minus_one*/ false,
+                /*default_value*/ 0);
+
+  return lattice;
+}
+
+static std::vector<std::string> GetTexts(
+    k2::FsaVec &lattice, k2::Array1<int32_t> &aux_labels,
+    sentencepiece::SentencePieceProcessor &processor) {
+  k2::Ragged<int32_t> state_batches = k2::GetStateBatches(lattice, true);
+  k2::Array1<int32_t> dest_states = k2::GetDestStates(lattice, true);
+  k2::Ragged<int32_t> incoming_arcs = k2::GetIncomingArcs(lattice, dest_states);
+  k2::Ragged<int32_t> entering_arc_batches =
+      k2::GetEnteringArcIndexBatches(lattice, incoming_arcs, state_batches);
+
+  bool log_semiring = false;
+  k2::Array1<int32_t> entering_arcs;
+  k2::GetForwardScores<float>(lattice, state_batches, entering_arc_batches,
+                              log_semiring, &entering_arcs);
+
+  k2::Ragged<int32_t> best_path_arc_indexes =
+      k2::ShortestPath(lattice, entering_arcs);
+
+  // See Index() in ragged_ops.h
+  k2::Ragged<int32_t> ragged_aux_labels =
+      k2::Index(aux_labels, best_path_arc_indexes);
+  ragged_aux_labels = k2::RemoveValuesLeq(ragged_aux_labels, 0);
+
+  std::vector<std::vector<int32_t>> aux_labels_vec =
+      ragged_aux_labels.ToVecVec();
+  std::vector<std::string> ans;
+  for (const auto &ids : aux_labels_vec) {
+    std::string text;
+    processor.Decode(ids, &text);
+    ans.emplace_back(std::move(text));
+  }
+  return ans;
+}
+
 int main(int argc, char *argv[]) {
   // see
   // https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html
@@ -112,12 +172,6 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  k2::Fsa HLG = k2::LoadFsa(FLAGS_hlg);
-  K2_LOG(INFO) << k2::FsaToString(HLG);
-  // TODO(fangjun): attach aux labels to HLG
-  // and use HLG for decoding
-  return 0;
-
   torch::jit::script::Module module;
   module = torch::jit::load(FLAGS_jit_pt);
   module.eval();
@@ -160,64 +214,36 @@ int main(int argc, char *argv[]) {
 
   k2::ContextPtr ctx = k2::ContextFromTensor(nnet_output);
 
-  // We first try CTC decoding
+  k2::Fsa lattice;
+  bool use_ctc_decoding = true;
   k2::Array1<int32_t> aux_labels;
-  k2::Fsa ctc_topo = k2::CtcTopo(ctx, nnet_output.size(2) - 1,
-                                 /*modified*/ false, &aux_labels);
-  ctc_topo = k2::FsaToFsaVec(ctc_topo);
 
-  float search_beam = 20;
-  float output_beam = 8;
-  int32_t min_activate_states = 30;
-  int32_t max_activate_states = 10000;
-  k2::FsaVec lattice;
-  k2::Array1<int32_t> arc_map_a;
-  k2::Array1<int32_t> arc_map_b;
-  k2::IntersectDensePruned(ctc_topo, dense_fsa_vec, search_beam, output_beam,
-                           min_activate_states, max_activate_states, &lattice,
-                           &arc_map_a, &arc_map_b);
-  // see Index() in array_ops.h
-  aux_labels = k2::Index(aux_labels, arc_map_a, /*allow_minus_one*/ false,
-                         /*default_value*/ 0);
-
-  k2::Ragged<int32_t> state_batches = k2::GetStateBatches(lattice, true);
-  k2::Array1<int32_t> dest_states = k2::GetDestStates(lattice, true);
-  k2::Ragged<int32_t> incoming_arcs = k2::GetIncomingArcs(lattice, dest_states);
-  k2::Ragged<int32_t> entering_arc_batches =
-      k2::GetEnteringArcIndexBatches(lattice, incoming_arcs, state_batches);
-
-  bool log_semiring = false;
-  k2::Array1<int32_t> entering_arcs;
-  k2::GetForwardScores<float>(lattice, state_batches, entering_arc_batches,
-                              log_semiring, &entering_arcs);
-
-  k2::Ragged<int32_t> best_path_arc_indexes =
-      k2::ShortestPath(lattice, entering_arcs);
-
-  // See Index() in ragged_ops.h
-  k2::Ragged<int32_t> ragged_aux_labels =
-      k2::Index(aux_labels, best_path_arc_indexes);
-  ragged_aux_labels = k2::RemoveValuesLeq(ragged_aux_labels, 0);
-
-  // TODO: convert a Ragged<int32_t> to a std::vector<std::vector<int32_t>>
-
-  std::vector<int32_t> aux_labels_vec(
-      ragged_aux_labels.values.Data(),
-      ragged_aux_labels.values.Data() + ragged_aux_labels.values.Dim());
+  if (use_ctc_decoding) {
+    k2::Fsa ctc_topo = k2::CtcTopo(ctx, nnet_output.size(2) - 1,
+                                   /*modified*/ false, &aux_labels);
+    ctc_topo = k2::FsaToFsaVec(ctc_topo);
+    lattice = CtcDecoding(ctc_topo, dense_fsa_vec, aux_labels, &aux_labels);
+  } else {
+    // TODO(fangjun): We will eventually use an FSA wrapper to
+    // associate attributes with an FSA.
+    k2::Ragged<int32_t> HLG_aux_labels;
+    k2::Fsa HLG = k2::LoadFsa(FLAGS_hlg, &HLG_aux_labels);
+    K2_LOG(INFO) << HLG.NumElements();
+    K2_LOG(INFO) << HLG_aux_labels.NumElements();
+    // TODO(fangjun): attach aux labels to HLG
+    // and use HLG for decoding
+  }
 
   sentencepiece::SentencePieceProcessor processor;
   const auto status = processor.Load(FLAGS_bpe_model);
   if (!status.ok()) {
     K2_LOG(FATAL) << status.ToString();
   }
-  std::string text;
-  processor.Decode(aux_labels_vec, &text);
-  // NOTE: text contains the concatenated transcripts from all utterances.
-  K2_LOG(INFO) << text;
 
-  // TODO:
-  // Get aux_labels from the lattice and use sentence piece APIs to turn them
-  // into words
+  auto texts = GetTexts(lattice, aux_labels, processor);
+  for (const auto &text : texts) {
+    K2_LOG(INFO) << text;
+  }
 
   // clang-format off
   // TODO(fangjun):
