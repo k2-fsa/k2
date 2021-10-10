@@ -5,6 +5,7 @@ include(transform)
 set(k2_torch_srcs
   dense_fsa_vec.cu
   deserialization.cu
+  symbol_table.cu
   utils.cu
 )
 
