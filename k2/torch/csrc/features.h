@@ -34,10 +34,10 @@ namespace k2 {
 torch::Tensor ComputeFeatures(kaldifeat::Fbank &fbank, torch::Tensor wave_data);
 
 /// See `ComputeFeatures` above. It computes fbank features for a list
-/// of audio sample, in parallel.
+/// of audio samples, in parallel.
 ///
 /// @params num_frames If not null, it contains the number of feature frames of
-/// each wave
+///                    each wave.
 std::vector<torch::Tensor> ComputeFeatures(
     kaldifeat::Fbank &fbank, const std::vector<torch::Tensor> &wave_data,
     std::vector<int64_t> *num_frames = nullptr);
