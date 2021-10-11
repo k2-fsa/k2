@@ -18,6 +18,7 @@
 #include "torch/script.h"
 #include "torch/utils.h"
 
+C10_DEFINE_bool(use_gpu, false, "True to use GPU. False to use CPU");
 C10_DEFINE_string(jit_pt, "", "Path to exported jit filename.");
 C10_DEFINE_string(
     bpe_model, "",
@@ -43,6 +44,16 @@ C10_DEFINE_double(frame_length_ms, 25.0,
 C10_DEFINE_int(num_bins, 80, "Number of triangular bins for computing Fbank");
 
 static void CheckArgs() {
+#if !defined(K2_WITH_CUDA)
+  if (FLAGS_use_gpu) {
+    std::cerr << "k2 was not compiled with CUDA"
+              << "\n";
+    std::cerr << "Please use --use_gpu 0"
+              << "\n";
+    exit(EXIT_FAILURE);
+  }
+#endif
+
   if (FLAGS_jit_pt.empty()) {
     std::cerr << "Please provide --jit_pt"
               << "\n";
@@ -96,11 +107,21 @@ int main(int argc, char *argv[]) {
       /path/to/foo.wav \
       /path/to/bar.wav \
       <more wave files if any>
+
+   --use_gpu 0 to use CPU
+   --use_gpu 1 to use GPU
   )";
   torch::SetUsageMessage(usage);
 
   torch::ParseCommandLineFlags(&argc, &argv);
   CheckArgs();
+
+  torch::Device device(torch::kCPU);
+  if (FLAGS_use_gpu) {
+    device = torch::Device(torch::kCUDA, 0);
+  }
+
+  K2_LOG(INFO) << "Device: " << device;
 
   int32_t num_waves = argc - 1;
   K2_CHECK_GE(num_waves, 1) << "You have to provided at least one wave file";
@@ -115,11 +136,16 @@ int main(int argc, char *argv[]) {
   fbank_opts.frame_opts.frame_shift_ms = FLAGS_frame_shift_ms;
   fbank_opts.frame_opts.frame_length_ms = FLAGS_frame_length_ms;
   fbank_opts.mel_opts.num_bins = FLAGS_num_bins;
+  fbank_opts.device = device;
 
   kaldifeat::Fbank fbank(fbank_opts);
 
   K2_LOG(INFO) << "Load wave files";
   auto wave_data = k2::ReadWave(wave_filenames, FLAGS_sample_rate);
+
+  for (auto &w : wave_data) {
+    w = w.to(device);
+  }
 
   K2_LOG(INFO) << "Compute features";
   std::vector<int64_t> num_frames;
@@ -132,6 +158,7 @@ int main(int argc, char *argv[]) {
   K2_LOG(INFO) << "Load neural network model";
   torch::jit::script::Module module = torch::jit::load(FLAGS_jit_pt);
   module.eval();
+  module.to(device);
 
   int32_t subsampling_factor = module.attr("subsampling_factor").toInt();
   torch::Dict<std::string, torch::Tensor> sup;
@@ -178,6 +205,7 @@ int main(int argc, char *argv[]) {
     // TODO(fangjun): We will eventually use an FSA wrapper to
     // associate attributes with an FSA.
     decoding_graph = k2::LoadFsa(FLAGS_hlg, &ragged_aux_labels);
+    decoding_graph = decoding_graph.To(ctx);
   }
 
   K2_LOG(INFO) << "Decoding";

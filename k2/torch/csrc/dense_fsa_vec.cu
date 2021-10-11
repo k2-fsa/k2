@@ -19,6 +19,7 @@
 #include "k2/csrc/log.h"
 #include "k2/torch/csrc/dense_fsa_vec.h"
 #include "k2/torch/csrc/utils.h"
+#include "torch/script.h"
 
 namespace k2 {
 
@@ -133,7 +134,7 @@ DenseFsaVec CreateDenseFsaVec(torch::Tensor log_probs,
           /*options*/ torch::device(torch::kCPU).dtype(torch::kFloat32))
           .to(log_probs.device());
 
-  scores.index_put_(extra_frame_indexes_tensor, extra_frame);
+  scores.index_put_({extra_frame_indexes_tensor}, extra_frame);
 
   // Now compute row splits so that we can create a ragged shape
   std::vector<int32_t> row_splits(num_utt + 1);
