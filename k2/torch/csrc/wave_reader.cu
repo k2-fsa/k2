@@ -39,7 +39,7 @@ struct WaveHeader {
     K2_CHECK_EQ(subchunk1_id, 0x20746d66);
     K2_CHECK_EQ(subchunk1_size, 16);  // 16 for PCM
     K2_CHECK_EQ(audio_format, 1);     // 1 for PCM
-    K2_CHECK_EQ(num_channels, 1);     // we support only mono channel for now
+    K2_CHECK_EQ(num_channels, 1);     // we support only single channel for now
     K2_CHECK_EQ(byte_rate, sample_rate * num_channels * bits_per_sample / 8)
         << "byte_rate: " << byte_rate << ", "
         << "sample_rate: " << sample_rate << ", "
@@ -80,17 +80,32 @@ WaveReader::WaveReader(const std::string &filename) {
 
   sample_rate_ = header.sample_rate;
 
-  torch::TensorOptions opts = torch::device(torch::kCPU).dtype(torch::kShort);
-
   // header.subchunk2_size contains the number of bytes in the data.
   // As we assume each sample contains two bytes, so it is divided by 2 here
-  data_ = torch::empty({header.subchunk2_size / 2}, opts);
+  data_ = torch::empty({header.subchunk2_size / 2}, torch::kShort);
 
   is.read(reinterpret_cast<char *>(data_.data_ptr<int16_t>()),
           header.subchunk2_size);
 
   K2_CHECK((bool)is) << "Failed to read wave samples";
   data_ = (data_ / 32768.).to(torch::kFloat32);
+}
+
+torch::Tensor ReadWave(const std::string &filename,
+                       float expected_sample_rate) {
+  WaveReader reader(filename);
+  K2_CHECK_EQ(reader.SampleRate(), expected_sample_rate);
+  return reader.Data();
+}
+
+std::vector<torch::Tensor> ReadWave(const std::vector<std::string> &filenames,
+                                    float expected_sample_rate) {
+  std::vector<torch::Tensor> ans;
+  ans.reserve(filenames.size());
+  for (const auto &path : filenames) {
+    ans.emplace_back(ReadWave(path, expected_sample_rate));
+  }
+  return ans;
 }
 
 }  // namespace k2

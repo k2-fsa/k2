@@ -261,6 +261,7 @@ endif()
 
 include(googletest)
 include(sentencepiece)
+include(kaldifeat)
 
 if(K2_WITH_CUDA)
   string(APPEND CMAKE_CUDA_FLAGS " --compiler-options -Wall --compiler-options -Wno-unknown-pragmas --compiler-options -Wno-strict-overflow")

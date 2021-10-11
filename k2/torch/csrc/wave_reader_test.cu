@@ -32,7 +32,7 @@ static std::string CreateTestWav() {
   std::string filename = std::tmpnam(nullptr);
   std::ofstream of(filename, std::ofstream::binary);
   of.write(reinterpret_cast<const char *>(kTestWav), sizeof(kTestWav));
-  K2_CHECK((bool)of) << "Failed to write filename";
+  K2_CHECK((bool)of) << "Failed to write: " << filename;
   return filename;
 }
 

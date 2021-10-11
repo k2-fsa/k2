@@ -11,14 +11,17 @@
 #include "k2/csrc/ragged_ops.h"
 #include "k2/torch/csrc/dense_fsa_vec.h"
 #include "k2/torch/csrc/deserialization.h"
+#include "k2/torch/csrc/features.h"
 #include "k2/torch/csrc/symbol_table.h"
 #include "k2/torch/csrc/utils.h"
+#include "k2/torch/csrc/wave_reader.h"
+#include "kaldifeat/csrc/feature-fbank.h"
 #include "sentencepiece_processor.h"
+#include "torch/all.h"
 #include "torch/script.h"
 #include "torch/utils.h"
 
 C10_DEFINE_string(jit_pt, "", "Path to exported jit filename.");
-C10_DEFINE_string(feature_pt, "", "Path to pre-computed feature filename.");
 C10_DEFINE_string(
     bpe_model, "",
     "Path to a pretrained BPE model. Needed if --use_ctc_decoding is true");
@@ -26,7 +29,7 @@ C10_DEFINE_bool(use_ctc_decoding, true, "True to use CTC decoding");
 C10_DEFINE_string(hlg, "",
                   "Path to HLG.pt. Needed if --use_ctc_decoding is false");
 C10_DEFINE_string(word_table, "",
-                  "Path to wors.txt. Needed if --use_ctc_decoding is false");
+                  "Path to words.txt. Needed if --use_ctc_decoding is false");
 //
 C10_DEFINE_double(search_beam, 20, "search_beam in IntersectDensePruned");
 C10_DEFINE_double(output_beam, 8, "output_beam in IntersectDensePruned");
@@ -34,6 +37,13 @@ C10_DEFINE_int(min_activate_states, 30,
                "min_activate_states in IntersectDensePruned");
 C10_DEFINE_int(max_activate_states, 10000,
                "max_activate_states in IntersectDensePruned");
+// fbank related
+C10_DEFINE_int(sample_rate, 16000, "Expected sample rate of wave files");
+C10_DEFINE_double(frame_shift_ms, 10.0,
+                  "Frame shift in ms for computing Fbank");
+C10_DEFINE_double(frame_length_ms, 25.0,
+                  "Frame length in ms for computing Fbank");
+C10_DEFINE_int(num_bins, 80, "Number of triangular bins for computing Fbank");
 // TODO: add more options
 
 // Load a file saved by torch.save(x, filename), where
@@ -194,7 +204,6 @@ int main(int argc, char *argv[]) {
   std::string usage = R"(
     ./bin/decode \
       --jit_pt <path to exported torch script pt file> \
-      --feature_pt <path to precomputed feature pt file> \
       --use_ctc_decoding <true|false> \
       --bpe_model <path to pretrained BPE model> \
       --hlg <path to HLG.pt> \
@@ -205,13 +214,6 @@ int main(int argc, char *argv[]) {
   torch::ParseCommandLineFlags(&argc, &argv);
   if (FLAGS_jit_pt.empty()) {
     std::cout << "Please provide --jit_pt"
-              << "\n";
-    std::cout << torch::UsageMessage() << "\n";
-    return -1;
-  }
-
-  if (FLAGS_feature_pt.empty()) {
-    std::cout << "Please provide --feature_pt"
               << "\n";
     std::cout << torch::UsageMessage() << "\n";
     return -1;
@@ -238,25 +240,42 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+  int32_t num_waves = argc - 1;
+  K2_CHECK_GE(num_waves, 1) << "You have to provided at least one wave file";
+  std::vector<std::string> wave_filenames(num_waves);
+  for (int32_t i = 0; i != num_waves; ++i) {
+    wave_filenames[i] = argv[i + 1];
+  }
+
+  kaldifeat::FbankOptions fbank_opts;
+  fbank_opts.frame_opts.samp_freq = FLAGS_sample_rate;
+  fbank_opts.frame_opts.dither = 0;
+  fbank_opts.frame_opts.frame_shift_ms = FLAGS_frame_shift_ms;
+  fbank_opts.frame_opts.frame_length_ms = FLAGS_frame_length_ms;
+  fbank_opts.mel_opts.num_bins = FLAGS_num_bins;
+
+  kaldifeat::Fbank fbank(fbank_opts);
+
+  auto wave_data = k2::ReadWave(wave_filenames, FLAGS_sample_rate);
+  std::vector<int64_t> num_frames;
+  auto features_vec = k2::ComputeFeatures(fbank, wave_data, &num_frames);
+
+  // Note: math.log(1e-10) is -23.025850929940457
+  auto features = torch::nn::utils::rnn::pad_sequence(features_vec, true,
+                                                      -23.025850929940457f);
+
   torch::jit::script::Module module;
   module = torch::jit::load(FLAGS_jit_pt);
   module.eval();
 
   int32_t subsampling_factor = module.attr("subsampling_factor").toInt();
 
-  torch::IValue features = Load(FLAGS_feature_pt);
-  assert(features.isTensor() == true);
-
   torch::Dict<std::string, torch::Tensor> sup;
-  {
-    torch::IValue _sup = Load("sup.pt");
-    assert(_sup.isGenericDict() == true);
-
-    torch::Dict<torch::IValue, torch::IValue> dict = _sup.toGenericDict();
-    sup.insert("sequence_idx", dict.at("sequence_idx").toTensor());
-    sup.insert("start_frame", dict.at("start_frame").toTensor());
-    sup.insert("num_frames", dict.at("num_frames").toTensor());
-  }
+  sup.insert("sequence_idx", torch::arange(num_waves, torch::kInt));
+  sup.insert("start_frame", torch::zeros({num_waves}, torch::kInt));
+  sup.insert("num_frames",
+             torch::from_blob(num_frames.data(), {num_waves}, torch::kLong)
+                 .to(torch::kInt));
 
   torch::IValue supervisions(sup);
 
@@ -329,16 +348,14 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  for (const auto &text : texts) {
-    K2_LOG(INFO) << text;
+  std::ostringstream os;
+  os << "\nDecoding result:\n\n";
+  for (int32_t i = 0; i != num_waves; ++i) {
+    os << wave_filenames[i] << "\n";
+    os << texts[i];
+    os << "\n\n";
   }
+  K2_LOG(INFO) << os.str();
 
-  // clang-format off
-  // TODO(fangjun):
-  // [x] Use faked data to test "module" and compare its outputs with that from Python
-  // [ ] Use some third party library to read wave files (or write our own)
-  // [ ] Use kaldifeat to compute features
-  // [ ] Inplement CTC decoding
-  // [ ] Inplement HLG decoding
-  // clang-format on
+  return 0;
 }

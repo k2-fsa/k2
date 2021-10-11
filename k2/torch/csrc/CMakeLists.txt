@@ -5,6 +5,7 @@ include(transform)
 set(k2_torch_srcs
   dense_fsa_vec.cu
   deserialization.cu
+  features.cu
   symbol_table.cu
   utils.cu
   wave_reader.cu
@@ -15,7 +16,7 @@ if(NOT K2_WITH_CUDA)
 endif()
 
 add_library(k2_torch ${k2_torch_srcs})
-target_link_libraries(k2_torch PUBLIC ${TORCH_LIBRARIES} context)
+target_link_libraries(k2_torch PUBLIC ${TORCH_LIBRARIES} context kaldifeat_core)
 
 # Please sort files alphabetically
 set(k2_torch_test_srcs

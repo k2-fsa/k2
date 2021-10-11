@@ -53,6 +53,21 @@ class WaveReader {
   float sample_rate_;
 };
 
+/** Read a wave file with expected sample rate.
+
+    @param filename Path to a wave file. It MUST be single channel, PCM encoded.
+    @param expected_sample_rate  Expected sample rate of the wave file. If the
+                               sample rate don't match, it throws an exception.
+
+    @return Return a 1-D torch tensor with dtype torch.float32. Samples are
+    normalized to the range [-1, 1).
+ */
+torch::Tensor ReadWave(const std::string &filename, float expected_sample_rate);
+
+/// Same `ReadWave` above. It supports reading a list of wave files.
+std::vector<torch::Tensor> ReadWave(const std::vector<std::string> &filenames,
+                                    float expected_sample_rate);
+
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_WAVE_READER_H_
