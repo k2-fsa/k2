@@ -20,6 +20,7 @@
  * limitations under the License.
  */
 
+#include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/any.h"
 #include "k2/python/csrc/torch/v2/autograd/ragged_arc_holder.h"
 #include "k2/python/csrc/torch/v2/fsa.h"
@@ -54,6 +55,8 @@ void PybindV2(py::module &m) {
   //
   static auto register_ragged_arc_holder =
       torch::class_<RaggedArcHolder>("MyRaggedArcHolder", "RaggedArcHolder");
+  static auto register_ragged_any_holder =
+      torch::class_<RaggedAnyHolder>("MyRaggedAnyHolder", "RaggedAnyHolder");
 }
 
 }  // namespace k2

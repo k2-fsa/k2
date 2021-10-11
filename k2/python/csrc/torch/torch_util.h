@@ -21,6 +21,7 @@
 #ifndef K2_PYTHON_CSRC_TORCH_TORCH_UTIL_H_
 #define K2_PYTHON_CSRC_TORCH_TORCH_UTIL_H_
 
+#include <memory>
 #include <string>
 
 #include "k2/csrc/array.h"
@@ -28,8 +29,16 @@
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/pytorch_context.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
+#include "torch/torch.h"
 
 namespace k2 {
+
+struct RaggedAnyHolder : public torch::CustomClassHolder {
+  std::shared_ptr<RaggedAny> ragged = nullptr;  // not owned by this class
+  explicit RaggedAnyHolder(std::shared_ptr<RaggedAny> ragged)
+      : ragged(ragged) {}
+};
 
 /* Convert k2::DeviceType to torch::DeviceType.
    Abort on failure.

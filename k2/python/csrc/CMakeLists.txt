@@ -31,6 +31,7 @@ set_property(TARGET _k2 PROPERTY CXX_VISIBILITY_PRESET "default")
 # please sort the source files alphabetically
 set(torch_cuda_test_srcs
   torch/v2/ragged_arc_test.cu
+  torch/v2/pybind_utils_test.cu
 )
 if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE torch_cuda_test_srcs SRCS ${torch_cuda_test_srcs})
