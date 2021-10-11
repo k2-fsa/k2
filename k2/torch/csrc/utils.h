@@ -92,6 +92,9 @@ Array2<T> Array2FromTorch(torch::Tensor tensor) {
   return ans;
 }
 
+// wrapper around torch::jit::pickle_load()
+torch::IValue PickleLoad(const std::string &filename);
+
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_UTILS_H_

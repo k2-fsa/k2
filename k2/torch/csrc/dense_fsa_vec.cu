@@ -150,4 +150,19 @@ DenseFsaVec CreateDenseFsaVec(torch::Tensor log_probs,
   return {shape, scores_array};
 }
 
+torch::Tensor GetSupervisionSegments(torch::IValue supervisions,
+                                     int32_t subsampling_factor) {
+  torch::Dict<torch::IValue, torch::IValue> dict = supervisions.toGenericDict();
+  torch::Tensor sequence_idx = dict.at("sequence_idx").toTensor();
+  torch::Tensor start_frame = torch::floor_divide(
+      dict.at("start_frame").toTensor(), subsampling_factor);
+
+  torch::Tensor num_frames =
+      torch::floor_divide(dict.at("num_frames").toTensor(), subsampling_factor);
+
+  torch::Tensor supervision_segments =
+      torch::stack({sequence_idx, start_frame, num_frames}, 1).to(torch::kCPU);
+  return supervision_segments;
+}
+
 }  // namespace k2

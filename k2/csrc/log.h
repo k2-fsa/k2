@@ -34,11 +34,13 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <cstdlib>
 #include <mutex>  // NOLINT
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <iostream>
 #include <vector>
 
 #include "k2/csrc/macros.h"
@@ -59,6 +61,9 @@ template <typename T>
 std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec);
 
 namespace internal {
+
+// Return a string like 20
+std::string GetTimeStamp();
 
 #if defined(NDEBUG)
 constexpr bool kDisableDebug = true;
@@ -107,6 +112,19 @@ std::string GetStackTrace();
  */
 K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel();
 
+/// convert /path/to/k2/k2/csrc to  /k2/csrc
+inline const char *RemovePrefix(const char *filename) {
+  const char *first = strstr(filename, "/k2");
+  const char *second = nullptr;
+
+  do {
+    second = strstr(first + 2, "/k2");
+    if (second != nullptr) first = second;
+  } while (second);
+
+  return first + 1;
+}
+
 class Logger {
  public:
   K2_CUDA_HOSTDEV Logger(const char *filename, const char *func_name,
@@ -116,6 +134,12 @@ class Logger {
         line_num_(line_num),
         level_(level) {
     cur_level_ = GetCurrentLogLevel();
+#if !defined(__CUDA_ARCH__)
+    filename_ = RemovePrefix(filename);
+    if (cur_level_ <= level_) {
+      printf("%s ", GetTimeStamp().c_str());
+    }
+#endif
     switch (level) {
       case TRACE:
         if (cur_level_ <= TRACE) printf("[T] ");
@@ -138,7 +162,7 @@ class Logger {
     }
 
     if (cur_level_ <= level_) {
-      printf("%s:%u:%s ", filename, line_num, func_name);
+      printf("%s:%u:%s ", filename_, line_num, func_name);
 #if defined(__CUDA_ARCH__)
       printf("block:[%u,%u,%u], thread: [%u,%u,%u] ", blockIdx.x, blockIdx.y,
              blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z);

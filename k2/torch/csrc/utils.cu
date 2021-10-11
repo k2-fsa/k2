@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 
+#include "caffe2/serialize/file_adapter.h"
+#include "caffe2/serialize/inline_container.h"
 #include "k2/csrc/array.h"
 #include "k2/torch/csrc/utils.h"
 
@@ -74,6 +76,16 @@ Array1<Arc> Array1FromTorch<Arc>(torch::Tensor tensor) {
   auto region = NewRegion(tensor);
   Array1<Arc> ans(tensor.numel() / 4, region, 0);
   return ans;
+}
+
+torch::IValue PickleLoad(const std::string &filename) {
+  auto rai = std::make_unique<caffe2::serialize::FileAdapter>(filename);
+  auto reader = torch::make_unique<caffe2::serialize::PyTorchStreamReader>(
+      std::move(rai));
+  return torch::jit::readArchiveAndTensors("data",
+                                           /*class_resolver=*/torch::nullopt,
+                                           /*obj_loader=*/torch::nullopt,
+                                           /*device=*/c10::nullopt, *reader);
 }
 
 }  // namespace k2

@@ -3,6 +3,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 # it is located in k2/csrc/cmake/transform.cmake
 include(transform)
 set(k2_torch_srcs
+  decode.cu
   dense_fsa_vec.cu
   deserialization.cu
   features.cu

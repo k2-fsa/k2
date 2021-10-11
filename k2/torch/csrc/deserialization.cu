@@ -198,8 +198,7 @@ bool checkHasValidSetGetState(const std::shared_ptr<c10::ClassType> &cls) {
   K2_CHECK(get_type->isSubtypeOf(set_type))
       << "'__getstate__'s return type (" << get_type->annotation_str()
       << ") does not match '__setstate__'s argument type ("
-      << set_type->annotation_str(),
-      ")";
+      << set_type->annotation_str() << ")";
 
   return true;
 }

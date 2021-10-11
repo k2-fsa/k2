@@ -68,6 +68,19 @@ DenseFsaVec CreateDenseFsaVec(torch::Tensor log_probs,
                               torch::Tensor supervision_segments,
                               int32_t allow_truncate = 0);
 
+// See
+// https://github.com/lhotse-speech/lhotse/blob/master/lhotse/dataset/speech_recognition.py#L32
+// for the format of "supervisions"
+//
+// @param supervisions A dict containing keys and values shown in the following:
+//                     - sequence_idx: torch.Tensor
+//                     - start_frame: torch.Tensor
+//                     - num_frames: torch.Tensor
+// @return Return a 2-D torch.int32 tensor that can be used to construct a
+//  DenseFsaVec. See `k2::CreateDenseFsaVec()`
+torch::Tensor GetSupervisionSegments(torch::IValue supervisions,
+                                     int32_t subsampling_factor);
+
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_DENSE_FSA_VEC_H_
