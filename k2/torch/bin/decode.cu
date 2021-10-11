@@ -206,6 +206,7 @@ int main(int argc, char *argv[]) {
     // associate attributes with an FSA.
     decoding_graph = k2::LoadFsa(FLAGS_hlg, &ragged_aux_labels);
     decoding_graph = decoding_graph.To(ctx);
+    ragged_aux_labels = ragged_aux_labels.To(ctx);
   }
 
   K2_LOG(INFO) << "Decoding";

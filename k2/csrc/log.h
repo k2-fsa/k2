@@ -62,7 +62,7 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec);
 
 namespace internal {
 
-// Return a string like 20
+// Return a string like 2021-10-12 00:19:39.265
 std::string GetTimeStamp();
 
 #if defined(NDEBUG)
