@@ -7,6 +7,7 @@ set(k2_torch_srcs
   deserialization.cu
   symbol_table.cu
   utils.cu
+  wave_reader.cu
 )
 
 if(NOT K2_WITH_CUDA)
@@ -19,6 +20,7 @@ target_link_libraries(k2_torch PUBLIC ${TORCH_LIBRARIES} context)
 # Please sort files alphabetically
 set(k2_torch_test_srcs
   dense_fsa_vec_test.cu
+  wave_reader_test.cu
 )
 
 if(NOT K2_WITH_CUDA)
