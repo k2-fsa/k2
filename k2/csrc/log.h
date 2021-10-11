@@ -112,7 +112,7 @@ std::string GetStackTrace();
  */
 K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel();
 
-/// convert /path/to/k2/k2/csrc to  /k2/csrc
+/// convert /path/to/k2/k2/csrc to k2/csrc
 inline const char *RemovePrefix(const char *filename) {
   const char *first = strstr(filename, "/k2");
   const char *second = nullptr;
