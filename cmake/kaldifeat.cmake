@@ -24,8 +24,8 @@ function(download_kaldifeat)
 
   include(FetchContent)
 
-  set(kaldifeat_URL "https://github.com/csukuangfj/kaldifeat/archive/22f2fb7371109fb2e1774bea32ea39b7b737e962.tar.gz")
-  set(kaldifeat_HASH "SHA256=10046b45d063ce5359ceda0df819fcbedd370cf91f5f17d7f31b700a070fda62")
+  set(kaldifeat_URL "https://github.com/csukuangfj/kaldifeat/archive/refs/tags/v1.7.tar.gz")
+  set(kaldifeat_HASH "SHA256=c130f48cf90644b52a2f62f7862f58398c7c08380280942b96c6dfdd81997001")
 
   set(kaldifeat_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
