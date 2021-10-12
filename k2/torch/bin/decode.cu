@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
   std::string usage = R"(
   (1) CTC decoding
     ./bin/decode \
-      --use_ctc_decoding 1 \
+      --use_ctc_decoding true \
       --jit_pt <path to exported torch script pt file> \
       --bpe_model <path to pretrained BPE model> \
       /path/to/foo.wav \
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
       <more wave files if any>
   (2) HLG decoding
     ./bin/decode \
-      --use_ctc_decoding 0 \
+      --use_ctc_decoding false \
       --jit_pt <path to exported torch script pt file> \
       --hlg <path to HLG.pt> \
       --word-table <path to words.txt> \
@@ -125,8 +125,8 @@ int main(int argc, char *argv[]) {
       /path/to/bar.wav \
       <more wave files if any>
 
-   --use_gpu 0 to use CPU
-   --use_gpu 1 to use GPU
+   --use_gpu true to use CPU
+   --use_gpu false to use GPU
   )";
   torch::SetUsageMessage(usage);
 
