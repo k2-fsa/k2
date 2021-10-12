@@ -26,6 +26,11 @@
 #include "k2/torch/csrc/deserialization.h"
 #include "k2/torch/csrc/utils.h"
 #include "torch/csrc/jit/serialization/import_source.h"
+#if K2_TORCH_VERSION_MAJOR > 1 || \
+    (K2_TORCH_VERSION_MAJOR == 1 && K2_TORCH_VERSION_MINOR >= 9)
+// for torch::jit::readArchiveAndTensors
+#include "torch/csrc/jit/serialization/import_read.h"
+#endif
 
 namespace k2 {
 
@@ -347,16 +352,21 @@ k2::FsaOrVec LoadFsa(const std::string &filename,
     }
   };
 
+#if K2_TORCH_VERSION_MAJOR > 1 || \
+    (K2_TORCH_VERSION_MAJOR == 1 && K2_TORCH_VERSION_MINOR >= 9)
+  torch::IValue ivalue = torch::jit::readArchiveAndTensors(
+      "data", "", "", type_resolver, obj_loader,
+      /*device=*/c10::nullopt, *reader);
+
+#else
   torch::IValue ivalue =
-      torch::jit::readArchiveAndTensors("data",
-                                        /*class_resolver=*/type_resolver,
-                                        /*obj_loader=*/obj_loader,
+      torch::jit::readArchiveAndTensors("data", type_resolver, obj_loader,
                                         /*device=*/c10::nullopt, *reader);
+#endif
 
   // We assume torch.save(fsa.as_dict(), filename) was used
   auto dict = ivalue.toGenericDict();
   Array1<Arc> arcs = Array1FromTorch<Arc>(dict.at("arcs").toTensor());
-  // K2_LOG(INFO) << "arcs: " << arcs;
 
   // TODO(fangjun):
   // Handle the following cases:

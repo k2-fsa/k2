@@ -200,23 +200,27 @@ if(K2_WITH_CUDA)
   cuda_select_nvcc_arch_flags(K2_COMPUTE_ARCH_FLAGS)
   message(STATUS "K2_COMPUTE_ARCH_FLAGS: ${K2_COMPUTE_ARCH_FLAGS}")
 
-# set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
-  message(WARNING "arch 62/72 are not supported for now")
-
-  set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
-  set(K2_COMPUTE_ARCHS)
-
-  foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
-    if("${K2_COMPUTE_ARCH_FLAGS}" MATCHES ${COMPUTE_ARCH})
-      message(STATUS "Adding arch ${COMPUTE_ARCH}")
-      list(APPEND K2_COMPUTE_ARCHS ${COMPUTE_ARCH})
-    else()
-      message(STATUS "Skipping arch ${COMPUTE_ARCH}")
-    endif()
-  endforeach()
-
+  # You can use -DK2_COMPUTE_ARCHS="37;50;70" when invoking CMake
   if(NOT K2_COMPUTE_ARCHS)
-    set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
+    # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
+    # message(WARNING "arch 62/72 are not supported for now")
+
+    # refer to https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+    set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
+    set(K2_COMPUTE_ARCHS)
+
+    foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
+      if("${K2_COMPUTE_ARCH_FLAGS}" MATCHES ${COMPUTE_ARCH})
+        message(STATUS "Adding arch ${COMPUTE_ARCH}")
+        list(APPEND K2_COMPUTE_ARCHS ${COMPUTE_ARCH})
+      else()
+        message(STATUS "Skipping arch ${COMPUTE_ARCH}")
+      endif()
+    endforeach()
+
+    if(NOT K2_COMPUTE_ARCHS)
+      set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
+    endif()
   endif()
 
   message(STATUS "K2_COMPUTE_ARCHS: ${K2_COMPUTE_ARCHS}")
