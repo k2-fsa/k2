@@ -18,22 +18,15 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_V2_PYBIND_UTILS_H_
-#define K2_PYTHON_CSRC_TORCH_V2_PYBIND_UTILS_H_
+#include <memory>
 
-#include "k2/python/csrc/k2.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/pybind_utils.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
-#include "torch/csrc/jit/python/pybind_utils.h"
-#include "torch/torch.h"
 
 namespace k2 {
 
-// py::object ToPyObject(torch::IValue value);
-//
-// torch::IValue ToIValue(py::object obj);
-//
-inline py::object ToPyObject(torch::IValue value) {
+py::object ToPyObject(torch::IValue value) {
   if (value.isCustomClass()) {
     torch::intrusive_ptr<RaggedAnyHolder> ragged_any_holder =
         value.toCustomClass<RaggedAnyHolder>();
@@ -45,7 +38,7 @@ inline py::object ToPyObject(torch::IValue value) {
   return py::none();
 }
 
-inline torch::IValue ToIValue(py::object obj) {
+torch::IValue ToIValue(py::object obj) {
   auto inferred_type = torch::jit::tryToInferType(obj);
   if (inferred_type.success()) {
     return torch::jit::toIValue(obj, inferred_type.type());
@@ -63,5 +56,3 @@ inline torch::IValue ToIValue(py::object obj) {
 }
 
 }  // namespace k2
-
-#endif  // K2_PYTHON_CSRC_TORCH_V2_PYBIND_UTILS_H_

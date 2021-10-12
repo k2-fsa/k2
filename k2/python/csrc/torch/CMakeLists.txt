@@ -15,9 +15,11 @@ set(torch_srcs
   v2/k2.cu
   v2/k2_ops.cu
   v2/ops.cu
+  #v2/pybind_utils.cu
   v2/ragged_any.cu
   v2/ragged_arc.cu
   v2/ragged_shape.cu
+  #v2/utils.cu
 )
 
 set(torch_srcs_with_prefix)

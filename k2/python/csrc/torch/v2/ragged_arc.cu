@@ -148,7 +148,7 @@ RaggedArc RaggedArc::FromBinaryFunctionTensor(const RaggedArc &a_src,
                         << "not real-valued, in intersection: " << iter.first;
         continue;
       }
-      auto b_value = b_src.GetAttr(iter.first).cast<torch::Tensor>();
+      auto b_value = b_src.GetAttr(iter.first).toTensor();
       K2_CHECK_EQ(b_value.scalar_type(), torch::kFloat32);
       auto new_value =
           IndexSelectFunction::apply(iter.second, a_arc_map, filler) +
@@ -405,15 +405,15 @@ RaggedArc RaggedArc::ArcSort() /*const*/ {
   return FromUnaryFunctionTensor(*this, arcs, ToTorch<int32_t>(arc_map));
 }
 
-void RaggedArc::SetAttr(const std::string &name, py::object value) {
+void RaggedArc::SetAttr(const std::string &name, torch::IValue value) {
   if (name == "grad") {
     // Note we don't use pybind11's def_property since it does not allow
     // to use argument annotions, which means it is not possible to
     // run: fsa.grad = None
-    if (value.is_none()) {
+    if (value.isNone()) {
       Scores().mutable_grad() = {};
     } else {
-      Scores().mutable_grad() = value.cast<torch::Tensor>();
+      Scores().mutable_grad() = value.toTensor();
     }
     return;
   }
@@ -422,50 +422,44 @@ void RaggedArc::SetAttr(const std::string &name, py::object value) {
 
   all_attr_names.insert(name);
 
-  if (THPVariable_Check(value.ptr())) {
-    torch::Tensor tensor = value.cast<torch::Tensor>();
+  if (value.isTensor()) {
+    torch::Tensor tensor = value.toTensor();
     SetAttr(name, tensor);
     return;
   }
 
-  try {
-    RaggedAny ragged_tensor = value.cast<RaggedAny>();
-    SetAttr(name, ragged_tensor);
+  if (value.isCustomClass()) {
+    torch::intrusive_ptr<RaggedAnyHolder> ragged_any_holder =
+        value.toCustomClass<RaggedAnyHolder>();
+    SetAttr(name, *(ragged_any_holder->ragged));
     return;
-  } catch (const py::cast_error &) {
-    // do nothing.
   }
 
   all_attr_names.insert(name);
   other_attrs[name] = value;
 }
 
-py::object RaggedArc::GetAttr(const std::string &name) const {
+torch::IValue RaggedArc::GetAttr(const std::string &name) const {
   if (name == "grad") {
-    return py::cast(Scores().grad());
+    return torch::IValue(Scores().grad());
   }
 
   if (!HasAttr(name)) {
-    std::ostringstream os;
-    os << "No such attribute '" << name << "'";
-    // It's safe to use c_str() here as it is copied inside PyErr_SetString()
-    //
-    // See https://github.com/python/cpython/blob/main/Python/errors.c#L234
-    PyErr_SetString(PyExc_AttributeError, os.str().c_str());
-    throw py::error_already_set();
+    K2_LOG(ERROR) << "No such attribute '" << name << "'";
   }
 
   {
     auto it = tensor_attrs.find(name);
     if (it != tensor_attrs.end()) {
-      return py::cast(it->second);
+      return torch::IValue(it->second);
     }
   }
 
   {
     auto it = ragged_tensor_attrs.find(name);
     if (it != ragged_tensor_attrs.end()) {
-      return py::cast(it->second);
+      return torch::make_custom_class<RaggedAnyHolder>(
+          std::make_shared<RaggedAny>(it->second));
     }
   }
 
@@ -478,14 +472,7 @@ void RaggedArc::DeleteAttr(const std::string &name) {
     if (it != all_attr_names.end()) {
       all_attr_names.erase(it);
     } else {
-      std::ostringstream os;
-      os << "No such attribute '" << name << "'";
-      // It's safe to use c_str() here as it is copied inside
-      // PyErr_SetString()
-      //
-      // See https://github.com/python/cpython/blob/main/Python/errors.c#L234
-      PyErr_SetString(PyExc_AttributeError, os.str().c_str());
-      throw py::error_already_set();
+      K2_LOG(ERROR) << "No such attribute '" << name << "'";
     }
   }
 

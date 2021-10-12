@@ -31,6 +31,7 @@
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/torch.h"
+#include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
@@ -49,7 +50,7 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
   std::unordered_map<std::string, RaggedAny> ragged_tensor_attrs;
 
   /// All attributes of other types of this FSA
-  std::unordered_map<std::string, py::object> other_attrs;
+  std::unordered_map<std::string, torch::IValue> other_attrs;
 
   /// The name of all attributes of this FSA
   std::unordered_set<std::string> all_attr_names;
@@ -228,7 +229,7 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
     @param name  The attribute name.
     @param value  The attribute value.
    */
-  void SetAttr(const std::string &name, py::object value);
+  void SetAttr(const std::string &name, torch::IValue value);
 
   /** Get an attribute by its name.
 
@@ -237,7 +238,7 @@ struct __attribute__((__visibility__("default"))) RaggedArc {
     @param name The attribute name.
     @return Return the value of the attribute.
    */
-  py::object GetAttr(const std::string &name) const;
+  torch::IValue GetAttr(const std::string &name) const;
 
   /** Delete an attribute by its name.
 

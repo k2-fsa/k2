@@ -25,6 +25,7 @@
 #include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
 #include "k2/python/csrc/torch/v2/ragged_arc.h"
+#include "k2/python/csrc/torch/v2/utils.h"
 #include "pybind11/embed.h"
 
 namespace k2 {
@@ -42,19 +43,20 @@ TEST(RaggedArcTest, FromUnaryFunctionTensor) {
 
     src.SetAttr(
         "float_attr",
-        py::cast(torch::tensor(
+        torch::IValue(torch::tensor(
             {0.1, 0.2, 0.3},
             torch::dtype(torch::kFloat32).device(device).requires_grad(true))));
 
     src.SetAttr("int_attr",
-                py::cast(torch::tensor(
+                torch::IValue(torch::tensor(
                     {1, 2, 3}, torch::dtype(torch::kInt32).device(device))));
 
-    src.SetAttr("ragged_attr", py::cast(RaggedAny("[[1 2 3] [5 6] []]",
-                                                  torch::kInt32, device)));
+    RaggedAny ragged_attr("[[1 2 3] [5 6] []]", torch::kInt32, device);
 
-    src.SetAttr("attr1", py::str("src"));
-    src.SetAttr("attr2", py::str("fsa"));
+    src.SetAttr("ragged_attr", ToIValue(ragged_attr));
+
+    src.SetAttr("attr1", torch::IValue("src"));
+    src.SetAttr("attr2", torch::IValue("fsa"));
 
     Array1<int32_t> arc_map;
     Ragged<Arc> arcs;
@@ -63,7 +65,7 @@ TEST(RaggedArcTest, FromUnaryFunctionTensor) {
                                                    ToTorch<int32_t>(arc_map));
 
     EXPECT_TRUE(torch::allclose(
-        dest.GetAttr("float_attr").cast<torch::Tensor>(),
+        dest.GetAttr("float_attr").toTensor(),
         torch::tensor({0.2, 0.1, 0.3},
                       torch::dtype(torch::kFloat32).device(device))));
 
@@ -73,25 +75,26 @@ TEST(RaggedArcTest, FromUnaryFunctionTensor) {
                       torch::dtype(torch::kFloat32).device(device))));
 
     EXPECT_TRUE(torch::equal(
-        dest.GetAttr("int_attr").cast<torch::Tensor>(),
+        dest.GetAttr("int_attr").toTensor(),
         torch::tensor({2, 1, 3}, torch::dtype(torch::kInt32).device(device))));
 
     RaggedAny expected_ragged_attr =
         RaggedAny("[[5 6] [1 2 3] []]", torch::kInt32, device);
-    EXPECT_EQ(dest.GetAttr("ragged_attr").cast<RaggedAny>().ToString(true),
+
+    EXPECT_EQ(ToRaggedAny(dest.GetAttr("ragged_attr")).ToString(true),
               expected_ragged_attr.ToString(true));
 
-    EXPECT_EQ(dest.GetAttr("attr1").cast<std::string>(),
-              src.GetAttr("attr1").cast<std::string>());
+    EXPECT_EQ(dest.GetAttr("attr1").toStringRef(),
+              src.GetAttr("attr1").toStringRef());
 
-    EXPECT_EQ(dest.GetAttr("attr2").cast<std::string>(),
-              src.GetAttr("attr2").cast<std::string>());
+    EXPECT_EQ(dest.GetAttr("attr2").toStringRef(),
+              src.GetAttr("attr2").toStringRef());
 
     torch::Tensor scale = torch::tensor(
         {10, 20, 30}, torch::dtype(torch::kFloat32).device(device));
 
     torch::Tensor sum_attr =
-        (dest.GetAttr("float_attr").cast<torch::Tensor>() * scale).sum();
+        (dest.GetAttr("float_attr").toTensor() * scale).sum();
     torch::Tensor sum_score = (dest.Scores() * scale).sum();
 
     {
@@ -103,8 +106,8 @@ TEST(RaggedArcTest, FromUnaryFunctionTensor) {
     torch::Tensor expected_grad = torch::tensor(
         {20, 10, 30}, torch::dtype(torch::kFloat32).device(device));
 
-    EXPECT_TRUE(torch::allclose(
-        src.GetAttr("float_attr").cast<torch::Tensor>().grad(), expected_grad));
+    EXPECT_TRUE(torch::allclose(src.GetAttr("float_attr").toTensor().grad(),
+                                expected_grad));
 
     EXPECT_TRUE(torch::allclose(src.Scores().grad(), expected_grad));
   }
@@ -125,23 +128,24 @@ TEST(RaggedArcTest, FromUnaryFunctionRagged) {
 
     RaggedArc src = RaggedArc(s).To(device);
     src.SetScores(scores);
-    src.SetAttr("attr1", py::str("hello"));
-    src.SetAttr("attr2", py::str("k2"));
+    src.SetAttr("attr1", torch::IValue("hello"));
+    src.SetAttr("attr2", torch::IValue("k2"));
 
     torch::Tensor float_attr = torch::tensor(
         {0.1, 0.2, 0.3},
         torch::dtype(torch::kFloat32).device(device).requires_grad(true));
 
-    src.SetAttr("float_attr",
-                py::cast(float_attr.detach().clone().requires_grad_(true)));
+    src.SetAttr(
+        "float_attr",
+        torch::IValue(float_attr.detach().clone().requires_grad_(true)));
 
     src.SetAttr("int_attr",
-                py::cast(torch::tensor(
+                torch::IValue(torch::tensor(
                     {1, 2, 3}, torch::dtype(torch::kInt32).device(device))));
 
-    src.SetAttr("ragged_attr",
-                py::cast(RaggedAny("[[10 20] [30 40 50] [60 70]]",
-                                   torch::kInt32, device)));
+    auto ragged_attr_any =
+        RaggedAny("[[10 20] [30 40 50] [60 70]]", torch::kInt32, device);
+    src.SetAttr("ragged_attr", ToIValue(ragged_attr_any));
 
     Ragged<int32_t> arc_map;
     Ragged<Arc> arcs;
@@ -149,11 +153,11 @@ TEST(RaggedArcTest, FromUnaryFunctionRagged) {
 
     RaggedArc dest = RaggedArc::FromUnaryFunctionRagged(src, arcs, arc_map);
 
-    EXPECT_EQ(dest.GetAttr("attr1").cast<std::string>(),
-              src.GetAttr("attr1").cast<std::string>());
+    EXPECT_EQ(dest.GetAttr("attr1").toStringRef(),
+              src.GetAttr("attr1").toStringRef());
 
-    EXPECT_EQ(dest.GetAttr("attr2").cast<std::string>(),
-              src.GetAttr("attr2").cast<std::string>());
+    EXPECT_EQ(dest.GetAttr("attr2").toStringRef(),
+              src.GetAttr("attr2").toStringRef());
 
     RaggedAny expected_arc_map =
         RaggedAny("[[1] [0 2] [2]]", torch::kInt32, device);
@@ -163,23 +167,23 @@ TEST(RaggedArcTest, FromUnaryFunctionRagged) {
 
     RaggedAny expected_int_attr =
         RaggedAny("[[2] [1 3] [3]]", torch::kInt32, device);
-    EXPECT_EQ(dest.GetAttr("int_attr").cast<RaggedAny>().ToString(true),
+    EXPECT_EQ(ToRaggedAny(dest.GetAttr("int_attr")).ToString(true),
               expected_int_attr.ToString(true));
 
     RaggedAny expected_ragged_attr =
         RaggedAny("[[30 40 50] [10 20 60 70] [60 70]]", torch::kInt32, device);
 
-    EXPECT_EQ(dest.GetAttr("ragged_attr").cast<RaggedAny>().ToString(true),
+    EXPECT_EQ(ToRaggedAny(dest.GetAttr("ragged_attr")).ToString(true),
               expected_ragged_attr.ToString(true));
 
     torch::Tensor expected_float_attr =
-        torch::empty_like(dest.GetAttr("float_attr").cast<torch::Tensor>());
+        torch::empty_like(dest.GetAttr("float_attr").toTensor());
     expected_float_attr[0] = float_attr[1];
     expected_float_attr[1] = float_attr[0] + float_attr[2];
     expected_float_attr[2] = float_attr[2];
 
-    EXPECT_TRUE(torch::allclose(
-        dest.GetAttr("float_attr").cast<torch::Tensor>(), expected_float_attr));
+    EXPECT_TRUE(torch::allclose(dest.GetAttr("float_attr").toTensor(),
+                                expected_float_attr));
 
     torch::Tensor expected_scores = torch::empty_like(dest.Scores());
     expected_scores[0] = scores_copy[1];
@@ -191,7 +195,7 @@ TEST(RaggedArcTest, FromUnaryFunctionRagged) {
     torch::Tensor scale = torch::tensor({10, 20, 30}).to(float_attr);
 
     torch::Tensor float_attr_sum =
-        (dest.GetAttr("float_attr").cast<torch::Tensor>() * scale).sum();
+        (dest.GetAttr("float_attr").toTensor() * scale).sum();
 
     torch::Tensor expected_float_attr_sum = (expected_float_attr * scale).sum();
 
@@ -201,9 +205,8 @@ TEST(RaggedArcTest, FromUnaryFunctionRagged) {
       torch::autograd::backward({expected_float_attr_sum}, {});
     }
 
-    EXPECT_TRUE(
-        torch::allclose(src.GetAttr("float_attr").cast<torch::Tensor>().grad(),
-                        float_attr.grad()));
+    EXPECT_TRUE(torch::allclose(src.GetAttr("float_attr").toTensor().grad(),
+                                float_attr.grad()));
 
     torch::Tensor scores_sum = (dest.Scores() * scale).sum();
     torch::Tensor expected_scores_sum = (expected_scores * scale).sum();
@@ -234,23 +237,24 @@ TEST(RaggedArcTest, FromUnaryFunctionRaggedWithEmptyList) {
 
     RaggedArc src = RaggedArc(s).To(device);
     src.SetScores(scores);
-    src.SetAttr("attr1", py::str("hello"));
-    src.SetAttr("attr2", py::str("k2"));
+    src.SetAttr("attr1", torch::IValue("hello"));
+    src.SetAttr("attr2", torch::IValue("k2"));
 
     torch::Tensor float_attr = torch::tensor(
         {0.1, 0.2, 0.3},
         torch::dtype(torch::kFloat32).device(device).requires_grad(true));
 
-    src.SetAttr("float_attr",
-                py::cast(float_attr.detach().clone().requires_grad_(true)));
+    src.SetAttr(
+        "float_attr",
+        torch::IValue(float_attr.detach().clone().requires_grad_(true)));
 
     src.SetAttr("int_attr",
-                py::cast(torch::tensor(
+                torch::IValue(torch::tensor(
                     {1, 2, 3}, torch::dtype(torch::kInt32).device(device))));
 
-    src.SetAttr("ragged_attr",
-                py::cast(RaggedAny("[[10 20] [30 40 50] [60 70]]",
-                                   torch::kInt32, device)));
+    auto ragged_attr_any =
+        RaggedAny("[[10 20] [30 40 50] [60 70]]", torch::kInt32, device);
+    src.SetAttr("ragged_attr", ToIValue(ragged_attr_any));
 
     Ragged<int32_t> arc_map;
     Ragged<Arc> arcs;
@@ -258,11 +262,11 @@ TEST(RaggedArcTest, FromUnaryFunctionRaggedWithEmptyList) {
 
     RaggedArc dest = RaggedArc::FromUnaryFunctionRagged(src, arcs, arc_map);
 
-    EXPECT_EQ(dest.GetAttr("attr1").cast<std::string>(),
-              src.GetAttr("attr1").cast<std::string>());
+    EXPECT_EQ(dest.GetAttr("attr1").toStringRef(),
+              src.GetAttr("attr1").toStringRef());
 
-    EXPECT_EQ(dest.GetAttr("attr2").cast<std::string>(),
-              src.GetAttr("attr2").cast<std::string>());
+    EXPECT_EQ(dest.GetAttr("attr2").toStringRef(),
+              src.GetAttr("attr2").toStringRef());
 
     RaggedAny expected_arc_map =
         RaggedAny("[[] [1] [0 2] [] [2]]", torch::kInt32, device);
@@ -272,25 +276,25 @@ TEST(RaggedArcTest, FromUnaryFunctionRaggedWithEmptyList) {
 
     RaggedAny expected_int_attr =
         RaggedAny("[[] [2] [1 3] [] [3]]", torch::kInt32, device);
-    EXPECT_EQ(dest.GetAttr("int_attr").cast<RaggedAny>().ToString(true),
+    EXPECT_EQ(ToRaggedAny(dest.GetAttr("int_attr")).ToString(true),
               expected_int_attr.ToString(true));
 
     RaggedAny expected_ragged_attr = RaggedAny(
         "[[] [30 40 50] [10 20 60 70] [] [60 70]]", torch::kInt32, device);
 
-    EXPECT_EQ(dest.GetAttr("ragged_attr").cast<RaggedAny>().ToString(true),
+    EXPECT_EQ(ToRaggedAny(dest.GetAttr("ragged_attr")).ToString(true),
               expected_ragged_attr.ToString(true));
 
     torch::Tensor expected_float_attr =
-        torch::empty_like(dest.GetAttr("float_attr").cast<torch::Tensor>());
+        torch::empty_like(dest.GetAttr("float_attr").toTensor());
     expected_float_attr[0] = 0;
     expected_float_attr[1] = float_attr[1];
     expected_float_attr[2] = float_attr[0] + float_attr[2];
     expected_float_attr[3] = 0;
     expected_float_attr[4] = float_attr[2];
 
-    EXPECT_TRUE(torch::allclose(
-        dest.GetAttr("float_attr").cast<torch::Tensor>(), expected_float_attr));
+    EXPECT_TRUE(torch::allclose(dest.GetAttr("float_attr").toTensor(),
+                                expected_float_attr));
 
     torch::Tensor expected_scores = torch::empty_like(dest.Scores());
     expected_scores[0] = 0;
@@ -304,7 +308,7 @@ TEST(RaggedArcTest, FromUnaryFunctionRaggedWithEmptyList) {
     torch::Tensor scale = torch::tensor({10, 20, 30, 40, 50}).to(float_attr);
 
     torch::Tensor float_attr_sum =
-        (dest.GetAttr("float_attr").cast<torch::Tensor>() * scale).sum();
+        (dest.GetAttr("float_attr").toTensor() * scale).sum();
 
     torch::Tensor expected_float_attr_sum = (expected_float_attr * scale).sum();
 
@@ -314,9 +318,8 @@ TEST(RaggedArcTest, FromUnaryFunctionRaggedWithEmptyList) {
       torch::autograd::backward({expected_float_attr_sum}, {});
     }
 
-    EXPECT_TRUE(
-        torch::allclose(src.GetAttr("float_attr").cast<torch::Tensor>().grad(),
-                        float_attr.grad()));
+    EXPECT_TRUE(torch::allclose(src.GetAttr("float_attr").toTensor().grad(),
+                                float_attr.grad()));
 
     torch::Tensor scores_sum = (dest.Scores() * scale).sum();
     torch::Tensor expected_scores_sum = (expected_scores * scale).sum();
@@ -344,7 +347,7 @@ TEST(RaggedArcTest, FromBinaryFunctionTensor) {
     RaggedArc a_fsa = RaggedArc::CreateFsaVec(a_fsas).To(device);
     a_fsa.SetRequiresGrad(true);
 
-    a_fsa.SetAttr("attr1", py::str("hello"));
+    a_fsa.SetAttr("attr1", torch::IValue("hello"));
 
     torch::Tensor scores_a = torch::tensor(
         {0.1, 0.2, 0.3, 0.4},
@@ -357,15 +360,17 @@ TEST(RaggedArcTest, FromBinaryFunctionTensor) {
     torch::Tensor a_float_attr_copy =
         a_float_attr.detach().clone().requires_grad_(true);
 
-    a_fsa.SetAttr("float_attr",
-                  py::cast(a_float_attr.detach().clone().requires_grad_(true)));
+    a_fsa.SetAttr(
+        "float_attr",
+        torch::IValue(a_float_attr.detach().clone().requires_grad_(true)));
 
-    a_fsa.SetAttr("float_attr_a",
-                  py::cast(a_float_attr.detach().clone().requires_grad_(true)));
+    a_fsa.SetAttr(
+        "float_attr_a",
+        torch::IValue(a_float_attr.detach().clone().requires_grad_(true)));
 
-    a_fsa.SetAttr("ragged_attr_a",
-                  py::cast(RaggedAny("[[10 20] [30 40 50] [60 70] [80]]",
-                                     torch::kInt32, device)));
+    auto ragged_attr_a_any =
+        RaggedAny("[[10 20] [30 40 50] [60 70] [80]]", torch::kInt32, device);
+    a_fsa.SetAttr("ragged_attr_a", ToIValue(ragged_attr_a_any));
 
     std::string s2 = R"(0 1 1 1
         0 1 2 2
@@ -379,8 +384,8 @@ TEST(RaggedArcTest, FromBinaryFunctionTensor) {
 
     // this attribute will not be propagated to the final fsa,
     // because there is already an attribute named `attr1` in a_fsa.
-    b_fsa.SetAttr("attr1", py::str("hello2"));
-    b_fsa.SetAttr("attr2", py::str("k2"));
+    b_fsa.SetAttr("attr1", torch::IValue("hello2"));
+    b_fsa.SetAttr("attr2", torch::IValue("k2"));
 
     torch::Tensor scores_b = torch::tensor(
         {1, 2, 3},
@@ -393,14 +398,16 @@ TEST(RaggedArcTest, FromBinaryFunctionTensor) {
     torch::Tensor b_float_attr_copy =
         b_float_attr.detach().clone().requires_grad_(true);
 
-    b_fsa.SetAttr("float_attr",
-                  py::cast(b_float_attr.detach().clone().requires_grad_(true)));
-    b_fsa.SetAttr("float_attr_b",
-                  py::cast(b_float_attr.detach().clone().requires_grad_(true)));
+    b_fsa.SetAttr(
+        "float_attr",
+        torch::IValue(b_float_attr.detach().clone().requires_grad_(true)));
+    b_fsa.SetAttr(
+        "float_attr_b",
+        torch::IValue(b_float_attr.detach().clone().requires_grad_(true)));
 
-    b_fsa.SetAttr("ragged_attr_b",
-                  py::cast(RaggedAny("[[10 20] [30 40 50] [60 70]]",
-                                     torch::kInt32, device)));
+    auto ragged_attr_b_any =
+        RaggedAny("[[10 20] [30 40 50] [60 70]]", torch::kInt32, device);
+    b_fsa.SetAttr("ragged_attr_b", ToIValue(ragged_attr_b_any));
 
     Array1<int32_t> a_arc_map_raw;
     Array1<int32_t> b_arc_map_raw;
@@ -423,61 +430,59 @@ TEST(RaggedArcTest, FromBinaryFunctionTensor) {
     EXPECT_TRUE(torch::equal(a_arc_map, expected_a_arc_map));
     EXPECT_TRUE(torch::equal(b_arc_map, expected_b_arc_map));
 
-    EXPECT_EQ(dest.GetAttr("attr1").cast<std::string>(),
-              a_fsa.GetAttr("attr1").cast<std::string>());
-    EXPECT_EQ(dest.GetAttr("attr2").cast<std::string>(),
-              b_fsa.GetAttr("attr2").cast<std::string>());
+    EXPECT_EQ(dest.GetAttr("attr1").toStringRef(),
+              a_fsa.GetAttr("attr1").toStringRef());
+    EXPECT_EQ(dest.GetAttr("attr2").toStringRef(),
+              b_fsa.GetAttr("attr2").toStringRef());
 
     RaggedAny expected_ragged_attr_a =
         RaggedAny("[[30 40 50] [80]]", torch::kInt32, device);
     RaggedAny expected_ragged_attr_b =
         RaggedAny("[[10 20] [60 70]]", torch::kInt32, device);
 
-    EXPECT_EQ(dest.GetAttr("ragged_attr_a").cast<RaggedAny>().ToString(true),
+    EXPECT_EQ(ToRaggedAny(dest.GetAttr("ragged_attr_a")).ToString(true),
               expected_ragged_attr_a.ToString(true));
-    EXPECT_EQ(dest.GetAttr("ragged_attr_b").cast<RaggedAny>().ToString(true),
+    EXPECT_EQ(ToRaggedAny(dest.GetAttr("ragged_attr_b")).ToString(true),
               expected_ragged_attr_b.ToString(true));
 
     torch::Tensor expected_float_attr =
-        torch::empty_like(dest.GetAttr("float_attr").cast<torch::Tensor>());
+        torch::empty_like(dest.GetAttr("float_attr").toTensor());
     expected_float_attr[0] = a_float_attr_copy[1] + b_float_attr_copy[0];
     expected_float_attr[1] = a_float_attr_copy[3] + b_float_attr_copy[2];
 
-    EXPECT_TRUE(torch::allclose(
-        dest.GetAttr("float_attr").cast<torch::Tensor>(), expected_float_attr));
+    EXPECT_TRUE(torch::allclose(dest.GetAttr("float_attr").toTensor(),
+                                expected_float_attr));
 
     torch::Tensor expected_float_attr_a =
-        torch::empty_like(dest.GetAttr("float_attr_a").cast<torch::Tensor>());
+        torch::empty_like(dest.GetAttr("float_attr_a").toTensor());
     expected_float_attr_a[0] = a_float_attr[1];
     expected_float_attr_a[1] = a_float_attr[3];
 
-    EXPECT_TRUE(
-        torch::allclose(dest.GetAttr("float_attr_a").cast<torch::Tensor>(),
-                        expected_float_attr_a));
+    EXPECT_TRUE(torch::allclose(dest.GetAttr("float_attr_a").toTensor(),
+                                expected_float_attr_a));
 
     torch::Tensor expected_float_attr_b =
-        torch::empty_like(dest.GetAttr("float_attr_b").cast<torch::Tensor>());
+        torch::empty_like(dest.GetAttr("float_attr_b").toTensor());
     expected_float_attr_b[0] = b_float_attr[0];
     expected_float_attr_b[1] = b_float_attr[2];
 
-    EXPECT_TRUE(
-        torch::allclose(dest.GetAttr("float_attr_b").cast<torch::Tensor>(),
-                        expected_float_attr_b));
+    EXPECT_TRUE(torch::allclose(dest.GetAttr("float_attr_b").toTensor(),
+                                expected_float_attr_b));
 
     torch::Tensor scale =
         torch::tensor({10, 20}, torch::dtype(torch::kFloat32).device(device));
 
     torch::Tensor float_attr_sum =
-        (dest.GetAttr("float_attr").cast<torch::Tensor>() * scale).sum();
+        (dest.GetAttr("float_attr").toTensor() * scale).sum();
     torch::Tensor expected_float_attr_sum = (expected_float_attr * scale).sum();
 
     torch::Tensor float_attr_a_sum =
-        (dest.GetAttr("float_attr_a").cast<torch::Tensor>() * scale).sum();
+        (dest.GetAttr("float_attr_a").toTensor() * scale).sum();
     torch::Tensor expected_float_attr_a_sum =
         (expected_float_attr_a * scale).sum();
 
     torch::Tensor float_attr_b_sum =
-        (dest.GetAttr("float_attr_b").cast<torch::Tensor>() * scale).sum();
+        (dest.GetAttr("float_attr_b").toTensor() * scale).sum();
     torch::Tensor expected_float_attr_b_sum =
         (expected_float_attr_b * scale).sum();
 
@@ -491,19 +496,15 @@ TEST(RaggedArcTest, FromBinaryFunctionTensor) {
       torch::autograd::backward({expected_float_attr_b_sum}, {});
     }
 
-    EXPECT_TRUE(torch::allclose(
-        a_fsa.GetAttr("float_attr").cast<torch::Tensor>().grad(),
-        a_float_attr_copy.grad()));
-    EXPECT_TRUE(torch::allclose(
-        b_fsa.GetAttr("float_attr").cast<torch::Tensor>().grad(),
-        b_float_attr_copy.grad()));
+    EXPECT_TRUE(torch::allclose(a_fsa.GetAttr("float_attr").toTensor().grad(),
+                                a_float_attr_copy.grad()));
+    EXPECT_TRUE(torch::allclose(b_fsa.GetAttr("float_attr").toTensor().grad(),
+                                b_float_attr_copy.grad()));
 
-    EXPECT_TRUE(torch::allclose(
-        a_fsa.GetAttr("float_attr_a").cast<torch::Tensor>().grad(),
-        a_float_attr.grad()));
-    EXPECT_TRUE(torch::allclose(
-        b_fsa.GetAttr("float_attr_b").cast<torch::Tensor>().grad(),
-        b_float_attr.grad()));
+    EXPECT_TRUE(torch::allclose(a_fsa.GetAttr("float_attr_a").toTensor().grad(),
+                                a_float_attr.grad()));
+    EXPECT_TRUE(torch::allclose(b_fsa.GetAttr("float_attr_b").toTensor().grad(),
+                                b_float_attr.grad()));
 
     torch::Tensor expected_scores = torch::empty_like(dest.Scores());
     expected_scores[0] = scores_a[1] + scores_b[0];

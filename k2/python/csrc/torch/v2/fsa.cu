@@ -2,7 +2,8 @@
  * @brief python wrapper for Ragged<Arc>
  *
  * @copyright
- * Copyright      2021  Xiaomi Corp.  (authors: Fangjun Kuang)
+ * Copyright      2021  Xiaomi Corp.  (authors: Fangjun Kuang,
+ *                                              Wei Kang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -27,6 +28,7 @@
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/fsa.h"
+#include "k2/python/csrc/torch/v2/pybind_utils.h"
 #include "k2/python/csrc/torch/v2/ragged_arc.h"
 
 namespace k2 {
@@ -62,9 +64,18 @@ void PybindRaggedArc(py::module &m) {
 
   fsa.def("arc_sort", &RaggedArc::ArcSort);
 
-  fsa.def("__setattr__", (void (RaggedArc::*)(const std::string &, py::object))(
-                             &RaggedArc::SetAttr));
-  fsa.def("__getattr__", &RaggedArc::GetAttr);
+  fsa.def(
+      "__setattr__",
+      [](RaggedArc &self, const std::string &name, py::object value) -> void {
+        self.SetAttr(name, ToIValue(value));
+      });
+
+  fsa.def("__getattr__",
+          [](RaggedArc &self, const std::string &name) -> py::object {
+            torch::IValue ivalue = self.GetAttr(name);
+            return ToPyObject(ivalue);
+          });
+
   fsa.def("__delattr__", &RaggedArc::DeleteAttr);
 
   fsa.def("get_forward_scores", &RaggedArc::GetForwardScores,

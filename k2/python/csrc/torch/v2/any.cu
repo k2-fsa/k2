@@ -2,7 +2,8 @@
  * @brief Wraps Ragged<Any>
  *
  * @copyright
- * Copyright      2021  Xiaomi Corp.  (authors: Fangjun Kuang)
+ * Copyright      2021  Xiaomi Corp.  (authors: Fangjun Kuang
+ *                                              Wei Kang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
