@@ -30,6 +30,14 @@
 // that k2 and PyTorch use a different copy
 // of CUB.
 
+#ifdef CUB_NS_PREFIX
+#undef CUB_NS_PREFIX
+#endif
+
+#ifdef CUB_NS_POSTFIX
+#undef CUB_NS_POSTFIX
+#endif
+
 #define CUB_NS_PREFIX namespace k2 {
 #define CUB_NS_POSTFIX }
 
