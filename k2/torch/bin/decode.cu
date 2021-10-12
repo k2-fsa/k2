@@ -125,8 +125,8 @@ int main(int argc, char *argv[]) {
       /path/to/bar.wav \
       <more wave files if any>
 
-   --use_gpu true to use CPU
-   --use_gpu false to use GPU
+   --use_gpu false to use CPU
+   --use_gpu true to use GPU
   )";
   torch::SetUsageMessage(usage);
 
