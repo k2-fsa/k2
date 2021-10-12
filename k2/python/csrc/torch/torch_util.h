@@ -1,6 +1,7 @@
 /**
  * @copyright
- * Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ * Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang
+ *                2021  Xiaomi Corp.                 Wei Kang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -34,6 +35,8 @@
 
 namespace k2 {
 
+// We need this wrapper so that we can convert an instance
+// of RaggedAny into `torch::IValue`
 struct RaggedAnyHolder : public torch::CustomClassHolder {
   std::shared_ptr<RaggedAny> ragged = nullptr;  // not owned by this class
   explicit RaggedAnyHolder(std::shared_ptr<RaggedAny> ragged)

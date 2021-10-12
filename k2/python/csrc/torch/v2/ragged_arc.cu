@@ -109,8 +109,9 @@ RaggedArc RaggedArc::FromUnaryFunctionRagged(RaggedArc &src,
         auto filler_scalar = torch::tensor(
             filler, torch::dtype(torch::kInt32).device(value.device()));
         value = torch::where(masking, value, filler_scalar);
-        auto new_value = arc_map_any.Index(value, py::int_(filler));
-        dest.SetAttr(iter.first, new_value.RemoveValuesEq(py::int_(filler)));
+        auto new_value = arc_map_any.Index(value, torch::IValue(filler));
+        dest.SetAttr(iter.first,
+                     new_value.RemoveValuesEq(torch::IValue(filler)));
       }
     } else {
       K2_CHECK(iter.second.dtype() == torch::kFloat32 ||

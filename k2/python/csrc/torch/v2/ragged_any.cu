@@ -200,17 +200,13 @@ RaggedAny::RaggedAny(const RaggedShape &shape, torch::Tensor value)
   K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
 }
 
-RaggedAny::RaggedAny(const std::string &s, py::object dtype /*=py::none()*/,
+RaggedAny::RaggedAny(const std::string &s,
+                     torch::optional<torch::Dtype> dtype /*={}*/,
                      torch::Device device /*=torch::kCPU*/) {
-  if (!dtype.is_none() && !THPDtype_Check(dtype.ptr())) {
-    K2_LOG(FATAL) << "Expect an instance of torch.dtype. "
-                  << "Given: " << py::str(dtype);
-  }
-
   ContextPtr context = GetContext(device);
   DeviceGuard guard(context);
 
-  if (dtype.is_none()) {
+  if (!dtype.has_value()) {
     try {
       // We try int first, if it fails, use float
       any = Ragged<int32_t>(s, /*throw_on_failure*/ true).To(context).Generic();
@@ -222,9 +218,7 @@ RaggedAny::RaggedAny(const std::string &s, py::object dtype /*=py::none()*/,
       return;
     }
   }
-
-  auto scalar_type = reinterpret_cast<THPDtype *>(dtype.ptr())->scalar_type;
-
+  auto scalar_type = dtype.value();
   Dtype t = ScalarTypeToDtype(scalar_type);
 
   FOR_REAL_AND_INT32_TYPES(t, T, {
@@ -456,34 +450,33 @@ RaggedAny RaggedAny::Arange(int32_t axis, int32_t begin,
   return RaggedAny(k2::Arange(any, axis, begin, end));
 }
 
-RaggedAny RaggedAny::RemoveValuesLeq(py::object cutoff) /*const*/ {
+RaggedAny RaggedAny::RemoveValuesLeq(torch::IValue cutoff) /*const*/ {
+  K2_CHECK(!cutoff.isNone());
   DeviceGuard guard(any.Context());
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
     return RaggedAny(
-        k2::RemoveValuesLeq<T>(any.Specialize<T>(), cutoff.cast<T>())
-            .Generic());
+        k2::RemoveValuesLeq<T>(any.Specialize<T>(), cutoff.to<T>()).Generic());
   });
 
   // Unreachable code
   return {};
 }
 
-RaggedAny RaggedAny::RemoveValuesEq(py::object target) /*const*/ {
+RaggedAny RaggedAny::RemoveValuesEq(torch::IValue target) /*const*/ {
+  K2_CHECK(!target.isNone());
   DeviceGuard guard(any.Context());
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
     return RaggedAny(
-        k2::RemoveValuesEq<T>(any.Specialize<T>(), target.cast<T>()).Generic());
+        k2::RemoveValuesEq<T>(any.Specialize<T>(), target.to<T>()).Generic());
   });
   // Unreachable code
   return {};
 }
 
 torch::Tensor RaggedAny::ArgMax(
-    py::object initial_value /*=py::none()*/) /*const*/ {
-  K2_CHECK((bool)initial_value);
-
+    torch::IValue initial_value /*= {}*/) /*const*/ {
   DeviceGuard guard(any.Context());
   int32_t last_axis = any.NumAxes() - 1;
   const Array1<int32_t> &row_splits_array = any.RowSplits(last_axis);
@@ -493,18 +486,15 @@ torch::Tensor RaggedAny::ArgMax(
 
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
-    T v = initial_value.is_none() ? std::numeric_limits<T>::lowest()
-                                  : initial_value.cast<T>();
+    T v = initial_value.isNone() ? std::numeric_limits<T>::lowest()
+                                 : initial_value.to<T>();
     ArgMaxPerSublist<T>(any.Specialize<T>(), v, &indexes);
   });
 
   return ToTorch(indexes);
 }
 
-torch::Tensor RaggedAny::Max(
-    py::object initial_value /*=py::none()*/) /*const*/ {
-  K2_CHECK((bool)initial_value);
-
+torch::Tensor RaggedAny::Max(torch::IValue initial_value /*= {}*/) /*const*/ {
   DeviceGuard guard(any.Context());
   int32_t last_axis = any.NumAxes() - 1;
   const Array1<int32_t> &row_splits_array = any.RowSplits(last_axis);
@@ -514,8 +504,8 @@ torch::Tensor RaggedAny::Max(
 
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
-    T v = initial_value.is_none() ? std::numeric_limits<T>::lowest()
-                                  : initial_value.cast<T>();
+    T v = initial_value.isNone() ? std::numeric_limits<T>::lowest()
+                                 : initial_value.to<T>();
     Array1<T> max_values(any.Context(), num_rows);
     MaxPerSublist<T>(any.Specialize<T>(), v, &max_values);
     return ToTorch(max_values);
@@ -524,10 +514,7 @@ torch::Tensor RaggedAny::Max(
   return {};
 }
 
-torch::Tensor RaggedAny::Min(
-    py::object initial_value /*=py::none()*/) /*const*/ {
-  K2_CHECK((bool)initial_value);
-
+torch::Tensor RaggedAny::Min(torch::IValue initial_value /*= {}*/) /*const*/ {
   DeviceGuard guard(any.Context());
   int32_t last_axis = any.NumAxes() - 1;
   const Array1<int32_t> &row_splits_array = any.RowSplits(last_axis);
@@ -537,8 +524,8 @@ torch::Tensor RaggedAny::Min(
 
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
-    T v = initial_value.is_none() ? std::numeric_limits<T>::max()
-                                  : initial_value.cast<T>();
+    T v = initial_value.isNone() ? std::numeric_limits<T>::max()
+                                 : initial_value.to<T>();
     Array1<T> min_values(any.Context(), num_rows);
     MinPerSublist<T>(any.Specialize<T>(), v, &min_values);
     return ToTorch(min_values);
@@ -601,15 +588,13 @@ RaggedAny RaggedAny::Normalize(bool use_log) /*const*/ {
 }
 
 torch::Tensor RaggedAny::Pad(const std::string &mode,
-                             py::object padding_value) /*const*/ {
-  K2_CHECK((bool)padding_value);
-  K2_CHECK(!padding_value.is_none());
+                             torch::IValue padding_value) /*const*/ {
+  K2_CHECK(!padding_value.isNone());
 
   DeviceGuard guard(any.Context());
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
-    Array2<T> arr =
-        PadRagged(any.Specialize<T>(), mode, padding_value.cast<T>());
+    Array2<T> arr = PadRagged(any.Specialize<T>(), mode, padding_value.to<T>());
     return ToTorch(arr);
   });
   // Unreachable code
@@ -729,7 +714,7 @@ std::pair<RaggedAny, torch::optional<torch::Tensor>> RaggedAny::Index(
 }
 
 RaggedAny RaggedAny::Index(torch::Tensor src,
-                           py::object default_value /*=py::none()*/) /*const*/ {
+                           torch::IValue default_value /*= {}*/) /*const*/ {
   Dtype t = any.GetDtype();
   K2_CHECK_EQ(t, kInt32Dtype) << "Unsupported dtype: " << TraitsOf(t).Name();
 
@@ -739,7 +724,7 @@ RaggedAny RaggedAny::Index(torch::Tensor src,
   Dtype dtype = ScalarTypeToDtype(src.scalar_type());
   FOR_REAL_AND_INT32_TYPES(dtype, T, {
     T value_for_minus_one =
-        default_value.is_none() ? T() : default_value.cast<T>();
+        default_value.isNone() ? T() : default_value.to<T>();
     Array1<T> src_array = FromTorch<T>(src);
     return RaggedAny(
         k2::Index(src_array, any.Specialize<int32_t>(), value_for_minus_one)

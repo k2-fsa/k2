@@ -50,9 +50,8 @@ TEST(RaggedArcTest, FromUnaryFunctionTensor) {
                 py::cast(torch::tensor(
                     {1, 2, 3}, torch::dtype(torch::kInt32).device(device))));
 
-    src.SetAttr("ragged_attr",
-                py::cast(RaggedAny("[[1 2 3] [5 6] []]",
-                                   py::cast(torch::kInt32), device)));
+    src.SetAttr("ragged_attr", py::cast(RaggedAny("[[1 2 3] [5 6] []]",
+                                                  torch::kInt32, device)));
 
     src.SetAttr("attr1", py::str("src"));
     src.SetAttr("attr2", py::str("fsa"));
@@ -78,7 +77,7 @@ TEST(RaggedArcTest, FromUnaryFunctionTensor) {
         torch::tensor({2, 1, 3}, torch::dtype(torch::kInt32).device(device))));
 
     RaggedAny expected_ragged_attr =
-        RaggedAny("[[5 6] [1 2 3] []]", py::cast(torch::kInt32), device);
+        RaggedAny("[[5 6] [1 2 3] []]", torch::kInt32, device);
     EXPECT_EQ(dest.GetAttr("ragged_attr").cast<RaggedAny>().ToString(true),
               expected_ragged_attr.ToString(true));
 
@@ -142,7 +141,7 @@ TEST(RaggedArcTest, FromUnaryFunctionRagged) {
 
     src.SetAttr("ragged_attr",
                 py::cast(RaggedAny("[[10 20] [30 40 50] [60 70]]",
-                                   py::cast(torch::kInt32), device)));
+                                   torch::kInt32, device)));
 
     Ragged<int32_t> arc_map;
     Ragged<Arc> arcs;
@@ -157,18 +156,18 @@ TEST(RaggedArcTest, FromUnaryFunctionRagged) {
               src.GetAttr("attr2").cast<std::string>());
 
     RaggedAny expected_arc_map =
-        RaggedAny("[[1] [0 2] [2]]", py::cast(torch::kInt32), device);
+        RaggedAny("[[1] [0 2] [2]]", torch::kInt32, device);
 
     EXPECT_EQ(RaggedAny(arc_map.Generic()).ToString(true),
               expected_arc_map.ToString(true));
 
     RaggedAny expected_int_attr =
-        RaggedAny("[[2] [1 3] [3]]", py::cast(torch::kInt32), device);
+        RaggedAny("[[2] [1 3] [3]]", torch::kInt32, device);
     EXPECT_EQ(dest.GetAttr("int_attr").cast<RaggedAny>().ToString(true),
               expected_int_attr.ToString(true));
 
-    RaggedAny expected_ragged_attr = RaggedAny(
-        "[[30 40 50] [10 20 60 70] [60 70]]", py::cast(torch::kInt32), device);
+    RaggedAny expected_ragged_attr =
+        RaggedAny("[[30 40 50] [10 20 60 70] [60 70]]", torch::kInt32, device);
 
     EXPECT_EQ(dest.GetAttr("ragged_attr").cast<RaggedAny>().ToString(true),
               expected_ragged_attr.ToString(true));
@@ -251,7 +250,7 @@ TEST(RaggedArcTest, FromUnaryFunctionRaggedWithEmptyList) {
 
     src.SetAttr("ragged_attr",
                 py::cast(RaggedAny("[[10 20] [30 40 50] [60 70]]",
-                                   py::cast(torch::kInt32), device)));
+                                   torch::kInt32, device)));
 
     Ragged<int32_t> arc_map;
     Ragged<Arc> arcs;
@@ -266,19 +265,18 @@ TEST(RaggedArcTest, FromUnaryFunctionRaggedWithEmptyList) {
               src.GetAttr("attr2").cast<std::string>());
 
     RaggedAny expected_arc_map =
-        RaggedAny("[[] [1] [0 2] [] [2]]", py::cast(torch::kInt32), device);
+        RaggedAny("[[] [1] [0 2] [] [2]]", torch::kInt32, device);
 
     EXPECT_EQ(RaggedAny(arc_map.Generic()).ToString(true),
               expected_arc_map.ToString(true));
 
     RaggedAny expected_int_attr =
-        RaggedAny("[[] [2] [1 3] [] [3]]", py::cast(torch::kInt32), device);
+        RaggedAny("[[] [2] [1 3] [] [3]]", torch::kInt32, device);
     EXPECT_EQ(dest.GetAttr("int_attr").cast<RaggedAny>().ToString(true),
               expected_int_attr.ToString(true));
 
-    RaggedAny expected_ragged_attr =
-        RaggedAny("[[] [30 40 50] [10 20 60 70] [] [60 70]]",
-                  py::cast(torch::kInt32), device);
+    RaggedAny expected_ragged_attr = RaggedAny(
+        "[[] [30 40 50] [10 20 60 70] [] [60 70]]", torch::kInt32, device);
 
     EXPECT_EQ(dest.GetAttr("ragged_attr").cast<RaggedAny>().ToString(true),
               expected_ragged_attr.ToString(true));
@@ -367,7 +365,7 @@ TEST(RaggedArcTest, FromBinaryFunctionTensor) {
 
     a_fsa.SetAttr("ragged_attr_a",
                   py::cast(RaggedAny("[[10 20] [30 40 50] [60 70] [80]]",
-                                     py::cast(torch::kInt32), device)));
+                                     torch::kInt32, device)));
 
     std::string s2 = R"(0 1 1 1
         0 1 2 2
@@ -402,7 +400,7 @@ TEST(RaggedArcTest, FromBinaryFunctionTensor) {
 
     b_fsa.SetAttr("ragged_attr_b",
                   py::cast(RaggedAny("[[10 20] [30 40 50] [60 70]]",
-                                     py::cast(torch::kInt32), device)));
+                                     torch::kInt32, device)));
 
     Array1<int32_t> a_arc_map_raw;
     Array1<int32_t> b_arc_map_raw;
@@ -431,9 +429,9 @@ TEST(RaggedArcTest, FromBinaryFunctionTensor) {
               b_fsa.GetAttr("attr2").cast<std::string>());
 
     RaggedAny expected_ragged_attr_a =
-        RaggedAny("[[30 40 50] [80]]", py::cast(torch::kInt32), device);
+        RaggedAny("[[30 40 50] [80]]", torch::kInt32, device);
     RaggedAny expected_ragged_attr_b =
-        RaggedAny("[[10 20] [60 70]]", py::cast(torch::kInt32), device);
+        RaggedAny("[[10 20] [60 70]]", torch::kInt32, device);
 
     EXPECT_EQ(dest.GetAttr("ragged_attr_a").cast<RaggedAny>().ToString(true),
               expected_ragged_attr_a.ToString(true));

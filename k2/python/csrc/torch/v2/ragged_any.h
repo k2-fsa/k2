@@ -87,10 +87,12 @@ struct __attribute__((__visibility__("default"))) RaggedAny {
 
      @note We can support other dtypes if needed.
    */
-  explicit RaggedAny(const std::string &s, py::object dtype = py::none(),
+  explicit RaggedAny(const std::string &s,
+                     torch::optional<torch::Dtype> dtype = {},
                      torch::Device device = torch::kCPU);
 
-  explicit RaggedAny(const std::string &s, py::object dtype = py::none(),
+  explicit RaggedAny(const std::string &s,
+                     torch::optional<torch::Dtype> dtype = {},
                      const std::string &device = "cpu")
       : RaggedAny(s, dtype, torch::Device(device)) {}
 
@@ -225,19 +227,19 @@ struct __attribute__((__visibility__("default"))) RaggedAny {
   RaggedAny Arange(int32_t axis, int32_t begin, int32_t end) /*const*/;
 
   /// Wrapper for k2::RemoveValuesLeq()
-  RaggedAny RemoveValuesLeq(py::object cutoff) /*const*/;
+  RaggedAny RemoveValuesLeq(torch::IValue cutoff) /*const*/;
 
   /// Wrapper for k2::RemoveValuesEq()
-  RaggedAny RemoveValuesEq(py::object target) /*const*/;
+  RaggedAny RemoveValuesEq(torch::IValue target) /*const*/;
 
   /// Wrapper for k2::ArgMaxPerSublist
-  torch::Tensor ArgMax(py::object initial_value = py::none()) /*const*/;
+  torch::Tensor ArgMax(torch::IValue initial_value = {}) /*const*/;
 
   // Wrapper for k2::MaxPerSublist
-  torch::Tensor Max(py::object initial_value = py::none()) /*const*/;
+  torch::Tensor Max(torch::IValue initial_value = {}) /*const*/;
 
   // Wrapper for k2::MinPerSublist
-  torch::Tensor Min(py::object initial_value) /*const*/;
+  torch::Tensor Min(torch::IValue initial_value = {}) /*const*/;
 
   /// Wrapper for k2::Cat
   static RaggedAny Cat(const std::vector<RaggedAny> &srcs, int32_t axis);
@@ -252,7 +254,7 @@ struct __attribute__((__visibility__("default"))) RaggedAny {
 
   /// Wrapper for k2::PadRagged
   torch::Tensor Pad(const std::string &mode,
-                    py::object padding_value) /*const*/;
+                    torch::IValue padding_value = {}) /*const*/;
 
   /// Convert a ragged tensor to a list of lists [of lists ...]
   /// Note: You can use the return list to construct a ragged tensor.
@@ -272,7 +274,7 @@ struct __attribute__((__visibility__("default"))) RaggedAny {
 
   /// Wrapper for k2::Index
   RaggedAny Index(torch::Tensor src,
-                  py::object default_value = py::none()) /*const*/;
+                  torch::IValue default_value = {}) /*const*/;
 
   /// Wrapper for k2::Index
   torch::Tensor IndexAndSum(torch::Tensor src) /*const*/;
