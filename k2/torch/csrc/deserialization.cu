@@ -16,7 +16,11 @@
  * limitations under the License.
  */
 
+#include <memory>
 #include <mutex>  // NOLINT
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "caffe2/serialize/file_adapter.h"
 #include "caffe2/serialize/inline_container.h"

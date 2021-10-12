@@ -20,6 +20,7 @@
 #define K2_TORCH_CSRC_WAVE_READER_H_
 
 #include <string>
+#include <vector>
 
 #include "torch/script.h"
 

@@ -20,6 +20,7 @@
 #ifndef K2_CSRC_RAGGED_H_
 #define K2_CSRC_RAGGED_H_
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>

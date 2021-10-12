@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 
-#ifndef K2_TORCH_CSRC_DENSE_DESERIALIZATION_H_
-#define K2_TORCH_CSRC_DENSE_DESERIALIZATION_H_
+#ifndef K2_TORCH_CSRC_DESERIALIZATION_H_
+#define K2_TORCH_CSRC_DESERIALIZATION_H_
 
 #include <string>
 
@@ -42,4 +42,4 @@ k2::FsaOrVec LoadFsa(const std::string &filename,
 
 }  // namespace k2
 
-#endif  // K2_TORCH_CSRC_DENSE_DESERIALIZATION_H_
+#endif  // K2_TORCH_CSRC_DESERIALIZATION_H_

@@ -30,7 +30,7 @@
 #include "k2/torch/csrc/utils.h"
 #include "k2/torch/csrc/wave_reader.h"
 #include "kaldifeat/csrc/feature-fbank.h"
-#include "sentencepiece_processor.h"
+#include "sentencepiece_processor.h"  // NOLINT
 #include "torch/all.h"
 #include "torch/script.h"
 #include "torch/utils.h"

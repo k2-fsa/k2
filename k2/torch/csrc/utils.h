@@ -19,6 +19,8 @@
 #ifndef K2_TORCH_CSRC_UTILS_H_
 #define K2_TORCH_CSRC_UTILS_H_
 
+#include <string>
+
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/fsa.h"

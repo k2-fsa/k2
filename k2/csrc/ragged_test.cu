@@ -2805,7 +2805,6 @@ TEST(RaggedTest, ToVecVecInt) {
     EXPECT_TRUE(v[1].empty());
     EXPECT_EQ(v[2], (std::vector<int32_t>{4, 0, 5, 6}));
   }
-
 }
 
 }  // namespace k2

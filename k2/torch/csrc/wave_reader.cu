@@ -17,6 +17,7 @@
  */
 
 #include <fstream>
+#include <vector>
 
 #include "k2/csrc/log.h"
 #include "k2/torch/csrc/wave_reader.h"

@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 
+#include <vector>
+
 #ifdef K2_WITH_CUDA
 #include "c10/cuda/CUDAFunctions.h"
 #endif

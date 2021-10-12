@@ -16,6 +16,10 @@
  * limitations under the License.
  */
 
+#include <memory>
+#include <string>
+#include <utility>
+
 #include "caffe2/serialize/file_adapter.h"
 #include "caffe2/serialize/inline_container.h"
 #include "k2/csrc/array.h"

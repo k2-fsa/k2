@@ -32,7 +32,7 @@
 
 #include <stdlib.h>
 
-#include <chrono>
+#include <chrono>  // NOLINT
 #include <ctime>
 #include <string>
 
@@ -41,7 +41,7 @@ namespace k2 {
 namespace internal {
 
 std::string GetTimeStamp() {
-  using namespace std::chrono;
+  using namespace std::chrono;  // NOLINT
   auto now = system_clock::now();
   std::time_t time = system_clock::to_time_t(now);
   std::tm tm;

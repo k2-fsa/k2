@@ -16,6 +16,10 @@
  * limitations under the License.
  */
 
+#include <algorithm>
+#include <limits>
+#include <vector>
+
 #include "k2/csrc/log.h"
 #include "k2/torch/csrc/dense_fsa_vec.h"
 #include "k2/torch/csrc/utils.h"

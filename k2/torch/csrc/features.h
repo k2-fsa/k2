@@ -19,6 +19,8 @@
 #ifndef K2_TORCH_CSRC_FEATURES_H_
 #define K2_TORCH_CSRC_FEATURES_H_
 
+#include <vector>
+
 #include "kaldifeat/csrc/feature-fbank.h"
 
 namespace k2 {

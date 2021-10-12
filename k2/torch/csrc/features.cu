@@ -16,8 +16,11 @@
  * limitations under the License.
  */
 
+#include <utility>
+
 #include "k2/torch/csrc/features.h"
 #include "kaldifeat/csrc/feature-fbank.h"
+
 namespace k2 {
 
 torch::Tensor ComputeFeatures(kaldifeat::Fbank &fbank,
