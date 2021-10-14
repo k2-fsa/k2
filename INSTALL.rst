@@ -78,7 +78,7 @@ To build a release version, use:
   python3 -c "import k2; print(k2.__file__)"
   # It should print /some/path/k2/k2/python/k2/__init.py
 
-  python3 -c "import _k2; print(_k2.__file__)"
+  python3 -c "import torch; import _k2; print(_k2.__file__)"
   # It should print /some/path/k2/build_release/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
 
@@ -98,7 +98,7 @@ To build a debug version, use:
   python3 -c "import k2; print(k2.__file__)"
   # It should print /some/path/k2/k2/python/k2/__init.py
 
-  python3 -c "import _k2; print(_k2.__file__)"
+  python3 -c "import torch; import _k2; print(_k2.__file__)"
   # It should print /some/path/k2/build_debug/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
 
@@ -191,7 +191,7 @@ To run a specific Python test, use:
 
     .. code-block::
 
-      python3 -c "import _k2; print(_k2.__file__)"
+      python3 -c "import torch; import _k2; print(_k2.__file__)"
 
   It should print the directory where k2 was built. That is,
   the above output contains a string ``build_release`` or ``build_debug``.
