@@ -96,11 +96,11 @@ class TestFsa(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             # Number of elements does not match the number of arcs,
             # so it throws a RuntimeError exception
-            fsa.r1 = k2.RaggedTensor("[[] [10]]")
+            fsa.r1 = k2.RaggedTensor([[], [10]])
 
         # Now the tensor attribute 't1' is replaced with a ragged tensor
-        fsa.t1 = k2.RaggedTensor("[[] [10] [2 3 5.5]]")
-        expected_t1 = k2.RaggedTensor("[[] [10] [2 3 5.5]]")
+        fsa.t1 = k2.RaggedTensor([[], [10], [2, 3, 5.5]])
+        expected_t1 = k2.RaggedTensor([[], [10], [2, 3, 5.5]])
         assert fsa.t1 == expected_t1
 
     def test_get_forward_scores_simple_fsa_case_1(self):
