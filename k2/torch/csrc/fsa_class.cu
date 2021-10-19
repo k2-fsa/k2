@@ -219,6 +219,16 @@ void FsaClass::CopyRaggedTensorAttrs(const FsaClass &src, RaggedAny &arc_map,
   }
 }
 
+void FsaClass::SetScoresStochastic(torch::Tensor scores) {
+  K2_CHECK_EQ(scores.sizes().size(), 1);
+  K2_CHECK_EQ(scores.dtype(), torch::kFloat32);
+  K2_CHECK_EQ(scores.numel(), fsa.NumElements());
+
+  auto ragged_scores = RaggedAny(fsa.shape.To(GetContext(scores)), scores);
+  RaggedAny norm_scores = ragged_scores.Normalize(true).To(scores.device());
+  SetScores(norm_scores.Data());
+}
+
 void FsaClass::SetScores(torch::Tensor scores) {
   K2_CHECK_EQ(scores.numel(), fsa.NumElements());
   Scores().copy_(scores.detach());
@@ -440,7 +450,9 @@ torch::IValue FsaClass::GetAttr(const std::string &name) const {
   }
 
   if (!HasAttr(name)) {
-    K2_LOG(ERROR) << "No such attribute '" << name << "'";
+    std::ostringstream os;
+    os << "No such attribute '" << name << "'";
+    throw std::runtime_error(os.str().c_str());
   }
 
   {
@@ -467,7 +479,9 @@ void FsaClass::DeleteAttr(const std::string &name) {
     if (it != all_attr_names.end()) {
       all_attr_names.erase(it);
     } else {
-      K2_LOG(ERROR) << "No such attribute '" << name << "'";
+      std::ostringstream os;
+      os << "No such attribute '" << name << "'";
+      throw std::runtime_error(os.str().c_str());
     }
   }
 

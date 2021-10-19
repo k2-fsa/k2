@@ -36,22 +36,21 @@
 #include "k2/torch/python/csrc/version.h"
 
 void PybindTorch(py::module &m) {
+  // _k2 depends on torch, we should import torch before importing _k2.
+  py::module_::import("torch");
+
   k2::PybindArc(m);
   k2::PybindDiscountedCumSum(m);
   k2::PybindNbest(m);
+  k2::PybindFsaClass(m);
+  k2::PybindOps(m);
 
   py::module ragged = m.def_submodule(
       "ragged", "Sub module containing operations for ragged tensors in k2");
 
   k2::PybindRaggedShape(ragged);
-
-  m.attr("RaggedShape") = ragged.attr("RaggedShape");  // TODO: remove it
-
+  // m.attr("RaggedShape") = ragged.attr("RaggedShape");  // TODO: remove it
   k2::PybindRaggedAny(ragged);
-  k2::PybindFsaClass(ragged);
-  m.attr("RaggedArc") = ragged.attr("Fsa");  // TODO: remove it
-
-  k2::PybindOps(m);
 }
 
 #else

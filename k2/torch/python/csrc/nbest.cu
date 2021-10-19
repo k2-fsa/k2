@@ -30,6 +30,7 @@
 #include "k2/csrc/tensor_ops.h"
 #include "k2/torch/csrc/ragged_any.h"
 #include "k2/torch/csrc/torch_utils.h"
+#include "k2/torch/python/csrc/doc/nbest.h"
 #include "k2/torch/python/csrc/nbest.h"
 
 namespace k2 {
@@ -54,7 +55,8 @@ static void PybindGetBestMatchingStats(py::module &m) {
                                ToTorch(ngram_order));
       },
       py::arg("tokens"), py::arg("scores"), py::arg("counts"), py::arg("eos"),
-      py::arg("min_token"), py::arg("max_token"), py::arg("max_order"));
+      py::arg("min_token"), py::arg("max_token"), py::arg("max_order"),
+      kNbestGetBestMatchingStatsDoc);
 }
 
 void PybindNbest(py::module &m) { PybindGetBestMatchingStats(m); }

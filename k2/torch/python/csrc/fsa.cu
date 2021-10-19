@@ -61,21 +61,45 @@ void PybindFsaClass(py::module &m) {
               &FsaClass::To),
           py::arg("device"));
 
+  fsa.def(
+      "set_scores_stochastic_",
+      [](FsaClass &self, torch::Tensor scores) -> void {
+        self.SetScoresStochastic(scores);
+      },
+      py::arg("scores"));
+
   fsa.def("arc_sort", &FsaClass::ArcSort);
 
   fsa.def(
       "__setattr__",
       [](FsaClass &self, const std::string &name, py::object value) -> void {
-        self.SetAttr(name, ToIValue(value));
+        if (name == "scores") {
+          self.SetScores(value.cast<torch::Tensor>());
+        } else {
+          self.SetAttr(name, ToIValue(value));
+        }
       });
 
   fsa.def("__getattr__",
           [](FsaClass &self, const std::string &name) -> py::object {
-            torch::IValue ivalue = self.GetAttr(name);
+            torch::IValue ivalue;
+            try {
+              ivalue = self.GetAttr(name);
+            } catch (std::runtime_error err) {
+              PyErr_SetString(PyExc_AttributeError, err.what());
+              throw py::error_already_set();
+            }
             return ToPyObject(ivalue);
           });
 
-  fsa.def("__delattr__", &FsaClass::DeleteAttr);
+  fsa.def("__delattr__", [](FsaClass &self, const std::string &name) -> void {
+    try {
+      self.DeleteAttr(name);
+    } catch (std::runtime_error err) {
+      PyErr_SetString(PyExc_AttributeError, err.what());
+      throw py::error_already_set();
+    }
+  });
 
   fsa.def("get_forward_scores", &FsaClass::GetForwardScores,
           py::arg("use_double_scores"), py::arg("log_semiring"));
@@ -84,7 +108,9 @@ void PybindFsaClass(py::module &m) {
 
   fsa.def_property(
       "scores", [](FsaClass &self) -> torch::Tensor { return self.Scores(); },
-      [](FsaClass &self, torch::Tensor scores) { self.SetScores(scores); });
+      [](FsaClass &self, torch::Tensor scores) -> void {
+        return self.SetScores(scores);
+      });
 
   fsa.def_property_readonly(
       "properties", [](FsaClass &self) -> int { return self.Properties(); });
@@ -104,6 +130,10 @@ void PybindFsaClass(py::module &m) {
     }
   });
 
+  fsa.def_property_readonly("raw_shape", [](FsaClass &self) -> RaggedShape {
+    return self.fsa.shape;
+  });
+
   fsa.def_property(
       "requires_grad",
       [](FsaClass &self) -> bool {
@@ -118,6 +148,6 @@ void PybindFsaClass(py::module &m) {
   fsa.def_property_readonly(
       "arcs", &FsaClass::Arcs,
       "You should not modify the data of the returned arcs!");
-}
+}  // namespace k2
 
 }  // namespace k2

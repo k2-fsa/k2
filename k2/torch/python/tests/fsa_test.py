@@ -23,7 +23,6 @@
 import unittest
 
 import k2
-import k2.ragged as k2r
 import torch
 
 
@@ -45,7 +44,7 @@ class TestFsa(unittest.TestCase):
             2 3 -1  0.3
             3
         """
-        fsa = k2r.Fsa(s)
+        fsa = k2.Fsa(s)
 
         arcs = fsa.arcs
         expected_arcs = torch.tensor([[0, 1, 1], [1, 2, 2], [2, 3,
@@ -97,11 +96,11 @@ class TestFsa(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             # Number of elements does not match the number of arcs,
             # so it throws a RuntimeError exception
-            fsa.r1 = k2.RaggedTensor([[], [10]])
+            fsa.r1 = k2.RaggedTensor("[[] [10]]")
 
         # Now the tensor attribute 't1' is replaced with a ragged tensor
-        fsa.t1 = k2.RaggedTensor([[], [10], [2, 3, 5.5]])
-        expected_t1 = k2.RaggedTensor([[], [10], [2, 3, 5.5]])
+        fsa.t1 = k2.RaggedTensor("[[] [10] [2 3 5.5]]")
+        expected_t1 = k2.RaggedTensor("[[] [10] [2 3 5.5]]")
         assert fsa.t1 == expected_t1
 
     def test_get_forward_scores_simple_fsa_case_1(self):
@@ -122,8 +121,8 @@ class TestFsa(unittest.TestCase):
             for use_double_scores in (True, False):
                 #  fsa = k2r.Fsa(s).to(device).requires_grad_(True)
                 # TODO(fangjun): Implement `To` and autograd
-                fsa = k2r.Fsa(s).requires_grad_(True)
-                fsa_vec = k2r.Fsa.from_fsas([fsa])
+                fsa = k2.Fsa(s).requires_grad_(True)
+                fsa_vec = k2.Fsa.from_fsas([fsa])
                 forward_scores = fsa_vec.get_forward_scores(
                     use_double_scores=use_double_scores, log_semiring=False)
                 expected_forward_scores = torch.tensor([
@@ -141,7 +140,7 @@ class TestFsa(unittest.TestCase):
 
                 # now for log semiring
                 fsa.grad = None
-                fsa_vec = k2r.Fsa.from_fsas([fsa])
+                fsa_vec = k2.Fsa.from_fsas([fsa])
                 forward_scores = fsa_vec.get_forward_scores(
                     use_double_scores=use_double_scores, log_semiring=True)
                 scores = fsa.scores.detach().clone().requires_grad_(True)

@@ -162,6 +162,15 @@ struct FsaClass {
   // Set scores, will modify scores in fsa.arcs
   void SetScores(torch::Tensor scores);
 
+  /* Normalize the given `scores` and assign it to `self.scores`.
+
+    @param [in] scores Tensor of scores of dtype torch.float32, and shape equal
+                       to `self.scores.shape` (one axis). Will be normalized so
+                       the sum, after exponentiating, of the scores leaving
+                       each state that has at least one arc leaving it is 1.
+  */
+  void SetScoresStochastic(torch::Tensor scores);
+
   // Get fsa properties.
   int32_t Properties();
   // Get fsa properties as string format.
