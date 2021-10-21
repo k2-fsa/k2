@@ -500,4 +500,81 @@ TEST(FsaClassTest, FromBinaryFunctionTensor) {
   }
 }
 
+TEST(FsaClassTest, Attributes) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    auto device = GetDevice(c);
+    std::string s = R"(0 1 2 10
+        0 1 1 20
+        1 2 -1 30
+        2)";
+    FsaClass src = FsaClass(s).To(device);
+
+    // test scores
+    EXPECT_TRUE(torch::equal(
+        src.Scores(),
+        torch::tensor({10, 20, 30},
+                      torch::dtype(torch::kFloat32).device(device))));
+    torch::Tensor scores =
+        torch::tensor({1, 2, 3}, torch::dtype(torch::kFloat32).device(device));
+    src.SetScores(scores);
+    EXPECT_TRUE(torch::equal(src.Scores(), scores));
+
+    // test labels
+    EXPECT_TRUE(torch::equal(
+        src.Labels(),
+        torch::tensor({2, 1, -1}, torch::dtype(torch::kInt32).device(device))));
+    torch::Tensor labels =
+        torch::tensor({20, 10, -1}, torch::dtype(torch::kInt32).device(device));
+    src.SetLabels(labels);
+    EXPECT_TRUE(torch::equal(src.Labels(), labels));
+
+    // test tensor attribute
+    torch::Tensor tensor_int =
+        torch::tensor({1, 2, 3}, torch::dtype(torch::kInt32).device(device));
+    src.SetAttr("tensor_int", torch::IValue(tensor_int));
+    torch::Tensor tensor_float =
+        torch::tensor({1, 2, 3}, torch::dtype(torch::kFloat32).device(device));
+    src.SetAttr("tensor_float", torch::IValue(tensor_float));
+
+    EXPECT_TRUE(torch::equal(src.GetAttr("tensor_int").toTensor(), tensor_int));
+    EXPECT_TRUE(
+        torch::allclose(src.GetAttr("tensor_float").toTensor(), tensor_float));
+    src.DeleteAttr("tensor_int");
+    EXPECT_FALSE(src.HasAttr("tensor_int"));
+
+    // test ragged attribute
+    RaggedAny ragged_int =
+        RaggedAny("[[1, 2], [3], [4]]", torch::kInt32, device);
+    src.SetAttr("ragged_int", ToIValue(ragged_int));
+    RaggedAny ragged_float =
+        RaggedAny("[[1, 2], [3], [4]]", torch::kFloat32, device);
+    src.SetAttr("ragged_float", ToIValue(ragged_float));
+
+    EXPECT_EQ(ToRaggedAny(src.GetAttr("ragged_int")).ToString(),
+              ragged_int.ToString());
+    EXPECT_EQ(ToRaggedAny(src.GetAttr("ragged_float")).ToString(),
+              ragged_float.ToString());
+    src.DeleteAttr("ragged_int");
+    EXPECT_FALSE(src.HasAttr("ragged_int"));
+
+    // test other attribute
+    src.SetAttr("int", torch::IValue(10));
+    src.SetAttr("str", torch::IValue("k2"));
+    EXPECT_EQ(src.GetAttr("int").toInt(), 10);
+    EXPECT_EQ(src.GetAttr("str").toStringRef(), "k2");
+    src.DeleteAttr("int");
+    EXPECT_FALSE(src.HasAttr("int"));
+
+    // test filler
+    src.SetAttr("tensor_int_filler", torch::IValue(10));
+    src.SetAttr("tensor_float_filler", torch::IValue(10.0));
+
+    EXPECT_EQ(src.GetFiller("tensor_int").toInt(), 10);
+    EXPECT_EQ(src.GetFiller("tensor_float").toDouble(), 10.0);
+    EXPECT_EQ(src.GetFiller("none").toInt(), 0);
+    src.DeleteAttr("tensor_int_filler");
+    EXPECT_EQ(src.GetFiller("tensor_int").toInt(), 0);
+  }
+}
+
 }  // namespace k2
