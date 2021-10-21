@@ -39,10 +39,10 @@ torch::IValue ToIValue(const RaggedAny &any) {
   return torch::make_custom_class<RaggedAnyHolder>(any);
 }
 
-// modify from pytorch "aten/src/ATen/core/custom_class.cpp"
+// modified from pytorch "aten/src/ATen/core/custom_class.cpp"
 std::string GetCustomClassName(torch::IValue ivalue) {
   if (ivalue.isCustomClass()) {
-    // name schema: "__torch__.torch.classes."{namespaceName}"."{className}
+    // name schema: "__torch__.torch.classes.{namespaceName}.{className}"
     std::string name = ivalue.toObject()->type()->name()->qualifiedName();
     return name.substr(24);  // 24 is the length of "__torch__.torch.classes."
   } else {
