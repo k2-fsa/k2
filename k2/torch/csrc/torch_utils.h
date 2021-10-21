@@ -58,6 +58,8 @@ RaggedAny ToRaggedAny(torch::IValue ivalue);
 
 torch::IValue ToIValue(const RaggedAny &any);
 
+std::string GetCustomClassName(torch::IValue ivalue);
+
 /* Convert k2::DeviceType to torch::DeviceType.
    Abort on failure.
 

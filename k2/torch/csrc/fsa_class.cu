@@ -439,7 +439,7 @@ void FsaClass::SetAttr(const std::string &name, torch::IValue value) {
     return;
   }
 
-  if (value.isCustomClass()) {
+  if (GetCustomClassName(value) == "_k2.RaggedAnyHolder") {
     SetRaggedTensorAttr(name, ToRaggedAny(value));
     return;
   }
