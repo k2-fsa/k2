@@ -63,10 +63,10 @@ FsaClass::FsaClass(const std::string &s,
   // is not valid.
   Properties();
 
-  // TODO: we also need to pass the name of extra_labels and ragged_labels.
+  // TODO: we also need to pass the name of ragged_labels.
 }
 
-FsaClass FsaClass::FromUnaryFunctionTensor(const FsaClass &src,
+FsaClass FsaClass::FromUnaryFunctionTensor(FsaClass &src,
                                            const Ragged<Arc> &arcs,
                                            torch::Tensor arc_map) {
   FsaClass dest(arcs);
@@ -98,23 +98,24 @@ FsaClass FsaClass::FromUnaryFunctionRagged(FsaClass &src,
 
   for (const auto &iter : src.tensor_attrs) {
     if (remove_filler && iter.second.scalar_type() == torch::kInt32) {
-      int32_t filler = (int32_t)src.GetFiller(iter.first);
-      if (filler != -1) {
+      auto filler = src.GetFiller(iter.first);
+      K2_CHECK(filler.isInt());
+      if (filler.toInt() != -1) {
         torch::Tensor value = iter.second.clone();
         auto masking = torch::logical_or(torch::ne(src.Labels(), -1),
                                          torch::ne(value, -1));
+        // we need a int32_t scalar, so we have to use tensor.
         auto filler_scalar = torch::tensor(
-            filler, torch::dtype(torch::kInt32).device(value.device()));
+            filler.toInt(), torch::dtype(torch::kInt32).device(value.device()));
         value = torch::where(masking, value, filler_scalar);
-        auto new_value = arc_map_any.Index(value, torch::IValue(filler));
-        dest.SetAttr(iter.first,
-                     new_value.RemoveValuesEq(torch::IValue(filler)));
+        auto new_value = arc_map_any.Index(value, filler);
+        dest.SetRaggedTensorAttr(iter.first, new_value.RemoveValuesEq(filler));
       }
     } else {
       K2_CHECK(iter.second.dtype() == torch::kFloat32 ||
                iter.second.dtype() == torch::kFloat64);
       torch::Tensor new_value = arc_map_any.IndexAndSum(iter.second);
-      dest.SetAttr(iter.first, new_value);
+      dest.SetTensorAttr(iter.first, new_value);
     }
   }
 
@@ -126,8 +127,7 @@ FsaClass FsaClass::FromUnaryFunctionRagged(FsaClass &src,
   return dest;
 }
 
-FsaClass FsaClass::FromBinaryFunctionTensor(const FsaClass &a_src,
-                                            const FsaClass &b_src,
+FsaClass FsaClass::FromBinaryFunctionTensor(FsaClass &a_src, FsaClass &b_src,
                                             const Ragged<Arc> &arcs,
                                             torch::Tensor a_arc_map,
                                             torch::Tensor b_arc_map) {
@@ -136,25 +136,27 @@ FsaClass FsaClass::FromBinaryFunctionTensor(const FsaClass &a_src,
   // is not valid.
   dest.Properties();
   for (const auto &iter : a_src.tensor_attrs) {
-    float filler = a_src.GetFiller(iter.first);
+    auto filler_ivalue = a_src.GetFiller(iter.first);
+    float filler = filler_ivalue.isInt() ? filler_ivalue.toInt()
+                                         : filler_ivalue.toDouble();
     if (b_src.HasAttr(iter.first)) {
       if (iter.second.scalar_type() != torch::kFloat32) {
-        // TODO: raise an exception
-        K2_LOG(WARNING) << "We don't support propagating two "
-                        << "attributes with the same name that are "
-                        << "not real-valued, in intersection: " << iter.first;
-        continue;
+        std::ostringstream oss;
+        oss << "We don't support propagating two "
+            << "attributes with the same name that are "
+            << "not real-valued, in intersection: " << iter.first;
+        throw std::runtime_error(oss.str().c_str());
       }
       auto b_value = b_src.GetAttr(iter.first).toTensor();
       K2_CHECK_EQ(b_value.scalar_type(), torch::kFloat32);
       auto new_value =
           IndexSelectFunction::apply(iter.second, a_arc_map, filler) +
           IndexSelectFunction::apply(b_value, b_arc_map, filler);
-      dest.SetAttr(iter.first, new_value);
+      dest.SetTensorAttr(iter.first, new_value);
     } else {
       auto new_value =
           IndexSelectFunction::apply(iter.second, a_arc_map, filler);
-      dest.SetAttr(iter.first, new_value);
+      dest.SetTensorAttr(iter.first, new_value);
     }
   }
 
@@ -162,11 +164,11 @@ FsaClass FsaClass::FromBinaryFunctionTensor(const FsaClass &a_src,
 
   dest.CopyOtherAttrs(a_src);
 
-  dest.CopyTensorAttrs(b_src, b_arc_map, false);
+  dest.CopyTensorAttrs(b_src, b_arc_map);
 
-  dest.CopyRaggedTensorAttrs(b_src, b_arc_map, false);
+  dest.CopyRaggedTensorAttrs(b_src, b_arc_map);
 
-  dest.CopyOtherAttrs(b_src, false);
+  dest.CopyOtherAttrs(b_src);
 
   // The following will actually overwrite `scores` with the same
   // value it had before; but this enables the autograd to work since
@@ -176,45 +178,43 @@ FsaClass FsaClass::FromBinaryFunctionTensor(const FsaClass &a_src,
   return dest;
 }
 
-void FsaClass::CopyTensorAttrs(const FsaClass &src, torch::Tensor arc_map,
-                               bool over_write /*= true*/) {
+void FsaClass::CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
   for (const auto &iter : src.tensor_attrs) {
-    if (over_write || !HasAttr(iter.first)) {
-      float filler = GetFiller(iter.first);
+    if (!HasAttr(iter.first)) {
+      auto filler_ivalue = GetFiller(iter.first);
+      float filler = filler_ivalue.isInt() ? filler_ivalue.toInt()
+                                           : filler_ivalue.toDouble();
       auto value = IndexSelectFunction::apply(iter.second, arc_map, filler);
-      SetAttr(iter.first, value);
+      SetTensorAttr(iter.first, value);
     }
   }
 }
 
-void FsaClass::CopyOtherAttrs(const FsaClass &src, bool over_write /*= true*/) {
+void FsaClass::CopyOtherAttrs(FsaClass &src) {
   for (const auto &iter : src.other_attrs) {
-    if (over_write || !HasAttr(iter.first)) SetAttr(iter.first, iter.second);
+    if (!HasAttr(iter.first)) SetAttr(iter.first, iter.second);
   }
 }
 
-void FsaClass::CopyRaggedTensorAttrs(const FsaClass &src, torch::Tensor arc_map,
-                                     bool over_write /*= true*/) {
-  for (const auto &iter : src.ragged_tensor_attrs) {
-    if (over_write || !HasAttr(iter.first)) {
+void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
+  for (auto &iter : src.ragged_tensor_attrs) {
+    if (!HasAttr(iter.first)) {
       // Only integer types ragged attributes are supported now
       K2_CHECK_EQ(iter.second.any.GetDtype(), kInt32Dtype);
-      auto new_value =
-          const_cast<RaggedAny &>(iter.second).Index(arc_map, 0, false);
-      SetAttr(iter.first, new_value.first);
+      auto new_value = (iter.second).Index(arc_map, 0, false);
+      SetRaggedTensorAttr(iter.first, new_value.first);
     }
   }
 }
 
-void FsaClass::CopyRaggedTensorAttrs(const FsaClass &src, RaggedAny &arc_map,
-                                     bool over_write /*= true*/) {
-  for (const auto &iter : src.ragged_tensor_attrs) {
-    if (over_write || !HasAttr(iter.first)) {
+void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, RaggedAny &arc_map) {
+  for (auto &iter : src.ragged_tensor_attrs) {
+    if (!HasAttr(iter.first)) {
       // We currently don't support float ragged attributes
       K2_CHECK_EQ(iter.second.any.GetDtype(), kInt32Dtype);
-      RaggedAny new_value = const_cast<RaggedAny &>(iter.second).Index(arc_map);
+      RaggedAny new_value = (iter.second).Index(arc_map);
       new_value = new_value.RemoveAxis(new_value.any.NumAxes() - 2);
-      SetAttr(iter.first, new_value);
+      SetRaggedTensorAttr(iter.first, new_value);
     }
   }
 }
@@ -225,7 +225,7 @@ void FsaClass::SetScoresStochastic(torch::Tensor scores) {
   K2_CHECK_EQ(scores.numel(), fsa.NumElements());
 
   auto ragged_scores = RaggedAny(fsa.shape.To(GetContext(scores)), scores);
-  RaggedAny norm_scores = ragged_scores.Normalize(true).To(scores.device());
+  RaggedAny norm_scores = ragged_scores.Normalize(true).To(Scores().device());
   SetScores(norm_scores.Data());
 }
 
@@ -267,22 +267,20 @@ int32_t FsaClass::Properties() {
     } else {
       GetFsaVecBasicProperties(fsa, nullptr, &properties);
     }
-  }
-  if (properties & 1 != 1) {
-    K2_LOG(FATAL) << "Fsa is not valid, properties are : " << properties
-                  << " = " << PropertiesStr() << ", arcs are : " << fsa;
+    if (properties & kFsaPropertiesValid != 1) {
+      K2_LOG(FATAL) << "Fsa is not valid, properties are : " << properties
+                    << " = " << PropertiesStr() << ", arcs are : " << fsa;
+    }
   }
   return properties;
 }
 
-std::string FsaClass::PropertiesStr() const {
-  return FsaPropertiesAsString(properties);
+std::string FsaClass::PropertiesStr() /*const*/ {
+  return FsaPropertiesAsString(Properties());
 }
 
 torch::Tensor FsaClass::Arcs() {
-  auto device_type = ToTorchDeviceType(fsa.Context()->GetDeviceType());
-  int32_t device_id = fsa.Context()->GetDeviceId();
-  auto device = torch::Device(device_type, device_id);
+  auto device = GetDevice(fsa.Context());
   auto scalar_type = ToScalarType<int32_t>::value;
   // an Arc has 4 members
   static_assert(sizeof(Arc) == 4 * sizeof(int32_t), "");
@@ -300,7 +298,8 @@ torch::Tensor FsaClass::Labels() /*const*/ { return Arcs().index({"...", 2}); }
 
 void FsaClass::SetLabels(torch::Tensor labels) {
   K2_CHECK_EQ(labels.numel(), fsa.NumElements());
-  Arcs().index({"...", 2}).copy_(labels);
+  K2_CHECK_EQ(labels.scalar_type(), torch::kInt32);
+  Labels().copy_(labels);
 }
 
 FsaClass &FsaClass::SetRequiresGrad(bool requires_grad /*=true*/) {
@@ -308,14 +307,14 @@ FsaClass &FsaClass::SetRequiresGrad(bool requires_grad /*=true*/) {
   return *this;
 }
 
-FsaClass FsaClass::To(const ContextPtr &context) const {
+FsaClass FsaClass::ToOtherContext(const ContextPtr &context) const {
   FsaClass dest(fsa.To(context));
   auto device = GetDevice(context);
   for (const auto &iter : tensor_attrs) {
-    dest.SetAttr(iter.first, (iter.second).to(device));
+    dest.SetTensorAttr(iter.first, (iter.second).to(device));
   }
   for (const auto &iter : ragged_tensor_attrs) {
-    dest.SetAttr(iter.first, (iter.second).To(device));
+    dest.SetRaggedTensorAttr(iter.first, (iter.second).To(device));
   }
   for (const auto &iter : other_attrs) {
     dest.SetAttr(iter.first, iter.second);
@@ -334,7 +333,7 @@ FsaClass FsaClass::To(torch::Device device) const {
 
     // CUDA -> CPU
     DeviceGuard guard(context);
-    return this->To(GetCpuContext());
+    return this->ToOtherContext(GetCpuContext());
   }
 
   K2_CHECK(device.is_cuda()) << device.str();
@@ -349,7 +348,7 @@ FsaClass FsaClass::To(torch::Device device) const {
   // CPU to CUDA
   // or from one GPU to another GPU
   DeviceGuard guard(device_index);
-  return this->To(GetCudaContext(device_index));
+  return this->ToOtherContext(GetCudaContext(device_index));
 }
 
 FsaClass FsaClass::To(const std::string &device) const {
@@ -413,7 +412,7 @@ FsaClass FsaClass::ArcSort() /*const*/ {
 void FsaClass::SetAttr(const std::string &name, torch::IValue value) {
   if (name == "grad") {
     // Note we don't use pybind11's def_property since it does not allow
-    // to use argument annotions, which means it is not possible to
+    // to use argument annotations, which means it is not possible to
     // run: fsa.grad = None
     if (value.isNone()) {
       Scores().mutable_grad() = {};
@@ -423,30 +422,38 @@ void FsaClass::SetAttr(const std::string &name, torch::IValue value) {
     return;
   }
 
+  if (name == "scores") {
+    // Note we don't use pybind11's def_property to set scores since it will go
+    // into __setattr__ function when running fsa.scores = tensor.
+    K2_CHECK(value.isTensor());
+    SetScores(value.toTensor());
+    return;
+  }
+
   if (HasAttr(name)) DeleteAttr(name);
 
   all_attr_names.insert(name);
 
   if (value.isTensor()) {
-    torch::Tensor tensor = value.toTensor();
-    SetAttr(name, tensor);
+    SetTensorAttr(name, value.toTensor());
     return;
   }
 
   if (value.isCustomClass()) {
-    torch::intrusive_ptr<RaggedAnyHolder> ragged_any_holder =
-        value.toCustomClass<RaggedAnyHolder>();
-    SetAttr(name, *(ragged_any_holder->ragged));
+    SetRaggedTensorAttr(name, ToRaggedAny(value));
     return;
   }
 
-  all_attr_names.insert(name);
   other_attrs[name] = value;
 }
 
 torch::IValue FsaClass::GetAttr(const std::string &name) const {
   if (name == "grad") {
     return torch::IValue(Scores().grad());
+  }
+
+  if (name == "scores") {
+    return Scores();
   }
 
   if (!HasAttr(name)) {
@@ -465,8 +472,7 @@ torch::IValue FsaClass::GetAttr(const std::string &name) const {
   {
     auto it = ragged_tensor_attrs.find(name);
     if (it != ragged_tensor_attrs.end()) {
-      return torch::make_custom_class<RaggedAnyHolder>(
-          std::make_shared<RaggedAny>(it->second));
+      return ToIValue(it->second);
     }
   }
 
@@ -486,20 +492,19 @@ void FsaClass::DeleteAttr(const std::string &name) {
   }
 
   {
-    // Erase the filler
-    auto it = fillers.find(name);
-    if (it != fillers.end()) {
-      fillers.erase(it);
-    }
-  }
-
-  {
     // Were we allowed to use C++ 17, could we use the following statement:
     // if (auto it = tensor_attrs.find(name); it != tensor_attrs.end()) {
 
     auto it = tensor_attrs.find(name);
     if (it != tensor_attrs.end()) {
       tensor_attrs.erase(it);
+
+      // Erase the filler
+      std::string filler_name = name + "_filler";
+      auto it = other_attrs.find(filler_name);
+      if (it != other_attrs.end()) {
+        other_attrs.erase(it);
+      }
       return;
     }
   }
@@ -522,19 +527,19 @@ void FsaClass::DeleteAttr(const std::string &name) {
 }
 
 bool FsaClass::HasAttr(const std::string &name) const {
+  // we treat grad & scores as attributes, though they don't store in attribute
+  // containers.
+  if (name == "grad" || name == "scores") return true;
   return all_attr_names.count(name) > 0;
 }
 
-void FsaClass::SetFiller(const std::string &name, float filler) {
-  fillers[name] = filler;
-}
-
-float FsaClass::GetFiller(const std::string &name) const {
-  auto iter = fillers.find(name);
-  if (iter != fillers.end()) {
+torch::IValue FsaClass::GetFiller(const std::string &name) const {
+  std::string filler_name = name + "_filler";
+  auto iter = other_attrs.find(filler_name);
+  if (iter != other_attrs.end()) {
     return iter->second;
   } else {
-    return 0;
+    return torch::IValue(0);
   }
 }
 

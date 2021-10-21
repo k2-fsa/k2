@@ -96,7 +96,7 @@ RaggedAny::RaggedAny(const RaggedShape &shape, torch::Tensor value)
 }
 
 RaggedAny::RaggedAny(const std::string &s,
-                     torch::optional<torch::Dtype> dtype /*={}*/,
+                     torch::optional<torch::ScalarType> dtype /*={}*/,
                      torch::Device device /*=torch::kCPU*/) {
   ContextPtr context = GetContext(device);
   DeviceGuard guard(context);

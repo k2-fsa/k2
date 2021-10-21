@@ -3,8 +3,8 @@ include(transform)
 
 # please keep the list sorted
 set(torch_pybind_srcs
-  arc.cu
   any.cu
+  arc.cu
   discounted_cum_sum.cu
   doc/doc.cu
   fsa.cu

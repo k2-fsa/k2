@@ -54,7 +54,7 @@ TEST(FsaClassTest, FromUnaryFunctionTensor) {
     src.SetAttr("ragged_attr", ToIValue(ragged_attr));
 
     src.SetAttr("attr1", torch::IValue("src"));
-    src.SetAttr("attr2", torch::IValue("fsa"));
+    src.SetAttr("attr2", torch::IValue(10));
 
     Array1<int32_t> arc_map;
     Ragged<Arc> arcs;
@@ -85,8 +85,7 @@ TEST(FsaClassTest, FromUnaryFunctionTensor) {
     EXPECT_EQ(dest.GetAttr("attr1").toStringRef(),
               src.GetAttr("attr1").toStringRef());
 
-    EXPECT_EQ(dest.GetAttr("attr2").toStringRef(),
-              src.GetAttr("attr2").toStringRef());
+    EXPECT_EQ(dest.GetAttr("attr2").toInt(), src.GetAttr("attr2").toInt());
 
     torch::Tensor scale = torch::tensor(
         {10, 20, 30}, torch::dtype(torch::kFloat32).device(device));
@@ -95,8 +94,8 @@ TEST(FsaClassTest, FromUnaryFunctionTensor) {
         (dest.GetAttr("float_attr").toTensor() * scale).sum();
     torch::Tensor sum_score = (dest.Scores() * scale).sum();
 
-    torch::autograd::backward({sum_attr}, {});
-    torch::autograd::backward({sum_score}, {});
+    sum_attr.backward();
+    sum_score.backward();
 
     torch::Tensor expected_grad = torch::tensor(
         {20, 10, 30}, torch::dtype(torch::kFloat32).device(device));
@@ -124,7 +123,7 @@ TEST(FsaClassTest, FromUnaryFunctionRagged) {
     FsaClass src = FsaClass(s).To(device);
     src.SetScores(scores);
     src.SetAttr("attr1", torch::IValue("hello"));
-    src.SetAttr("attr2", torch::IValue("k2"));
+    src.SetAttr("attr2", torch::IValue(10));
 
     torch::Tensor float_attr = torch::tensor(
         {0.1, 0.2, 0.3},
@@ -151,8 +150,7 @@ TEST(FsaClassTest, FromUnaryFunctionRagged) {
     EXPECT_EQ(dest.GetAttr("attr1").toStringRef(),
               src.GetAttr("attr1").toStringRef());
 
-    EXPECT_EQ(dest.GetAttr("attr2").toStringRef(),
-              src.GetAttr("attr2").toStringRef());
+    EXPECT_EQ(dest.GetAttr("attr2").toInt(), src.GetAttr("attr2").toInt());
 
     RaggedAny expected_arc_map =
         RaggedAny("[[1] [0 2] [2]]", torch::kInt32, device);
@@ -194,8 +192,8 @@ TEST(FsaClassTest, FromUnaryFunctionRagged) {
 
     torch::Tensor expected_float_attr_sum = (expected_float_attr * scale).sum();
 
-    torch::autograd::backward({float_attr_sum}, {});
-    torch::autograd::backward({expected_float_attr_sum}, {});
+    float_attr_sum.backward();
+    expected_float_attr_sum.backward();
 
     EXPECT_TRUE(torch::allclose(src.GetAttr("float_attr").toTensor().grad(),
                                 float_attr.grad()));
@@ -203,8 +201,8 @@ TEST(FsaClassTest, FromUnaryFunctionRagged) {
     torch::Tensor scores_sum = (dest.Scores() * scale).sum();
     torch::Tensor expected_scores_sum = (expected_scores * scale).sum();
 
-    torch::autograd::backward({scores_sum}, {});
-    torch::autograd::backward({expected_scores_sum}, {});
+    scores_sum.backward();
+    expected_scores_sum.backward();
 
     EXPECT_TRUE(torch::allclose(scores.grad(), scores_copy.grad()));
   }
@@ -227,7 +225,7 @@ TEST(FsaClassTest, FromUnaryFunctionRaggedWithEmptyList) {
     FsaClass src = FsaClass(s).To(device);
     src.SetScores(scores);
     src.SetAttr("attr1", torch::IValue("hello"));
-    src.SetAttr("attr2", torch::IValue("k2"));
+    src.SetAttr("attr2", torch::IValue(10));
 
     torch::Tensor float_attr = torch::tensor(
         {0.1, 0.2, 0.3},
@@ -254,8 +252,7 @@ TEST(FsaClassTest, FromUnaryFunctionRaggedWithEmptyList) {
     EXPECT_EQ(dest.GetAttr("attr1").toStringRef(),
               src.GetAttr("attr1").toStringRef());
 
-    EXPECT_EQ(dest.GetAttr("attr2").toStringRef(),
-              src.GetAttr("attr2").toStringRef());
+    EXPECT_EQ(dest.GetAttr("attr2").toInt(), src.GetAttr("attr2").toInt());
 
     RaggedAny expected_arc_map =
         RaggedAny("[[] [1] [0 2] [] [2]]", torch::kInt32, device);
@@ -301,8 +298,8 @@ TEST(FsaClassTest, FromUnaryFunctionRaggedWithEmptyList) {
 
     torch::Tensor expected_float_attr_sum = (expected_float_attr * scale).sum();
 
-    torch::autograd::backward({float_attr_sum}, {});
-    torch::autograd::backward({expected_float_attr_sum}, {});
+    float_attr_sum.backward();
+    expected_float_attr_sum.backward();
 
     EXPECT_TRUE(torch::allclose(src.GetAttr("float_attr").toTensor().grad(),
                                 float_attr.grad()));
@@ -310,8 +307,8 @@ TEST(FsaClassTest, FromUnaryFunctionRaggedWithEmptyList) {
     torch::Tensor scores_sum = (dest.Scores() * scale).sum();
     torch::Tensor expected_scores_sum = (expected_scores * scale).sum();
 
-    torch::autograd::backward({scores_sum}, {});
-    torch::autograd::backward({expected_scores_sum}, {});
+    scores_sum.backward();
+    expected_scores_sum.backward();
 
     EXPECT_TRUE(torch::allclose(scores.grad(), scores_copy.grad()));
   }
@@ -469,12 +466,12 @@ TEST(FsaClassTest, FromBinaryFunctionTensor) {
     torch::Tensor expected_float_attr_b_sum =
         (expected_float_attr_b * scale).sum();
 
-    torch::autograd::backward({float_attr_sum}, {});
-    torch::autograd::backward({expected_float_attr_sum}, {});
-    torch::autograd::backward({float_attr_a_sum}, {});
-    torch::autograd::backward({expected_float_attr_a_sum}, {});
-    torch::autograd::backward({float_attr_b_sum}, {});
-    torch::autograd::backward({expected_float_attr_b_sum}, {});
+    float_attr_sum.backward();
+    expected_float_attr_sum.backward();
+    float_attr_a_sum.backward();
+    expected_float_attr_a_sum.backward();
+    float_attr_b_sum.backward();
+    expected_float_attr_b_sum.backward();
 
     EXPECT_TRUE(torch::allclose(a_fsa.GetAttr("float_attr").toTensor().grad(),
                                 a_float_attr_copy.grad()));
@@ -495,8 +492,8 @@ TEST(FsaClassTest, FromBinaryFunctionTensor) {
     torch::Tensor scores_sum = (dest.Scores() * scale).sum();
     torch::Tensor expected_scores_sum = (expected_scores * scale).sum();
 
-    torch::autograd::backward({scores_sum}, {});
-    torch::autograd::backward({expected_scores_sum}, {});
+    scores_sum.backward();
+    expected_scores_sum.backward();
 
     EXPECT_TRUE(torch::allclose(a_fsa.Scores().grad(), scores_a.grad()));
     EXPECT_TRUE(torch::allclose(b_fsa.Scores().grad(), scores_b.grad()));
@@ -504,8 +501,3 @@ TEST(FsaClassTest, FromBinaryFunctionTensor) {
 }
 
 }  // namespace k2
-
-int main(int argc, char *argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

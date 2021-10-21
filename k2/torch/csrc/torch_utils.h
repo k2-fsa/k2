@@ -24,6 +24,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/device_guard.h"
@@ -32,7 +33,7 @@
 #include "k2/csrc/pytorch_context.h"
 #include "k2/torch/csrc/fsa_class.h"
 #include "k2/torch/csrc/ragged_any.h"
-#include "torch/torch.h"
+#include "torch/script.h"
 
 namespace k2 {
 
@@ -41,9 +42,9 @@ struct FsaClass;
 // We need this wrapper so that we can convert an instance
 // of RaggedAny into `torch::IValue`
 struct RaggedAnyHolder : public torch::CustomClassHolder {
-  std::shared_ptr<RaggedAny> ragged = nullptr;  // not owned by this class
-  explicit RaggedAnyHolder(std::shared_ptr<RaggedAny> ragged)
-      : ragged(ragged) {}
+  RaggedAny ragged;
+  explicit RaggedAnyHolder(const RaggedAny &ragged)
+      : ragged(std::move(ragged)) {}
 };
 
 // We need this wrapper so that we can save an instance
@@ -55,7 +56,7 @@ struct FsaClassHolder : public torch::CustomClassHolder {
 
 RaggedAny ToRaggedAny(torch::IValue ivalue);
 
-torch::IValue ToIValue(RaggedAny &any);
+torch::IValue ToIValue(const RaggedAny &any);
 
 /* Convert k2::DeviceType to torch::DeviceType.
    Abort on failure.

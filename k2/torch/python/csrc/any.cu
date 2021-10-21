@@ -242,15 +242,15 @@ void PybindRaggedAny(py::module &m) {
           py::arg("data"), py::arg("dtype") = py::none(),
           py::arg("device") = "cpu", kRaggedAnyInitDataDeviceDoc);
 
-  any.def(py::init<const std::string &, torch::optional<torch::Dtype>,
+  any.def(py::init<const std::string &, torch::optional<torch::ScalarType>,
                    torch::Device>(),
-          py::arg("s"), py::arg("dtype") = torch::optional<torch::Dtype>(),
+          py::arg("s"), py::arg("dtype") = torch::optional<torch::ScalarType>(),
           py::arg("device") = torch::Device(torch::kCPU),
           kRaggedAnyInitStrDeviceDoc);
 
-  any.def(py::init<const std::string &, torch::optional<torch::Dtype>,
+  any.def(py::init<const std::string &, torch::optional<torch::ScalarType>,
                    const std::string &>(),
-          py::arg("s"), py::arg("dtype") = torch::optional<torch::Dtype>(),
+          py::arg("s"), py::arg("dtype") = torch::optional<torch::ScalarType>(),
           py::arg("device") = torch::Device(torch::kCPU),
           kRaggedAnyInitStrDeviceDoc);
 

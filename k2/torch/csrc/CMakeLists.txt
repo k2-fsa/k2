@@ -39,6 +39,7 @@ function(torch_add_cuda_test source)
     PRIVATE
     k2_torch
     gtest
+    gtest_main
   )
 
   # NOTE: We set the working directory here so that

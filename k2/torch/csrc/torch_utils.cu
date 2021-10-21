@@ -25,19 +25,18 @@
 namespace k2 {
 
 static auto register_ragged_any_holder =
-    torch::class_<RaggedAnyHolder>("K2RaggedAnyHolder", "RaggedAnyHolder");
+    torch::class_<RaggedAnyHolder>("_k2", "RaggedAnyHolder");
 static auto register_fsa_class_holder =
-    torch::class_<FsaClassHolder>("K2FsaClassHolder", "FsaClassHolder");
+    torch::class_<FsaClassHolder>("_k2", "FsaClassHolder");
 
 RaggedAny ToRaggedAny(torch::IValue ivalue) {
   torch::intrusive_ptr<RaggedAnyHolder> ragged_any_holder =
       ivalue.toCustomClass<RaggedAnyHolder>();
-  return *(ragged_any_holder->ragged);
+  return ragged_any_holder->ragged;
 }
 
-torch::IValue ToIValue(RaggedAny &any) {
-  return torch::make_custom_class<RaggedAnyHolder>(
-      std::make_shared<RaggedAny>(any));
+torch::IValue ToIValue(const RaggedAny &any) {
+  return torch::make_custom_class<RaggedAnyHolder>(any);
 }
 
 DeviceType FromTorchDeviceType(const torch::DeviceType &type) {

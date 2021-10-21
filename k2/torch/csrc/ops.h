@@ -31,7 +31,7 @@
 
 namespace k2 {
 
-/* Add the `value` to `in_out` on the positons in `index`, the `in_out` will be
+/* Add the `value` to `in_out` on the positions in `index`, the `in_out` will be
 modified by `in_out[indx] += value`.
 
 Note:

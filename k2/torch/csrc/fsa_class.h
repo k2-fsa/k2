@@ -54,10 +54,6 @@ struct FsaClass {
   /// The name of all attributes of this FSA
   std::unordered_set<std::string> all_attr_names;
 
-  /// It contains the fillers of all attributes.
-  /// It shares the same key with attributes.
-  std::unordered_map<std::string, float> fillers;
-
   // The default constructor initializes an invalid FSA.
   FsaClass() = default;
 
@@ -98,7 +94,7 @@ struct FsaClass {
                    `src`, or -1 if the arc had no source arc
                    (e.g. added epsilon self-loops).
    */
-  static FsaClass FromUnaryFunctionTensor(const FsaClass &src,
+  static FsaClass FromUnaryFunctionTensor(FsaClass &src,
                                           const Ragged<Arc> &arcs,
                                           torch::Tensor arc_map);
 
@@ -150,8 +146,7 @@ struct FsaClass {
                      arc-index in `b_fsa` or -1 if the arc had no source arc
                      (e.g. added epsilon self-loops).
    */
-  static FsaClass FromBinaryFunctionTensor(const FsaClass &a_src,
-                                           const FsaClass &b_src,
+  static FsaClass FromBinaryFunctionTensor(FsaClass &a_src, FsaClass &b_src,
                                            const Ragged<Arc> &arcs,
                                            torch::Tensor a_arc_map,
                                            torch::Tensor b_arc_map);
@@ -174,12 +169,11 @@ struct FsaClass {
   // Get fsa properties.
   int32_t Properties();
   // Get fsa properties as string format.
-  std::string PropertiesStr() const;
+  std::string PropertiesStr() /*const*/;
 
   // Transfer current fsa to another device.
   FsaClass To(torch::Device device) const;
   FsaClass To(const std::string &device) const;
-  FsaClass To(const ContextPtr &context) const;
 
   /* Return a 2-D int32 torch tensor.
      Each row represents an arc, where:
@@ -241,7 +235,7 @@ struct FsaClass {
 
   /** Get an attribute by its name.
 
-    Raise an Python exception "AttributeError" if there is no such attribute.
+    Raise a RuntimeError exception if there is no such attribute.
 
     @param name The attribute name.
     @return Return the value of the attribute.
@@ -250,7 +244,7 @@ struct FsaClass {
 
   /** Delete an attribute by its name.
 
-    Raise an Python exception "AttributeError" if there is no such attribute.
+    Raise a RuntimeError exception if there is no such attribute.
 
     @param name The attribute name.
    */
@@ -264,19 +258,12 @@ struct FsaClass {
    */
   bool HasAttr(const std::string &name) const;
 
-  /** Set filler by its attribute name.
-
-    @param name The attribute name.
-    @param filler The filler value.
-   */
-  void SetFiller(const std::string &name, float filler);
-
   /** Get a filler by its attribute name.
 
     @param name The attribute name.
     @return Return the filler of the attribute if found, otherwise 0.
    */
-  float GetFiller(const std::string &name) const;
+  torch::IValue GetFiller(const std::string &name) const;
 
   /** Wrapper for k2::GetForwardScores
 
@@ -295,43 +282,30 @@ struct FsaClass {
   torch::Tensor GetForwardScores(bool use_double_scores, bool log_semiring);
 
  private:
-  void SetAttr(const std::string &name, torch::Tensor value) {
+  void SetTensorAttr(const std::string &name, torch::Tensor value) {
     K2_CHECK_EQ(value.size(0), fsa.NumElements())
         << "shape[0] of the tensor MUST be equal to number of arcs";
     all_attr_names.insert(name);
     tensor_attrs[name] = value;
   }
-  void SetAttr(const std::string &name, const RaggedAny &value) {
+  void SetRaggedTensorAttr(const std::string &name, const RaggedAny &value) {
     K2_CHECK_EQ(value.any.Dim0(), fsa.NumElements())
         << "dim0 of the tensor MUST be equal to number of arcs";
     all_attr_names.insert(name);
     ragged_tensor_attrs[name] = value;
   }
 
-  /* Propagate tensor attributes from src.
-   *
-   * if `over_write` is true, attributes in current fsa with the same name as
-   * attributes in src will be overworted by attributes in src.
-   */
-  void CopyTensorAttrs(const FsaClass &src, torch::Tensor arc_map,
-                       bool over_write = true);
+  FsaClass ToOtherContext(const ContextPtr &context) const;
 
-  /* Propagate other attributes from src.
-   *
-   * if `over_write` is true, attributes in current fsa with the same name as
-   * attributes in src will be overworted by attributes in src.
-   */
-  void CopyOtherAttrs(const FsaClass &src, bool over_write = true);
+  // Propagate tensor attributes from src.
+  void CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map);
 
-  /* Propagate ragged attributes from src.
-   *
-   * if `over_write` is true, attributes in current fsa with the same name as
-   * attributes in src will be overworted by attributes in src.
-   */
-  void CopyRaggedTensorAttrs(const FsaClass &src, torch::Tensor arc_map,
-                             bool over_write = true);
-  void CopyRaggedTensorAttrs(const FsaClass &src, RaggedAny &arc_map,
-                             bool over_write = true);
+  // Propagate other attributes from src.
+  void CopyOtherAttrs(FsaClass &src);
+
+  // Propagate ragged attributes from src.
+  void CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map);
+  void CopyRaggedTensorAttrs(FsaClass &src, RaggedAny &arc_map);
 
  public:  // we make these functions public since they are called in autograd
           // related functions

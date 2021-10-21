@@ -28,14 +28,10 @@ namespace k2 {
 
 py::object ToPyObject(torch::IValue value) {
   if (value.isCustomClass()) {
-    torch::intrusive_ptr<RaggedAnyHolder> ragged_any_holder =
-        value.toCustomClass<RaggedAnyHolder>();
-    return py::cast(*(ragged_any_holder->ragged));
+    return py::cast(ToRaggedAny(value));
   } else {
     return torch::jit::toPyObject(value);
   }
-  // Unreachable code
-  return py::none();
 }
 
 torch::IValue ToIValue(py::object obj) {
@@ -45,14 +41,12 @@ torch::IValue ToIValue(py::object obj) {
   } else {
     try {
       RaggedAny ragged_tensor = obj.cast<RaggedAny>();
-      return torch::make_custom_class<k2::RaggedAnyHolder>(
-          std::make_shared<RaggedAny>(ragged_tensor));
+      return ToIValue(ragged_tensor);
     } catch (const py::cast_error &) {
       // TODO: Handle cast error
       return torch::jit::toIValue(obj, torch::jit::PyObjectType::get());
     }
   }
-  return {};
 }
 
 }  // namespace k2

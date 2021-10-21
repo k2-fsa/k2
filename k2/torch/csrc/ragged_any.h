@@ -30,7 +30,7 @@
 #include <vector>
 
 #include "k2/csrc/ragged.h"
-#include "torch/torch.h"
+#include "torch/script.h"
 
 namespace k2 {
 
@@ -90,11 +90,11 @@ struct RaggedAny {
      @note We can support other dtypes if needed.
    */
   explicit RaggedAny(const std::string &s,
-                     torch::optional<torch::Dtype> dtype = {},
+                     torch::optional<torch::ScalarType> dtype = {},
                      torch::Device device = torch::kCPU);
 
   explicit RaggedAny(const std::string &s,
-                     torch::optional<torch::Dtype> dtype = {},
+                     torch::optional<torch::ScalarType> dtype = {},
                      const std::string &device = "cpu")
       : RaggedAny(s, dtype, torch::Device(device)) {}
 

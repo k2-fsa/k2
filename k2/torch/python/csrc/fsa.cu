@@ -73,30 +73,28 @@ void PybindFsaClass(py::module &m) {
   fsa.def(
       "__setattr__",
       [](FsaClass &self, const std::string &name, py::object value) -> void {
-        if (name == "scores") {
-          self.SetScores(value.cast<torch::Tensor>());
-        } else {
-          self.SetAttr(name, ToIValue(value));
-        }
+        self.SetAttr(name, ToIValue(value));
       });
 
   fsa.def("__getattr__",
           [](FsaClass &self, const std::string &name) -> py::object {
-            torch::IValue ivalue;
-            try {
-              ivalue = self.GetAttr(name);
-            } catch (std::runtime_error err) {
-              PyErr_SetString(PyExc_AttributeError, err.what());
+            if (self.HasAttr(name)) {
+              return ToPyObject(self.GetAttr(name));
+            } else {
+              std::ostringstream os;
+              os << "No such attribute '" << name << "'";
+              PyErr_SetString(PyExc_AttributeError, os.str().c_str());
               throw py::error_already_set();
             }
-            return ToPyObject(ivalue);
           });
 
   fsa.def("__delattr__", [](FsaClass &self, const std::string &name) -> void {
-    try {
+    if (self.HasAttr(name)) {
       self.DeleteAttr(name);
-    } catch (std::runtime_error err) {
-      PyErr_SetString(PyExc_AttributeError, err.what());
+    } else {
+      std::ostringstream os;
+      os << "No such attribute '" << name << "'";
+      PyErr_SetString(PyExc_AttributeError, os.str().c_str());
       throw py::error_already_set();
     }
   });
@@ -105,12 +103,6 @@ void PybindFsaClass(py::module &m) {
           py::arg("use_double_scores"), py::arg("log_semiring"));
 
   fsa.def_static("from_fsas", &FsaClass::CreateFsaVec, py::arg("fsas"));
-
-  fsa.def_property(
-      "scores", [](FsaClass &self) -> torch::Tensor { return self.Scores(); },
-      [](FsaClass &self, torch::Tensor scores) -> void {
-        return self.SetScores(scores);
-      });
 
   fsa.def_property_readonly(
       "properties", [](FsaClass &self) -> int { return self.Properties(); });

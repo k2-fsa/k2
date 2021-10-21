@@ -42,8 +42,7 @@ TEST(PybindTest, ToPyObject) {
     EXPECT_LT(std::fabs(py_value.cast<float>() - 10.1), 1e-6);
 
     RaggedAny ragged("[[1 2] [] [3 4]]", torch::kInt32, device);
-    ivalue = torch::make_custom_class<k2::RaggedAnyHolder>(
-        std::make_shared<RaggedAny>(ragged));
+    ivalue = ToIValue(ragged);
     py_value = ToPyObject(ivalue);
     EXPECT_EQ(py_value.cast<RaggedAny>().ToString(), ragged.ToString());
   }
@@ -67,9 +66,7 @@ TEST(PybindTest, ToIValue) {
     RaggedAny ragged("[[1 2] [] [3 4]]", torch::kInt32, device);
     py_value = py::cast(ragged);
     ivalue = ToIValue(py_value);
-    torch::intrusive_ptr<RaggedAnyHolder> ragged_any_holder =
-        ivalue.toCustomClass<RaggedAnyHolder>();
-    EXPECT_EQ((*(ragged_any_holder->ragged)).ToString(), ragged.ToString());
+    EXPECT_EQ(ToRaggedAny(ivalue).ToString(), ragged.ToString());
   }
 }
 
