@@ -51,6 +51,20 @@ The following commands install k2 with different versions of CUDA and PyTorch:
   # Please always select the latest version. That is, the version
   # with the latest date.
 
+To install a version for CPU only, please use:
+
+.. code-block:: bash
+
+  # Install a CPU version compiled against PyTorch 1.8.1 on 2021.10.22
+  #
+  pip install k2==1.9.dev20211022+cpu.torch1.8.1 -f https://k2-fsa.org/nightly/
+
+  # Install a CPU version compiled against PyTorch 1.9.0 on 2021.10.22
+  #
+  pip install k2==1.9.dev20211022+cpu.torch1.9.0 -f https://k2-fsa.org/nightly/
+
+  # Please visit https://k2-fsa.org/nightly/ for more versions of k2
+
 .. Caution::
 
   We only provide pre-compiled versions of k2 with torch 1.7.1. If you need

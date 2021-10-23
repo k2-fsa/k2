@@ -17,7 +17,19 @@ Use pip
 
 .. code-block:: bash
 
-  pip install --pre k2
+  # Install a CUDA version compiled using CUDA 10.1 and PyTorch 1.7.1
+  #
+  pip install k2
+
+  # Install a CPU version compiled against PyTorch 1.8.1 on 2021.10.22
+  #
+  pip install k2==1.9.dev20211022+cpu.torch1.8.1 -f https://k2-fsa.org/nightly/
+
+  # Install a CPU version compiled against PyTorch 1.9.0 on 2021.10.22
+  #
+  pip install k2==1.9.dev20211022+cpu.torch1.9.0 -f https://k2-fsa.org/nightly/
+
+  # Please visit https://k2-fsa.org/nightly/ for more versions of k2
 
 Read the following two pages to learn more:
 

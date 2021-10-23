@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-16.04]
+        os: [ubuntu-18.04]
         # anaconda does not support 3.9 as of 2021.05.08
         python-version: [3.6, 3.7, 3.8, 3.9]
         # python-version: [3.6, 3.7, 3.8]
