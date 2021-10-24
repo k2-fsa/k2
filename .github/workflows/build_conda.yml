@@ -33,20 +33,19 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04]
-        # anaconda does not support 3.9 as of 2021.05.08
         python-version: [3.6, 3.7, 3.8, 3.9]
-        # python-version: [3.6, 3.7, 3.8]
-        cuda: ["10.1", "10.2", "11.0", "11.1"]
+        cuda: ["10.1", "10.2", "11.0", "11.1", "11.3"]
         # from https://download.pytorch.org/whl/torch_stable.html
         #
-        # PyTorch 1.9.0 supports: 10.2 (default), 11.1
+        # PyTorch 1.10 supports: 10.2 (default), 11.1, 11.3
+        # PyTorch 1.9.x supports: 10.2 (default), 11.1
         # PyTorch 1.8.1 supports: cuda 10.1, 10.2 (default), 11.1
         # PyTorch 1.8.0 supports: cuda 10.1, 10.2 (default), 11.1
         # PyTorch 1.7.x supports: cuda 10.1, 10.2 (default), 11.0, 9.2 (not included in this setup)
         # PyTorch 1.6.0 supports: cuda 10.1, 10.2 (default), 9.2 (not included in this setup)
         # PyTorch 1.5.x supports: cuda 10.1, 10.2 (default), 9.2 (not included in this setup)
         #
-        # PyTorch 1.8.x and 1.7.1 support 3.6, 3.7, 3.8, 3.9
+        # PyTorch 1.7.1, 1.8.x, 1.9.x, and 1.10 support 3.6, 3.7, 3.8, 3.9
         # PyTorch 1.7.0, 1.6.0, and 1.5.x support 3.6, 3.7, 3.8
         #
         # Other PyTorch versions are not tested
@@ -57,9 +56,9 @@ jobs:
         #  https://github.com/csukuangfj/k2/runs/2533830771?check_suite_focus=true
         #  and
         #  https://github.com/NVIDIA/apex/issues/805
-        torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0"]
+        torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0", "1.9.1", "1.10"]
         exclude:
-          # - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0, 1.8.1, 1.9.0]
+          # - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10]
           #   torch: "1.5.0"
           # - cuda: "11.0"
           #   torch: "1.5.1"
@@ -71,6 +70,10 @@ jobs:
             torch: "1.8.1"
           - cuda: "11.0"
             torch: "1.9.0"
+          - cuda: "11.0"
+            torch: "1.9.1"
+          - cuda: "11.0"
+            torch: "1.10"
           # - cuda: "11.1" # exclude 11.1 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1]
           #   torch: "1.5.0"
           # - cuda: "11.1"
@@ -81,8 +84,12 @@ jobs:
             torch: "1.7.0"
           - cuda: "11.1"
             torch: "1.7.1"
-          - cuda: "10.1" # exclude 10.1 for [1.9.0]
+          - cuda: "10.1" # exclude 10.1 for [1.9.0, 1.9.1, 1.10]
             torch: "1.9.0"
+          - cuda: "10.1"
+            torch: "1.9.1"
+          - cuda: "10.1"
+            torch: "1.10"
           - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
             torch: "1.5.0"
           - python-version: 3.9
@@ -141,6 +148,10 @@ jobs:
           conda env list
           conda info
           nproc
+
+      - name: Install git lfs
+        run: |
+          sudo apt-get install -y git-lfs
 
       - name: Download cudnn 8.0
         shell: bash -l {0}
