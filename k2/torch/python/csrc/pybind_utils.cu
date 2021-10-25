@@ -27,7 +27,7 @@
 namespace k2 {
 
 py::object ToPyObject(torch::IValue value) {
-  if (value.isCustomClass()) {
+  if (GetCustomClassName(value) == "_k2.RaggedAnyHolder") {
     return py::cast(ToRaggedAny(value));
   } else {
     return torch::jit::toPyObject(value);

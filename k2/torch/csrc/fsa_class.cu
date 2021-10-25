@@ -414,11 +414,20 @@ void FsaClass::SetAttr(const std::string &name, torch::IValue value) {
     // Note we don't use pybind11's def_property since it does not allow
     // to use argument annotations, which means it is not possible to
     // run: fsa.grad = None
+#if K2_TORCH_VERSION_MAJOR > 1 || \
+    (K2_TORCH_VERSION_MAJOR == 1 && K2_TORCH_VERSION_MINOR > 6)
     if (value.isNone()) {
       Scores().mutable_grad() = {};
     } else {
       Scores().mutable_grad() = value.toTensor();
     }
+#else
+    if (value.isNone()) {
+      Scores().grad() = {};
+    } else {
+      Scores().grad() = value.toTensor();
+    }
+#endif
     return;
   }
 
