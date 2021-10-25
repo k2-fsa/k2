@@ -105,7 +105,7 @@ jobs:
       - name: Display Build Information
         shell: bash
         run: |
-          export PYTHONPATH=$PWD/k2/torch/python:$PWD/build/lib:$PYTHONPATH
+          echo "PYTHONPATH=${PWD}/k2/torch/python:${PWD}/build/lib:${PYTHONPATH}" >> $GITHUB_ENV
           python3 -m k2.version
 
       - name: Run Tests
