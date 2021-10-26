@@ -1,3 +1,4 @@
+import torch  #noqa
 from _k2 import Fsa
 from _k2 import get_best_matching_stats
 from _k2 import index_add
