@@ -1180,6 +1180,7 @@ def levenshtein_alignment(
 
     return alignment
 
+
 def union(fsas: Fsa) -> Fsa:
     '''Compute the union of a FsaVec.
 

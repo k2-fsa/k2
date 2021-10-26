@@ -644,6 +644,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
             None  # frame_idx_name
         )
 
+
 def intersect_dense_pruned(a_fsas: Fsa,
                            b_fsas: DenseFsaVec,
                            search_beam: float,
