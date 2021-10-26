@@ -45,6 +45,9 @@ function(torch_add_pybind_test source)
   set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
   # TODO: Find more elegant way to choose pybind11
   target_include_directories(${target_name} PRIVATE "${CMAKE_BINARY_DIR}/_deps/pybind11-src/include")
+  if (APPLE)
+    target_link_libraries(${target_name} PRIVATE "${TORCH_DIR}/lib/libtorch_python.dylib")
+  endif()
   target_link_libraries(${target_name}
     PRIVATE
     k2_torch
