@@ -49,6 +49,7 @@ function(torch_add_pybind_test source)
     PRIVATE
     k2_torch
     _k2
+    pybind11::embed
     gtest
   )
 
