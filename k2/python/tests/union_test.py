@@ -63,9 +63,30 @@ class TestUnion(unittest.TestCase):
             fsa1 = k2.Fsa.from_str(s1)
             fsa2 = k2.Fsa.from_str(s2)
 
+            fsa0.tensor_attr = torch.tensor([1, 2, 3, 4, 5, 6],
+                                            dtype=torch.int32,
+                                            device=device)
+
+            fsa1.tensor_attr = torch.tensor([7],
+                                            dtype=torch.int32,
+                                            device=device)
+
+            fsa2.tensor_attr = torch.tensor([8, 9, 10, 11],
+                                            dtype=torch.int32,
+                                            device=device)
+
             fsa_vec = k2.create_fsa_vec([fsa0, fsa1, fsa2]).to(device)
 
             fsa = k2.union(fsa_vec)
+            expected_tensor_attr = torch.tensor(
+                [0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                 11]).to(fsa.tensor_attr)
+            assert torch.all(torch.eq(fsa.tensor_attr, expected_tensor_attr))
+            # TODO(fangjun): Add the following tests
+            # [ ] propagation of ragged tensor attributes
+            # [ ] propagation of non-tensor attributes
+            # [ ] autograd of tensor attributes
+
             assert torch.allclose(
                 fsa.arcs.values()[:, :3],
                 torch.tensor([

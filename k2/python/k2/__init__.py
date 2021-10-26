@@ -21,7 +21,6 @@ from . import utils
 #
 from .autograd import intersect_dense
 from .autograd import intersect_dense_pruned
-from .autograd import union
 from .ctc_loss import CtcLoss
 from .ctc_loss import ctc_loss
 from .dense_fsa_vec import DenseFsaVec
@@ -51,6 +50,7 @@ from .fsa_algo import remove_epsilon_self_loops
 from .fsa_algo import replace_fsa
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
+from .fsa_algo import union
 from .fsa_properties import to_str as properties_to_str
 from .nbest import Nbest
 from .ops import cat
