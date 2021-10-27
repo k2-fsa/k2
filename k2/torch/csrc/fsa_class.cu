@@ -69,11 +69,13 @@ FsaClass::FsaClass(const std::string &s,
 FsaClass::FsaClass(const Ragged<Arc> &fsa, torch::Tensor aux_labels)
     : fsa(fsa) {
   K2_CHECK_EQ(fsa.NumElements(), aux_labels.numel());
+  K2_CHECK_EQ(aux_labels.scalar_type(), torch::kInt32);
   SetTensorAttr("aux_labels", aux_labels);
 }
 
 FsaClass::FsaClass(const Ragged<Arc> &fsa, RaggedAny &aux_labels) : fsa(fsa) {
   K2_CHECK_EQ(fsa.NumElements(), aux_labels.any.Dim0());
+  K2_CHECK_EQ(aux_labels.any.GetDtype(), kInt32Dtype);
   SetRaggedTensorAttr("aux_labels", aux_labels);
 }
 
@@ -433,7 +435,9 @@ FsaClass FsaClass::CreateFsaVec(std::vector<FsaClass> &fsas) {
   torch::Tensor scores = torch::cat(tmp_scores, 0);
 
   // TODO(fangjun): support propagating attributes
-  return FsaClass(fsa_vec, scores);
+  FsaClass dest(fsa_vec);
+  dest.SetScores(scores);
+  return dest;
 }
 
 FsaClass FsaClass::ArcSort() /*const*/ {
