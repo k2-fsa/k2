@@ -44,13 +44,13 @@ class TestLinearFsa(unittest.TestCase):
             assert fsa.device == device
             assert len(fsa.shape) == 2
             assert fsa.shape[0] == len(labels) + 2, 'There should be 5 states'
+            print(fsa.scores)
 
-            assert torch.all(torch.eq(fsa.scores,
-                                      torch.zeros_like(fsa.scores)))
+            assert torch.allclose(fsa.scores, torch.zeros_like(fsa.scores))
 
             assert torch.all(
                 torch.eq(
-                    fsa.arcs.values()[:, :-1],  # skip the last field `scores`
+                    fsa.arcs[:, :-1],  # skip the last field `scores`
                     torch.tensor([[0, 1, 2], [1, 2, 5], [2, 3, 8], [3, 4, -1]],
                                  dtype=torch.int32,
                                  device=device)))
@@ -84,13 +84,12 @@ class TestLinearFsa(unittest.TestCase):
             ]
             assert torch.all(
                 torch.eq(
-                    fsa.arcs.values()[:, :-1],  # skip the last field `scores`
+                    fsa.arcs[:, :-1],  # skip the last field `scores`
                     torch.tensor(expected_arcs,
                                  dtype=torch.int32,
                                  device=device)))
 
-            assert torch.all(torch.eq(fsa.scores,
-                                      torch.zeros_like(fsa.scores)))
+            assert torch.allclose(fsa.scores, torch.zeros_like(fsa.scores))
 
     def test_from_ragged_int_single_fsa(self):
         for device in self.devices:
@@ -103,11 +102,10 @@ class TestLinearFsa(unittest.TestCase):
                                          device=device)
             assert torch.all(
                 torch.eq(
-                    fsa.arcs.values()[:, :-1],  # skip the last field `scores`
+                    fsa.arcs[:, :-1],  # skip the last field `scores`
                     expected_arcs))
 
-            assert torch.all(torch.eq(fsa.scores,
-                                      torch.zeros_like(fsa.scores)))
+            assert torch.allclose(fsa.scores, torch.zeros_like(fsa.scores))
 
     def test_from_ragged_int_two_fsas(self):
         for device in self.devices:
@@ -122,7 +120,7 @@ class TestLinearFsa(unittest.TestCase):
                 device=device)
             assert torch.all(
                 torch.eq(
-                    fsa.arcs.values()[:, :-1],  # skip the last field `scores`
+                    fsa.arcs[:, :-1],  # skip the last field `scores`
                     expected_arcs))
 
             assert torch.all(torch.eq(fsa.scores,

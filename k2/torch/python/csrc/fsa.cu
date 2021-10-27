@@ -69,6 +69,15 @@ void PybindFsaClass(py::module &m) {
       py::arg("scores"));
 
   fsa.def("arc_sort", &FsaClass::ArcSort);
+  fsa.def("to_str_simple", &FsaClass::ToStringSimple);
+
+  fsa.def(
+      "__getitem__",
+      [](FsaClass &self, int32_t i) -> FsaClass {
+        K2_CHECK_EQ(self.fsa.NumAxes(), 3);
+        return self.Index(i);
+      },
+      py::arg("i"));
 
   fsa.def(
       "__setattr__",
@@ -106,6 +115,13 @@ void PybindFsaClass(py::module &m) {
 
   fsa.def_property_readonly(
       "properties", [](FsaClass &self) -> int { return self.Properties(); });
+
+  fsa.def_property_readonly("device", [](const FsaClass &self) -> py::object {
+    torch::Device device = GetDevice(self.fsa.Context());
+    PyObject *ptr = THPDevice_New(device);
+    // takes ownership
+    return py::reinterpret_steal<py::object>(ptr);
+  });
 
   fsa.def_property_readonly("shape", [](FsaClass &self) -> py::tuple {
     if (self.fsa.NumAxes() == 2) {

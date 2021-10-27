@@ -59,10 +59,10 @@ class TestCtcGraph(unittest.TestCase):
                 '5 6 0 0 0', '5 5 3 0 0', '5 7 -1 0 0', '6 6 0 0 0',
                 '6 7 -1 0 0', '7'
             ])
-            actual_str_ragged0 = k2.to_str_simple(fsa_vec_ragged[0].to('cpu'))
-            actual_str_ragged1 = k2.to_str_simple(fsa_vec_ragged[1].to('cpu'))
-            actual_str0 = k2.to_str_simple(fsa_vec[0].to('cpu'))
-            actual_str1 = k2.to_str_simple(fsa_vec[1].to('cpu'))
+            actual_str_ragged0 = fsa_vec_ragged[0].to_str_simple()
+            actual_str_ragged1 = fsa_vec_ragged[1].to_str_simple()
+            actual_str0 = fsa_vec[0].to_str_simple()
+            actual_str1 = fsa_vec[1].to_str_simple()
             assert actual_str0.strip() == expected_str0
             assert actual_str1.strip() == expected_str1
             assert actual_str_ragged0.strip() == expected_str0
@@ -91,10 +91,10 @@ class TestCtcGraph(unittest.TestCase):
                 '5 6 0 0 0', '5 5 3 0 0', '5 7 -1 0 0', '6 6 0 0 0',
                 '6 7 -1 0 0', '7'
             ])
-            actual_str_ragged0 = k2.to_str_simple(fsa_vec_ragged[0].to('cpu'))
-            actual_str_ragged1 = k2.to_str_simple(fsa_vec_ragged[1].to('cpu'))
-            actual_str0 = k2.to_str_simple(fsa_vec[0].to('cpu'))
-            actual_str1 = k2.to_str_simple(fsa_vec[1].to('cpu'))
+            actual_str_ragged0 = fsa_vec_ragged[0].to_str_simple()
+            actual_str_ragged1 = fsa_vec_ragged[1].to_str_simple()
+            actual_str0 = fsa_vec[0].to_str_simple()
+            actual_str1 = fsa_vec[1].to_str_simple()
             assert actual_str0.strip() == expected_str0
             assert actual_str1.strip() == expected_str1
             assert actual_str_ragged0.strip() == expected_str0

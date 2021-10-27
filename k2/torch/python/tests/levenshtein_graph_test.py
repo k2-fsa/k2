@@ -44,12 +44,12 @@ class TestLevenshteinGraph(unittest.TestCase):
                 [ [1 2 3] [ ] [4 5 6] ]
                 '''
                 ragged_int = k2.RaggedTensor(s).to(device)
-                fsa_vec_ragged = k2.levenshtein_graph(
-                    ragged_int, ins_del_score=score)
+                fsa_vec_ragged = k2.levenshtein_graph(ragged_int,
+                                                      ins_del_score=score)
 
-                fsa_vec = k2.levenshtein_graph(
-                    [[1, 2, 3], [], [4, 5, 6]], device=device,
-                    ins_del_score=score)
+                fsa_vec = k2.levenshtein_graph([[1, 2, 3], [], [4, 5, 6]],
+                                               device=device,
+                                               ins_del_score=score)
 
                 expected_str0 = '\n'.join([
                     f'0 0 0 0 {score}', '0 1 0 1 -0.5', '0 1 1 1 0',
@@ -57,24 +57,20 @@ class TestLevenshteinGraph(unittest.TestCase):
                     f'2 2 0 0 {score}', '2 3 0 3 -0.5', '2 3 3 3 0',
                     f'3 3 0 0 {score}', '3 4 -1 -1 0', '4'
                 ])
-                expected_str1 = '\n'.join([
-                    f'0 0 0 0 {score}', '0 1 -1 -1 0', '1'
-                ])
+                expected_str1 = '\n'.join(
+                    [f'0 0 0 0 {score}', '0 1 -1 -1 0', '1'])
                 expected_str2 = '\n'.join([
                     f'0 0 0 0 {score}', '0 1 0 4 -0.5', '0 1 4 4 0',
                     f'1 1 0 0 {score}', '1 2 0 5 -0.5', '1 2 5 5 0',
                     f'2 2 0 0 {score}', '2 3 0 6 -0.5', '2 3 6 6 0',
                     f'3 3 0 0 {score}', '3 4 -1 -1 0', '4'
                 ])
-                actual_str_ragged0 = k2.to_str_simple(
-                    fsa_vec_ragged[0].to('cpu'))
-                actual_str_ragged1 = k2.to_str_simple(
-                    fsa_vec_ragged[1].to('cpu'))
-                actual_str_ragged2 = k2.to_str_simple(
-                    fsa_vec_ragged[2].to('cpu'))
-                actual_str0 = k2.to_str_simple(fsa_vec[0].to('cpu'))
-                actual_str1 = k2.to_str_simple(fsa_vec[1].to('cpu'))
-                actual_str2 = k2.to_str_simple(fsa_vec[2].to('cpu'))
+                actual_str_ragged0 = fsa_vec_ragged[0].to_str_simple()
+                actual_str_ragged1 = fsa_vec_ragged[1].to_str_simple()
+                actual_str_ragged2 = fsa_vec_ragged[2].to_str_simple()
+                actual_str0 = fsa_vec[0].to_str_simple()
+                actual_str1 = fsa_vec[1].to_str_simple()
+                actual_str2 = fsa_vec[2].to_str_simple()
                 assert actual_str0.strip() == expected_str0
                 assert actual_str1.strip() == expected_str1
                 assert actual_str2.strip() == expected_str2
@@ -85,9 +81,10 @@ class TestLevenshteinGraph(unittest.TestCase):
                 offset_value = score - (-0.5)
                 expected_offset = torch.tensor([
                     offset_value, 0, 0, offset_value, 0, 0, offset_value, 0, 0,
-                    offset_value, 0, offset_value, 0,
-                    offset_value, 0, 0, offset_value, 0, 0, offset_value, 0, 0,
-                    offset_value, 0], dtype=torch.float32)
+                    offset_value, 0, offset_value, 0, offset_value, 0, 0,
+                    offset_value, 0, 0, offset_value, 0, 0, offset_value, 0
+                ],
+                                               dtype=torch.float32)
 
                 offset_ragged = getattr(
                     fsa_vec_ragged, "__ins_del_score_offset_internal_attr_")

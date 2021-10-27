@@ -17,10 +17,13 @@ endfunction()
 
 # please sort the files in alphabetic order
 set(py_test_files
+  ctc_graph_test.py
   fsa_test.py
   get_best_matching_stats_test.py
   index_add_test.py
   index_select_test.py
+  levenshtein_graph_test.py
+  linear_fsa_test.py
   ragged_ops_test.py
   ragged_shape_test.py
   ragged_tensor_test.py

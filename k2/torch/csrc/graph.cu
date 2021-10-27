@@ -50,6 +50,7 @@ FsaClass CtcGraphs(const std::vector<std::vector<int32_t>> &symbols,
                    bool modified /*= false*/,
                    torch::optional<torch::Device> device /*= {}*/) {
   ContextPtr context = GetContext(device.value_or(torch::Device(torch::kCPU)));
+  DeviceGuard guard(context);
   Ragged<int32_t> ragged = CreateRagged2<int32_t>(symbols).To(context);
   RaggedAny ragged_any = RaggedAny(ragged.Generic());
   return CtcGraphs(ragged_any, modified);
@@ -101,6 +102,7 @@ FsaClass LevenshteinGraphs(const std::vector<std::vector<int32_t>> &symbols,
                            float ins_del_score /*= -0.501*/,
                            torch::optional<torch::Device> device /*= {}*/) {
   ContextPtr context = GetContext(device.value_or(torch::Device(torch::kCPU)));
+  DeviceGuard guard(context);
   Ragged<int32_t> ragged = CreateRagged2<int32_t>(symbols).To(context);
   RaggedAny ragged_any = RaggedAny(ragged.Generic());
   return LevenshteinGraphs(ragged_any, ins_del_score);

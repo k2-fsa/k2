@@ -210,11 +210,13 @@ struct FsaClass {
    */
   FsaClass &SetRequiresGrad(bool requires_grad = true);
 
-  /* Convert a ragged arc to a string.
+  /* Convert a FsaClass to a string.
 
-     @return Return a string representation of the ragged arc.
+     @return Return a string representation of the FsaClass.
    */
   std::string ToString() const;
+
+  std::string ToStringSimple() const;
 
   static FsaClass CreateFsaVec(std::vector<FsaClass> &fsas);
 

@@ -30,6 +30,7 @@
 #include "k2/torch/csrc/autograd/index_select.h"
 #include "k2/torch/csrc/autograd/utils.h"
 #include "k2/torch/csrc/fsa_class.h"
+#include "k2/torch/csrc/torch_utils.h"
 
 namespace k2 {
 
@@ -204,24 +205,24 @@ void FsaClass::CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
 }
 
 void FsaClass::CopyTensorAttrs(FsaClass &src, int32_t start, int32_t end) {
-  K2_CHECK_EQ(fsa.NumAxes(), 3);
+  K2_CHECK_EQ(src.fsa.NumAxes(), 3);
   K2_CHECK_GE(start, 0);
   K2_CHECK_GE(end, start);
-  K2_CHECK_LT(end, fsa.NumElements());
+  K2_CHECK_LE(end, src.fsa.NumElements());
   for (const auto &iter : src.tensor_attrs) {
-    auto value = (iter.second).index({torch::indexing::Slice(start, end)});
+    auto value = iter.second.index({torch::indexing::Slice(start, end)});
     SetTensorAttr(iter.first, value);
   }
 }
 
 void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, int32_t start,
                                      int32_t end) {
-  K2_CHECK_EQ(fsa.NumAxes(), 3);
+  K2_CHECK_EQ(src.fsa.NumAxes(), 3);
   K2_CHECK_GE(start, 0);
   K2_CHECK_GE(end, start);
-  K2_CHECK_LT(end, fsa.NumElements());
+  K2_CHECK_LE(end, src.fsa.NumElements());
   for (auto &iter : src.ragged_tensor_attrs) {
-    auto value = (iter.second).Arange(0, start, end);
+    auto value = iter.second.Arange(0, start, end);
     SetRaggedTensorAttr(iter.first, value);
   }
 }
@@ -237,7 +238,7 @@ void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
     if (!HasAttr(iter.first)) {
       // Only integer types ragged attributes are supported now
       K2_CHECK_EQ(iter.second.any.GetDtype(), kInt32Dtype);
-      auto new_value = (iter.second).Index(arc_map, 0, false);
+      auto new_value = iter.second.Index(arc_map, 0, false);
       SetRaggedTensorAttr(iter.first, new_value.first);
     }
   }
@@ -248,7 +249,7 @@ void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, RaggedAny &arc_map) {
     if (!HasAttr(iter.first)) {
       // We currently don't support float ragged attributes
       K2_CHECK_EQ(iter.second.any.GetDtype(), kInt32Dtype);
-      RaggedAny new_value = (iter.second).Index(arc_map);
+      RaggedAny new_value = iter.second.Index(arc_map);
       new_value = new_value.RemoveAxis(new_value.any.NumAxes() - 2);
       SetRaggedTensorAttr(iter.first, new_value);
     }
@@ -347,10 +348,10 @@ FsaClass FsaClass::ToOtherContext(const ContextPtr &context) const {
   FsaClass dest(fsa.To(context));
   auto device = GetDevice(context);
   for (const auto &iter : tensor_attrs) {
-    dest.SetTensorAttr(iter.first, (iter.second).to(device));
+    dest.SetTensorAttr(iter.first, iter.second.to(device));
   }
   for (const auto &iter : ragged_tensor_attrs) {
-    dest.SetRaggedTensorAttr(iter.first, (iter.second).To(device));
+    dest.SetRaggedTensorAttr(iter.first, iter.second.To(device));
   }
   for (const auto &iter : other_attrs) {
     dest.SetAttr(iter.first, iter.second);
@@ -390,6 +391,39 @@ FsaClass FsaClass::To(torch::Device device) const {
 FsaClass FsaClass::To(const std::string &device) const {
   torch::Device d(device);
   return this->To(d);
+}
+
+std::string FsaClass::ToStringSimple() const {
+  std::ostringstream os;
+  std::vector<Array1<int32_t>> extra_labels;
+  if (HasAttr("aux_labels") && GetAttr("aux_labels").isTensor()) {
+    Array1<int32_t> aux_labels =
+        FromTorch<int32_t>(GetAttr("aux_labels").toTensor());
+    extra_labels.emplace_back(aux_labels);
+  }
+  DeviceGuard guard(fsa.Context());
+  if (fsa.NumAxes() == 2) {
+    os << FsaToString(fsa, /*openfst*/ false,
+                      /*num_extra_labels*/ extra_labels.size(),
+                      /*extra_labels*/ extra_labels.data(),
+                      /*num_ragged_labels*/ 0,
+                      /*ragged_labels*/ nullptr);
+  } else {
+    for (int32_t i = 0; i < fsa.Dim0(); ++i) {
+      Ragged<Arc> sub_fsa = fsa.Index(0, i);
+      int32_t start = sub_fsa.values.Data() - fsa.values.Data(),
+              end = start + sub_fsa.values.Dim();
+      std::vector<Array1<int32_t>> sub_extra_labels;
+      for (auto &v : extra_labels)
+        sub_extra_labels.emplace_back(v.Arange(start, end));
+      os << FsaToString(sub_fsa, /*openfst*/ false,
+                        /*num_extra_labels*/ sub_extra_labels.size(),
+                        /*extra_labels*/ sub_extra_labels.data(),
+                        /*num_ragged_labels*/ 0,
+                        /*ragged_labels*/ nullptr);
+    }
+  }
+  return os.str();
 }
 
 std::string FsaClass::ToString() const {
