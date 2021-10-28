@@ -44,7 +44,6 @@ class TestLinearFsa(unittest.TestCase):
             assert fsa.device == device
             assert len(fsa.shape) == 2
             assert fsa.shape[0] == len(labels) + 2, 'There should be 5 states'
-            print(fsa.scores)
 
             assert torch.allclose(fsa.scores, torch.zeros_like(fsa.scores))
 

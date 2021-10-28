@@ -274,9 +274,8 @@ void FsaClass::SetScores(torch::Tensor scores) {
 
 torch::Tensor &FsaClass::Scores() {
   if (!scores.defined()) {
-    auto device_type = ToTorchDeviceType(fsa.Context()->GetDeviceType());
-    int32_t device_id = fsa.Context()->GetDeviceId();
-    auto device = torch::Device(device_type, device_id);
+    DeviceGuard guard(fsa.Context());
+    auto device = GetDevice(fsa.Context());
     auto scalar_type = ToScalarType<float>::value;
     // an Arc has 4 members
     static_assert(sizeof(Arc) == 4 * sizeof(int32_t), "");
@@ -317,6 +316,7 @@ std::string FsaClass::PropertiesStr() /*const*/ {
 }
 
 torch::Tensor FsaClass::Arcs() {
+  DeviceGuard guard(fsa.Context());
   auto device = GetDevice(fsa.Context());
   auto scalar_type = ToScalarType<int32_t>::value;
   // an Arc has 4 members
@@ -618,6 +618,7 @@ FsaClass FsaClass::Index(int32_t index) {
   K2_CHECK_EQ(fsa.NumAxes(), 3);
   K2_CHECK_GE(index, 0);
   K2_CHECK_LT(index, fsa.Dim0());
+  DeviceGuard guard(fsa.Context());
   Ragged<Arc> sub_fsa = fsa.Index(0, index);
   int32_t start = sub_fsa.values.Data() - fsa.values.Data(),
           end = start + sub_fsa.values.Dim();

@@ -160,6 +160,117 @@ class TestFsa(unittest.TestCase):
                 (scale * expected_forward_scores).sum().backward()
                 assert torch.allclose(fsa.grad, scores.grad)
 
+    def test_getitem(self):
+        s1 = """
+            0 1 1  0.1
+            0 2 2  0.2
+            1 3 -1 0.3
+            2 3 -1  0.4
+            3
+        """
+        s2 = """
+            0 1 1  0.1
+            1 2 2  0.2
+            2 3 -1  0.3
+            3
+        """
+        for device in self.devices:
+            fsa1 = k2.Fsa(s1).to(device)
+            fsa2 = k2.Fsa(s2).to(device)
+            fsa = k2.Fsa.from_fsas([fsa1, fsa2])
+            fsa.requires_grad_(True)
+            fsa.tensor_attr = torch.tensor([10, 20, 30, 40, 50, 60, 70],
+                                           dtype=torch.int32,
+                                           device=device)
+            fsa.float_attr = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+                                          dtype=torch.float32,
+                                          device=device).requires_grad_(True)
+            fsa.ragged_attr = k2.RaggedTensor(
+                [[10, 20], [], [30], [40, 50], [60], [70, 80, 90], []],
+                dtype=torch.int32,
+                device=device)
+            fsa.int_attr = 10
+            fsa.str_attr = "k2"
+
+            fsa_inx1 = fsa[0]
+            assert torch.all(
+                torch.eq(
+                    fsa_inx1.tensor_attr,
+                    torch.tensor([10, 20, 30, 40],
+                                 dtype=torch.int32,
+                                 device=device)))
+            assert torch.allclose(
+                fsa_inx1.scores,
+                torch.tensor([0.1, 0.2, 0.3, 0.4],
+                             dtype=torch.float32,
+                             device=device))
+            assert fsa_inx1.ragged_attr.to_str_simple() == k2.RaggedTensor(
+                [[10, 20], [], [30], [40, 50]],
+                dtype=torch.int32,
+                device=device).to_str_simple()
+            fsa_inx1.int_attr = 10
+            fsa_inx1.str_attr = "k2"
+
+            fsa_inx2 = fsa[1]
+            assert torch.all(
+                torch.eq(
+                    fsa_inx2.tensor_attr,
+                    torch.tensor([50, 60, 70],
+                                 dtype=torch.int32,
+                                 device=device)))
+            assert torch.allclose(
+                fsa_inx2.scores,
+                torch.tensor([0.1, 0.2, 0.3],
+                             dtype=torch.float32,
+                             device=device))
+            assert fsa_inx2.ragged_attr.to_str_simple() == k2.RaggedTensor(
+                [[60], [70, 80, 90], []], dtype=torch.int32,
+                device=device).to_str_simple()
+            fsa_inx2.int_attr = 10
+            fsa_inx2.str_attr = "k2"
+
+            # autograd
+            scale1 = torch.arange(fsa_inx1.scores.numel(), device=device)
+            (fsa_inx1.scores * scale1).sum().backward()
+            (fsa_inx1.float_attr * scale1).sum().backward()
+            scale2 = torch.arange(fsa_inx2.scores.numel(), device=device)
+            (fsa_inx2.scores * scale2).sum().backward()
+            (fsa_inx2.float_attr * scale2).sum().backward()
+
+            assert torch.allclose(
+                fsa.scores.grad,
+                torch.tensor([0., 1., 2., 3., 0., 1., 2.], device=device))
+            assert torch.allclose(
+                fsa.float_attr.grad,
+                torch.tensor([0., 1., 2., 3., 0., 1., 2.], device=device))
+
+    def test_to_simple_str(self):
+        s1 = """
+            0 1 1  0.1
+            0 2 2  0.2
+            1 3 -1 0.3
+            2 3 -1  0.4
+            3
+        """
+        s2 = """
+            0 1 1  0.1
+            1 2 2  0.2
+            2 3 -1  0.3
+            3
+        """
+        for device in self.devices:
+            fsa1 = k2.Fsa(s1).to(device)
+            fsa2 = k2.Fsa(s2).to(device)
+            fsa = k2.Fsa.from_fsas([fsa1, fsa2])
+            expected_s1 = '\n'.join(
+                ['0 1 1 0.1', '0 2 2 0.2', '1 3 -1 0.3', '2 3 -1 0.4', '3'])
+            expected_s2 = '\n'.join(
+                ['0 1 1 0.1', '1 2 2 0.2', '2 3 -1 0.3', '3'])
+            assert fsa1.to_str_simple().strip() == expected_s1
+            assert fsa2.to_str_simple().strip() == expected_s2
+            assert fsa.to_str_simple().strip() == '\n'.join(
+                [expected_s1, expected_s2])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -18,6 +18,7 @@ endfunction()
 # please sort the files in alphabetic order
 set(py_test_files
   ctc_graph_test.py
+  ctc_topo_test.py
   fsa_test.py
   get_best_matching_stats_test.py
   index_add_test.py

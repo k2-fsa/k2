@@ -1,4 +1,4 @@
-import torch  #noqa
+import torch  # noqa
 from _k2 import Fsa
 from _k2 import ctc_topo
 from _k2 import ctc_graph
