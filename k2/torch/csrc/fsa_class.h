@@ -157,8 +157,13 @@ struct FsaClass {
   // Set scores, will modify scores in fsa.arcs
   void SetScores(torch::Tensor scores);
 
+  /* Return the Fsa on the position `index`, including autograd logic and
+    propagating properties of an FsaVec.
+
+     @param [in] index The position (start with 0) of the Fsa that we want to
+                       return.
+   */
   FsaClass Index(int32_t index);
-  // FsaClass Arange(int32_t start, int32_t end);
 
   /* Normalize the given `scores` and assign it to `self.scores`.
 

@@ -71,12 +71,14 @@ FsaClass::FsaClass(const Ragged<Arc> &fsa, torch::Tensor aux_labels)
     : fsa(fsa) {
   K2_CHECK_EQ(fsa.NumElements(), aux_labels.numel());
   K2_CHECK_EQ(aux_labels.scalar_type(), torch::kInt32);
+  K2_CHECK(GetContext(aux_labels)->IsCompatible(*fsa.Context()));
   SetTensorAttr("aux_labels", aux_labels);
 }
 
 FsaClass::FsaClass(const Ragged<Arc> &fsa, RaggedAny &aux_labels) : fsa(fsa) {
   K2_CHECK_EQ(fsa.NumElements(), aux_labels.any.Dim0());
   K2_CHECK_EQ(aux_labels.any.GetDtype(), kInt32Dtype);
+  K2_CHECK(IsCompatible(fsa, aux_labels.any));
   SetRaggedTensorAttr("aux_labels", aux_labels);
 }
 
@@ -205,6 +207,8 @@ void FsaClass::CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
 }
 
 void FsaClass::CopyTensorAttrs(FsaClass &src, int32_t start, int32_t end) {
+  // We use this function to propagate attributes for `Index` (a.k.a GetItem)
+  // so src MUST be a FsaVec.
   K2_CHECK_EQ(src.fsa.NumAxes(), 3);
   K2_CHECK_GE(start, 0);
   K2_CHECK_GE(end, start);
@@ -217,6 +221,8 @@ void FsaClass::CopyTensorAttrs(FsaClass &src, int32_t start, int32_t end) {
 
 void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, int32_t start,
                                      int32_t end) {
+  // We use this function to propagate attributes for `Index` (a.k.a GetItem)
+  // so src MUST be a FsaVec.
   K2_CHECK_EQ(src.fsa.NumAxes(), 3);
   K2_CHECK_GE(start, 0);
   K2_CHECK_GE(end, start);
@@ -396,12 +402,12 @@ FsaClass FsaClass::To(const std::string &device) const {
 std::string FsaClass::ToStringSimple() const {
   std::ostringstream os;
   std::vector<Array1<int32_t>> extra_labels;
+  DeviceGuard guard(fsa.Context());
   if (HasAttr("aux_labels") && GetAttr("aux_labels").isTensor()) {
     Array1<int32_t> aux_labels =
         FromTorch<int32_t>(GetAttr("aux_labels").toTensor());
     extra_labels.emplace_back(aux_labels);
   }
-  DeviceGuard guard(fsa.Context());
   if (fsa.NumAxes() == 2) {
     os << FsaToString(fsa, /*openfst*/ false,
                       /*num_extra_labels*/ extra_labels.size(),

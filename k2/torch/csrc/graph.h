@@ -50,7 +50,7 @@ namespace k2 {
             depending on whether `standard` is True or False.
  */
 FsaClass CtcTopo(int32_t max_token, bool modified = false,
-                 torch::optional<torch::Device> device = {});
+                 torch::Device device = torch::Device(torch::kCPU));
 
 /*
   Construct ctc graphs from symbols.
@@ -90,7 +90,7 @@ FsaClass CtcGraphs(RaggedAny &symbols, bool modified = false);
  */
 FsaClass CtcGraphs(const std::vector<std::vector<int32_t>> &symbols,
                    bool modified = false,
-                   torch::optional<torch::Device> device = {});
+                   torch::Device device = torch::Device(torch::kCPU));
 
 /*
   Create a linear FSA from a sequence of symbols
@@ -108,7 +108,7 @@ FsaClass CtcGraphs(const std::vector<std::vector<int32_t>> &symbols,
              device or it will be on CPU.
 */
 FsaClass LinearFsa(const std::vector<int32_t> &symbols,
-                   torch::optional<torch::Device> device = {});
+                   torch::Device device = torch::Device(torch::kCPU));
 
 /*
   Create linear FSAs, given a list of sequences of symbols.
@@ -127,7 +127,7 @@ FsaClass LinearFsa(const std::vector<int32_t> &symbols,
             will be on the given device or it will be on CPU.
  */
 FsaClass LinearFsa(const std::vector<std::vector<int32_t>> &symbols,
-                   torch::optional<torch::Device> device = {});
+                   torch::Device device = torch::Device(torch::kCPU));
 
 /*
   Create linear FSAs, given a list of sequences of symbols.
@@ -197,7 +197,7 @@ FsaClass LevenshteinGraphs(RaggedAny &symbols, float ins_del_score = -0.501);
  */
 FsaClass LevenshteinGraphs(const std::vector<std::vector<int32_t>> &symbols,
                            float ins_del_score = -0.501,
-                           torch::optional<torch::Device> deivce = {});
+                           torch::Device deivce = torch::Device(torch::kCPU));
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_GRAPH_H_

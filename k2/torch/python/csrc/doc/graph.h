@@ -74,7 +74,7 @@ Args:
 
         - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
         - An instance of :class:`k2.RaggedTensor`.
-          Must have `num_axes == 2`.
+          Must have `num_axes == 2` and with `dtype == torch.int32`.
 
   modified:
     Option to specify the type of CTC topology: "standard" or "modified",
@@ -105,7 +105,7 @@ Args:
         - A list of integers, e.g., `[1, 2, 3]`
         - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
         - An instance of :class:`k2.RaggedTensor`.
-          Must have `num_axes == 2`.
+          Must have `num_axes == 2` and with `dtype == torch.int32`.
   device:
     Optional. It can be either a string (e.g., 'cpu', 'cuda:0') or a
     torch.device.

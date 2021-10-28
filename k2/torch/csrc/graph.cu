@@ -29,8 +29,8 @@
 namespace k2 {
 
 FsaClass CtcTopo(int32_t max_token, bool modified /*= false*/,
-                 torch::optional<torch::Device> device /*= {}*/) {
-  ContextPtr context = GetContext(device.value_or(torch::Device(torch::kCPU)));
+                 torch::Device device /*= torch::Device(torch::kCPU)*/) {
+  ContextPtr context = GetContext(device);
   DeviceGuard guard(context);
   Array1<int32_t> aux_labels;
   Fsa fsa = k2::CtcTopo(context, max_token, modified, &aux_labels);
@@ -48,8 +48,8 @@ FsaClass CtcGraphs(RaggedAny &symbols, bool modified /*= false*/) {
 
 FsaClass CtcGraphs(const std::vector<std::vector<int32_t>> &symbols,
                    bool modified /*= false*/,
-                   torch::optional<torch::Device> device /*= {}*/) {
-  ContextPtr context = GetContext(device.value_or(torch::Device(torch::kCPU)));
+                   torch::Device device /*= torch::Device(torch::kCPU)*/) {
+  ContextPtr context = GetContext(device);
   DeviceGuard guard(context);
   Ragged<int32_t> ragged = CreateRagged2<int32_t>(symbols).To(context);
   RaggedAny ragged_any = RaggedAny(ragged.Generic());
@@ -64,8 +64,8 @@ FsaClass LinearFsa(RaggedAny &labels) {
 }
 
 FsaClass LinearFsa(const std::vector<int32_t> &labels,
-                   torch::optional<torch::Device> device /*= {}*/) {
-  ContextPtr context = GetContext(device.value_or(torch::Device(torch::kCPU)));
+                   torch::Device device /*= torch::Device(torch::kCPU)*/) {
+  ContextPtr context = GetContext(device);
   DeviceGuard guard(context);
   Array1<int32_t> array(context, labels);
   Fsa fsa = k2::LinearFsa(array);
@@ -73,8 +73,8 @@ FsaClass LinearFsa(const std::vector<int32_t> &labels,
 }
 
 FsaClass LinearFsa(const std::vector<std::vector<int32_t>> &labels,
-                   torch::optional<torch::Device> device /*= {}*/) {
-  ContextPtr context = GetContext(device.value_or(torch::Device(torch::kCPU)));
+                   torch::Device device /*= torch::Device(torch::kCPU)*/) {
+  ContextPtr context = GetContext(device);
   DeviceGuard guard(context);
   Ragged<int32_t> ragged = CreateRagged2<int32_t>(labels).To(context);
   Fsa fsa = k2::LinearFsas(ragged);
@@ -98,10 +98,11 @@ FsaClass LevenshteinGraphs(RaggedAny &symbols,
   return dest;
 }
 
-FsaClass LevenshteinGraphs(const std::vector<std::vector<int32_t>> &symbols,
-                           float ins_del_score /*= -0.501*/,
-                           torch::optional<torch::Device> device /*= {}*/) {
-  ContextPtr context = GetContext(device.value_or(torch::Device(torch::kCPU)));
+FsaClass LevenshteinGraphs(
+    const std::vector<std::vector<int32_t>> &symbols,
+    float ins_del_score /*= -0.501*/,
+    torch::Device device /*= torch::Device(torch::kCPU)*/) {
+  ContextPtr context = GetContext(device);
   DeviceGuard guard(context);
   Ragged<int32_t> ragged = CreateRagged2<int32_t>(symbols).To(context);
   RaggedAny ragged_any = RaggedAny(ragged.Generic());
