@@ -39,7 +39,6 @@ void PybindV2(py::module &m) {
 
   PybindRaggedAny(ragged);
   PybindRaggedArc(ragged);
-  m.attr("RaggedArc") = ragged.attr("Fsa");  // TODO: remove it
 
   // Add v2 submodule to avoid conflicts with original version, will remove it
   // later.

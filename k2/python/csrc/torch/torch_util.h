@@ -28,6 +28,7 @@
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/pytorch_context.h"
+#include "k2/python/csrc/torch.h"
 
 namespace k2 {
 
