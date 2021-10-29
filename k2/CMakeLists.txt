@@ -1,6 +1,2 @@
 add_subdirectory(csrc)
-if(K2_USE_PYTORCH)
-  add_subdirectory(torch)
-else()
-  message(FATAL_ERROR "Please select a framework.")
-endif()
+add_subdirectory(python)

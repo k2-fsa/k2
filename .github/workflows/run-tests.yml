@@ -118,13 +118,12 @@ jobs:
       - name: Display Build Information
         shell: bash
         run: |
-          export PYTHONPATH=$PWD/k2/torch/python:$PWD/build/lib:$PYTHONPATH
+          export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
           python3 -m k2.version
 
       - name: Run Tests
         shell: bash
         run: |
-          export PYTHONPATH=$PWD/k2/torch/python:$PWD/build/lib:$PYTHONPATH
           cd build
           ctest --output-on-failure
           # default log level is INFO

@@ -100,8 +100,11 @@ class BuildExtension(build_ext):
         if cmake_args == '':
             cmake_args = '-DCMAKE_BUILD_TYPE=Release'
 
-        if (make_args == "" and system_make_args == "" and
-                os.environ.get("K2_IS_GITHUB_ACTIONS", None) is None):
+        if (
+            make_args == ""
+            and system_make_args == ""
+            and os.environ.get("K2_IS_GITHUB_ACTIONS", None) is None
+        ):
             print("For fast compilation, run:")
             print('export K2_MAKE_ARGS="-j"; python setup.py install')
 
@@ -120,13 +123,10 @@ class BuildExtension(build_ext):
                 cmake --build {self.build_temp} --target _k2 --config Release -- -m
             '''
             print(f'build command is:\n{build_cmd}')
-            ret = os.system(
-                f'cmake {cmake_args} -B {self.build_temp} -S {k2_dir}')
+            ret = os.system(f'cmake {cmake_args} -B {self.build_temp} -S {k2_dir}')
             if ret != 0:
                 raise Exception('Failed to build k2')
-            ret = os.system(
-                f'cmake --build {self.build_temp} --target _k2 --config Release -- -m'
-            )
+            ret = os.system(f'cmake --build {self.build_temp} --target _k2 --config Release -- -m')
             if ret != 0:
                 raise Exception('Failed to build k2')
         else:
@@ -181,7 +181,7 @@ def get_short_description():
     return 'FSA/FST algorithms, intended to (eventually) be interoperable with PyTorch and similar'
 
 
-with open('k2/torch/python/k2/__init__.py', 'a') as f:
+with open('k2/python/k2/__init__.py', 'a') as f:
     f.write(f"__dev_version__ = '{get_package_version()}'\n")
 
 dev_requirements = [
@@ -207,10 +207,10 @@ setuptools.setup(
     long_description_content_type='text/markdown',
     url='https://github.com/k2-fsa/k2',
     package_dir={
-        'k2': 'k2/torch/python/k2',
-        'k2.ragged': 'k2/torch/python/k2/ragged',
+        'k2': 'k2/python/k2',
+        'k2.ragged': 'k2/python/k2/ragged',
         'k2.sparse': 'k2/python/k2/sparse',
-        'k2.version': 'k2/torch/python/k2/version',
+        'k2.version': 'k2/python/k2/version',
     },
     packages=['k2', 'k2.ragged', 'k2.sparse', 'k2.version'],
     install_requires=install_requires,
@@ -232,10 +232,10 @@ setuptools.setup(
 )
 
 # remove the line __dev_version__ from k2/python/k2/__init__.py
-with open('k2/torch/python/k2/__init__.py', 'r') as f:
+with open('k2/python/k2/__init__.py', 'r') as f:
     lines = f.readlines()
 
-with open('k2/torch/python/k2/__init__.py', 'w') as f:
+with open('k2/python/k2/__init__.py', 'w') as f:
     for line in lines:
         if '__dev_version__' not in line:
             f.write(line)

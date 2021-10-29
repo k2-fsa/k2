@@ -88,7 +88,7 @@ jobs:
       - name: Build doc
         shell: bash
         run: |
-          export PYTHONPATH=$PWD/k2/torch/python:$PWD/build/lib:$PYTHONPATH
+          export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
           echo "PYTHONPATH: $PYTHONPATH"
           cd docs
           python3 -m pip install -r ./requirements.txt
