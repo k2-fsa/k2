@@ -26,7 +26,6 @@
 #include "caffe2/serialize/inline_container.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/ragged.h"
-#include "k2/torch/csrc/custom_class.h"
 #include "k2/torch/csrc/deserialization.h"
 #include "k2/torch/csrc/utils.h"
 #include "torch/csrc/jit/serialization/import_source.h"
@@ -248,7 +247,7 @@ static void RegisterRaggedInt() {
   // the value from the archive.
   //
   // TODO: to support other types other than Ragged<int32_t>
-  torch::class2_<RaggedIntHelper>("ragged", "RaggedTensor", "_k2.")
+  torch::class_<RaggedIntHelper>("_k2", "RaggedTensor")
       .def_pickle(
           // __getstate__
           [](const c10::intrusive_ptr<RaggedIntHelper> &self) {
@@ -279,6 +278,16 @@ static void RegisterRaggedInt() {
 
             return c10::make_intrusive<RaggedIntHelper>(shape, values);
           });
+
+  // the default namespace for custom classes is __torch__.torch.classes
+  // but `RaggedTensor` is serialized to the namespace _k2.ragged,
+  // so we need to change it to `_k2.ragged`
+  torch::ClassTypePtr p =
+      torch::getCustomClassType<torch::intrusive_ptr<RaggedIntHelper>>();
+  const_cast<torch::QualifiedName &>(p->name().value()) =
+      torch::QualifiedName("_k2.ragged.RaggedTensor");
+  // We need to re-register the class type since we changed its name.
+  torch::registerCustomClass(p);
 }
 
 // This function is modified from torch::jit::load()
