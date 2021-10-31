@@ -1179,3 +1179,24 @@ def levenshtein_alignment(
         alignment, "__ins_del_score_offset_internal_attr_")
 
     return alignment
+
+
+def union(fsas: Fsa) -> Fsa:
+    '''Compute the union of a FsaVec.
+
+    Caution:
+      We require that every fsa in fsas is non-empty, i.e.,
+      contains at least two states
+
+    Args:
+      fsas:
+        A FsaVec. That is, len(fsas.shape) == 3.
+
+    Returns:
+      A single Fsa that is the union of the input fsas.
+    '''
+    need_arc_map = True
+    ragged_arc, arc_map = _k2.union(fsas.arcs, need_arc_map)
+
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsas, ragged_arc, arc_map)
+    return out_fsa

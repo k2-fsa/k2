@@ -17,6 +17,9 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 if(POLICY CMP0111)
   cmake_policy(SET CMP0111 OLD)
 endif()
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
 
 set(languages CXX)
 set(_K2_WITH_CUDA ON)
@@ -205,8 +208,14 @@ if(K2_WITH_CUDA)
     # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
     # message(WARNING "arch 62/72 are not supported for now")
 
-    # refer to https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+    # see https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+    # https://www.myzhar.com/blog/tutorials/tutorial-nvidia-gpu-cuda-compute-capability/
     set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
+    if(CUDA_VERSION VERSION_GREATER "11.0")
+      list(APPEND K2_COMPUTE_ARCH_CANDIDATES 80 86)
+    endif()
+    message(STATUS "K2_COMPUTE_ARCH_CANDIDATES ${K2_COMPUTE_ARCH_CANDIDATES}")
+
     set(K2_COMPUTE_ARCHS)
 
     foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)

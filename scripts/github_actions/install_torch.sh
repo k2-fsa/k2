@@ -78,7 +78,7 @@ case ${torch} in
         ;;
     esac
     ;;
-  1.9.0)
+  1.9.*)
     case ${cuda} in
       10.2)
         package="torch==${torch}"
@@ -87,6 +87,23 @@ case ${torch} in
         ;;
       11.1)
         package="torch==${torch}+cu111"
+        url=https://download.pytorch.org/whl/torch_stable.html
+        ;;
+    esac
+    ;;
+  1.10)
+    case ${cuda} in
+      10.2)
+        package="torch==${torch}"
+        # Leave it empty to use PyPI.
+        url=
+        ;;
+      11.1)
+        package="torch==${torch}+cu111"
+        url=https://download.pytorch.org/whl/torch_stable.html
+        ;;
+      11.3)
+        package="torch==${torch}+cu113"
         url=https://download.pytorch.org/whl/torch_stable.html
         ;;
     esac

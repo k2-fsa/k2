@@ -63,9 +63,40 @@ class TestUnion(unittest.TestCase):
             fsa1 = k2.Fsa.from_str(s1)
             fsa2 = k2.Fsa.from_str(s2)
 
+            fsa0.tensor_attr = torch.tensor([1, 2, 3, 4, 5, 6],
+                                            dtype=torch.int32,
+                                            device=device)
+            fsa0.ragged_tensor_attr = k2.RaggedTensor(
+                fsa0.tensor_attr.unsqueeze(-1))
+
+            fsa1.tensor_attr = torch.tensor([7],
+                                            dtype=torch.int32,
+                                            device=device)
+
+            fsa1.ragged_tensor_attr = k2.RaggedTensor(
+                fsa1.tensor_attr.unsqueeze(-1))
+
+            fsa2.tensor_attr = torch.tensor([8, 9, 10, 11],
+                                            dtype=torch.int32,
+                                            device=device)
+
+            fsa2.ragged_tensor_attr = k2.RaggedTensor(
+                fsa2.tensor_attr.unsqueeze(-1))
+
             fsa_vec = k2.create_fsa_vec([fsa0, fsa1, fsa2]).to(device)
 
             fsa = k2.union(fsa_vec)
+
+            expected_tensor_attr = torch.tensor(
+                [0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                 11]).to(fsa.tensor_attr)
+            assert torch.all(torch.eq(fsa.tensor_attr, expected_tensor_attr))
+
+            expected_ragged_tensor_attr = k2.RaggedTensor(
+                expected_tensor_attr.unsqueeze(-1)).remove_values_eq(0)
+            assert str(expected_ragged_tensor_attr) == str(
+                fsa.ragged_tensor_attr)
+
             assert torch.allclose(
                 fsa.arcs.values()[:, :3],
                 torch.tensor([
