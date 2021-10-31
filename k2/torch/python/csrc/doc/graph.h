@@ -39,8 +39,8 @@ Note:
   is a mandatory blank between two repeated neighboring symbols.
   A non-standard, i.e., modified CTC topology, imposes no such constraint.
   
-  See https://github.com/k2-fsa/k2/issues/746#issuecomment-856421616
-  and https://github.com/k2-fsa/snowfall/pull/209
+  See `<https://github.com/k2-fsa/k2/issues/746#issuecomment-856421616>`_
+  and `<https://github.com/k2-fsa/snowfall/pull/209>`_
   for more details.
 
 Note:
@@ -122,7 +122,7 @@ Returns:
 static constexpr const char *kFsaGraphLevenshteinGraphDoc = R"doc(
 Construct levenshtein graphs from symbols.
 
-See https://github.com/k2-fsa/k2/pull/828 for more details about levenshtein
+See `<https://github.com/k2-fsa/k2/pull/828>`_ for more details about levenshtein
 graph.
 
 Args:

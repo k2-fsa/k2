@@ -74,7 +74,7 @@ void PybindGraphs(py::module &m) {
 
   m.def(
       "linear_fsa",
-      [](const std::vector<int32_t> &labels, std::string device = "cpu")
+      [](const std::vector<int32_t> &labels, const std::string device = "cpu")
           -> FsaClass { return LinearFsa(labels, torch::Device(device)); },
       py::arg("labels"), py::arg("device") = "cpu", kFsaGraphLinearFsaDoc);
 
@@ -90,7 +90,7 @@ void PybindGraphs(py::module &m) {
   m.def(
       "linear_fsa",
       [](const std::vector<std::vector<int32_t>> &labels,
-         std::string device = "cpu") -> FsaClass {
+         const std::string device = "cpu") -> FsaClass {
         return LinearFsa(labels, torch::Device(device));
       },
       py::arg("labels"), py::arg("device") = "cpu", kFsaGraphLinearFsaDoc);
@@ -119,7 +119,8 @@ void PybindGraphs(py::module &m) {
   m.def(
       "levenshtein_graph",
       [](const std::vector<std::vector<int32_t>> &symbols,
-         float ins_del_score = -0.501, std::string device = "cpu") -> FsaClass {
+         float ins_del_score = -0.501,
+         const std::string device = "cpu") -> FsaClass {
         return LevenshteinGraphs(symbols, ins_del_score, torch::Device(device));
       },
       py::arg("symbols"), py::arg("ins_del_score") = -0.501,

@@ -194,6 +194,29 @@ FsaClass FsaClass::FromBinaryFunctionTensor(FsaClass &a_src, FsaClass &b_src,
   return dest;
 }
 
+void FsaClass::CopyAttrs(FsaClass &src, int32_t start, int32_t end) {
+  // We use this function to propagate attributes for `Index` (a.k.a GetItem)
+  // so src MUST be a FsaVec.
+  K2_CHECK_EQ(src.fsa.NumAxes(), 3);
+  K2_CHECK_GE(start, 0);
+  K2_CHECK_GE(end, start);
+  K2_CHECK_LE(end, src.fsa.NumElements());
+  // copy tensor attrs
+  for (const auto &iter : src.tensor_attrs) {
+    auto value = iter.second.index({torch::indexing::Slice(start, end)});
+    SetAttr(iter.first, torch::IValue(value));
+  }
+  // copy ragged tensor attrs
+  for (auto &iter : src.ragged_tensor_attrs) {
+    auto value = iter.second.Arange(0, start, end);
+    SetAttr(iter.first, ToIValue(value));
+  }
+  // copy other attrs
+  for (const auto &iter : src.other_attrs) {
+    SetAttr(iter.first, iter.second);
+  }
+}
+
 void FsaClass::CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
   for (const auto &iter : src.tensor_attrs) {
     if (!HasAttr(iter.first)) {
@@ -203,33 +226,6 @@ void FsaClass::CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
       auto value = IndexSelectFunction::apply(iter.second, arc_map, filler);
       SetTensorAttr(iter.first, value);
     }
-  }
-}
-
-void FsaClass::CopyTensorAttrs(FsaClass &src, int32_t start, int32_t end) {
-  // We use this function to propagate attributes for `Index` (a.k.a GetItem)
-  // so src MUST be a FsaVec.
-  K2_CHECK_EQ(src.fsa.NumAxes(), 3);
-  K2_CHECK_GE(start, 0);
-  K2_CHECK_GE(end, start);
-  K2_CHECK_LE(end, src.fsa.NumElements());
-  for (const auto &iter : src.tensor_attrs) {
-    auto value = iter.second.index({torch::indexing::Slice(start, end)});
-    SetTensorAttr(iter.first, value);
-  }
-}
-
-void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, int32_t start,
-                                     int32_t end) {
-  // We use this function to propagate attributes for `Index` (a.k.a GetItem)
-  // so src MUST be a FsaVec.
-  K2_CHECK_EQ(src.fsa.NumAxes(), 3);
-  K2_CHECK_GE(start, 0);
-  K2_CHECK_GE(end, start);
-  K2_CHECK_LE(end, src.fsa.NumElements());
-  for (auto &iter : src.ragged_tensor_attrs) {
-    auto value = iter.second.Arange(0, start, end);
-    SetRaggedTensorAttr(iter.first, value);
   }
 }
 
@@ -351,6 +347,8 @@ FsaClass &FsaClass::SetRequiresGrad(bool requires_grad /*=true*/) {
 }
 
 FsaClass FsaClass::ToOtherContext(const ContextPtr &context) const {
+  K2_CHECK(!context->IsCompatible(*fsa.Context()));
+
   FsaClass dest(fsa.To(context));
   auto device = GetDevice(context);
   for (const auto &iter : tensor_attrs) {
@@ -633,9 +631,7 @@ FsaClass FsaClass::Index(int32_t index) {
   // Check the validation of the fsa, will trigger a fatal error if the fsa
   // is not valid.
   dest.Properties();
-  dest.CopyTensorAttrs(*this, start, end);
-  dest.CopyRaggedTensorAttrs(*this, start, end);
-  dest.CopyOtherAttrs(*this);
+  dest.CopyAttrs(*this, start, end);
   PhantomSetScoresFunction::apply(
       dest, Scores().index({torch::indexing::Slice(start, end)}));
   return dest;

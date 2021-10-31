@@ -44,7 +44,7 @@ function(torch_add_pybind_test source)
   get_filename_component(target_name ${source} NAME_WE)
   add_executable(${target_name} "${source}")
   set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  # Add this to avoid using pybind11 inside pytorch
+  # Add this to avoid using pybind11 provided by pytorch
   target_include_directories(${target_name} PRIVATE "${CMAKE_BINARY_DIR}/_deps/pybind11-src/include")
   # Add this to avoid _THPDeviceType symbol not found error.
   if (APPLE)

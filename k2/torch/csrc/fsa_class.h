@@ -217,10 +217,19 @@ struct FsaClass {
 
   /* Convert a FsaClass to a string.
 
-     @return Return a string representation of the FsaClass.
+     @return Return a string representation of the FsaClass, including
+     properties and attributes.
    */
   std::string ToString() const;
 
+  /* Convert a FsaClass to a string as a simple format.
+
+    Only show arcs and tensor type aux_labels (if exists) in the result
+    string, one arc each row, with the first column as `src_state`, the second
+    column `dest_state`, the third column `label`, the forth column tensor type
+    `aux_labels` (if exists), the last column `score`. The last row is always
+    the final state.
+   */
   std::string ToStringSimple() const;
 
   static FsaClass CreateFsaVec(std::vector<FsaClass> &fsas);
@@ -292,12 +301,31 @@ struct FsaClass {
   torch::Tensor GetForwardScores(bool use_double_scores, bool log_semiring);
 
  private:
+  /** Associate an tensor attribute with a value directly.
+
+    Caution: This function assumes that there is no other type of attribute
+    named the given `name`. And the tensor type attribute named the given `name`
+    will be overwritten.
+
+    @param name  The attribute name.
+    @param value  The attribute value.
+   */
   void SetTensorAttr(const std::string &name, torch::Tensor value) {
     K2_CHECK_EQ(value.size(0), fsa.NumElements())
         << "shape[0] of the tensor MUST be equal to number of arcs";
     all_attr_names.insert(name);
     tensor_attrs[name] = value;
   }
+
+  /** Associate a ragged tensor attribute with a value directly.
+
+    Caution: This function assumes that there is no other type of attribute
+    named the given `name`. And the ragged tensor type attribute named the given
+    `name` will be overwritten.
+
+    @param name  The attribute name.
+    @param value  The attribute value.
+   */
   void SetRaggedTensorAttr(const std::string &name, const RaggedAny &value) {
     K2_CHECK_EQ(value.any.Dim0(), fsa.NumElements())
         << "dim0 of the tensor MUST be equal to number of arcs";
@@ -305,19 +333,59 @@ struct FsaClass {
     ragged_tensor_attrs[name] = value;
   }
 
+  /** Transfer current FsaClass to another devices.
+
+    Note: This function assumes that the target context is different from
+    current context. It crashes if you call this function with the context the
+    same as current one.
+
+    @param context  The target context.
+   */
   FsaClass ToOtherContext(const ContextPtr &context) const;
 
-  // Propagate tensor attributes from src.
-  void CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map);
-  void CopyTensorAttrs(FsaClass &src, int32_t start, int32_t end);
+  /** Propagate attributes from source FsaClass to this FsaClass.
 
-  // Propagate other attributes from src.
+    Note: Only used internally for `Index` function.
+
+    @param src  The source FsaClass.
+    @param start The start index (as idx012) of the attribute.
+    @param end The end index (as idx012, exclusive) of the attribute.
+   */
+  void CopyAttrs(FsaClass &src, int32_t start, int32_t end);
+
+  /** Propagate tensor attributes from source FsaClass via tensor arc_map.
+
+    Caution: If there are attributes in source FsaClass with the name
+    conflicting with current FsaClass, we will skip the attributes in source
+    FsaClass and keep the current one.
+
+    @param src  The source FsaClass.
+    @param arc_map  The arc_map (as idx012) to select items in attributes.
+   */
+  void CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map);
+
+  /** Propagate other attributes from source FsaClass.
+
+    Caution: If there are attributes in source FsaClass with the name
+    conflicting with current FsaClass, we will skip the attributes in source
+    FsaClass and keep the current one.
+
+    @param src  The source FsaClass.
+   */
   void CopyOtherAttrs(FsaClass &src);
 
-  // Propagate ragged attributes from src.
+  /** Propagate ragged tensor attributes from source FsaClass via tensor
+    arc_map.
+
+    Caution: If there are attributes in source FsaClass with the name
+    conflicting with current FsaClass, we will skip the attributes in source
+    FsaClass and keep the current one.
+
+    @param src  The source FsaClass.
+    @param arc_map  The arc_map (as idx012) to select items in attributes.
+   */
   void CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map);
   void CopyRaggedTensorAttrs(FsaClass &src, RaggedAny &arc_map);
-  void CopyRaggedTensorAttrs(FsaClass &src, int32_t start, int32_t end);
 
  public:  // we make these functions public since they are called in autograd
           // related functions

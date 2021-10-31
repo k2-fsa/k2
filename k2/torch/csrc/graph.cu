@@ -33,7 +33,7 @@ FsaClass CtcTopo(int32_t max_token, bool modified /*= false*/,
   ContextPtr context = GetContext(device);
   DeviceGuard guard(context);
   Array1<int32_t> aux_labels;
-  Fsa fsa = k2::CtcTopo(context, max_token, modified, &aux_labels);
+  Fsa fsa = CtcTopo(context, max_token, modified, &aux_labels);
   return FsaClass(fsa, ToTorch(aux_labels));
 }
 
@@ -41,8 +41,7 @@ FsaClass CtcGraphs(RaggedAny &symbols, bool modified /*= false*/) {
   ContextPtr context = symbols.any.Context();
   DeviceGuard guard(context);
   Array1<int32_t> aux_labels;
-  Fsa fsa =
-      k2::CtcGraphs(symbols.any.Specialize<int32_t>(), modified, &aux_labels);
+  Fsa fsa = CtcGraphs(symbols.any.Specialize<int32_t>(), modified, &aux_labels);
   return FsaClass(fsa, ToTorch(aux_labels));
 }
 
@@ -59,7 +58,7 @@ FsaClass CtcGraphs(const std::vector<std::vector<int32_t>> &symbols,
 FsaClass LinearFsa(RaggedAny &labels) {
   ContextPtr context = labels.any.Context();
   DeviceGuard guard(context);
-  Fsa fsa = k2::LinearFsas(labels.any.Specialize<int32_t>());
+  Fsa fsa = LinearFsas(labels.any.Specialize<int32_t>());
   return FsaClass(fsa);
 }
 
@@ -68,7 +67,7 @@ FsaClass LinearFsa(const std::vector<int32_t> &labels,
   ContextPtr context = GetContext(device);
   DeviceGuard guard(context);
   Array1<int32_t> array(context, labels);
-  Fsa fsa = k2::LinearFsa(array);
+  Fsa fsa = LinearFsa(array);
   return FsaClass(fsa);
 }
 
@@ -77,7 +76,7 @@ FsaClass LinearFsa(const std::vector<std::vector<int32_t>> &labels,
   ContextPtr context = GetContext(device);
   DeviceGuard guard(context);
   Ragged<int32_t> ragged = CreateRagged2<int32_t>(labels).To(context);
-  Fsa fsa = k2::LinearFsas(ragged);
+  Fsa fsa = LinearFsas(ragged);
   return FsaClass(fsa);
 }
 
@@ -87,9 +86,8 @@ FsaClass LevenshteinGraphs(RaggedAny &symbols,
   DeviceGuard guard(context);
   Array1<int32_t> aux_labels;
   Array1<float> score_offsets;
-  FsaVec graph =
-      k2::LevenshteinGraphs(symbols.any.Specialize<int32_t>(), ins_del_score,
-                            &aux_labels, &score_offsets);
+  FsaVec graph = LevenshteinGraphs(symbols.any.Specialize<int32_t>(),
+                                   ins_del_score, &aux_labels, &score_offsets);
   torch::Tensor aux_labels_tensor = ToTorch(aux_labels);
   torch::Tensor score_offsets_tensor = ToTorch(score_offsets);
   FsaClass dest(graph, aux_labels_tensor);
