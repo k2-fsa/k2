@@ -187,12 +187,12 @@ struct DenseFsaVec {
 std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec);
 
 /*
-  Create an FSA from a Tensor.  The Tensor t is expected to be an N by 4 tensor
-  of int32_t, where N is the number of arcs (the format is src_state,
-  dest_state, symbol, cost).  The cost is not really an int32_t, it is a float.
-  This code will print an error message and output 'true' to 'error', and return
-  an empty FSA (with no states or arcs) if t was not interpretable as a valid
-  FSA. These requirements for a valid FSA are:
+  Create an FSA from a Tensor.  The Tensor t is expected to be an N by 4 tensor of
+  int32_t, where N is the number of arcs (the format is src_state, dest_state,
+  symbol, cost).  The cost is not really an int32_t, it is a float.  This code
+  will print an error message and output 'true' to 'error', and return an empty
+  FSA (with no states or arcs) if t was not interpretable as a valid FSA.
+  These requirements for a valid FSA are:
 
     - src_state values on the arcs must be non-decreasing
     - all arcs with -1 as the label must be to a single state (call this
@@ -333,7 +333,9 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error);
                        refer to a part of the `values` array of
                        the input `vec`.
  */
-inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
+inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) {
+  return vec.Index(0, i);
+}
 
 /*
   Create an FsaVec from a list of Fsas.  Caution: Fsa and FsaVec are really

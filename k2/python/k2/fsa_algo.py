@@ -27,7 +27,7 @@ import k2
 
 from . import fsa_properties
 from .fsa import Fsa
-from k2 import index_select
+from .ops import index_select
 
 from torch import Tensor
 
@@ -122,11 +122,11 @@ def top_sort(fsa: Fsa) -> Fsa:
 
 
 def intersect_device(
-    a_fsas: Fsa,
-    b_fsas: Fsa,
-    b_to_a_map: torch.Tensor,
-    sorted_match_a: bool = False,
-    ret_arc_maps: bool = False
+        a_fsas: Fsa,
+        b_fsas: Fsa,
+        b_to_a_map: torch.Tensor,
+        sorted_match_a: bool = False,
+        ret_arc_maps: bool = False
 ) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:  # noqa
     '''Compute the intersection of two FsaVecs treating epsilons
     as real, normal symbols.
@@ -202,12 +202,11 @@ def intersect_device(
         return out_fsas
 
 
-def intersect(
-    a_fsa: Fsa,
-    b_fsa: Fsa,
-    treat_epsilons_specially: bool = True,
-    ret_arc_maps: bool = False
-) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:  # noqa
+def intersect(a_fsa: Fsa,
+              b_fsa: Fsa,
+              treat_epsilons_specially: bool = True,
+              ret_arc_maps: bool = False
+             ) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:  # noqa
     '''Compute the intersection of two FSAs.
 
     When `treat_epsilons_specially` is True, this function works only on CPU.
@@ -404,10 +403,8 @@ def connect(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
-def arc_sort(
-        fsa: Fsa,
-        ret_arc_map: bool = False
-) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
+def arc_sort(fsa: Fsa, ret_arc_map: bool = False
+            ) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
     '''Sort arcs of every state.
 
     Note:
@@ -475,10 +472,8 @@ def shortest_path(fsa: Fsa, use_double_scores: bool) -> Fsa:
     return out_fsa
 
 
-def add_epsilon_self_loops(
-        fsa: Fsa,
-        ret_arc_map: bool = False
-) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
+def add_epsilon_self_loops(fsa: Fsa, ret_arc_map: bool = False
+                          ) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
     '''Add epsilon self-loops to an Fsa or FsaVec.
 
     This is required when composing using a composition method that does not
@@ -604,11 +599,9 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa,
     return out_fsa
 
 
-def determinize(
-    fsa: Fsa,
-    weight_pushing_type: _k2.DeterminizeWeightPushingType = _k2.
-    DeterminizeWeightPushingType.kNoWeightPushing
-) -> Fsa:
+def determinize(fsa: Fsa,
+                weight_pushing_type: _k2.DeterminizeWeightPushingType = _k2.
+                DeterminizeWeightPushingType.kNoWeightPushing) -> Fsa:
     '''Determinize the input Fsa.
 
     Caution:
@@ -838,11 +831,10 @@ def prune_on_arc_post(fsas: Fsa, threshold_prob: float,
     return out_fsa
 
 
-def expand_ragged_attributes(
-    fsas: Fsa,
-    ret_arc_map: bool = False,
-    ragged_attribute_names: Optional[List[str]] = None
-) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
+def expand_ragged_attributes(fsas: Fsa,
+                             ret_arc_map: bool = False,
+                             ragged_attribute_names: Optional[List[str]] = None
+                            ) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
     '''
     Turn ragged labels attached to this FSA into linear (Tensor) labels,
     expanding arcs into sequences of arcs as necessary to achieve this.
@@ -941,10 +933,10 @@ def expand_ragged_attributes(
 
 
 def replace_fsa(
-    src: Fsa,
-    index: Fsa,
-    symbol_begin_range: int = 1,
-    ret_arc_map: bool = False,
+        src: Fsa,
+        index: Fsa,
+        symbol_begin_range: int = 1,
+        ret_arc_map: bool = False,
 ) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:
     '''
     Replace arcs in index FSA with the corresponding fsas in a vector of
@@ -1069,9 +1061,10 @@ def ctc_topo(max_token: int,
 
 
 def levenshtein_graph(
-        symbols: Union[k2.RaggedTensor, List[List[int]]],
-        ins_del_score: float = -0.501,
-        device: Optional[Union[torch.device, str]] = "cpu") -> Fsa:
+    symbols: Union[k2.RaggedTensor, List[List[int]]],
+    ins_del_score: float = -0.501,
+    device: Optional[Union[torch.device, str]] = "cpu"
+) -> Fsa:
     '''Construct levenshtein graphs from symbols.
 
     See https://github.com/k2-fsa/k2/pull/828 for more details about levenshtein
@@ -1113,10 +1106,10 @@ def levenshtein_graph(
 
 
 def levenshtein_alignment(
-    refs: Fsa,
-    hyps: Fsa,
-    hyp_to_ref_map: torch.Tensor,
-    sorted_match_ref: bool = False,
+        refs: Fsa,
+        hyps: Fsa,
+        hyp_to_ref_map: torch.Tensor,
+        sorted_match_ref: bool = False,
 ) -> Fsa:
     '''Get the levenshtein alignment of two FsaVecs
 
@@ -1174,17 +1167,15 @@ def levenshtein_alignment(
 
     hyps.rename_tensor_attribute_("aux_labels", "hyp_labels")
 
-    lattice = k2.intersect_device(refs,
-                                  hyps,
-                                  b_to_a_map=hyp_to_ref_map,
-                                  sorted_match_a=sorted_match_ref)
+    lattice = k2.intersect_device(
+        refs, hyps, b_to_a_map=hyp_to_ref_map, sorted_match_a=sorted_match_ref)
     lattice = k2.remove_epsilon_self_loops(lattice)
 
     alignment = k2.shortest_path(lattice, use_double_scores=True).invert_()
     alignment.rename_tensor_attribute_("labels", "ref_labels")
     alignment.rename_tensor_attribute_("aux_labels", "labels")
 
-    alignment.scores -= getattr(alignment,
-                                "__ins_del_score_offset_internal_attr_")
+    alignment.scores -= getattr(
+        alignment, "__ins_del_score_offset_internal_attr_")
 
     return alignment

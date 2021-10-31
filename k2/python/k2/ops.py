@@ -24,6 +24,138 @@ import _k2
 from .fsa import Fsa
 
 
+class _IndexSelectFunction(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, src: torch.Tensor, index: torch.Tensor,
+                default_value: float) -> torch.Tensor:
+        '''Returns a new tensor which indexes the input tensor along dimension 0
+        using the entries in `index`.
+
+        If the entry in `index` is -1, then the corresponding entry in the
+        returned tensor is 0.
+
+        Caution:
+          `index.dtype == torch.int32` and `index.ndim == 1`.
+
+        Args:
+          src:
+            The input tensor. Either 1-D or 2-D with dtype torch.int32 or
+            torch.float32.
+          index:
+            1-D tensor of dtype torch.int32 containing the indexes.
+            If an entry is -1, the corresponding entry in the returned value
+            is 0. The elements of `index` should be in the range
+            `[-1..src.shape[0]-1]`.
+          default_value:
+            Used only when `src` is a 1-D tensor. It sets ans[i] to
+            default_value if index[i] is -1.
+
+        Returns:
+          A tensor with shape (index.numel(), *src.shape[1:]) and dtype the
+          same as `src`, e.g. if `src.ndim == 1`, ans.shape would be
+          (index.shape[0],); if `src.ndim == 2`, ans.shape would be
+          (index.shape[0], src.shape[1]).
+          Will satisfy `ans[i] == src[index[i]]` if `src.ndim == 1`,
+          or `ans[i,j] == src[index[i],j]` if `src.ndim == 2`, except for
+          entries where `index[i] == -1` which will be zero.
+        '''
+        ctx.save_for_backward(src, index)
+        return _k2.index_select(src, index, default_value)
+
+    @staticmethod
+    def backward(ctx, out_grad) -> Tuple[torch.Tensor, None]:
+        src, index = ctx.saved_tensors
+
+        ans = torch.zeros(src.shape,
+                          dtype=out_grad.dtype,
+                          device=src.device,
+                          requires_grad=False)
+        _k2.index_add(index, out_grad, ans)
+        return (
+            ans,  # src
+            None,  # index
+            None  # default_value
+        )
+
+
+# put index_select here instead of in `autograd.py` to break circular import
+def index_select(src: torch.Tensor,
+                 index: torch.Tensor,
+                 default_value: float = 0) -> torch.Tensor:
+    '''Returns a new tensor which indexes the input tensor along dimension 0
+    using the entries in `index`.
+
+    If the entry in `index` is -1, then the corresponding entry in the
+    returned tensor is 0.
+
+    Caution:
+      `index.dtype == torch.int32` and `index.ndim == 1`.
+
+    Args:
+      src:
+        The input tensor. Either 1-D or 2-D with dtype `torch.int32`,
+        `torch.int64`, `torch.float32`, or `torch.float64`.
+      index:
+        1-D tensor of dtype `torch.int32` containing the indexes.
+        If an entry is -1, the corresponding entry in the returned value
+        is 0. The elements of `index` should be in the range
+        `[-1..src.shape[0]-1]`.
+      default_value:
+        Used only when `src` is a 1-D tensor. It sets ans[i] to default_value
+        if index[i] is -1.
+
+    Returns:
+      A tensor with shape ``(index.numel(), *src.shape[1:])`` and dtype the
+      same as `src`, e.g. if `src.ndim == 1`, `ans.shape` would be
+      `(index.shape[0],)`; if `src.ndim == 2`, `ans.shape` would be
+      `(index.shape[0], src.shape[1])`.
+      Will satisfy `ans[i] == src[index[i]]` if `src.ndim == 1`,
+      or `ans[i, j] == src[index[i], j]` if `src.ndim == 2`, except for
+      entries where `index[i] == -1` which will be zero.
+    '''
+    ans = _IndexSelectFunction.apply(src, index, default_value)
+    return ans
+
+
+def index_add(index: torch.Tensor, value: torch.Tensor,
+              in_out: torch.Tensor) -> None:
+    '''It implements in_out[index[i]] += value[i].
+
+    Caution:
+      It has similar semantics with `torch.Tensor.index_add_` except
+      that:
+
+        - `index.dtype == torch.int32`
+        - `-1 <= index[i] < in_out.shape[0]`
+        - `index[i] == -1` is ignored.
+        - `index` has to be a 1-D **contiguous** tensor.
+
+    Caution:
+      `in_out` is modified **in-place**.
+
+    Caution:
+      This functions does NOT support autograd.
+
+    Args:
+      index:
+        A 1-D **contiguous** tensor with dtype `torch.int32`.
+        Must satisfy `-1 <= index[i] < in_out.shape[0]`
+      value:
+        A 1-D or 2-D tensor with dtype `torch.int32`, `torch.float32`,
+        or `torch.float64`.
+        Must satisfy `index.shape[0] == value.shape[0]`
+      in_out:
+        A 1-D or 2-D tensor with the same dtype as `value`. It satisfies
+        `in_out.shape[1] == value.shape[1]` if it is a 2-D tensor.
+
+    Returns:
+      Return None.
+    '''
+
+    _k2.index_add(index, value, in_out)
+
+
 def index_fsa(src: Fsa, indexes: torch.Tensor) -> Fsa:
     '''Select a list of FSAs from `src` with a 1-D tensor.
 

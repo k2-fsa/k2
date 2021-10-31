@@ -25,7 +25,6 @@
 #include <vector>
 
 #include "k2/csrc/ragged.h"
-#include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/fsa.h"
 #include "k2/python/csrc/torch/v2/ragged_arc.h"
 
@@ -50,16 +49,6 @@ void PybindRaggedArc(py::module &m) {
   fsa.def("requires_grad_", &RaggedArc::SetRequiresGrad,
           py::arg("requires_grad") = true);
 
-  fsa.def("to",
-          static_cast<RaggedArc (RaggedArc::*)(torch::Device) const>(
-              &RaggedArc::To),
-          py::arg("device"));
-
-  fsa.def("to",
-          static_cast<RaggedArc (RaggedArc::*)(const std::string &) const>(
-              &RaggedArc::To),
-          py::arg("device"));
-
   fsa.def("arc_sort", &RaggedArc::ArcSort);
 
   fsa.def("__setattr__", (void (RaggedArc::*)(const std::string &, py::object))(
@@ -74,10 +63,9 @@ void PybindRaggedArc(py::module &m) {
 
   fsa.def_property(
       "scores", [](RaggedArc &self) -> torch::Tensor { return self.Scores(); },
-      [](RaggedArc &self, torch::Tensor scores) { self.SetScores(scores); });
-
-  fsa.def_property_readonly(
-      "properties", [](RaggedArc &self) -> int { return self.Properties(); });
+      [](RaggedArc &self, torch::Tensor scores) {
+        self.Scores().copy_(scores);
+      });
 
   fsa.def_property_readonly("shape", [](RaggedArc &self) -> py::tuple {
     if (self.fsa.NumAxes() == 2) {

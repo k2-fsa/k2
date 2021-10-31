@@ -38,18 +38,7 @@ namespace k2 {
 
    @return torch::kCUDA or torch.kCPU.
  */
-inline torch::DeviceType ToTorchDeviceType(DeviceType type) {
-  switch (type) {
-    case kCuda:
-      return torch::kCUDA;
-    case kCpu:
-      return torch::kCPU;
-    case kUnk:  // fall-through
-    default:
-      K2_LOG(FATAL) << "kUnk is not supported!";
-      return torch::kCPU;  // unreachable code
-  }
-}
+torch::DeviceType ToTorchDeviceType(DeviceType type);
 
 /* Convert torch::DeviceType to k2::DeviceType.
    Abort on failure.
@@ -262,18 +251,6 @@ PyClass To(PyClass &pyclass, py::object device) {
            depending on the given device.
  */
 ContextPtr GetContext(torch::Device device);
-
-/** Create a torch device from a k2 context.
-
-   @param [in] context   It must be a CPU or a CUDA context.
-
-   @return Return a CPU or a GPU device depending on the given context.
- */
-inline torch::Device GetDevice(ContextPtr context) {
-  auto device_type = ToTorchDeviceType(context->GetDeviceType());
-  int32_t device_id = context->GetDeviceId();
-  return torch::Device(device_type, device_id);
-}
 
 inline ContextPtr GetContext(torch::Tensor tensor) {
   return GetContext(tensor.device());
