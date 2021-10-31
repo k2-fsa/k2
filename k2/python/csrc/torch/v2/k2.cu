@@ -38,7 +38,6 @@ void PybindV2(py::module &m) {
 
   PybindRaggedAny(ragged);
   PybindRaggedArc(ragged);
-  m.attr("RaggedArc") = ragged.attr("Fsa");  // TODO: remove it
 
   // The following **static** variable is to resolve the following exception:
   //
