@@ -13,10 +13,8 @@ set(torch_srcs
 
   v2/any.cu
   v2/doc/doc.cu
-  v2/fsa.cu
   v2/k2.cu
   v2/ragged_any.cu
-  v2/ragged_arc.cu
   v2/ragged_shape.cu
 )
 

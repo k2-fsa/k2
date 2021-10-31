@@ -1,5 +1,4 @@
 # please sort imported functions alphabetically
-from _k2.ragged import Fsa
 from _k2.ragged import RaggedShape
 from _k2.ragged import RaggedTensor
 from _k2.ragged import cat

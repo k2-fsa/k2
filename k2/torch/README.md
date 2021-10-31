@@ -1,8 +1,7 @@
 ## Introduction
 
-This directory will contain everything related to PyTorch.
+This directory contains code for deployment using PyTorch C++ APIs,
+without Python dependencies.
 
-- `csrc`: This folder contains everything related to PyTorch C++ APIs.
-          It is independent on Python.
-- `python`: This folder contains everything related to Python. It wraps
-            k2 into Python.
+If CUDA is enabled, you have to use PyTorch >= 1.8.0 to compile it.
+(You can see a warning saying this when running `cmake`)
