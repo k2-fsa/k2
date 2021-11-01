@@ -1,8 +1,11 @@
 /**
- * @brief python wrapper for Ragged<Arc>
+ * @brief Index select for k2.
+ *
+ * Unlike torch.index_select, when an entry is -1, it sets
+ * the destination entry to 0.
  *
  * @copyright
- * Copyright      2021  Xiaomi Corp.  (authors: Fangjun Kuang)
+ * Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -20,14 +23,11 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_V2_FSA_H_
-#define K2_PYTHON_CSRC_TORCH_V2_FSA_H_
+#ifndef K2_PYTHON_CSRC_TORCH_INDEX_SELECT_H_
+#define K2_PYTHON_CSRC_TORCH_INDEX_SELECT_H_
 
 #include "k2/python/csrc/torch.h"
 
-namespace k2 {
+void PybindIndexSelect(py::module &m);
 
-void PybindRaggedArc(py::module &m);
-
-}  // namespace k2
-#endif  // K2_PYTHON_CSRC_TORCH_V2_FSA_H_
+#endif  //  K2_PYTHON_CSRC_TORCH_INDEX_SELECT_H_

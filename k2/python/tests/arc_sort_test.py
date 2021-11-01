@@ -23,7 +23,6 @@
 import unittest
 
 import k2
-import k2.ragged as k2r
 import torch
 
 
@@ -46,7 +45,7 @@ class TestArcSort(unittest.TestCase):
             2
         '''
         for device in self.devices:
-            src = k2r.Fsa(s).to(device)
+            src = k2.Fsa.from_str(s).to(device)
             src.requires_grad_(True)
 
             scores_copy = src.scores.detach().clone().requires_grad_(True)
@@ -64,15 +63,20 @@ class TestArcSort(unittest.TestCase):
             src.ragged_attr = k2.RaggedTensor([[10, 20], [30, 40, 50],
                                                [60, 70]]).to(device)
 
-            dest = src.arc_sort()
+            dest, arc_map = k2.arc_sort(src, ret_arc_map=True)
 
             assert dest.attr1 == src.attr1
             assert dest.attr2 == src.attr2
 
-            # actual_str = dest.to_str_simple()
-            # expected_str = '\n'.join(
-            # ['0 1 1 0.2', '0 1 2 0.1', '1 2 -1 0.3', '2'])
-            # assert actual_str.strip() == expected_str
+            expected_arc_map = torch.tensor([1, 0, 2],
+                                            dtype=torch.int32,
+                                            device=device)
+            assert torch.all(torch.eq(arc_map, expected_arc_map))
+
+            actual_str = k2.to_str_simple(dest)
+            expected_str = '\n'.join(
+                ['0 1 1 0.2', '0 1 2 0.1', '1 2 -1 0.3', '2'])
+            assert actual_str.strip() == expected_str
 
             expected_int_attr = torch.tensor([2, 1, 3],
                                              dtype=torch.int32,

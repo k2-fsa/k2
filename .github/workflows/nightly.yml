@@ -1,6 +1,9 @@
 name: nightly
 
 on:
+  push:
+    branches:
+      - nightly
   schedule:
     # minute (0-59)
     # hour (0-23)
@@ -79,6 +82,10 @@ jobs:
 
           ./scripts/github_actions/install_torch.sh
           python3 -c "import torch; print('torch version:', torch.__version__)"
+
+      - name: Install git lfs
+        run: |
+          sudo apt-get install -y git-lfs
 
       - name: Download cudnn 8.0
         env:

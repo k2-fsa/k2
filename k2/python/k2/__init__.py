@@ -1,8 +1,15 @@
-from _k2 import DeterminizeWeightPushingType
-# from _k2 import simple_ragged_index_select
-from _k2.v2 import index_add
-from _k2.v2 import index_select
-from _k2.v2 import simple_ragged_index_select
+import torch  # noqa
+try:
+    from _k2 import DeterminizeWeightPushingType
+    from _k2 import simple_ragged_index_select
+except ImportError as e:
+    import sys
+    major_v, minor_v = sys.version_info[:2]
+    raise ImportError(
+        str(e) + "\nNote: If you're using anaconda and importing k2 on MacOS,"
+        "\n      you can probably fix this by setting the environment variable:"
+        f"\n  export DYLD_LIBRARY_PATH=$CONDA_PREFIX/lib/python{major_v}.{minor_v}/site-packages:$DYLD_LIBRARY_PATH"  # noqa
+    )
 from .ragged import RaggedShape
 from .ragged import RaggedTensor
 
@@ -14,7 +21,6 @@ from . import utils
 #
 from .autograd import intersect_dense
 from .autograd import intersect_dense_pruned
-from .autograd import union
 from .ctc_loss import CtcLoss
 from .ctc_loss import ctc_loss
 from .dense_fsa_vec import DenseFsaVec
@@ -44,13 +50,14 @@ from .fsa_algo import remove_epsilon_self_loops
 from .fsa_algo import replace_fsa
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
+from .fsa_algo import union
 from .fsa_properties import to_str as properties_to_str
 from .nbest import Nbest
 from .ops import cat
 from .ops import compose_arc_maps
-# from .ops import index_add
+from .ops import index_add
 from .ops import index_fsa
-# from .ops import index_select
+from .ops import index_select
 #
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec

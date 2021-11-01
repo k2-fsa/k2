@@ -24,6 +24,19 @@
 
 namespace k2 {
 
+torch::DeviceType ToTorchDeviceType(DeviceType type) {
+  switch (type) {
+    case kCuda:
+      return torch::kCUDA;
+    case kCpu:
+      return torch::kCPU;
+    case kUnk:  // fall-through
+    default:
+      K2_LOG(FATAL) << "kUnk is not supported!";
+      return torch::kCPU;  // unreachable code
+  }
+}
+
 DeviceType FromTorchDeviceType(const torch::DeviceType &type) {
   switch (type) {
     case torch::kCUDA:
@@ -73,7 +86,9 @@ torch::ScalarType ScalarTypeFromDtype(Dtype dtype) {
 
 template <>
 torch::Tensor ToTorch(Array1<Arc> &array) {
-  auto device = GetDevice(array.Context());
+  auto device_type = ToTorchDeviceType(array.Context()->GetDeviceType());
+  int32_t device_id = array.Context()->GetDeviceId();
+  auto device = torch::Device(device_type, device_id);
   auto scalar_type = ToScalarType<int32_t>::value;
   // an Arc has 4 members
   K2_STATIC_ASSERT(sizeof(Arc) == 4 * sizeof(int32_t));
@@ -119,7 +134,9 @@ Tensor FromTorch(torch::Tensor tensor, TensorTag) {
   return Tensor(dtype, shape, region, 0);
 }
 torch::Tensor ToTorch(Tensor &tensor) {
-  auto device = GetDevice(tensor.Context());
+  auto device_type = ToTorchDeviceType(tensor.Context()->GetDeviceType());
+  int32_t device_id = tensor.Context()->GetDeviceId();
+  auto device = torch::Device(device_type, device_id);
   auto scalar_type = ScalarTypeFromDtype(tensor.GetDtype());
   auto options = torch::device(device).dtype(scalar_type);
 

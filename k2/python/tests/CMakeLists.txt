@@ -68,9 +68,6 @@ set(py_test_files
   top_sort_test.py
   union_test.py
   replace_fsa_test.py
-
-  # k2 v2
-  fsa_v2_test.py
 )
 
 foreach(source IN LISTS py_test_files)

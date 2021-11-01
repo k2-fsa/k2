@@ -17,7 +17,19 @@ Use pip
 
 .. code-block:: bash
 
-  pip install --pre k2
+  # Install a CUDA version compiled using CUDA 10.1 and PyTorch 1.7.1
+  #
+  pip install k2
+
+  # Install a CPU version compiled against PyTorch 1.8.1 on 2021.10.22
+  #
+  pip install k2==1.9.dev20211022+cpu.torch1.8.1 -f https://k2-fsa.org/nightly/
+
+  # Install a CPU version compiled against PyTorch 1.9.0 on 2021.10.22
+  #
+  pip install k2==1.9.dev20211022+cpu.torch1.9.0 -f https://k2-fsa.org/nightly/
+
+  # Please visit https://k2-fsa.org/nightly/ for more versions of k2
 
 Read the following two pages to learn more:
 
@@ -71,14 +83,14 @@ To build a release version, use:
   cd build_release
   cmake -DCMAKE_BUILD_TYPE=Release ..
   make -j
-  export PYHONPATH=$PWD/../k2/python:$PYHONPATH # for `import k2`
-  export PYHONPATH=$PWD/lib:$PYHONPATH # for `import _k2`
+  export PYTHONPATH=$PWD/../k2/python:$PYTHONPATH # for `import k2`
+  export PYTHONPATH=$PWD/lib:$PYTHONPATH # for `import _k2`
 
   # To test that your build is successful, run
   python3 -c "import k2; print(k2.__file__)"
   # It should print /some/path/k2/k2/python/k2/__init.py
 
-  python3 -c "import _k2; print(_k2.__file__)"
+  python3 -c "import torch; import _k2; print(_k2.__file__)"
   # It should print /some/path/k2/build_release/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
 
@@ -91,14 +103,14 @@ To build a debug version, use:
   cd build_debug
   cmake -DCMAKE_BUILD_TYPE=Debug ..
   make -j
-  export PYHONPATH=$PWD/../k2/python:$PYHONPATH # for `import k2`
-  export PYHONPATH=$PWD/lib:$PYHONPATH # for `import _k2`
+  export PYTHONPATH=$PWD/../k2/python:$PYTHONPATH # for `import k2`
+  export PYTHONPATH=$PWD/lib:$PYTHONPATH # for `import _k2`
 
   # To test that your build is successful, run
   python3 -c "import k2; print(k2.__file__)"
   # It should print /some/path/k2/k2/python/k2/__init.py
 
-  python3 -c "import _k2; print(_k2.__file__)"
+  python3 -c "import torch; import _k2; print(_k2.__file__)"
   # It should print /some/path/k2/build_debug/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
 
@@ -141,8 +153,8 @@ To run a specific Python test, use:
 
   cd /some/path/k2/build_release # or switch to build_debug
 
-  export PYHONPATH=$PWD/../k2/python:$PYHONPATH # for `import k2`
-  export PYHONPATH=$PWD/lib:$PYHONPATH # for `import _k2`
+  export PYTHONPATH=$PWD/../k2/python:$PYTHONPATH # for `import k2`
+  export PYTHONPATH=$PWD/lib:$PYTHONPATH # for `import _k2`
 
   python3 ../k2/python/tests/index_test.py
 
@@ -191,7 +203,7 @@ To run a specific Python test, use:
 
     .. code-block::
 
-      python3 -c "import _k2; print(_k2.__file__)"
+      python3 -c "import torch; import _k2; print(_k2.__file__)"
 
   It should print the directory where k2 was built. That is,
   the above output contains a string ``build_release`` or ``build_debug``.

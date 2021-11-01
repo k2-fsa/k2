@@ -4,6 +4,8 @@ set(torch_srcs
   discounted_cum_sum.cu
   fsa.cu
   fsa_algo.cu
+  index_add.cu
+  index_select.cu
   nbest.cu
   ragged.cu
   ragged_ops.cu
@@ -11,12 +13,8 @@ set(torch_srcs
 
   v2/any.cu
   v2/doc/doc.cu
-  v2/fsa.cu
   v2/k2.cu
-  v2/k2_ops.cu
-  v2/ops.cu
   v2/ragged_any.cu
-  v2/ragged_arc.cu
   v2/ragged_shape.cu
 )
 

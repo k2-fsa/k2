@@ -437,19 +437,6 @@ class Fsa(object):
             traceback.print_exc()
             raise e
 
-    @labels.setter
-    def labels(self, values) -> None:
-        '''Set labels.
-
-        Args:
-          values:
-            A 1-D `torch.tensor` with dtype `torch.int32`.
-        '''
-        assert values.dtype == torch.int32
-        self.arcs.values()[:, 2] = values
-        # Invalidate the properties since we changed the labels.
-        self.__dict__['_properties'] = None
-
     @property
     def properties(self) -> int:
         # instead of accessing self._properties, we use

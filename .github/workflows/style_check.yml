@@ -20,6 +20,7 @@ on:
   push:
     branches:
       - master
+      - v2.0-pre
   pull_request:
     branches:
       - master
