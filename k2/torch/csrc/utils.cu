@@ -23,6 +23,7 @@
 #include "caffe2/serialize/file_adapter.h"
 #include "caffe2/serialize/inline_container.h"
 #include "k2/csrc/array.h"
+#include "k2/torch/csrc/deserialization.h"
 #include "k2/torch/csrc/utils.h"
 
 #if K2_TORCH_VERSION_MAJOR > 1 || \
@@ -57,6 +58,46 @@ DeviceType ConvertDeviceType(torch::DeviceType device_type) {
   }
   // Unreachable code
   return kCpu;
+}
+
+Dtype ConvertDtype(torch::ScalarType scalar_type) {
+  switch (scalar_type) {
+    case torch::kFloat:
+      return kFloatDtype;
+    case torch::kDouble:
+      return kDoubleDtype;
+    case torch::kInt:
+      return kInt32Dtype;
+    case torch::kLong:
+      return kInt64Dtype;
+    default:
+      // TODO(fangjun): add other types when needed
+      K2_LOG(FATAL) << "Unsupported scalar_type: " << scalar_type;
+      return kInt32Dtype;  // unreachable code
+  }
+}
+
+torch::ScalarType ConvertDtype(Dtype dtype) {
+  switch (dtype) {
+    case kFloatDtype:
+      return torch::kFloat;
+    case kDoubleDtype:
+      return torch::kDouble;
+    case kInt32Dtype:
+      return torch::kInt;
+    case kInt64Dtype:
+      return torch::kLong;
+    default:
+      // TODO(fangjun): add other types when needed
+      K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(dtype).Name();
+      return torch::ScalarType::Undefined;  // unreachable code
+  }
+}
+
+torch::Device DeviceFromContext(ContextPtr context) {
+  auto device_type = ConvertDeviceType(context->GetDeviceType());
+  int32_t device_id = context->GetDeviceId();
+  return torch::Device(device_type, device_id);
 }
 
 ContextPtr ContextFromDevice(torch::Device device) {
@@ -106,6 +147,51 @@ torch::IValue PickleLoad(const std::string &filename) {
                                            /*obj_loader=*/torch::nullopt,
                                            /*device=*/c10::nullopt, *reader);
 #endif
+}
+
+Tensor TensorFromTorch(torch::Tensor tensor) {
+  Dtype dtype = ConvertDtype(tensor.scalar_type());
+  torch::IntArrayRef sizes = tensor.sizes();
+  torch::IntArrayRef strides = tensor.strides();
+  Shape shape({sizes.begin(), sizes.end()}, {strides.begin(), strides.end()});
+
+  auto region = NewRegion(tensor);
+  return Tensor(dtype, shape, region, 0);
+}
+
+torch::Tensor TensorToTorch(Tensor &tensor) {
+  auto device = DeviceFromContext(tensor.Context());
+  auto scalar_type = ConvertDtype(tensor.GetDtype());
+  auto options = torch::device(device).dtype(scalar_type);
+
+  auto dims_int32 = tensor.Dims();
+  auto strides_int32 = tensor.Strides();
+  std::vector<int64_t> sizes(dims_int32.begin(), dims_int32.end());
+  std::vector<int64_t> strides(strides_int32.begin(), strides_int32.end());
+
+  // NOTE: we keep a copy of `Region` inside the lambda
+  // so that `torch::Tensor` always accesses valid memory.
+  // This prevent the memory managed by k2::Tensor from being freed
+  // as long as torch::Tensor is alive.
+  return torch::from_blob(
+      tensor.Data(), sizes, strides,
+      [saved_region = tensor.GetRegion()](void *) {}, options);
+}
+
+bool IsRaggedInt(torch::IValue value) {
+  return value.isCustomClass() &&
+         value.toObject()->type()->name()->qualifiedName() ==
+             "_k2.ragged.RaggedTensor";
+}
+
+Ragged<int32_t> ToRaggedInt(torch::IValue value) {
+  torch::intrusive_ptr<RaggedIntHelper> ragged_int_holder =
+      value.toCustomClass<RaggedIntHelper>();
+  return *ragged_int_holder;
+}
+
+torch::IValue ToIValue(const Ragged<int32_t> &ragged) {
+  return torch::make_custom_class<RaggedIntHelper>(ragged);
 }
 
 }  // namespace k2

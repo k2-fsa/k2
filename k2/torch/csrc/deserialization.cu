@@ -37,6 +37,8 @@
 
 namespace k2 {
 
+RaggedRegister ragged_register;
+
 namespace {
 
 // copied & modified from torch/csrc/jit/serialization/unpickler.cpp
@@ -233,16 +235,9 @@ void postSetStateValidate(const torch::IValue &v) {
   }
 }
 
-// A helper class to construct a Ragged<int32_t> from an archive
-// TODO(fangjun): Make it a template
-struct RaggedIntHelper : public Ragged<int32_t>,
-                         public torch::CustomClassHolder {
-  using k2::Ragged<int32_t>::Ragged;
-};
-
 }  // namespace
 
-static void RegisterRaggedInt() {
+void RegisterRaggedInt() {
   // Register a custom class so that PyTorch knows how to parse
   // the value from the archive.
   //
@@ -295,9 +290,6 @@ static void RegisterRaggedInt() {
 //
 k2::FsaOrVec LoadFsa(const std::string &filename,
                      Ragged<int32_t> *ragged_aux_labels /*=nullptr*/) {
-  static std::once_flag register_ragged_int_flag;
-  std::call_once(register_ragged_int_flag, RegisterRaggedInt);
-
   auto rai = std::make_unique<caffe2::serialize::FileAdapter>(filename);
 
   // Verify that we're loading a zip archive and not a torch.save pickle archive
