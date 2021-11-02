@@ -202,6 +202,43 @@ void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, Ragged<int32_t> &arc_map) {
   }
 }
 
+void FsaClass::CopyAttrs(std::vector<FsaClass> &srcs) {
+  // copy tensor attributes
+  std::unordered_set<std::string> tensor_attr_names;
+  for (const auto &fsa : srcs)
+    for (const auto &attr : fsa.tensor_attrs)
+      tensor_attr_names.insert(attr.first);
+
+  std::vector<torch::Tensor> values;
+  for (const auto &name : tensor_attr_names) {
+    for (const auto &fsa : srcs) {
+      auto iter = fsa.tensor_attrs.find(name);
+      K2_CHECK(iter != fsa.tensor_attrs.end());
+      values.emplace_back(iter->second);
+    }
+    torch::Tensor value = torch::cat(values, 0);
+    SetTensorAttr(name, value);
+  }
+
+  // copy ragged tensor attributes
+  std::unordered_set<std::string> ragged_tensor_attr_names;
+  for (const auto &fsa : srcs)
+    for (const auto &attr : fsa.ragged_tensor_attrs)
+      ragged_tensor_attr_names.insert(attr.first);
+
+  std::vector<Ragged<int32_t>> raggeds;
+  for (const auto &name : ragged_tensor_attr_names) {
+    for (const auto &fsa : srcs) {
+      auto iter = fsa.ragged_tensor_attrs.find(name);
+      K2_CHECK(iter != fsa.ragged_tensor_attrs.end());
+      raggeds.emplace_back(iter->second);
+    }
+    auto value = Cat<int32_t>(/*axis*/ 0, raggeds.size(), raggeds.data(),
+                              /*merge_map*/ nullptr);
+    SetRaggedTensorAttr(name, value);
+  }
+}
+
 void FsaClass::SetScores(torch::Tensor scores) {
   K2_CHECK_EQ(scores.numel(), fsa.NumElements());
   Scores().copy_(scores.detach());
@@ -312,22 +349,20 @@ FsaClass FsaClass::To(const std::string &device) const {
 FsaClass FsaClass::CreateFsaVec(std::vector<FsaClass> &fsas) {
   DeviceGuard guard(fsas[0].fsa.Context());
   std::vector<Fsa *> tmp_fsas;
-  std::vector<torch::Tensor> tmp_scores;
 
   tmp_fsas.reserve(fsas.size());
   for (auto &f : fsas) {
+    K2_CHECK_EQ(f.fsa.NumAxes(), 2);
     tmp_fsas.push_back(&f.fsa);
-    tmp_scores.push_back(f.Scores());
   }
+
   FsaVec fsa_vec = k2::CreateFsaVec(tmp_fsas.size(), tmp_fsas.data());
+  FsaClass dest = FsaClass(fsa_vec);
 
-  // TODO(fangjun): Don't handle scores specially, treat it
-  // like other tensor attributes
-  torch::Tensor scores = torch::cat(tmp_scores, 0);
-
-  // TODO(fangjun): support propagating attributes
-  FsaClass dest(fsa_vec);
-  dest.SetScores(scores);
+  // Check the validation of the fsa, will trigger a fatal error if the fsa
+  // is not valid.
+  dest.Properties();
+  dest.CopyAttrs(fsas);
   return dest;
 }
 

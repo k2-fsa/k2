@@ -214,10 +214,11 @@ struct FsaClass {
 
   // Propagate tensor attributes from src.
   void CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map);
-
   // Propagate ragged attributes from src.
   void CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map);
   void CopyRaggedTensorAttrs(FsaClass &src, Ragged<int32_t> &arc_map);
+
+  void CopyAttrs(std::vector<FsaClass> &srcs);
 };
 
 }  // namespace k2

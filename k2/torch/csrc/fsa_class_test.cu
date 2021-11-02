@@ -365,4 +365,62 @@ TEST(FsaClassTest, Attributes) {
   }
 }
 
+TEST(FsaClassTest, CreateFsaVec) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    auto device = DeviceFromContext(c);
+    std::string s1 = R"(0 1 1 0.1
+        0 2 1 0.2
+        1 3 2 0.3
+        2 3 3 0.4
+        3 4 -1 0.5
+        4)";
+    std::string s2 = R"(0 1 1 0.1
+        0 2 2 0.2
+        1 2 3 0.3
+        2 3 -1 0.4
+        3)";
+    FsaClass fsa1 = FsaClass(s1).To(device);
+    FsaClass fsa2 = FsaClass(s2).To(device);
+
+    torch::Tensor float_attr1 =
+        torch::tensor({0.1, 0.2, 0.3, 0.4, 0.5},
+                      torch::dtype(torch::kFloat32).device(device));
+    torch::Tensor float_attr2 = torch::tensor(
+        {0.11, 0.12, 0.13, 0.14}, torch::dtype(torch::kFloat32).device(device));
+
+    fsa1.SetAttr("float_attr", torch::IValue(float_attr1));
+    fsa2.SetAttr("float_attr", torch::IValue(float_attr2));
+
+    auto ragged_attr_1 = Ragged<int32_t>(c, "[[1 2] [3] [4 5] [6] [7 8 9]]");
+    auto ragged_attr_2 =
+        Ragged<int32_t>(c, "[[11 12] [13 14 15] [16] [17 18]]");
+    fsa1.SetAttr("ragged_attr", ToIValue(ragged_attr_1));
+    fsa2.SetAttr("ragged_attr", ToIValue(ragged_attr_2));
+
+    std::vector<FsaClass> fsas;
+    fsas.emplace_back(fsa1);
+    fsas.emplace_back(fsa2);
+    FsaClass fsa_vec = FsaClass::CreateFsaVec(fsas);
+
+    Ragged<Arc> fsa_vec_ref(c,
+                            "[ [ [ 0 1 1 0.1 0 2 1 0.2 ] [ 1 3 2 0.3 ] "
+                            "    [ 2 3 3 0.4 ] [ 3 4 -1 0.5 ] [ ] ] "
+                            "  [ [ 0 1 1 0.1 0 2 2 0.2 ] [ 1 2 3 0.3 ] "
+                            "    [ 2 3 -1 0.4 ] [ ] ] ]");
+
+    EXPECT_TRUE(Equal(fsa_vec.fsa, fsa_vec_ref));
+
+    EXPECT_TRUE(torch::allclose(
+        fsa_vec.GetAttr("float_attr").toTensor(),
+        torch::tensor({0.1, 0.2, 0.3, 0.4, 0.5, 0.11, 0.12, 0.13, 0.14},
+                      torch::dtype(torch::kFloat32).device(device))));
+
+    EXPECT_TRUE(Equal(
+        ToRaggedInt(fsa_vec.GetAttr("ragged_attr")),
+        Ragged<int32_t>(
+            c,
+            "[[1 2] [3] [4 5] [6] [7 8 9] [11 12] [13 14 15] [16] [17 18]]")));
+  }
+}
+
 }  // namespace k2
