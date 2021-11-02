@@ -204,43 +204,47 @@ void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, Ragged<int32_t> &arc_map) {
 
 void FsaClass::CopyAttrs(std::vector<FsaClass> &srcs) {
   // copy tensor attributes
-  std::unordered_set<std::string> tensor_attr_names;
+  std::unordered_map<std::string, int> tensor_attrs;
   for (const auto &fsa : srcs)
-    for (const auto &attr : fsa.tensor_attrs)
-      tensor_attr_names.insert(attr.first);
+    for (const auto &attr : fsa.tensor_attrs) ++tensor_attrs[attr.first];
 
   std::vector<torch::Tensor> values;
-  for (const auto &name : tensor_attr_names) {
+  for (const auto &attr : tensor_attrs) {
+    // skip this attribute, as it is not included in all source Fsas.
+    if (attr.second != srcs.size()) continue;
     for (const auto &fsa : srcs) {
-      auto iter = fsa.tensor_attrs.find(name);
+      auto iter = fsa.tensor_attrs.find(attr.first);
       K2_CHECK(iter != fsa.tensor_attrs.end());
       values.emplace_back(iter->second);
     }
     torch::Tensor value = torch::cat(values, 0);
-    SetTensorAttr(name, value);
+    SetTensorAttr(attr.first, value);
   }
 
   // copy ragged tensor attributes
-  std::unordered_set<std::string> ragged_tensor_attr_names;
+  std::unordered_map<std::string, int> ragged_tensor_attrs;
   for (const auto &fsa : srcs)
     for (const auto &attr : fsa.ragged_tensor_attrs)
-      ragged_tensor_attr_names.insert(attr.first);
+      ++ragged_tensor_attrs[attr.first];
 
   std::vector<Ragged<int32_t>> raggeds;
-  for (const auto &name : ragged_tensor_attr_names) {
+  for (const auto &attr : ragged_tensor_attrs) {
+    // skip this attribute, as it is not included in all source Fsas.
+    if (attr.second != srcs.size()) continue;
     for (const auto &fsa : srcs) {
-      auto iter = fsa.ragged_tensor_attrs.find(name);
+      auto iter = fsa.ragged_tensor_attrs.find(attr.first);
       K2_CHECK(iter != fsa.ragged_tensor_attrs.end());
       raggeds.emplace_back(iter->second);
     }
     auto value = Cat<int32_t>(/*axis*/ 0, raggeds.size(), raggeds.data(),
                               /*merge_map*/ nullptr);
-    SetRaggedTensorAttr(name, value);
+    SetRaggedTensorAttr(attr.first, value);
   }
 }
 
 void FsaClass::SetScores(torch::Tensor scores) {
   K2_CHECK_EQ(scores.numel(), fsa.NumElements());
+  K2_CHECK_EQ(scores.scalar_type(), torch::kFloat32);
   Scores().copy_(scores.detach());
 }
 
@@ -268,7 +272,7 @@ int32_t FsaClass::Properties() {
     } else {
       GetFsaVecBasicProperties(fsa, nullptr, &properties);
     }
-    if (properties & kFsaPropertiesValid != 1) {
+    if (properties & kFsaPropertiesValid != kFsaPropertiesValid) {
       K2_LOG(FATAL) << "Fsa is not valid, properties are : " << properties
                     << " = " << PropertiesStr() << ", arcs are : " << fsa;
     }
@@ -304,6 +308,7 @@ void FsaClass::SetLabels(torch::Tensor labels) {
 }
 
 FsaClass FsaClass::ToOtherContext(const ContextPtr &context) const {
+  K2_CHECK(!context->IsCompatible(*fsa.Context()));
   FsaClass dest(fsa.To(context));
   auto device = DeviceFromContext(context);
   for (const auto &iter : tensor_attrs) {

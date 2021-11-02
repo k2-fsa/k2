@@ -389,6 +389,7 @@ TEST(FsaClassTest, CreateFsaVec) {
         {0.11, 0.12, 0.13, 0.14}, torch::dtype(torch::kFloat32).device(device));
 
     fsa1.SetAttr("float_attr", torch::IValue(float_attr1));
+    fsa1.SetAttr("float_attr1", torch::IValue(float_attr1.clone()));
     fsa2.SetAttr("float_attr", torch::IValue(float_attr2));
 
     auto ragged_attr_1 = Ragged<int32_t>(c, "[[1 2] [3] [4 5] [6] [7 8 9]]");
@@ -396,6 +397,7 @@ TEST(FsaClassTest, CreateFsaVec) {
         Ragged<int32_t>(c, "[[11 12] [13 14 15] [16] [17 18]]");
     fsa1.SetAttr("ragged_attr", ToIValue(ragged_attr_1));
     fsa2.SetAttr("ragged_attr", ToIValue(ragged_attr_2));
+    fsa2.SetAttr("ragged_attr2", ToIValue(ragged_attr_2.Clone()));
 
     std::vector<FsaClass> fsas;
     fsas.emplace_back(fsa1);
@@ -409,6 +411,9 @@ TEST(FsaClassTest, CreateFsaVec) {
                             "    [ 2 3 -1 0.4 ] [ ] ] ]");
 
     EXPECT_TRUE(Equal(fsa_vec.fsa, fsa_vec_ref));
+
+    EXPECT_FALSE(fsa_vec.HasAttr("float_attr1"));
+    EXPECT_FALSE(fsa_vec.HasAttr("ragged_attr2"));
 
     EXPECT_TRUE(torch::allclose(
         fsa_vec.GetAttr("float_attr").toTensor(),
