@@ -22,6 +22,7 @@
 
 #include "gtest/gtest.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/torch/csrc/fsa_class.h"
 #include "k2/torch/csrc/utils.h"
@@ -36,7 +37,8 @@ TEST(FsaClassTest, FromUnaryFunctionTensor) {
         2)";
 
     auto device = DeviceFromContext(c);
-    FsaClass src = FsaClass(s).To(device);
+    Fsa fsa = FsaFromString(s).To(c);
+    FsaClass src = FsaClass(fsa);
 
     src.SetAttr(
         "float_attr",
@@ -89,7 +91,8 @@ TEST(FsaClassTest, FromUnaryFunctionRagged) {
     torch::Tensor scores =
         torch::tensor({1, 2, 3}, torch::dtype(torch::kFloat32).device(device));
 
-    FsaClass src = FsaClass(s).To(device);
+    Fsa fsa = FsaFromString(s).To(c);
+    FsaClass src = FsaClass(fsa);
     src.SetScores(scores);
 
     torch::Tensor float_attr = torch::tensor(
@@ -153,7 +156,8 @@ TEST(FsaClassTest, FromUnaryFunctionRaggedWithEmptyList) {
     torch::Tensor scores =
         torch::tensor({1, 2, 3}, torch::dtype(torch::kFloat32).device(device));
 
-    FsaClass src = FsaClass(s).To(device);
+    Fsa fsa = FsaFromString(s).To(c);
+    FsaClass src = FsaClass(fsa);
     src.SetScores(scores);
 
     torch::Tensor float_attr = torch::tensor(
@@ -219,9 +223,11 @@ TEST(FsaClassTest, FromBinaryFunctionTensor) {
         1 1 2 0.3
         1 2 -1 0.4
         2)";
-    std::vector<FsaClass> a_fsas;
-    a_fsas.emplace_back(FsaClass(s1));
-    FsaClass a_fsa = FsaClass::CreateFsaVec(a_fsas).To(device);
+    std::vector<Fsa *> a_fsas;
+    Fsa a_fsa_tmp = FsaFromString(s1);
+    a_fsas.emplace_back(&a_fsa_tmp);
+    FsaVec fsa_vec_a = CreateFsaVec(a_fsas.size(), a_fsas.data()).To(c);
+    FsaClass a_fsa = FsaClass(fsa_vec_a);
 
     torch::Tensor scores_a = torch::tensor(
         {0.1, 0.2, 0.3, 0.4}, torch::dtype(torch::kFloat32).device(device));
@@ -242,9 +248,11 @@ TEST(FsaClassTest, FromBinaryFunctionTensor) {
         1 2 -1 3
         2)";
 
-    std::vector<FsaClass> b_fsas;
-    b_fsas.emplace_back(FsaClass(s2));
-    FsaClass b_fsa = FsaClass::CreateFsaVec(b_fsas).To(device);
+    std::vector<Fsa *> b_fsas;
+    Fsa b_fsa_tmp = FsaFromString(s2);
+    b_fsas.emplace_back(&b_fsa_tmp);
+    FsaVec fsa_vec_b = CreateFsaVec(b_fsas.size(), b_fsas.data()).To(c);
+    FsaClass b_fsa = FsaClass(fsa_vec_b);
 
     torch::Tensor scores_b =
         torch::tensor({1, 2, 3}, torch::dtype(torch::kFloat32).device(device));
@@ -320,7 +328,8 @@ TEST(FsaClassTest, Attributes) {
         0 1 1 20
         1 2 -1 30
         2)";
-    FsaClass src = FsaClass(s).To(device);
+    Fsa fsa = FsaFromString(s).To(c);
+    FsaClass src = FsaClass(fsa);
 
     // test scores
     EXPECT_TRUE(torch::equal(
@@ -362,69 +371,6 @@ TEST(FsaClassTest, Attributes) {
     EXPECT_TRUE(Equal(ToRaggedInt(src.GetAttr("ragged_int")), ragged_int));
     src.DeleteAttr("ragged_int");
     EXPECT_FALSE(src.HasAttr("ragged_int"));
-  }
-}
-
-TEST(FsaClassTest, CreateFsaVec) {
-  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
-    auto device = DeviceFromContext(c);
-    std::string s1 = R"(0 1 1 0.1
-        0 2 1 0.2
-        1 3 2 0.3
-        2 3 3 0.4
-        3 4 -1 0.5
-        4)";
-    std::string s2 = R"(0 1 1 0.1
-        0 2 2 0.2
-        1 2 3 0.3
-        2 3 -1 0.4
-        3)";
-    FsaClass fsa1 = FsaClass(s1).To(device);
-    FsaClass fsa2 = FsaClass(s2).To(device);
-
-    torch::Tensor float_attr1 =
-        torch::tensor({0.1, 0.2, 0.3, 0.4, 0.5},
-                      torch::dtype(torch::kFloat32).device(device));
-    torch::Tensor float_attr2 = torch::tensor(
-        {0.11, 0.12, 0.13, 0.14}, torch::dtype(torch::kFloat32).device(device));
-
-    fsa1.SetAttr("float_attr", torch::IValue(float_attr1));
-    fsa1.SetAttr("float_attr1", torch::IValue(float_attr1.clone()));
-    fsa2.SetAttr("float_attr", torch::IValue(float_attr2));
-
-    auto ragged_attr_1 = Ragged<int32_t>(c, "[[1 2] [3] [4 5] [6] [7 8 9]]");
-    auto ragged_attr_2 =
-        Ragged<int32_t>(c, "[[11 12] [13 14 15] [16] [17 18]]");
-    fsa1.SetAttr("ragged_attr", ToIValue(ragged_attr_1));
-    fsa2.SetAttr("ragged_attr", ToIValue(ragged_attr_2));
-    fsa2.SetAttr("ragged_attr2", ToIValue(ragged_attr_2.Clone()));
-
-    std::vector<FsaClass> fsas;
-    fsas.emplace_back(fsa1);
-    fsas.emplace_back(fsa2);
-    FsaClass fsa_vec = FsaClass::CreateFsaVec(fsas);
-
-    Ragged<Arc> fsa_vec_ref(c,
-                            "[ [ [ 0 1 1 0.1 0 2 1 0.2 ] [ 1 3 2 0.3 ] "
-                            "    [ 2 3 3 0.4 ] [ 3 4 -1 0.5 ] [ ] ] "
-                            "  [ [ 0 1 1 0.1 0 2 2 0.2 ] [ 1 2 3 0.3 ] "
-                            "    [ 2 3 -1 0.4 ] [ ] ] ]");
-
-    EXPECT_TRUE(Equal(fsa_vec.fsa, fsa_vec_ref));
-
-    EXPECT_FALSE(fsa_vec.HasAttr("float_attr1"));
-    EXPECT_FALSE(fsa_vec.HasAttr("ragged_attr2"));
-
-    EXPECT_TRUE(torch::allclose(
-        fsa_vec.GetAttr("float_attr").toTensor(),
-        torch::tensor({0.1, 0.2, 0.3, 0.4, 0.5, 0.11, 0.12, 0.13, 0.14},
-                      torch::dtype(torch::kFloat32).device(device))));
-
-    EXPECT_TRUE(Equal(
-        ToRaggedInt(fsa_vec.GetAttr("ragged_attr")),
-        Ragged<int32_t>(
-            c,
-            "[[1 2] [3] [4 5] [6] [7 8 9] [11 12] [13 14 15] [16] [17 18]]")));
   }
 }
 

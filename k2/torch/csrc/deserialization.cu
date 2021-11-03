@@ -37,7 +37,15 @@
 
 namespace k2 {
 
-RaggedRegister ragged_register;
+static void RegisterRaggedInt();
+
+struct RaggedRegister {
+  RaggedRegister() { RegisterRaggedInt(); }
+};
+
+// Register Ragged<int32_t> as a custom class of torch, so that we can wrap
+// it to torch IValue and do serialization & deserialization thing.
+static RaggedRegister ragged_register;
 
 namespace {
 
@@ -237,7 +245,7 @@ void postSetStateValidate(const torch::IValue &v) {
 
 }  // namespace
 
-void RegisterRaggedInt() {
+static void RegisterRaggedInt() {
   // Register a custom class so that PyTorch knows how to parse
   // the value from the archive.
   //

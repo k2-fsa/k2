@@ -1,5 +1,5 @@
 /**
- * @brief python wrapper for Ragged<Arc>
+ * @brief python wrapper for FsaOrVec
  *
  * @copyright
  * Copyright      2021  Xiaomi Corp.  (authors: Wei Kang, Fangjun Kuang)
@@ -30,13 +30,14 @@
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/ragged.h"
+#include "k2/torch/csrc/utils.h"
 #include "torch/script.h"
 
 namespace k2 {
 
-// It is a wrapper of Ragged<Arc> to support attributes propagation
+// It is a wrapper of FsaOrVec to support attributes propagation
 struct FsaClass {
-  Ragged<Arc> fsa;
+  FsaOrVec fsa;
   int32_t properties = 0;
 
   /// It contains all tensor attributes of this FSA
@@ -51,21 +52,7 @@ struct FsaClass {
   // The default constructor initializes an invalid FSA.
   FsaClass() = default;
 
-  explicit FsaClass(const Ragged<Arc> &fsa) : fsa(fsa) {}
-  // Construct Fsa with Ragged<Arc> and tensor type aux_labels
-  FsaClass(const Ragged<Arc> &fsa, torch::Tensor aux_labels);
-  // Construct Fsa with Ragged<Arc> and Ragged<int32_t> type aux_labels
-  FsaClass(const Ragged<Arc> &fsa, Ragged<int32_t> &aux_labels);
-
-  // TODO: support more options, e.g.,
-  /* Construct a FsaClass from a string.
-     @param s  The input string that can be passed to FsaFromString
-     @param extra_label_names A list of strings specifying the names of
-                extra labels. If it is empty, then the string represents
-                an acceptor.
-   */
-  FsaClass(const std::string &s,
-           const std::vector<std::string> &extra_label_names = {});
+  explicit FsaClass(const FsaOrVec &fsa) : fsa(fsa) {}
 
   FsaClass(const FsaClass &other) = default;
 
@@ -86,8 +73,7 @@ struct FsaClass {
                    `src`, or -1 if the arc had no source arc
                    (e.g. added epsilon self-loops).
    */
-  static FsaClass FromUnaryFunctionTensor(FsaClass &src,
-                                          const Ragged<Arc> &arcs,
+  static FsaClass FromUnaryFunctionTensor(FsaClass &src, const FsaOrVec &arcs,
                                           torch::Tensor arc_map);
 
   /**
@@ -101,8 +87,7 @@ struct FsaClass {
                    `src`, or -1 if the arc had no source arc
                    (e.g. :func:`remove_epsilon`).
    */
-  static FsaClass FromUnaryFunctionRagged(FsaClass &src,
-                                          const Ragged<Arc> &arcs,
+  static FsaClass FromUnaryFunctionRagged(FsaClass &src, const FsaOrVec &arcs,
                                           Ragged<int32_t> &arc_map);
 
   /**
@@ -123,7 +108,7 @@ struct FsaClass {
                      (e.g. added epsilon self-loops).
    */
   static FsaClass FromBinaryFunctionTensor(FsaClass &a_src, FsaClass &b_src,
-                                           const Ragged<Arc> &arcs,
+                                           const FsaOrVec &arcs,
                                            torch::Tensor a_arc_map,
                                            torch::Tensor b_arc_map);
 
@@ -149,32 +134,8 @@ struct FsaClass {
    */
   void SetLabels(torch::Tensor labels);
 
-  /* Return a 2-D int32 torch tensor.
-     Each row represents an arc, where:
-      - column 0 is the source state
-      - column 1 is the dest state
-      - column 2 is the label
-      - column 3 is the score, reinterpreted cast from a float.
-    @caution You should not modify the returned tensor since it shares
-    the underlying memory with this FSA.
-   */
-  torch::Tensor Arcs() /*const*/;
-
   // Get fsa properties.
   int32_t Properties();
-  // Get fsa properties as string format.
-  std::string PropertiesStr() /*const*/;
-
-  // Transfer current fsa to another device.
-  FsaClass To(torch::Device device) const;
-  FsaClass To(const std::string &device) const;
-
-  /*  Create an Fsa object from a list of Fsa, including propagating
-      properties from the source FSAs.
-
-      @param fsas The given Fsas, all the given Fsas MUST have `NumAxes() == 2`.
-   */
-  static FsaClass CreateFsaVec(std::vector<FsaClass> &fsas);
 
   /** Associate an attribute with a value.
     If there is no attribute with the given `name`,
@@ -221,6 +182,7 @@ struct FsaClass {
   void SetTensorAttr(const std::string &name, torch::Tensor value) {
     K2_CHECK_EQ(value.size(0), fsa.NumElements())
         << "shape[0] of the tensor MUST be equal to number of arcs";
+    K2_CHECK(ContextFromTensor(value)->IsCompatible(*fsa.Context()));
     all_attr_names.insert(name);
     tensor_attrs[name] = value;
   }
@@ -238,19 +200,10 @@ struct FsaClass {
                            const Ragged<int32_t> &value) {
     K2_CHECK_EQ(value.Dim0(), fsa.NumElements())
         << "dim0 of the tensor MUST be equal to number of arcs";
+    K2_CHECK(value.Context()->IsCompatible(*fsa.Context()));
     all_attr_names.insert(name);
     ragged_tensor_attrs[name] = value;
   }
-
-  /** Transfer current FsaClass to another devices.
-
-    Note: This function assumes that the target context is different from
-    current context. It crashes if you call this function with the context the
-    same as current one.
-
-    @param context  The target context.
-   */
-  FsaClass ToOtherContext(const ContextPtr &context) const;
 
   /** Propagate tensor attributes from source FsaClass via tensor arc_map.
 
@@ -287,17 +240,6 @@ struct FsaClass {
     attributes.
    */
   void CopyRaggedTensorAttrs(FsaClass &src, Ragged<int32_t> &arc_map);
-
-  /** Propagate attributes from source Fsas to this FsaClass.
-
-    Caution: Only the attributes exist in all of the source Fsas will be
-    propagated, other attributes will be dropped.
-
-    Note: Only used internally for `CreateFsaVec` function.
-
-    @param srcs  The source Fsas.
-   */
-  void CopyAttrs(std::vector<FsaClass> &srcs);
 };
 
 }  // namespace k2

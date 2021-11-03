@@ -26,21 +26,12 @@
 
 namespace k2 {
 
-void RegisterRaggedInt();
-
 // A helper class to construct a Ragged<int32_t> from an archive
 // TODO(fangjun): Make it a template
 struct RaggedIntHelper : public Ragged<int32_t>,
                          public torch::CustomClassHolder {
   using k2::Ragged<int32_t>::Ragged;
-  RaggedIntHelper(Ragged<int32_t> ragged) : Ragged<int32_t>(ragged) {}
-};
-
-struct RaggedRegister {
-  RaggedRegister() {
-    static std::once_flag register_ragged_int_flag;
-    std::call_once(register_ragged_int_flag, RegisterRaggedInt);
-  }
+  explicit RaggedIntHelper(Ragged<int32_t> ragged) : Ragged<int32_t>(ragged) {}
 };
 
 /**
