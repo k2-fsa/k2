@@ -22,7 +22,7 @@
 #include <string>
 
 #include "k2/csrc/fsa.h"
-#include "k2/torch/csrc/utils.h"
+#include "torch/script.h"
 
 namespace k2 {
 
