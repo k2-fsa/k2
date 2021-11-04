@@ -258,14 +258,14 @@ this FSA is <code class="docutils literal notranslate"><span class="pre">max(0.1
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa2.svg&#39;</span><span class="p">)</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
-<span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">total_scores</span><span class="p">)</span>
 <span class="c1"># It prints: tensor([0.2000])</span>
 </pre></div>
 </div>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
-<p><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.get_tot_scores()</span></code> takes a vector of FSAs as input,
+<p><a class="reference internal" href="../python_api/api.html#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code></a> takes a vector of FSAs as input,
 so we use <a class="reference internal" href="../python_api/api.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> to turn an FSA into a vector of FSAs.</p>
 <p>Most operations in k2 take a vector of FSAs as input and process them
 in parallel.</p>
@@ -289,7 +289,7 @@ total score is <code class="docutils literal notranslate"><span class="pre">log(
 <span class="s1">&#39;&#39;&#39;</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
-<span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">total_scores</span><span class="p">)</span>
 <span class="c1"># It prints: tensor([0.8444])</span>
 </pre></div>
@@ -364,7 +364,7 @@ the FSA given in <a class="reference internal" href="#autograd-example"><span cl
 <span class="n">fsa</span><span class="o">.</span><span class="n">scores</span> <span class="o">=</span> <span class="n">nnet_output</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;autograd_tropical.svg&#39;</span><span class="p">)</span>
 <span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
-<span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa_vec</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <span class="n">total_scores</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">nnet_output</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
@@ -401,11 +401,11 @@ of the <cite>best score</cite> <code class="docutils literal notranslate"><span 
 <section id="example-2-autograd-in-log-semiring">
 <h3>Example 2: Autograd in log semiring<a class="headerlink" href="#example-2-autograd-in-log-semiring" title="Permalink to this headline"></a></h3>
 <p>For the log semiring, we just change:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa_vec</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>to:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa_vec</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For completeness and ease of reference, we repost the code below.</p>
@@ -425,7 +425,7 @@ of the <cite>best score</cite> <code class="docutils literal notranslate"><span 
 <span class="n">fsa</span><span class="o">.</span><span class="n">scores</span> <span class="o">=</span> <span class="n">nnet_output</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;autograd_log.svg&#39;</span><span class="p">)</span>
 <span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
-<span class="n">total_scores</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">fsa_vec</span><span class="p">,</span> <span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <span class="n">total_scores</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">nnet_output</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>

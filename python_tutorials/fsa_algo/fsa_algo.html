@@ -115,7 +115,7 @@ support single FSAs.</p>
 <span class="s1">1 2 -1 -1 0.2</span>
 <span class="s1">2</span>
 <span class="s1">&#39;&#39;&#39;</span>
-<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">acceptor</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">inverted_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="n">fsa</span><span class="p">)</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;before_invert.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;before invert&#39;</span><span class="p">)</span>
 <span class="n">inverted_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;after_invert.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;after invert&#39;</span><span class="p">)</span>
@@ -138,7 +138,7 @@ with ragged tensors as <code class="docutils literal notranslate"><span class="p
 <span class="s1">2</span>
 <span class="s1">&#39;&#39;&#39;</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
-<span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">RaggedInt</span><span class="p">(</span><span class="s1">&#39;[ [10 20] [-1] ]&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">(</span><span class="s1">&#39;[ [10 20] [-1] ]&#39;</span><span class="p">)</span>
 <span class="n">inverted_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="n">fsa</span><span class="p">)</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;before_invert_aux.svg&#39;</span><span class="p">,</span>
          <span class="n">title</span><span class="o">=</span><span class="s1">&#39;before invert with ragged tensors as aux_labels&#39;</span><span class="p">)</span>
