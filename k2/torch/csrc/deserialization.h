@@ -22,8 +22,18 @@
 #include <string>
 
 #include "k2/csrc/fsa.h"
+#include "torch/script.h"
 
 namespace k2 {
+
+// A helper class to construct a Ragged<int32_t> from an archive
+// TODO(fangjun): Make it a template
+struct RaggedIntHelper : public Ragged<int32_t>,
+                         public torch::CustomClassHolder {
+  using k2::Ragged<int32_t>::Ragged;
+  explicit RaggedIntHelper(const Ragged<int32_t> &ragged)
+      : Ragged<int32_t>(ragged) {}
+};
 
 /**
   Load a file saved in Python by

@@ -22,9 +22,12 @@
 #include <string>
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/pytorch_context.h"
+#include "k2/csrc/tensor.h"
+#include "k2/csrc/tensor_ops.h"
 #include "torch/script.h"
 
 namespace k2 {
@@ -50,6 +53,26 @@ DeviceType ConvertDeviceType(torch::DeviceType device_type);
     @return Return a k2 context.
  */
 ContextPtr ContextFromDevice(torch::Device device);
+
+/** Create a torch device from a k2 context.
+   @param [in] context   It must be a CPU or a CUDA context.
+   @return Return a CPU or a GPU device depending on the given context.
+ */
+torch::Device DeviceFromContext(ContextPtr context);
+
+/** Convert torch ScalarType to k2 Dtype
+
+    @param scalar_type  A torch ScalarType.
+    @return  Return a k2 Dtype.
+ */
+Dtype ConvertDtype(torch::ScalarType scalar_type);
+
+/** Conver k2 Dtype to torch ScalarType.
+
+    @param dtype  A k2 Dtype.
+    @return Return a torch ScalarType
+ */
+torch::ScalarType ConvertDtype(Dtype dtype);
 
 inline ContextPtr ContextFromTensor(torch::Tensor tensor) {
   return ContextFromDevice(tensor.device());
@@ -94,8 +117,119 @@ Array2<T> Array2FromTorch(torch::Tensor tensor) {
   return ans;
 }
 
+/* Convert an Array1<T> to torch::Tensor.
+
+   @tparam T          A primitive type, e.g., int32_t, which has
+                      the corresponding `ToScalarType<T>::value`.
+
+   @param [in]  array The input array.
+
+   @return a 1-D torch::Tensor which shares the underlying memory
+           with the input array.
+ */
+template <typename T>
+torch::Tensor Array1ToTorch(Array1<T> &array) {
+  auto device = DeviceFromContext(array.Context());
+  auto scalar_type = caffe2::TypeMeta::Make<T>();
+  auto options = torch::device(device).dtype(scalar_type);
+  // We will call torch::from_blob below. However, if we
+  // call it with an empty Array1, we'll get error:
+  // RuntimeError: CUDA error: invalid argument Exception raised from
+  // getDeviceFromPtr at /pytorch/aten/src/ATen/cuda/CUDADevice.h
+  // Definitely we need look into this, but let's just return an empty tensor
+  // when the input Array1 is empty for now.
+  if (array.Dim() == 0) return torch::empty(0, options);
+
+  // NOTE: we keep a copy of `Region` inside the lambda
+  // so that `torch::Tensor` always accesses valid memory.
+  return torch::from_blob(
+      array.Data(), array.Dim(), [saved_region = array.GetRegion()](void *) {},
+      options);
+}
+
+/** Convert torch Tensor to k2 Tensor
+
+    @param tensor  A torch Tensor.
+    @return Return a k2 Tensor.
+ */
+Tensor TensorFromTorch(torch::Tensor tensor);
+
+/** Convert k2 Tensor to torch Tensor
+
+    @param tensor  A k2 Tensor.
+    @return Return a torch Tensor.
+ */
+torch::Tensor TensorToTorch(Tensor &tensor);
+
+/* Returns a 1-D tensor which indexes the src tensor using entries
+   from `index`.
+
+   @param  [in]  src    A 1-D tensor.
+   @param  [in]  index  A 1-D tensor with dtype torch.int32.
+                        It has to satisfy:
+                            -1 <= index[i] < src.numel()
+                            for i in [0, index.numel())
+                        CAUTION: We require that index.is_contiguous() is true.
+   @param [in] default_value  The value for ans[i] when index[i] is -1.
+   @return
+      Returns a 1-D contiguous tensor such that:
+          ans[i] = src[index[i]] if index[i] > 0
+          ans[i] = default_value if index[i] is -1
+ */
+template <typename T>
+torch::Tensor IndexSelect(torch::Tensor src, torch::Tensor index,
+                          T default_value) {
+  K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
+  K2_CHECK(src.dtype().Match<T>())
+      << "Expected dtype type: " << caffe2::TypeMeta::Make<T>()
+      << ". Given: " << src.scalar_type();
+  K2_CHECK_EQ(index.dim(), 1)
+      << "Expected index dim: 1. Given : " << index.dim();
+  K2_CHECK(index.dtype().Match<int32_t>())
+      << "Expected dtype type: " << caffe2::TypeMeta::Make<int32_t>()
+      << ". Given: " << index.scalar_type();
+  K2_CHECK(index.is_contiguous()) << "Expected contiguous";
+  K2_CHECK_EQ(src.device(), index.device())
+      << "Expected in the same device"
+      << " Given : " << src.device() << ", " << index.device();
+
+  bool allow_minus_one = true;
+  Array1<int32_t> index_array = Array1FromTorch<int32_t>(index);
+  // If index_array.Dim() equals to zero, the `Index` below would produce an
+  // ans with `ans.Data()` be a nullptr, which will cause crash when calling
+  // `torch::from_blob`. Just return an empty tensor here.
+  // If src is an empty tensor, we should return an empty torch.
+  if (index_array.Dim() == 0 || src.numel() == 0)
+    return torch::empty({0}, src.options());
+  if (src.is_contiguous()) {
+    Array1<T> src_array = Array1FromTorch<T>(src);
+    Array1<T> ans_array =
+        Index(src_array, index_array, allow_minus_one, default_value);
+    return Array1ToTorch(ans_array);
+  }
+  Tensor tensor = TensorFromTorch(src);
+  Tensor ans = Index(tensor, index_array, allow_minus_one, default_value);
+  return TensorToTorch(ans);
+}
+
 // wrapper around torch::jit::pickle_load()
 torch::IValue PickleLoad(const std::string &filename);
+
+/** Whether the torch IValue contains a Ragged<int32_t> instance.
+
+    @param value  The given torch IValue.
+    @return Return true if the given value contains a Ragged<int32_t> instance,
+            otherwise fasle.
+ */
+bool IsRaggedInt(torch::IValue value);
+
+/** Dispatch a torch IValue to a Ragged<int32_t>
+ */
+Ragged<int32_t> ToRaggedInt(torch::IValue value);
+
+/** Wrap a Ragged<int32_t> to a torch IValue.
+ */
+torch::IValue ToIValue(const Ragged<int32_t> &ragged);
 
 }  // namespace k2
 
