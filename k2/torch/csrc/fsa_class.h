@@ -76,42 +76,6 @@ struct FsaClass {
   static FsaClass FromUnaryFunctionTensor(FsaClass &src, const FsaOrVec &arcs,
                                           torch::Tensor arc_map);
 
-  /**
-    Create an Fsa object, including propagating properties from the source FSA.
-    This is intended to be called from unary functions on FSAs where the arc_map
-    is a Ragged<int32_t>.
-    @param src  The source Fsa, i.e. the arg to the unary function.
-    @param arcs The raw output of the unary function, as output by whatever C++
-                 algorithm we used.
-    @param arc_map A map from arcs in `arcs` to the corresponding arc-index in
-                   `src`, or -1 if the arc had no source arc
-                   (e.g. :func:`remove_epsilon`).
-   */
-  static FsaClass FromUnaryFunctionRagged(FsaClass &src, const FsaOrVec &arcs,
-                                          Ragged<int32_t> &arc_map);
-
-  /**
-    Create an Fsa object, including propagating properties from the source FSAs.
-    This is intended to be called from binary functions on FSAs where the
-    arc_map is a Tensor of int32 (i.e. not ragged).
-    Caution: Only the attributes with dtype `torch.float32` will be merged,
-             other kinds of attributes with the same name are discarded.
-    @param a_src  The source Fsa, i.e. the arg to the binary function.
-    @param b_src  The other source Fsa.
-    @param arcs The raw output of the binary function, as output by whatever C++
-                algorithm we used.
-    @param a_arc_map A map from arcs in `arcs` to the corresponding
-                     arc-index in `a_fsa` or -1 if the arc had no source arc
-                     (e.g. added epsilon self-loops).
-    @param a_arc_map A map from arcs in `dest_arcs` to the corresponding
-                     arc-index in `b_fsa` or -1 if the arc had no source arc
-                     (e.g. added epsilon self-loops).
-   */
-  static FsaClass FromBinaryFunctionTensor(FsaClass &a_src, FsaClass &b_src,
-                                           const FsaOrVec &arcs,
-                                           torch::Tensor a_arc_map,
-                                           torch::Tensor b_arc_map);
-
   /* Return a 1-D float32 torch tensor.
       @caution You should not modify the returned tensor since it shares
       the underlying memory with this FSA.
