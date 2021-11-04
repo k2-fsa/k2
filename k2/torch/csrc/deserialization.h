@@ -31,7 +31,7 @@ namespace k2 {
 struct RaggedIntHelper : public Ragged<int32_t>,
                          public torch::CustomClassHolder {
   using k2::Ragged<int32_t>::Ragged;
-  explicit RaggedIntHelper(Ragged<int32_t> ragged) : Ragged<int32_t>(ragged) {}
+  explicit RaggedIntHelper(const Ragged<int32_t> &ragged) : Ragged<int32_t>(ragged) {}
 };
 
 /**
