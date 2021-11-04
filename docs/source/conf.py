@@ -14,7 +14,6 @@ import os
 import re
 import sys
 sys.path.insert(0, os.path.abspath('../../k2/python'))
-sys.path.insert(0, os.path.abspath('../../build-ragged/lib'))
 sys.path.insert(0, os.path.abspath('../../build/lib'))
 
 import sphinx_rtd_theme
@@ -22,7 +21,7 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'k2'
-copyright = '2020, k2 development team'
+copyright = '2020-2021, k2 development team'
 author = 'k2 development team'
 
 

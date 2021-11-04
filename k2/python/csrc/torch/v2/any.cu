@@ -71,6 +71,13 @@ void PybindRaggedAny(py::module &m) {
       kRaggedAnyStrDoc);
 
   any.def(
+      "to_str_simple",
+      [](const RaggedAny &self) -> std::string {
+        return self.ToString(/*compact*/ true);
+      },
+      kRaggedAnyToStrSimpleDoc);
+
+  any.def(
       "__repr__",
       [](const RaggedAny &self) -> std::string { return self.ToString(); },
       kRaggedAnyStrDoc);
@@ -82,6 +89,7 @@ void PybindRaggedAny(py::module &m) {
           RaggedAny ragged = self.Index(/*axis*/ 0, i);
           return py::cast(ragged);
         } else {
+          DeviceGuard guard(self.any.Context());
           K2_CHECK_EQ(self.any.NumAxes(), 2);
           Array1<int32_t> row_split = self.any.RowSplits(1).To(GetCpuContext());
           const int32_t *row_split_data = row_split.Data();
@@ -114,6 +122,25 @@ void PybindRaggedAny(py::module &m) {
         return self.Arange(/*axis*/ 0, istart, istop);
       },
       py::arg("key"), kRaggedAnyGetItemSliceDoc);
+
+  any.def(
+      "__getitem__",
+      [](RaggedAny &self, torch::Tensor key) -> RaggedAny {
+        // key is a 1-d torch tensor with dtype torch.int32
+        DeviceGuard guard(self.any.Context());
+        Array1<int32_t> indexes = FromTorch<int32_t>(key);
+        Dtype t = self.any.GetDtype();
+        FOR_REAL_AND_INT32_TYPES(t, T, {
+          Ragged<T> ans =
+              k2::Index<T>(self.any.Specialize<T>(), /*axis*/ 0, indexes,
+                           /*value_indexes*/ nullptr);
+
+          return RaggedAny(ans.Generic());
+        });
+        // Unreachable code
+        return {};
+      },
+      py::arg("key"), kRaggedAnyGetItem1DTensorDoc);
 
   any.def("index",
           static_cast<RaggedAny (RaggedAny::*)(RaggedAny &)>(&RaggedAny::Index),

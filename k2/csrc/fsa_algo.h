@@ -526,14 +526,36 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols);
     @param [in] modified Option to specify the type of CTC topology: "standard"
                          or "modified", where the "standard" one makes the
                          blank mandatory between a pair of identical symbols.
-    @param [out] It maps the arcs of output fsa to the symbols(idx01), the
-                 olabel of the `arc[i]` would be `symbols[arc_map[i]]`,
-                 and -1 for epsilon olabel.
+    @param [out] The olabels of the graphs.
 
     @return     Returns an FsaVec with `ans.Dim0() == symbols.Dim0()`.
  */
 FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified = false,
-                 Array1<int32_t> *arc_map = nullptr);
+                 Array1<int32_t> *aux_labels = nullptr);
+
+/*
+  Create an FasVec containing levenshtein graph FSAs, given a list of sequences
+  of symbols. See https://github.com/k2-fsa/k2/pull/828 for more details about
+  the levenshtein graph.
+
+    @param [in] symbols Input symbol sequences (must not contain
+                kFinalSymbol == -1 and blank == 0). Its num_axes is 2.
+    @param [in] ins_del_score Specify the score of the self loops in the
+                              graphs, the main idea of this score is to set
+                              insertion and deletion penalty, which will
+                              affect the shortest path searching produre.
+    @param [out] aux_labels  If not null, it will contain the aux_labels of the
+                             graphs.
+    @param [out] score_offsets The score offset of arcs, for self loop arcs, it
+                               will be `ins_del_score - (-0.5)`, for other arcs,
+                               it will be zeros. The purpose of this
+                               score_offsets is to calculate the levenshtein
+                               distance.
+ */
+FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
+                         float ins_del_score = -0.501,
+                         Array1<int32_t> *aux_labels = nullptr,
+                         Array1<float> *score_offsets = nullptr);
 
 /*
   Create ctc topology from max token id.

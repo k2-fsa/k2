@@ -1,6 +1,15 @@
 import torch  # noqa
-from _k2 import DeterminizeWeightPushingType
-from _k2 import simple_ragged_index_select
+try:
+    from _k2 import DeterminizeWeightPushingType
+    from _k2 import simple_ragged_index_select
+except ImportError as e:
+    import sys
+    major_v, minor_v = sys.version_info[:2]
+    raise ImportError(
+        str(e) + "\nNote: If you're using anaconda and importing k2 on MacOS,"
+        "\n      you can probably fix this by setting the environment variable:"
+        f"\n  export DYLD_LIBRARY_PATH=$CONDA_PREFIX/lib/python{major_v}.{minor_v}/site-packages:$DYLD_LIBRARY_PATH"  # noqa
+    )
 from .ragged import RaggedShape
 from .ragged import RaggedTensor
 
@@ -12,7 +21,6 @@ from . import utils
 #
 from .autograd import intersect_dense
 from .autograd import intersect_dense_pruned
-from .autograd import union
 from .ctc_loss import CtcLoss
 from .ctc_loss import ctc_loss
 from .dense_fsa_vec import DenseFsaVec
@@ -30,6 +38,8 @@ from .fsa_algo import expand_ragged_attributes
 from .fsa_algo import intersect
 from .fsa_algo import intersect_device
 from .fsa_algo import invert
+from .fsa_algo import levenshtein_alignment
+from .fsa_algo import levenshtein_graph
 from .fsa_algo import linear_fsa
 from .fsa_algo import linear_fst
 from .fsa_algo import prune_on_arc_post
@@ -40,6 +50,7 @@ from .fsa_algo import remove_epsilon_self_loops
 from .fsa_algo import replace_fsa
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
+from .fsa_algo import union
 from .fsa_properties import to_str as properties_to_str
 from .nbest import Nbest
 from .ops import cat

@@ -23,6 +23,7 @@ on:
     branches:
     - master
     - doc
+    - doc-test
 
 env:
   # debug is faster in terms of compilation time

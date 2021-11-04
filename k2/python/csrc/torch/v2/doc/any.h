@@ -595,6 +595,28 @@ RaggedTensor([[1],
 RaggedTensor([[1, 2]], device='cuda:0', dtype=torch.int32)
 )doc";
 
+static constexpr const char *kRaggedAnyToStrSimpleDoc = R"doc(
+Convert a ragged tensor to a string representation, which
+is more compact than ``self.__str__``.
+
+An example output is given below::
+
+  RaggedTensor([[[1, 2, 3], [], [0]], [[2], [3, 10.5]]], dtype=torch.float32)
+
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([ [[1, 2, 3], [], [0]], [[2], [3, 10.5]] ])
+>>> a
+RaggedTensor([[[1, 2, 3],
+               [],
+               [0]],
+              [[2],
+               [3, 10.5]]], dtype=torch.float32)
+>>> str(a)
+'RaggedTensor([[[1, 2, 3],\n               [],\n               [0]],\n              [[2],\n               [3, 10.5]]], dtype=torch.float32)'
+>>> a.to_str_simple()
+'RaggedTensor([[[1, 2, 3], [], [0]], [[2], [3, 10.5]]], dtype=torch.float32)'
+)doc";
+
 static constexpr const char *kRaggedAnyGetItemDoc = R"doc(
 Select the i-th sublist along axis 0.
 
@@ -668,6 +690,59 @@ Args:
 Returns:
   Return a new ragged tensor with the same axes as original ragged tensor, but
   only contains the sublists within the range.
+)doc";
+
+static constexpr const char *kRaggedAnyGetItem1DTensorDoc = R"doc(
+Slice a ragged tensor along axis 0 using a 1-D torch.int32 tensor.
+
+**Example 1**:
+
+  >>> import k2
+  >>> a = k2.RaggedTensor([[1, 2, 0], [0, 1], [2, 3]])
+  >>> b = k2.RaggedTensor([[10, 20], [300], [-10, 0, -1], [-2, 4, 5]])
+  >>> a[0]
+  tensor([1, 2, 0], dtype=torch.int32)
+  >>> b[a[0]]
+  RaggedTensor([[300],
+                [-10, 0, -1],
+                [10, 20]], dtype=torch.int32)
+  >>> a[1]
+  tensor([0, 1], dtype=torch.int32)
+  >>> b[a[1]]
+  RaggedTensor([[10, 20],
+                [300]], dtype=torch.int32)
+  >>> a[2]
+  tensor([2, 3], dtype=torch.int32)
+  >>> b[a[2]]
+  RaggedTensor([[-10, 0, -1],
+                [-2, 4, 5]], dtype=torch.int32)
+
+**Example 2**:
+
+  >>> import torch
+  >>> import k2
+  >>> a = k2.RaggedTensor([ [[1], [2, 3], [0]], [[], [2]], [[10, 20]] ])
+  >>> i = torch.tensor([0, 2, 1, 0], dtype=torch.int32)
+  >>> a[i]
+  RaggedTensor([[[1],
+                 [2, 3],
+                 [0]],
+                [[10, 20]],
+                [[],
+                 [2]],
+                [[1],
+                 [2, 3],
+                 [0]]], dtype=torch.int32)
+
+Args:
+  key:
+    A 1-D torch.int32 tensor containing the indexes to select along
+    axis 0.
+
+Return:
+  Return a new ragged tensor with the same number of axes as ``self`` but
+  only contains the specified sublists.
+
 )doc";
 
 static constexpr const char *kRaggedAnyCloneDoc = R"doc(

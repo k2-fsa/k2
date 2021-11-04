@@ -23,11 +23,11 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
+    types: [labeled]
 
 jobs:
   run-tests:
+    if: github.event.label.name == 'ready' || github.event_name == 'push'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -90,6 +90,10 @@ jobs:
 
           ./scripts/github_actions/install_torch.sh
           python3 -c "import torch; print('torch version:', torch.__version__)"
+
+      - name: Install git lfs
+        run: |
+          sudo apt-get install -y git-lfs
 
       - name: Download cudnn 8.0
         env:

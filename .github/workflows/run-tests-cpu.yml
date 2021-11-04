@@ -23,11 +23,11 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
+    types: [labeled]
 
 jobs:
   run-tests-cpu:
+    if: github.event.label.name == 'ready' || github.event_name == 'push'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

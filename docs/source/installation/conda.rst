@@ -1,8 +1,12 @@
 
 .. _install using conda:
 
-Install using conda (Linux/macOS/Windows)
-=========================================
+Install using conda (Linux/macOS)
+=================================
+
+.. HINT::
+
+  Windows is currently not supported.
 
 All you need is the following line
 
@@ -38,6 +42,15 @@ To Install a CPU version, use:
       export DYLD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.8/site-packages:$DYLD_LIBRARY_PATH
       python3 -m k2.version  # now it should work
 
+.. HINT::
+
+  If you encounter the following error::
+
+    ModuleNotFoundError: no module named graphviz
+
+  Please run::
+
+    conda install -c anaconda graphviz
 
 Read the following if you want to learn more.
 

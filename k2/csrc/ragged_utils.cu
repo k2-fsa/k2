@@ -156,7 +156,7 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
              row_splits_ptrs_data[src][pos];
         row_splits_data[i] = this_size;
       };
-      EvalDevice(c, new_num_rows + 1, lambda_get_sizes);
+      EvalDevice(c, new_num_rows, lambda_get_sizes);
       ExclusiveSum(row_splits, &row_splits);
     }
   }
