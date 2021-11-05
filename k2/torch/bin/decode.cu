@@ -21,11 +21,11 @@
 #include <string>
 #include <vector>
 
-#include "k2/csrc/fsa_algo.h"
 #include "k2/torch/csrc/decode.h"
 #include "k2/torch/csrc/dense_fsa_vec.h"
 #include "k2/torch/csrc/deserialization.h"
 #include "k2/torch/csrc/features.h"
+#include "k2/torch/csrc/fsa_algo.h"
 #include "k2/torch/csrc/symbol_table.h"
 #include "k2/torch/csrc/utils.h"
 #include "k2/torch/csrc/wave_reader.h"
@@ -36,7 +36,7 @@
 #include "torch/utils.h"
 
 C10_DEFINE_bool(use_gpu, false, "True to use GPU. False to use CPU");
-C10_DEFINE_string(jit_pt, "", "Path to exported jit filename.");
+C10_DEFINE_string(jit_pt, "", "Path to exported jit file.");
 C10_DEFINE_string(
     bpe_model, "",
     "Path to a pretrained BPE model. Needed if --use_ctc_decoding is true");
@@ -45,7 +45,7 @@ C10_DEFINE_string(hlg, "",
                   "Path to HLG.pt. Needed if --use_ctc_decoding is false");
 C10_DEFINE_string(word_table, "",
                   "Path to words.txt. Needed if --use_ctc_decoding is false");
-//
+// Fsa decoding related
 C10_DEFINE_double(search_beam, 20, "search_beam in IntersectDensePruned");
 C10_DEFINE_double(output_beam, 8, "output_beam in IntersectDensePruned");
 C10_DEFINE_int(min_activate_states, 30,
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
       --use_ctc_decoding false \
       --jit_pt <path to exported torch script pt file> \
       --hlg <path to HLG.pt> \
-      --word-table <path to words.txt> \
+      --word_table <path to words.txt> \
       /path/to/foo.wav \
       /path/to/bar.wav \
       <more wave files if any>
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
   K2_LOG(INFO) << "Device: " << device;
 
   int32_t num_waves = argc - 1;
-  K2_CHECK_GE(num_waves, 1) << "You have to provided at least one wave file";
+  K2_CHECK_GE(num_waves, 1) << "You have to provide at least one wave file";
   std::vector<std::string> wave_filenames(num_waves);
   for (int32_t i = 0; i != num_waves; ++i) {
     wave_filenames[i] = argv[i + 1];
@@ -205,50 +205,43 @@ int main(int argc, char *argv[]) {
   torch::Tensor supervision_segments =
       k2::GetSupervisionSegments(supervisions, subsampling_factor);
 
-  k2::ContextPtr ctx = k2::ContextFromTensor(nnet_output);
-
-  k2::Fsa decoding_graph;
-
-  k2::Array1<int32_t> aux_labels;  // only one of the two aux_labels is used
-  k2::Ragged<int32_t> ragged_aux_labels;
+  k2::FsaClass decoding_graph;
 
   if (FLAGS_use_ctc_decoding) {
     K2_LOG(INFO) << "Build CTC topo";
-    k2::Fsa ctc_topo = k2::CtcTopo(ctx, nnet_output.size(2) - 1,
-                                   /*modified*/ false, &aux_labels);
-    decoding_graph = k2::FsaToFsaVec(ctc_topo);
+    decoding_graph =
+        k2::CtcTopo(nnet_output.size(2) - 1, /*modified*/ false, device);
   } else {
     K2_LOG(INFO) << "Load HLG.pt";
-    // TODO(fangjun): We will eventually use an FSA wrapper to
-    // associate attributes with an FSA.
-    decoding_graph = k2::LoadFsa(FLAGS_hlg, &ragged_aux_labels);
-    decoding_graph = decoding_graph.To(ctx);
-    ragged_aux_labels = ragged_aux_labels.To(ctx);
+    decoding_graph = k2::LoadFsa(FLAGS_hlg);
+    decoding_graph = decoding_graph.To(device);
   }
 
   K2_LOG(INFO) << "Decoding";
-  k2::FsaVec lattice = k2::GetLattice(
+  k2::FsaClass lattice = k2::GetLattice(
       nnet_output, decoding_graph, supervision_segments, FLAGS_search_beam,
       FLAGS_output_beam, FLAGS_min_activate_states, FLAGS_max_activate_states,
-      subsampling_factor, aux_labels, ragged_aux_labels, &aux_labels,
-      &ragged_aux_labels);
+      subsampling_factor);
 
-  lattice = k2::OneBestDecoding(lattice, aux_labels, ragged_aux_labels,
-                                &aux_labels, &ragged_aux_labels);
+  lattice = k2::ShortestPath(lattice);
 
-  ragged_aux_labels = k2::GetTexts(lattice, aux_labels, ragged_aux_labels);
+  auto ragged_aux_labels = k2::GetTexts(lattice);
+
   auto aux_labels_vec = ragged_aux_labels.ToVecVec();
 
   std::vector<std::string> texts;
   if (FLAGS_use_ctc_decoding) {
     sentencepiece::SentencePieceProcessor processor;
-    const auto status = processor.Load(FLAGS_bpe_model);
+    auto status = processor.Load(FLAGS_bpe_model);
     if (!status.ok()) {
       K2_LOG(FATAL) << status.ToString();
     }
     for (const auto &ids : aux_labels_vec) {
       std::string text;
-      processor.Decode(ids, &text);
+      status = processor.Decode(ids, &text);
+      if (!status.ok()) {
+        K2_LOG(FATAL) << status.ToString();
+      }
       texts.emplace_back(std::move(text));
     }
   } else {

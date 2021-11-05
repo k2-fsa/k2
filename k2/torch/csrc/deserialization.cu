@@ -296,8 +296,7 @@ static void RegisterRaggedInt() {
 // This function is modified from torch::jit::load()
 // See torch/csrc/jit/serialization/import.cpp
 //
-k2::FsaOrVec LoadFsa(const std::string &filename,
-                     Ragged<int32_t> *ragged_aux_labels /*=nullptr*/) {
+k2::FsaClass LoadFsa(const std::string &filename) {
   auto rai = std::make_unique<caffe2::serialize::FileAdapter>(filename);
 
   // Verify that we're loading a zip archive and not a torch.save pickle archive
@@ -391,19 +390,19 @@ k2::FsaOrVec LoadFsa(const std::string &filename,
   //
   // We are using this function to load HLG.pt, whose aux_labels are ragged
   // tensors.
-  if (ragged_aux_labels != nullptr && dict.contains("aux_labels") &&
+  torch::IValue ragged_aux_labels;
+  if (dict.contains("aux_labels") &&
       dict.at("aux_labels").type() ==
           c10::getCustomClassType<c10::intrusive_ptr<RaggedIntHelper>>()) {
-    *ragged_aux_labels =
-        *dict.at("aux_labels").toCustomClass<RaggedIntHelper>();
+    ragged_aux_labels = dict.at("aux_labels");
   }
-  // todo: attach aux_labels to the returned FSA
-  // K2_LOG(INFO) << "aux_labels:" << aux_labels;
   bool error = false;
   Fsa fsa = FsaFromArray1(arcs, &error);
   K2_CHECK_EQ(error, false);
-
-  return fsa;
+  FsaClass dest(fsa);
+  if (!ragged_aux_labels.isNone())
+    dest.SetAttr("aux_labels", ragged_aux_labels);
+  return dest;
 }
 
 }  // namespace k2

@@ -22,6 +22,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/ragged.h"
+#include "k2/torch/csrc/fsa_class.h"
 #include "torch/script.h"
 
 namespace k2 {
@@ -68,33 +69,10 @@ attributes.
    @return Return an FsaVec, which is the intersection of decoding graph and
            the FSA constructed from `nnet_output`.
  */
-FsaVec GetLattice(torch::Tensor nnet_output, FsaVec decoding_graph,
-                  torch::Tensor supervision_segments, float search_beam,
-                  float output_beam, int32_t min_activate_states,
-                  int32_t max_activate_states, int32_t subsampling_factor,
-                  Array1<int32_t> &in_aux_labels,
-                  Ragged<int32_t> &in_ragged_aux_labels,
-                  Array1<int32_t> *out_aux_labels,
-                  Ragged<int32_t> *out_ragged_aux_labels);
-
-/** Extract the best path from a lattice.
-
-    @param lattice  It can be the return value of `GetLattice()`.
-    @param in_aux_labels  If not empty, it associates an extra label with each
-                          arc in the input lattice.
-    @param in_ragged_aux_labels  If not empty, it associates an extra label with
-                                 each arc in the input lattice.
-    @param out_aux_labels   If in_aux_labels is not empty, it contains the
-                            aux_labels for the returned FSA.
-    @param out_ragged_aux_labels  If in_aux_labels is not empty, it contains
-                                  the aux_labels for the returned FSA.
-
-    @return Return a FsaVec containing linear FSAs.
- */
-FsaVec OneBestDecoding(FsaVec &lattice, Array1<int32_t> &in_aux_labels,
-                       Ragged<int32_t> &in_ragged_aux_labels,
-                       Array1<int32_t> *out_aux_labels,
-                       Ragged<int32_t> *out_ragged_aux_labels);
+FsaClass GetLattice(torch::Tensor nnet_output, FsaClass &decoding_graph,
+                    torch::Tensor supervision_segments, float search_beam,
+                    float output_beam, int32_t min_activate_states,
+                    int32_t max_activate_states, int32_t subsampling_factor);
 
 /** Get aux labels of each FSA contained in the lattice.
 
@@ -109,8 +87,7 @@ FsaVec OneBestDecoding(FsaVec &lattice, Array1<int32_t> &in_aux_labels,
                                  with each arc in the `lattice.
     @return Return a ragged array with two axes [utt][aux_label].
  */
-Ragged<int32_t> GetTexts(FsaVec &lattice, Array1<int32_t> &in_aux_labels,
-                         Ragged<int32_t> &in_ragged_aux_labels);
+Ragged<int32_t> GetTexts(FsaClass &lattice);
 
 }  // namespace k2
 

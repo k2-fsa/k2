@@ -52,7 +52,11 @@ struct FsaClass {
   // The default constructor initializes an invalid FSA.
   FsaClass() = default;
 
-  explicit FsaClass(const FsaOrVec &fsa) : fsa(fsa) {}
+  explicit FsaClass(const FsaOrVec &fsa) : fsa(fsa) {
+    // Check the validation of the fsa, will trigger a fatal error if the fsa
+    // is not valid.
+    Properties();
+  }
 
   FsaClass(const FsaClass &other) = default;
 
@@ -133,6 +137,21 @@ struct FsaClass {
    */
   bool HasAttr(const std::string &name) const;
 
+  /** Propagate attributes from source FsaClass via tensor arc_map.
+
+    Caution: If there are attributes in source FsaClass with the name
+    conflicting with current FsaClass, we will skip the attributes in source
+    FsaClass and keep the current one.
+
+    @param src  The source FsaClass.
+    @param arc_map  The arc_map (as idx012) to select items in attributes.
+   */
+  void CopyAttrs(FsaClass &src, torch::Tensor arc_map);
+
+  // Transfer current fsa to another device.
+  FsaClass To(torch::Device device) const;
+  FsaClass To(const std::string &device) const;
+
  private:
   /** Associate an tensor attribute with a value directly.
 
@@ -171,13 +190,13 @@ struct FsaClass {
 
   /** Propagate tensor attributes from source FsaClass via tensor arc_map.
 
-    Caution: If there are attributes in source FsaClass with the name
-    conflicting with current FsaClass, we will skip the attributes in source
-    FsaClass and keep the current one.
+      Caution: If there are attributes in source FsaClass with the name
+      conflicting with current FsaClass, we will skip the attributes in source
+      FsaClass and keep the current one.
 
-    @param src  The source FsaClass.
-    @param arc_map  The arc_map (as idx012) to select items in attributes.
-   */
+      @param src  The source FsaClass.
+      @param arc_map  The arc_map (as idx012) to select items in attributes.
+     */
   void CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map);
 
   /** Propagate ragged tensor attributes from source FsaClass via tensor
@@ -192,18 +211,15 @@ struct FsaClass {
    */
   void CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map);
 
-  /** Propagate ragged tensor attributes from source FsaClass via
-    Ragged<int32_t> arc_map.
+  /** Transfer current FsaClass to another devices.
 
-    Caution: If there are attributes in source FsaClass
-    with the name conflicting with current FsaClass, we will skip the attributes
-    in source FsaClass and keep the current one.
+    Note: This function assumes that the target context is different from
+    current context. It crashes if you call this function with the context the
+    same as current one.
 
-    @param src  The source FsaClass.
-    @param arc_map  The arc_map (arc_map.values as idx012) to select items in
-    attributes.
+    @param context  The target context.
    */
-  void CopyRaggedTensorAttrs(FsaClass &src, Ragged<int32_t> &arc_map);
+  FsaClass ToOtherContext(const ContextPtr &context) const;
 };
 
 }  // namespace k2

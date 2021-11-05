@@ -45,6 +45,11 @@ FsaClass FsaClass::FromUnaryFunctionTensor(FsaClass &src, const FsaOrVec &arcs,
   return dest;
 }
 
+void FsaClass::CopyAttrs(FsaClass &src, torch::Tensor arc_map) {
+  CopyTensorAttrs(src, arc_map);
+  CopyRaggedTensorAttrs(src, arc_map);
+}
+
 void FsaClass::CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
   for (const auto &iter : src.tensor_attrs) {
     if (!HasAttr(iter.first)) {
@@ -64,16 +69,6 @@ void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
       Ragged<int32_t> ans =
           Index<int32_t>(iter.second, /*axis*/ 0, indexes_array, nullptr);
       SetRaggedTensorAttr(iter.first, ans);
-    }
-  }
-}
-
-void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, Ragged<int32_t> &arc_map) {
-  for (auto &iter : src.ragged_tensor_attrs) {
-    if (!HasAttr(iter.first)) {
-      Ragged<int32_t> new_value =
-          Index<int32_t>(iter.second, arc_map, /*remove_axis*/ true);
-      SetRaggedTensorAttr(iter.first, new_value);
     }
   }
 }
@@ -241,6 +236,50 @@ bool FsaClass::HasAttr(const std::string &name) const {
   // attribute containers.
   if (name == "scores" || name == "labels") return true;
   return all_attr_names.count(name) > 0;
+}
+
+FsaClass FsaClass::ToOtherContext(const ContextPtr &context) const {
+  K2_CHECK(!context->IsCompatible(*fsa.Context()));
+  FsaClass dest(fsa.To(context));
+  auto device = DeviceFromContext(context);
+  for (const auto &iter : tensor_attrs) {
+    dest.SetTensorAttr(iter.first, (iter.second).to(device));
+  }
+  for (const auto &iter : ragged_tensor_attrs) {
+    dest.SetRaggedTensorAttr(iter.first, (iter.second).To(context));
+  }
+  return dest;
+}
+
+FsaClass FsaClass::To(torch::Device device) const {
+  ContextPtr context = fsa.Context();
+  if (device.is_cpu()) {
+    // CPU -> CPU
+    if (context->GetDeviceType() == kCpu) return *this;
+
+    // CUDA -> CPU
+    DeviceGuard guard(context);
+    return this->ToOtherContext(GetCpuContext());
+  }
+
+  K2_CHECK(device.is_cuda()) << device.str();
+
+  int32_t device_index = device.index();
+
+  if (context->GetDeviceType() == kCuda &&
+      context->GetDeviceId() == device_index)
+    // CUDA to CUDA, and it's the same device
+    return *this;
+
+  // CPU to CUDA
+  // or from one GPU to another GPU
+  DeviceGuard guard(device_index);
+  return this->ToOtherContext(GetCudaContext(device_index));
+}
+
+FsaClass FsaClass::To(const std::string &device) const {
+  torch::Device d(device);
+  return this->To(d);
 }
 
 }  // namespace k2
