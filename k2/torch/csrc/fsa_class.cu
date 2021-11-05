@@ -243,10 +243,10 @@ FsaClass FsaClass::ToOtherContext(const ContextPtr &context) const {
   FsaClass dest(fsa.To(context));
   auto device = DeviceFromContext(context);
   for (const auto &iter : tensor_attrs) {
-    dest.SetTensorAttr(iter.first, (iter.second).to(device));
+    dest.SetTensorAttr(iter.first, iter.second.to(device));
   }
   for (const auto &iter : ragged_tensor_attrs) {
-    dest.SetRaggedTensorAttr(iter.first, (iter.second).To(context));
+    dest.SetRaggedTensorAttr(iter.first, iter.second.To(context));
   }
   return dest;
 }
