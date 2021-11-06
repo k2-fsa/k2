@@ -43,7 +43,9 @@
 #define __forceinline__ __forceinline
 #endif
 
-#define K2_NIY K2_LOG(FATAL) << "Not implemented yet. Don't call me!"
+#define K2_NIY  \
+  K2_LOG(FATAL) \
+      << "Not implemented yet. Don't call me! (Not Compiled with CUDA ?)"
 
 using cudaError_t = int32_t;
 using cudaStream_t = int32_t *;

@@ -296,7 +296,9 @@ static void RegisterRaggedInt() {
 // This function is modified from torch::jit::load()
 // See torch/csrc/jit/serialization/import.cpp
 //
-k2::FsaClass LoadFsa(const std::string &filename) {
+torch::IValue Load(
+    const std::string &filename,
+    torch::optional<torch::Device> map_location /*= torch::nullopt*/) {
   auto rai = std::make_unique<caffe2::serialize::FileAdapter>(filename);
 
   // Verify that we're loading a zip archive and not a torch.save pickle archive
@@ -368,41 +370,50 @@ k2::FsaClass LoadFsa(const std::string &filename) {
     (K2_TORCH_VERSION_MAJOR == 1 && K2_TORCH_VERSION_MINOR >= 9)
   torch::IValue ivalue = torch::jit::readArchiveAndTensors(
       "data", "", "", type_resolver, obj_loader,
-      /*device=*/c10::nullopt, *reader);
+      /*device=*/map_location, *reader);
 
 #else
   torch::IValue ivalue =
       torch::jit::readArchiveAndTensors("data", type_resolver, obj_loader,
-                                        /*device=*/c10::nullopt, *reader);
+                                        /*device=*/map_location, *reader);
 #endif
+  return ivalue;
+}
 
-  // We assume torch.save(fsa.as_dict(), filename) was used
-  auto dict = ivalue.toGenericDict();
-  Array1<Arc> arcs = Array1FromTorch<Arc>(dict.at("arcs").toTensor());
+k2::FsaClass LoadFsa(
+    const std::string &filename,
+    torch::optional<torch::Device> map_location /*= torch::nullopt*/) {
+  auto ivalue = Load(filename, map_location);
+  K2_CHECK(ivalue.isGenericDict())
+      << "Expect a dict. Given: " << ivalue.tagKind();
 
-  // TODO(fangjun):
-  // Handle the following cases:
-  //  (1) there are multiple attributes
-  //  (2) aux_labels may not exist
-  //  (3) aux_labels may be a tensor, not a ragged tensor
-  //  (4) return a wrapper of Fsa, i.e., RaggedArc, which can include
-  //  extra attributes
-  //
-  // We are using this function to load HLG.pt, whose aux_labels are ragged
-  // tensors.
-  torch::IValue ragged_aux_labels;
-  if (dict.contains("aux_labels") &&
-      dict.at("aux_labels").type() ==
-          c10::getCustomClassType<c10::intrusive_ptr<RaggedIntHelper>>()) {
-    ragged_aux_labels = dict.at("aux_labels");
-  }
+  torch::Dict<torch::IValue, torch::IValue> dict = ivalue.toGenericDict();
+  K2_CHECK(dict.contains("arcs")) << "Expect to contain 'arcs' in the dict";
+
+  Tensor arcs = TensorFromTorch(dict.at("arcs").toTensor());
+
   bool error = false;
-  Fsa fsa = FsaFromArray1(arcs, &error);
-  K2_CHECK_EQ(error, false);
-  FsaClass dest(fsa);
-  if (!ragged_aux_labels.isNone())
-    dest.SetAttr("aux_labels", ragged_aux_labels);
-  return dest;
+  Fsa fsa;
+  if (arcs.NumAxes() == 2) {
+    fsa = FsaFromTensor(arcs, &error);
+  } else if (arcs.NumAxes() == 1) {
+    fsa = FsaVecFromTensor(arcs, &error);
+  }
+
+  FsaClass ans(fsa);
+
+  (void)dict.erase(torch::IValue("arcs"));
+  for (const auto &p : dict) {
+    auto v = p.value();
+    if (v.isTensor() || IsRaggedInt(v)) {
+      ans.SetAttr(p.key().toStringRef(), p.value());
+    } else {
+      K2_LOG(INFO) << "Ignore non tensor attribute: '" << p.key().toStringRef()
+                   << "' of type: " << v.tagKind();
+    }
+  }
+
+  return ans;
 }
 
 }  // namespace k2

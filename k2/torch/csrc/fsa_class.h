@@ -124,6 +124,14 @@ struct FsaClass {
    */
   torch::IValue GetAttr(const std::string &name) /*const*/;
 
+  torch::Tensor GetTensorAttr(const std::string &name) const {
+    return tensor_attrs.at(name);
+  }
+
+  Ragged<int32_t> GetRaggedTensorAttr(const std::string &name) const {
+    return ragged_tensor_attrs.at(name);
+  }
+
   /** Delete an attribute by its name.
     Raise a RuntimeError exception if there is no such attribute.
     @param name The attribute name.
@@ -164,7 +172,8 @@ struct FsaClass {
    */
   void SetTensorAttr(const std::string &name, torch::Tensor value) {
     K2_CHECK_EQ(value.size(0), fsa.NumElements())
-        << "shape[0] of the tensor MUST be equal to number of arcs";
+        << "'" << name
+        << "': shape[0] of the tensor MUST be equal to number of arcs";
     K2_CHECK(ContextFromTensor(value)->IsCompatible(*fsa.Context()));
     all_attr_names.insert(name);
     tensor_attrs[name] = value;
@@ -182,7 +191,8 @@ struct FsaClass {
   void SetRaggedTensorAttr(const std::string &name,
                            const Ragged<int32_t> &value) {
     K2_CHECK_EQ(value.Dim0(), fsa.NumElements())
-        << "dim0 of the tensor MUST be equal to number of arcs";
+        << "'" << name
+        << "': dim0 of the tensor MUST be equal to number of arcs";
     K2_CHECK(value.Context()->IsCompatible(*fsa.Context()));
     all_attr_names.insert(name);
     ragged_tensor_attrs[name] = value;

@@ -152,19 +152,16 @@ void FsaClass::SetAttr(const std::string &name, torch::IValue value) {
 
   if (HasAttr(name)) DeleteAttr(name);
 
-  all_attr_names.insert(name);
-
   if (value.isTensor()) {
     SetTensorAttr(name, value.toTensor());
-    return;
-  }
-
-  if (IsRaggedInt(value)) {
+  } else if (IsRaggedInt(value)) {
     SetRaggedTensorAttr(name, ToRaggedInt(value));
-    return;
+  } else {
+    K2_LOG(FATAL) << "Unsupported type: " << value.tagKind()
+                  << " for attribute '" << name
+                  << "'.\nExpect torch::Tensor or Ragged<int32_t>";
   }
-
-  K2_LOG(FATAL) << "Attribute type is not supported, name : " << name;
+  all_attr_names.insert(name);
 }
 
 torch::IValue FsaClass::GetAttr(const std::string &name) /*const*/ {

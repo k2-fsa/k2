@@ -28,13 +28,33 @@
 namespace k2 {
 
 // A helper class to construct a Ragged<int32_t> from an archive
-// TODO(fangjun): Make it a template
+//
+// TODO(fangjun): Move it to .cu file as it is an implementation detail.
 struct RaggedIntHelper : public Ragged<int32_t>,
                          public torch::CustomClassHolder {
   using k2::Ragged<int32_t>::Ragged;
   explicit RaggedIntHelper(const Ragged<int32_t> &ragged)
       : Ragged<int32_t>(ragged) {}
 };
+
+/** Read a file saved in Python by `torch.save()`.
+
+  Unlike torch::jit::pickle_load(), this function can also handle
+  k2.ragged.RaggedTensor.
+
+  Caution: If you save a dict of tensors in `filename`, the dict MUST
+  have at least two items. Otherwise, it will throw. See
+  https://github.com/pytorch/pytorch/issues/67902 for more details.
+
+  @param filename  Path to the file to be loaded.
+  @param map_location  It has the same meaning as the one in `torch.load()`.
+                       The loaded IValue is moved to this device
+                       before returning.
+  @return Return an IValue containing the content in the given file.
+ */
+torch::IValue Load(
+    const std::string &filename,
+    torch::optional<torch::Device> map_location = torch::nullopt);
 
 /**
   Load a file saved in Python by
@@ -44,11 +64,14 @@ struct RaggedIntHelper : public Ragged<int32_t>,
   Note: `_use_new_zipfile_serialization` is True by default
 
   @param filename Path to the filename produced in Python by `torch.save()`.
-  @param ragged_aux_labels If it is not NULL and the file contains aux_labels as
-            ragged tensors, then return it via this parameter.
+  @param map_location  It has the same meaning as the one in `torch.load()`.
+                       The loaded FSA is moved to this device
+                       before returning.
   @return Return the FSA contained in the filename.
  */
-k2::FsaClass LoadFsa(const std::string &filename);
+k2::FsaClass LoadFsa(
+    const std::string &filename,
+    torch::optional<torch::Device> map_location = torch::nullopt);
 
 }  // namespace k2
 
