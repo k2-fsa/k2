@@ -399,6 +399,7 @@ k2::FsaClass LoadFsa(
   } else if (arcs.NumAxes() == 1) {
     fsa = FsaVecFromTensor(arcs, &error);
   }
+  K2_CHECK_EQ(error, false);
 
   FsaClass ans(fsa);
 
