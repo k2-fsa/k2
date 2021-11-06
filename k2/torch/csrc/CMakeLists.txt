@@ -7,6 +7,7 @@ set(k2_torch_srcs
   dense_fsa_vec.cu
   deserialization.cu
   features.cu
+  fsa_algo.cu
   fsa_class.cu
   symbol_table.cu
   utils.cu

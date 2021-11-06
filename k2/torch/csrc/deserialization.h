@@ -22,6 +22,7 @@
 #include <string>
 
 #include "k2/csrc/fsa.h"
+#include "k2/torch/csrc/fsa_class.h"
 #include "torch/script.h"
 
 namespace k2 {
@@ -47,8 +48,7 @@ struct RaggedIntHelper : public Ragged<int32_t>,
             ragged tensors, then return it via this parameter.
   @return Return the FSA contained in the filename.
  */
-k2::FsaOrVec LoadFsa(const std::string &filename,
-                     Ragged<int32_t> *ragged_aux_labels = nullptr);
+k2::FsaClass LoadFsa(const std::string &filename);
 
 }  // namespace k2
 
