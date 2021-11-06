@@ -17,6 +17,7 @@
  */
 
 #include <fstream>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/log.h"
@@ -69,27 +70,40 @@ struct WaveHeader {
 };
 static_assert(sizeof(WaveHeader) == 44, "");
 
-}  // namespace
-
-WaveReader::WaveReader(const std::string &filename) {
-  std::ifstream is(filename, std::ifstream::binary);
+// Read a wave file of mono-channel.
+// Return its samples in a 1-D torch.float32 tensor, normalized
+// by dividing 32768.
+// Also, it returns the sample rate.
+std::pair<torch::Tensor, float> ReadWaveImpl(std::istream &is) {
   WaveHeader header;
   is.read(reinterpret_cast<char *>(&header), sizeof(header));
   K2_CHECK((bool)is) << "Failed to read wave header";
 
   header.Validate();
 
-  sample_rate_ = header.sample_rate;
+  float sample_rate = header.sample_rate;
 
   // header.subchunk2_size contains the number of bytes in the data.
   // As we assume each sample contains two bytes, so it is divided by 2 here
-  data_ = torch::empty({header.subchunk2_size / 2}, torch::kShort);
+  torch::Tensor data = torch::empty({header.subchunk2_size / 2}, torch::kShort);
 
-  is.read(reinterpret_cast<char *>(data_.data_ptr<int16_t>()),
+  is.read(reinterpret_cast<char *>(data.data_ptr<int16_t>()),
           header.subchunk2_size);
 
   K2_CHECK((bool)is) << "Failed to read wave samples";
-  data_ = (data_ / 32768.).to(torch::kFloat32);
+  data = (data / 32768.).to(torch::kFloat32);
+  return {data, sample_rate};
+}
+
+}  // namespace
+
+WaveReader::WaveReader(const std::string &filename) {
+  std::ifstream is(filename, std::ifstream::binary);
+  std::tie(data_, sample_rate_) = ReadWaveImpl(is);
+}
+
+WaveReader::WaveReader(std::istream &is) {
+  std::tie(data_, sample_rate_) = ReadWaveImpl(is);
 }
 
 torch::Tensor ReadWave(const std::string &filename,
