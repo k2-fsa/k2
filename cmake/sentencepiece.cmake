@@ -44,7 +44,7 @@ function(download_sentencepiece)
 
   add_subdirectory(${sentencepiece_SOURCE_DIR} ${sentencepiece_BINARY_DIR} EXCLUDE_FROM_ALL)
 
-  # we will link to the static library of sentencepiece
+  # Link to sentencepiece statically
   target_include_directories(sentencepiece-static
     INTERFACE
       ${sentencepiece_SOURCE_DIR}
