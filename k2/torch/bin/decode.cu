@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "k2/csrc/fsa_algo.h"
 #include "k2/torch/csrc/decode.h"
 #include "k2/torch/csrc/dense_fsa_vec.h"
 #include "k2/torch/csrc/deserialization.h"
@@ -35,16 +36,45 @@
 #include "torch/script.h"
 #include "torch/utils.h"
 
+// TODO(fangjun):
+// Refactor this file.
+//
+// Create a binary for each decoding method.
+// Don't put all decoding methods in a single binary.
+
+enum class DecodingMethod {
+  kInvalid,
+  kCtcDecoding,
+  kHLG,
+  kNgramRescroing,
+  kAttentionRescoring,
+};
+
 C10_DEFINE_bool(use_gpu, false, "True to use GPU. False to use CPU");
 C10_DEFINE_string(jit_pt, "", "Path to exported jit file.");
 C10_DEFINE_string(
     bpe_model, "",
-    "Path to a pretrained BPE model. Needed if --use_ctc_decoding is true");
-C10_DEFINE_bool(use_ctc_decoding, true, "True to use CTC decoding");
+    "Path to a pretrained BPE model. Needed if --method is 'ctc-decoding'");
+C10_DEFINE_string(method, "", R"(Decoding method.
+      Supported values are:
+        - ctc-decoding. Use CTC topology for decoding. You have to
+                        provide --bpe_model.
+        - hlg. Use HLG graph for decoding.
+        - ngram-rescoring. Use HLG for decoding and an n-gram LM for rescoring.
+                         You have to provide --G.
+        - attention-rescoring. Use HLG for decoding, an n-gram LM and a
+                               attention decoder for rescoring.
+)");
 C10_DEFINE_string(hlg, "",
-                  "Path to HLG.pt. Needed if --use_ctc_decoding is false");
-C10_DEFINE_string(word_table, "",
-                  "Path to words.txt. Needed if --use_ctc_decoding is false");
+                  "Path to HLG.pt. Needed if --method is not 'ctc-decoding'");
+C10_DEFINE_string(g, "",
+                  "Path to an ngram LM, e.g, G_4gram.pt. Needed "
+                  "if --method is 'ngram-rescoring' or 'attention-rescoring'");
+C10_DEFINE_double(ngram_lm_scale, 1.0,
+                  "Used only when method is ngram-rescoring");
+C10_DEFINE_string(
+    word_table, "",
+    "Path to words.txt. Needed if --method is not 'ctc-decoding'");
 // Fsa decoding related
 C10_DEFINE_double(search_beam, 20, "search_beam in IntersectDensePruned");
 C10_DEFINE_double(output_beam, 8, "output_beam in IntersectDensePruned");
@@ -60,42 +90,41 @@ C10_DEFINE_double(frame_length_ms, 25.0,
                   "Frame length in ms for computing Fbank");
 C10_DEFINE_int(num_bins, 80, "Number of triangular bins for computing Fbank");
 
-static void CheckArgs() {
+static void CheckArgs(DecodingMethod method) {
 #if !defined(K2_WITH_CUDA)
   if (FLAGS_use_gpu) {
-    std::cerr << "k2 was not compiled with CUDA"
-              << "\n";
-    std::cerr << "Please use --use_gpu 0"
-              << "\n";
+    std::cerr << "k2 was not compiled with CUDA. "
+                 "Please use --use_gpu false";
     exit(EXIT_FAILURE);
   }
 #endif
 
   if (FLAGS_jit_pt.empty()) {
-    std::cerr << "Please provide --jit_pt"
-              << "\n";
-    std::cerr << torch::UsageMessage() << "\n";
+    std::cerr << "Please provide --jit_pt\n" << torch::UsageMessage();
     exit(EXIT_FAILURE);
   }
 
-  if (FLAGS_use_ctc_decoding && FLAGS_bpe_model.empty()) {
-    std::cout << "Please provide --bpe_model"
-              << "\n";
-    std::cout << torch::UsageMessage() << "\n";
+  if (method == DecodingMethod::kCtcDecoding && FLAGS_bpe_model.empty()) {
+    std::cerr << "Please provide --bpe_model\n"
+              << torch::UsageMessage() << "\n";
     exit(EXIT_FAILURE);
   }
 
-  if (FLAGS_use_ctc_decoding == false && FLAGS_hlg.empty()) {
-    std::cerr << "Please provide --hlg"
-              << "\n";
-    std::cerr << torch::UsageMessage() << "\n";
+  if (method != DecodingMethod::kCtcDecoding && FLAGS_hlg.empty()) {
+    std::cerr << "Please provide --hlg\n" << torch::UsageMessage() << "\n";
     exit(EXIT_FAILURE);
   }
 
-  if (FLAGS_use_ctc_decoding == false && FLAGS_word_table.empty()) {
-    std::cerr << "Please provide --word_table"
-              << "\n";
-    std::cerr << torch::UsageMessage() << "\n";
+  if (method != DecodingMethod::kCtcDecoding && FLAGS_word_table.empty()) {
+    std::cerr << "Please provide --word_table\n"
+              << torch::UsageMessage() << "\n";
+    exit(EXIT_FAILURE);
+  }
+
+  if ((method == DecodingMethod::kNgramRescroing ||
+       method == DecodingMethod::kAttentionRescoring) &&
+      FLAGS_g.empty()) {
+    std::cerr << "Please provide --g\n" << torch::UsageMessage() << "\n";
     exit(EXIT_FAILURE);
   }
 }
@@ -109,7 +138,7 @@ int main(int argc, char *argv[]) {
   std::string usage = R"(
   (1) CTC decoding
     ./bin/decode \
-      --use_ctc_decoding true \
+      --method ctc-decoding \
       --jit_pt <path to exported torch script pt file> \
       --bpe_model <path to pretrained BPE model> \
       /path/to/foo.wav \
@@ -117,7 +146,17 @@ int main(int argc, char *argv[]) {
       <more wave files if any>
   (2) HLG decoding
     ./bin/decode \
-      --use_ctc_decoding false \
+      --method hlg \
+      --jit_pt <path to exported torch script pt file> \
+      --hlg <path to HLG.pt> \
+      --word_table <path to words.txt> \
+      /path/to/foo.wav \
+      /path/to/bar.wav \
+      <more wave files if any>
+  (3) HLG decoding + ngram LM rescoring
+    ./bin/decode \
+      --method ngram-rescoring \
+      --g <path to G.pt> \
       --jit_pt <path to exported torch script pt file> \
       --hlg <path to HLG.pt> \
       --word_table <path to words.txt> \
@@ -127,11 +166,29 @@ int main(int argc, char *argv[]) {
 
    --use_gpu false to use CPU
    --use_gpu true to use GPU
+
+   ./bin/decode --help
+      to view all possible options.
   )";
   torch::SetUsageMessage(usage);
 
+  DecodingMethod method = DecodingMethod::kInvalid;
   torch::ParseCommandLineFlags(&argc, &argv);
-  CheckArgs();
+  if (FLAGS_method == "ctc-decoding") {
+    method = DecodingMethod::kCtcDecoding;
+  } else if (FLAGS_method == "hlg") {
+    method = DecodingMethod::kHLG;
+  } else if (FLAGS_method == "ngram-rescoring") {
+    method = DecodingMethod::kNgramRescroing;
+  } else if (FLAGS_method == "attention-rescoring") {
+    // method = DecodingMethod::kAttentionRescoring;
+    K2_LOG(FATAL) << "Not implemented yet for: " << FLAGS_method;
+  } else {
+    K2_LOG(FATAL) << "Unsupported method: " << FLAGS_method << "\n"
+                  << torch::UsageMessage();
+  }
+
+  CheckArgs(method);
 
   torch::Device device(torch::kCPU);
   if (FLAGS_use_gpu) {
@@ -187,13 +244,11 @@ int main(int argc, char *argv[]) {
 
   torch::IValue supervisions(sup);
 
-  std::vector<torch::IValue> inputs;
-  inputs.emplace_back(std::move(features));
-  inputs.emplace_back(supervisions);
-
   K2_LOG(INFO) << "Compute nnet_output";
   // the output for module.forward() is a tuple of 3 tensors
-  auto outputs = module.forward(inputs).toTuple();
+  // See the definition of the model in conformer_ctc/transformer.py
+  // from icefall
+  auto outputs = module.run_method("forward", features, supervisions).toTuple();
   assert(outputs->elements().size() == 3u);
 
   auto nnet_output = outputs->elements()[0].toTensor();
@@ -207,13 +262,21 @@ int main(int argc, char *argv[]) {
 
   k2::FsaClass decoding_graph;
 
-  if (FLAGS_use_ctc_decoding) {
+  if (method == DecodingMethod::kCtcDecoding) {
     K2_LOG(INFO) << "Build CTC topo";
-    decoding_graph =
-        k2::CtcTopo(nnet_output.size(2) - 1, /*modified*/ false, device);
+    decoding_graph = k2::CtcTopo(nnet_output.size(2) - 1, false, device);
   } else {
     K2_LOG(INFO) << "Load " << FLAGS_hlg;
     decoding_graph = k2::LoadFsa(FLAGS_hlg, device);
+    K2_CHECK(decoding_graph.HasAttr("aux_labels"));
+  }
+
+  if (method == DecodingMethod::kNgramRescroing ||
+      method == DecodingMethod::kAttentionRescoring) {
+    // Add `lm_scores` so that we can separate acoustic scores and lm scores
+    // later in the rescoring stage.
+    // TODO(fangjun): Expose SetTensorAttr()
+    decoding_graph.SetAttr("lm_scores", decoding_graph.Scores().clone());
   }
 
   K2_LOG(INFO) << "Decoding";
@@ -222,6 +285,20 @@ int main(int argc, char *argv[]) {
       FLAGS_output_beam, FLAGS_min_activate_states, FLAGS_max_activate_states,
       subsampling_factor);
 
+  if (method == DecodingMethod::kNgramRescroing) {
+    // rescore with an n-gram LM
+    K2_LOG(INFO) << "Load n-gram LM: " << FLAGS_g;
+    k2::FsaClass G = k2::LoadFsa(FLAGS_g, device);
+    G.fsa = k2::FsaToFsaVec(G.fsa);
+
+    K2_CHECK_EQ(G.NumAttrs(), 0) << "G is expected to be an acceptor.";
+    k2::AddEpsilonSelfLoops(G.fsa, &G.fsa);
+    k2::ArcSort(&G.fsa);
+    G.SetAttr("lm_scores", G.Scores().clone());
+
+    WholeLatticeRescoring(G, FLAGS_ngram_lm_scale, &lattice);
+  }
+
   lattice = k2::ShortestPath(lattice);
 
   auto ragged_aux_labels = k2::GetTexts(lattice);
@@ -229,7 +306,7 @@ int main(int argc, char *argv[]) {
   auto aux_labels_vec = ragged_aux_labels.ToVecVec();
 
   std::vector<std::string> texts;
-  if (FLAGS_use_ctc_decoding) {
+  if (method == DecodingMethod::kCtcDecoding) {
     sentencepiece::SentencePieceProcessor processor;
     auto status = processor.Load(FLAGS_bpe_model);
     if (!status.ok()) {

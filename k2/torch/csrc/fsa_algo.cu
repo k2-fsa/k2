@@ -68,4 +68,62 @@ FsaClass ShortestPath(FsaClass &lattice) {
   return FsaClass::FromUnaryFunctionTensor(lattice, out, arc_map);
 }
 
+void Invert(FsaClass *lattice) {
+  K2_CHECK_NE(lattice, nullptr);
+  K2_CHECK(lattice->HasAttr("aux_labels"));
+
+  if (lattice->HasTensorAttr("aux_labels")) {
+    // The invert is trivial, just swap the labels and aux_labels.
+    // No new arcs are added.
+    auto aux_labels = lattice->GetTensorAttr("aux_labels").clone();
+    lattice->SetTensorAttr("aux_labels", lattice->Labels().clone());
+    lattice->SetLabels(aux_labels);
+    return;
+  }
+
+  K2_CHECK(lattice->HasRaggedTensorAttr("aux_labels"));
+  Ragged<int32_t> src_aux_labels = lattice->GetRaggedTensorAttr("aux_labels");
+
+  Fsa dest;
+  Ragged<int32_t> dest_aux_labels;
+  Array1<int32_t> arc_map;
+  Invert(lattice->fsa, src_aux_labels, &dest, &dest_aux_labels, &arc_map);
+
+  // `label` is the 3rd field of struct Arc.
+  FixFinalLabels(dest, reinterpret_cast<int32_t *>(dest.values.Data()) + 2, 4);
+
+  lattice->DeleteAttr("aux_labels");
+  lattice->properties = 0;
+  lattice->fsa = dest;
+  lattice->CopyAttrs(*lattice, Array1ToTorch(arc_map));
+  lattice->SetRaggedTensorAttr("aux_labels", dest_aux_labels);
+}
+
+void ArcSort(FsaClass *lattice) {
+  Fsa dest;
+  Array1<int32_t> arc_map;
+  ArcSort(lattice->fsa, &dest, &arc_map);
+  lattice->properties = 0;
+  lattice->fsa = dest;
+  lattice->CopyAttrs(*lattice, Array1ToTorch(arc_map));
+}
+
+void Connect(FsaClass *lattice) {
+  Fsa dest;
+  Array1<int32_t> arc_map;
+  Connect(lattice->fsa, &dest, &arc_map);
+  lattice->properties = 0;
+  lattice->fsa = dest;
+  lattice->CopyAttrs(*lattice, Array1ToTorch(arc_map));
+}
+
+void TopSort(FsaClass *lattice) {
+  Fsa dest;
+  Array1<int32_t> arc_map;
+  TopSort(lattice->fsa, &dest, &arc_map);
+  lattice->properties = 0;
+  lattice->fsa = dest;
+  lattice->CopyAttrs(*lattice, Array1ToTorch(arc_map));
+}
+
 }  // namespace k2

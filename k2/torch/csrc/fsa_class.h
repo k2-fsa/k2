@@ -66,6 +66,8 @@ struct FsaClass {
 
   FsaClass &operator=(FsaClass &&other) = default;
 
+  int32_t NumAttrs() const { return all_attr_names.size(); }
+
   /**
     Create an Fsa object, including propagating properties from the source FSA.
     This is intended to be called from unary functions on FSAs where the arc_map
@@ -124,12 +126,28 @@ struct FsaClass {
    */
   torch::IValue GetAttr(const std::string &name) /*const*/;
 
-  torch::Tensor GetTensorAttr(const std::string &name) const {
+  const torch::Tensor &GetTensorAttr(const std::string &name) const {
     return tensor_attrs.at(name);
   }
 
-  Ragged<int32_t> GetRaggedTensorAttr(const std::string &name) const {
+  torch::Tensor &GetTensorAttr(const std::string &name) {
+    return tensor_attrs.at(name);
+  }
+
+  const Ragged<int32_t> &GetRaggedTensorAttr(const std::string &name) const {
     return ragged_tensor_attrs.at(name);
+  }
+
+  Ragged<int32_t> GetRaggedTensorAttr(const std::string &name) {
+    return ragged_tensor_attrs.at(name);
+  }
+
+  bool HasTensorAttr(const std::string &name) const {
+    return tensor_attrs.count(name) > 0;
+  }
+
+  bool HasRaggedTensorAttr(const std::string &name) const {
+    return ragged_tensor_attrs.count(name) > 0;
   }
 
   /** Delete an attribute by its name.
@@ -160,7 +178,6 @@ struct FsaClass {
   FsaClass To(torch::Device device) const;
   FsaClass To(const std::string &device) const;
 
- private:
   /** Associate an tensor attribute with a value directly.
 
     Caution: This function assumes that there is no other type of attribute
@@ -198,6 +215,7 @@ struct FsaClass {
     ragged_tensor_attrs[name] = value;
   }
 
+ private:
   /** Propagate tensor attributes from source FsaClass via tensor arc_map.
 
       Caution: If there are attributes in source FsaClass with the name

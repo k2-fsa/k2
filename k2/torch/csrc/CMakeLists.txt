@@ -24,6 +24,7 @@ target_link_libraries(k2_torch PUBLIC ${TORCH_LIBRARIES} context kaldifeat_core)
 # Please sort files alphabetically
 set(k2_torch_test_srcs
   dense_fsa_vec_test.cu
+  deserialization_test.cu
   fsa_class_test.cu
   wave_reader_test.cu
 )

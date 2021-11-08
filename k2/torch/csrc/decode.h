@@ -65,6 +65,19 @@ FsaClass GetLattice(torch::Tensor nnet_output, FsaClass &decoding_graph,
  */
 Ragged<int32_t> GetTexts(FsaClass &lattice);
 
+/** Rescore a lattice with an n-gram LM.
+
+    @param G  An acceptor. It MUST be an FsaVec containing only one
+              arc-sorted FSA. Also, it contains epsilon self loops
+              (see AddEpsilonSelfLoops()). It contains only one tensor
+              attributes: "lm_scores".
+    @param ngram_lm_scale  The scale value for ngram LM scores.
+    @param lattice The input/output lattice. It can be the
+                   return value of `GetLattice()`.
+ */
+void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
+                           FsaClass *lattice);
+
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_DECODE_H_
