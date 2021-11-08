@@ -104,7 +104,7 @@ int32_t FsaClass::Properties() {
     } else {
       GetFsaVecBasicProperties(fsa, nullptr, &properties);
     }
-    if (properties & kFsaPropertiesValid != kFsaPropertiesValid) {
+    if (!(properties & kFsaPropertiesValid)) {
       K2_LOG(FATAL) << "Fsa is not valid, properties are : " << properties
                     << " = " << FsaPropertiesAsString(properties)
                     << ", arcs are : " << fsa;
