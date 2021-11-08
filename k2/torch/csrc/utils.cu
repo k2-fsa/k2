@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "caffe2/serialize/file_adapter.h"
 #include "caffe2/serialize/inline_container.h"
