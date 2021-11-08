@@ -27,8 +27,7 @@
 #include "torch/script.h"
 
 static constexpr const char *kUsageMessage = R"(
-This file implements decoding with a CTC topology, without any
-kinds of LM or lexicons.
+This file implements decoding with a HLG decoding graph.
 
 Usage:
   ./bin/hlg_decode \
@@ -41,7 +40,7 @@ Usage:
     <more waves if any>
 
 To see all possible options, use
-  ./bin/ctc_decode --help
+  ./bin/hlg_decode --help
 
 Caution:
  - Only sound files (*.wav) with single channel are supported.
