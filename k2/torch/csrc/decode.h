@@ -70,7 +70,7 @@ Ragged<int32_t> GetTexts(FsaClass &lattice);
     @param G  An acceptor. It MUST be an FsaVec containing only one
               arc-sorted FSA. Also, it contains epsilon self loops
               (see AddEpsilonSelfLoops()). It contains only one tensor
-              attributes: "lm_scores".
+              attribute: "lm_scores".
     @param ngram_lm_scale  The scale value for ngram LM scores.
     @param lattice The input/output lattice. It can be the
                    return value of `GetLattice()`.
