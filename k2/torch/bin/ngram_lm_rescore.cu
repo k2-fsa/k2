@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include "k2/csrc/fsa_algo.h"
 #include "k2/torch/csrc/decode.h"
 #include "k2/torch/csrc/dense_fsa_vec.h"
 #include "k2/torch/csrc/deserialization.h"
@@ -27,20 +28,23 @@
 #include "torch/script.h"
 
 static constexpr const char *kUsageMessage = R"(
-This file implements decoding with an HLG decoding graph.
+This file implements decoding with an HLG decoding graph, using
+an n-gram LM for rescoring.
 
 Usage:
-  ./bin/hlg_decode \
+  ./bin/ngram_lm_rescore \
     --use_gpu true \
     --nn_model <path to torch scripted pt file> \
     --hlg <path to HLG.pt> \
+    --g <path to G.pt> \
+    --ngram_lm_scale 1.0 \
     --word_table <path to words.txt> \
     <path to foo.wav> \
     <path to bar.wav> \
     <more waves if any>
 
 To see all possible options, use
-  ./bin/hlg_decode --help
+  ./bin/ngram_lm_rescore --help
 
 Caution:
  - Only sound files (*.wav) with single channel are supported.
@@ -52,6 +56,8 @@ Caution:
 C10_DEFINE_bool(use_gpu, false, "true to use GPU; false to use CPU");
 C10_DEFINE_string(nn_model, "", "Path to the model exported by torch script.");
 C10_DEFINE_string(hlg, "", "Path to HLG.pt.");
+C10_DEFINE_string(g, "", "Path to an ngram LM, e.g, G_4gram.pt");
+C10_DEFINE_double(ngram_lm_scale, 1.0, "Scale for ngram LM scores");
 C10_DEFINE_string(word_table, "", "Path to words.txt.");
 
 // Fsa decoding related
@@ -86,6 +92,11 @@ static void CheckArgs() {
 
   if (FLAGS_hlg.empty()) {
     std::cerr << "Please provide --hlg\n" << torch::UsageMessage();
+    exit(EXIT_FAILURE);
+  }
+
+  if (FLAGS_g.empty()) {
+    std::cerr << "Please provide --g\n" << torch::UsageMessage();
     exit(EXIT_FAILURE);
   }
 
@@ -181,12 +192,27 @@ int main(int argc, char *argv[]) {
   k2::FsaClass decoding_graph = k2::LoadFsa(FLAGS_hlg, device);
   K2_CHECK(decoding_graph.HasTensorAttr("aux_labels") ||
            decoding_graph.HasRaggedTensorAttr("aux_labels"));
+  // Add `lm_scores` so that we can separate acoustic scores and lm scores
+  // later in the rescoring stage.
+  decoding_graph.SetTensorAttr("lm_scores", decoding_graph.Scores().clone());
 
   K2_LOG(INFO) << "Decoding";
   k2::FsaClass lattice = k2::GetLattice(
       nnet_output, decoding_graph, supervision_segments, FLAGS_search_beam,
       FLAGS_output_beam, FLAGS_min_activate_states, FLAGS_max_activate_states,
       subsampling_factor);
+
+  K2_LOG(INFO) << "Load n-gram LM: " << FLAGS_g;
+  k2::FsaClass G = k2::LoadFsa(FLAGS_g, device);
+  G.fsa = k2::FsaToFsaVec(G.fsa);
+
+  K2_CHECK_EQ(G.NumAttrs(), 0) << "G is expected to be an acceptor.";
+  k2::AddEpsilonSelfLoops(G.fsa, &G.fsa);
+  k2::ArcSort(&G.fsa);
+  G.SetTensorAttr("lm_scores", G.Scores().clone());
+
+  K2_LOG(INFO) << "Rescore with an n-gram LM";
+  WholeLatticeRescoring(G, FLAGS_ngram_lm_scale, &lattice);
 
   lattice = k2::ShortestPath(lattice);
 
