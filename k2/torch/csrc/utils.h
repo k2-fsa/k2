@@ -212,9 +212,6 @@ torch::Tensor IndexSelect(torch::Tensor src, torch::Tensor index,
   return TensorToTorch(ans);
 }
 
-// wrapper around torch::jit::pickle_load()
-torch::IValue PickleLoad(const std::string &filename);
-
 /** Whether the torch IValue contains a Ragged<int32_t> instance.
 
     @param value  The given torch IValue.

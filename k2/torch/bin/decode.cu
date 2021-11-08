@@ -212,9 +212,8 @@ int main(int argc, char *argv[]) {
     decoding_graph =
         k2::CtcTopo(nnet_output.size(2) - 1, /*modified*/ false, device);
   } else {
-    K2_LOG(INFO) << "Load HLG.pt";
-    decoding_graph = k2::LoadFsa(FLAGS_hlg);
-    decoding_graph = decoding_graph.To(device);
+    K2_LOG(INFO) << "Load " << FLAGS_hlg;
+    decoding_graph = k2::LoadFsa(FLAGS_hlg, device);
   }
 
   K2_LOG(INFO) << "Decoding";

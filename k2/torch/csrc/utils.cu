@@ -129,26 +129,6 @@ Array1<Arc> Array1FromTorch<Arc>(torch::Tensor tensor) {
   return ans;
 }
 
-torch::IValue PickleLoad(const std::string &filename) {
-  auto rai = std::make_unique<caffe2::serialize::FileAdapter>(filename);
-  auto reader = torch::make_unique<caffe2::serialize::PyTorchStreamReader>(
-      std::move(rai));
-
-#if K2_TORCH_VERSION_MAJOR > 1 || \
-    (K2_TORCH_VERSION_MAJOR == 1 && K2_TORCH_VERSION_MINOR >= 9)
-  return torch::jit::readArchiveAndTensors("data", "", "",
-                                           /*class_resolver=*/torch::nullopt,
-                                           /*obj_loader=*/torch::nullopt,
-                                           /*device=*/c10::nullopt, *reader);
-
-#else
-  return torch::jit::readArchiveAndTensors("data",
-                                           /*class_resolver=*/torch::nullopt,
-                                           /*obj_loader=*/torch::nullopt,
-                                           /*device=*/c10::nullopt, *reader);
-#endif
-}
-
 Tensor TensorFromTorch(torch::Tensor tensor) {
   Dtype dtype = ConvertDtype(tensor.scalar_type());
   torch::IntArrayRef sizes = tensor.sizes();
@@ -179,14 +159,12 @@ torch::Tensor TensorToTorch(Tensor &tensor) {
 }
 
 bool IsRaggedInt(torch::IValue value) {
-  return value.isCustomClass() &&
-         value.toObject()->type()->name()->qualifiedName() ==
-             "_k2.ragged.RaggedTensor";
+  return value.type() ==
+         torch::getCustomClassType<torch::intrusive_ptr<RaggedIntHelper>>();
 }
 
 Ragged<int32_t> ToRaggedInt(torch::IValue value) {
-  torch::intrusive_ptr<RaggedIntHelper> ragged_int_holder =
-      value.toCustomClass<RaggedIntHelper>();
+  auto ragged_int_holder = value.toCustomClass<RaggedIntHelper>();
   return *ragged_int_holder;
 }
 

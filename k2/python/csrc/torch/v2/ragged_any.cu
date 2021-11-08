@@ -335,20 +335,25 @@ std::string RaggedAny::ToString(bool compact /*=false*/,
                                 int32_t device_id /*=-1*/) const {
   ContextPtr context = any.Context();
   if (context->GetDeviceType() != kCpu) {
-    return To("cpu").ToString(context->GetDeviceId());
+    return To("cpu").ToString(compact, context->GetDeviceId());
   }
 
   std::ostringstream os;
   Dtype t = any.GetDtype();
   std::string dtype;
-  if (t == kInt32Dtype)
-    dtype = "torch.int32";
-  else if (t == kFloatDtype)
-    dtype = "torch.float32";
-  else if (t == kDoubleDtype)
-    dtype = "torch.float64";
-  else
-    K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
+  switch (t) {
+    case kInt32Dtype:
+      dtype = "torch.int32";
+      break;
+    case kFloatDtype:
+      dtype = "torch.float32";
+      break;
+    case kDoubleDtype:
+      dtype = "torch.float64";
+      break;
+    default:
+      K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
+  }
 
   FOR_REAL_AND_INT32_TYPES(t, T, {
     os << "RaggedTensor([";

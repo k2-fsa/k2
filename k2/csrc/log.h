@@ -398,7 +398,8 @@ inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 #else
-#define K2_CHECK_CUDA_ERROR(...) K2_LOG(FATAL) << "Don't call me"
+#define K2_CHECK_CUDA_ERROR(...) \
+  K2_LOG(FATAL) << "Don't call me (Not compiled with CUDA ?)"
 #endif
 
 // The parameter of `K2_CUDA_SAFE_CALL` should be cuda function call or kernel

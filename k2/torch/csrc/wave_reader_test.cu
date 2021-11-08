@@ -16,8 +16,6 @@
  * limitations under the License.
  */
 
-#include <cstdio>
-
 #include "gtest/gtest.h"
 #include "k2/csrc/log.h"
 #include "k2/torch/csrc/test_wave_data.h"
@@ -25,21 +23,10 @@
 
 namespace k2 {
 
-// Create a test wav and return its filename
-static std::string CreateTestWav() {
-  // see the comment in k2/torch/csrc/test_wave_data.h
-  // for how that file is generated
-  std::string filename = std::tmpnam(nullptr);
-  std::ofstream of(filename, std::ofstream::binary);
-  of.write(reinterpret_cast<const char *>(kTestWav), sizeof(kTestWav));
-  K2_CHECK((bool)of) << "Failed to write: " << filename;
-  return filename;
-}
-
 TEST(WaveReader, Mono) {
-  std::string filename = CreateTestWav();
-  WaveReader reader(filename);
-  std::remove(filename.c_str());
+  std::stringstream ss;
+  ss.write(reinterpret_cast<const char *>(kTestWav), sizeof(kTestWav));
+  WaveReader reader(ss);
   torch::Tensor expected = torch::arange(16, torch::kShort);
   expected.data_ptr<int16_t>()[0] = 32767;
   expected = (expected / 32768.).to(torch::kFloat32);
