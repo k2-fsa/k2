@@ -37,6 +37,32 @@
 
 namespace k2 {
 
+// A helper class to construct a Ragged<int32_t> from an archive
+struct RaggedIntHelper : public Ragged<int32_t>,
+                         public torch::CustomClassHolder {
+  using k2::Ragged<int32_t>::Ragged;
+  explicit RaggedIntHelper(const Ragged<int32_t> &ragged)
+      : Ragged<int32_t>(ragged) {}
+};
+
+/** Whether the torch IValue contains a Ragged<int32_t> instance.
+
+    @param value  The given torch IValue.
+    @return Return true if the given value contains a Ragged<int32_t> instance,
+            otherwise false.
+ */
+static bool IsRaggedInt(torch::IValue value) {
+  return value.type() ==
+         torch::getCustomClassType<torch::intrusive_ptr<RaggedIntHelper>>();
+}
+
+/// Convert an IValue to a Ragged<int32_t>
+/// It is not static as it's used in deserialization_test.cu
+/*static*/ Ragged<int32_t> ToRaggedInt(torch::IValue value) {
+  auto ragged_int_holder = value.toCustomClass<RaggedIntHelper>();
+  return *ragged_int_holder;
+}
+
 static void RegisterRaggedInt();
 
 struct RaggedRegister {
@@ -405,12 +431,15 @@ k2::FsaClass LoadFsa(
 
   (void)dict.erase(torch::IValue("arcs"));
   for (const auto &p : dict) {
+    const auto &name = p.key().toStringRef();
     auto v = p.value();
-    if (v.isTensor() || IsRaggedInt(v)) {
-      ans.SetAttr(p.key().toStringRef(), p.value());
+    if (v.isTensor()) {
+      ans.SetTensorAttr(name, v.toTensor());
+    } else if (IsRaggedInt(v)) {
+      ans.SetRaggedTensorAttr(name, ToRaggedInt(v));
     } else {
-      K2_LOG(WARNING) << "Ignore non tensor attribute: '"
-                      << p.key().toStringRef() << "' of type: " << v.tagKind();
+      K2_LOG(WARNING) << "Ignore non tensor attribute: '" << name
+                      << "' of type: " << v.tagKind();
     }
   }
 

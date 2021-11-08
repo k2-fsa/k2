@@ -158,18 +158,4 @@ torch::Tensor TensorToTorch(Tensor &tensor) {
       [saved_region = tensor.GetRegion()](void *) {}, options);
 }
 
-bool IsRaggedInt(torch::IValue value) {
-  return value.type() ==
-         torch::getCustomClassType<torch::intrusive_ptr<RaggedIntHelper>>();
-}
-
-Ragged<int32_t> ToRaggedInt(torch::IValue value) {
-  auto ragged_int_holder = value.toCustomClass<RaggedIntHelper>();
-  return *ragged_int_holder;
-}
-
-torch::IValue ToIValue(const Ragged<int32_t> &ragged) {
-  return torch::make_custom_class<RaggedIntHelper>(ragged);
-}
-
 }  // namespace k2

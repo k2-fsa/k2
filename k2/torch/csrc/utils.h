@@ -212,22 +212,6 @@ torch::Tensor IndexSelect(torch::Tensor src, torch::Tensor index,
   return TensorToTorch(ans);
 }
 
-/** Whether the torch IValue contains a Ragged<int32_t> instance.
-
-    @param value  The given torch IValue.
-    @return Return true if the given value contains a Ragged<int32_t> instance,
-            otherwise fasle.
- */
-bool IsRaggedInt(torch::IValue value);
-
-/** Dispatch a torch IValue to a Ragged<int32_t>
- */
-Ragged<int32_t> ToRaggedInt(torch::IValue value);
-
-/** Wrap a Ragged<int32_t> to a torch IValue.
- */
-torch::IValue ToIValue(const Ragged<int32_t> &ragged);
-
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_UTILS_H_
