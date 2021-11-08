@@ -40,18 +40,16 @@ TEST(FsaClassTest, FromUnaryFunctionTensor) {
     Fsa fsa = FsaFromString(s).To(c);
     FsaClass src = FsaClass(fsa);
 
-    src.SetAttr(
-        "float_attr",
-        torch::IValue(torch::tensor(
-            {0.1, 0.2, 0.3}, torch::dtype(torch::kFloat32).device(device))));
+    auto float32_opts = torch::dtype(torch::kFloat32).device(device);
+    auto int32_opts = torch::dtype(torch::kInt32).device(device);
+    src.SetTensorAttr("float_attr",
+                      torch::tensor({0.1, 0.2, 0.3}, float32_opts));
 
-    src.SetAttr("int_attr",
-                torch::IValue(torch::tensor(
-                    {1, 2, 3}, torch::dtype(torch::kInt32).device(device))));
+    src.SetTensorAttr("int_attr", torch::tensor({1, 2, 3}, int32_opts));
 
     Ragged<int32_t> ragged_attr(c, "[[1 2 3] [5 6] []]");
 
-    src.SetAttr("ragged_attr", ToIValue(ragged_attr));
+    src.SetRaggedTensorAttr("ragged_attr", ragged_attr);
 
     Array1<int32_t> arc_map;
     Ragged<Arc> arcs;
@@ -59,25 +57,20 @@ TEST(FsaClassTest, FromUnaryFunctionTensor) {
     auto dest = FsaClass::FromUnaryFunctionTensor(
         src, arcs, Array1ToTorch<int32_t>(arc_map));
 
-    EXPECT_TRUE(torch::allclose(
-        dest.GetAttr("float_attr").toTensor(),
-        torch::tensor({0.2, 0.1, 0.3},
-                      torch::dtype(torch::kFloat32).device(device))));
+    EXPECT_TRUE(torch::allclose(dest.GetTensorAttr("float_attr"),
+                                torch::tensor({0.2, 0.1, 0.3}, float32_opts)));
 
-    EXPECT_TRUE(torch::allclose(
-        dest.Scores(),
-        torch::tensor({20, 10, 30},
-                      torch::dtype(torch::kFloat32).device(device))));
+    EXPECT_TRUE(torch::allclose(dest.Scores(),
+                                torch::tensor({20, 10, 30}, float32_opts)));
 
-    EXPECT_TRUE(torch::equal(
-        dest.GetAttr("int_attr").toTensor(),
-        torch::tensor({2, 1, 3}, torch::dtype(torch::kInt32).device(device))));
+    EXPECT_TRUE(torch::equal(dest.GetTensorAttr("int_attr"),
+                             torch::tensor({2, 1, 3}, int32_opts)));
 
     Ragged<int32_t> expected_ragged_attr =
         Ragged<int32_t>(c, "[[5 6] [1 2 3] []]");
 
     EXPECT_TRUE(
-        Equal(ToRaggedInt(dest.GetAttr("ragged_attr")), expected_ragged_attr));
+        Equal(dest.GetRaggedTensorAttr("ragged_attr"), expected_ragged_attr));
   }
 }
 
@@ -91,46 +84,46 @@ TEST(FsaClassTest, Attributes) {
     Fsa fsa = FsaFromString(s).To(c);
     FsaClass src = FsaClass(fsa);
 
+    auto float32_opts = torch::dtype(torch::kFloat32).device(device);
+    auto int32_opts = torch::dtype(torch::kInt32).device(device);
+
     // test scores
-    EXPECT_TRUE(torch::equal(
-        src.Scores(),
-        torch::tensor({10, 20, 30},
-                      torch::dtype(torch::kFloat32).device(device))));
-    torch::Tensor scores =
-        torch::tensor({1, 2, 3}, torch::dtype(torch::kFloat32).device(device));
+    EXPECT_TRUE(
+        torch::equal(src.Scores(), torch::tensor({10, 20, 30}, float32_opts)));
+
+    torch::Tensor scores = torch::tensor({1, 2, 3}, float32_opts);
     src.SetScores(scores);
     EXPECT_TRUE(torch::equal(src.Scores(), scores));
 
     // test labels
-    EXPECT_TRUE(torch::equal(
-        src.Labels(),
-        torch::tensor({2, 1, -1}, torch::dtype(torch::kInt32).device(device))));
-    torch::Tensor labels =
-        torch::tensor({20, 10, -1}, torch::dtype(torch::kInt32).device(device));
+    EXPECT_TRUE(
+        torch::equal(src.Labels(), torch::tensor({2, 1, -1}, int32_opts)));
+
+    torch::Tensor labels = torch::tensor({20, 10, -1}, int32_opts);
     src.SetLabels(labels);
     EXPECT_TRUE(torch::equal(src.Labels(), labels));
 
     // test tensor attribute
-    torch::Tensor tensor_int =
-        torch::tensor({1, 2, 3}, torch::dtype(torch::kInt32).device(device));
-    src.SetAttr("tensor_int", torch::IValue(tensor_int));
-    torch::Tensor tensor_float =
-        torch::tensor({1, 2, 3}, torch::dtype(torch::kFloat32).device(device));
-    src.SetAttr("tensor_float", torch::IValue(tensor_float));
+    torch::Tensor tensor_int = torch::tensor({1, 2, 3}, int32_opts);
+    src.SetTensorAttr("tensor_int", tensor_int);
 
-    EXPECT_TRUE(torch::equal(src.GetAttr("tensor_int").toTensor(), tensor_int));
+    torch::Tensor tensor_float = torch::tensor({1, 2, 3}, float32_opts);
+    src.SetTensorAttr("tensor_float", tensor_float);
+
+    EXPECT_TRUE(torch::equal(src.GetTensorAttr("tensor_int"), tensor_int));
     EXPECT_TRUE(
-        torch::allclose(src.GetAttr("tensor_float").toTensor(), tensor_float));
-    src.DeleteAttr("tensor_int");
-    EXPECT_FALSE(src.HasAttr("tensor_int"));
+        torch::allclose(src.GetTensorAttr("tensor_float"), tensor_float));
+
+    src.DeleteTensorAttr("tensor_int");
+    EXPECT_FALSE(src.HasTensorAttr("tensor_int"));
 
     // test ragged attribute
     auto ragged_int = Ragged<int32_t>(c, "[[1, 2], [3], [4]]");
-    src.SetAttr("ragged_int", ToIValue(ragged_int));
+    src.SetRaggedTensorAttr("ragged_int", ragged_int);
 
-    EXPECT_TRUE(Equal(ToRaggedInt(src.GetAttr("ragged_int")), ragged_int));
-    src.DeleteAttr("ragged_int");
-    EXPECT_FALSE(src.HasAttr("ragged_int"));
+    EXPECT_TRUE(Equal(src.GetRaggedTensorAttr("ragged_int"), ragged_int));
+    src.DeleteRaggedTensorAttr("ragged_int");
+    EXPECT_FALSE(src.HasRaggedTensorAttr("ragged_int"));
   }
 }
 

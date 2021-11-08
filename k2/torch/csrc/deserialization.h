@@ -27,16 +27,6 @@
 
 namespace k2 {
 
-// A helper class to construct a Ragged<int32_t> from an archive
-//
-// TODO(fangjun): Move it to .cu file as it is an implementation detail.
-struct RaggedIntHelper : public Ragged<int32_t>,
-                         public torch::CustomClassHolder {
-  using k2::Ragged<int32_t>::Ragged;
-  explicit RaggedIntHelper(const Ragged<int32_t> &ragged)
-      : Ragged<int32_t>(ragged) {}
-};
-
 /** Read a file saved in Python by `torch.save()`.
 
   Unlike torch::jit::pickle_load(), this function can also handle

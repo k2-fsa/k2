@@ -268,7 +268,8 @@ int main(int argc, char *argv[]) {
   } else {
     K2_LOG(INFO) << "Load " << FLAGS_hlg;
     decoding_graph = k2::LoadFsa(FLAGS_hlg, device);
-    K2_CHECK(decoding_graph.HasAttr("aux_labels"));
+    K2_CHECK(decoding_graph.HasTensorAttr("aux_labels") ||
+             decoding_graph.HasRaggedTensorAttr("aux_labels"));
   }
 
   if (method == DecodingMethod::kNgramRescroing ||
