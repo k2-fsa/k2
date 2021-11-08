@@ -89,6 +89,34 @@ FsaClass IntersectDensePruned(FsaClass &graphs, DenseFsaVec &dense,
            attributes propagated.
  */
 FsaClass ShortestPath(FsaClass &lattice);
+
+/** Swap the labels and aux labels of a lattice.
+
+   Caution: This is an in-place operation.
+
+   @param lattice The input/output lattice. It has to have
+                  an attribute "aux_labels".
+ */
+void Invert(FsaClass *lattice);
+
+/** Arc sort an FSA in place.
+
+  @param lattice The input/output lattice.
+ */
+void ArcSort(FsaClass *lattice);
+
+/** Trim an FSA in place.
+
+  @param lattice The input/output lattice.
+ */
+void Connect(FsaClass *lattice);
+
+/** TopSort an FSA in place.
+
+  @param lattice The input/output lattice.
+ */
+void TopSort(FsaClass *lattice);
+
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_FSA_ALGO_H_

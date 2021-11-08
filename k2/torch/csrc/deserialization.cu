@@ -409,8 +409,8 @@ k2::FsaClass LoadFsa(
     if (v.isTensor() || IsRaggedInt(v)) {
       ans.SetAttr(p.key().toStringRef(), p.value());
     } else {
-      K2_LOG(INFO) << "Ignore non tensor attribute: '" << p.key().toStringRef()
-                   << "' of type: " << v.tagKind();
+      K2_LOG(WARNING) << "Ignore non tensor attribute: '"
+                      << p.key().toStringRef() << "' of type: " << v.tagKind();
     }
   }
 

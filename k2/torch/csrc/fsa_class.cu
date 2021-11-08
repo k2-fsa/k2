@@ -52,24 +52,20 @@ void FsaClass::CopyAttrs(FsaClass &src, torch::Tensor arc_map) {
 
 void FsaClass::CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
   for (const auto &iter : src.tensor_attrs) {
-    if (!HasAttr(iter.first)) {
-      Dtype dtype = ConvertDtype(iter.second.scalar_type());
-      FOR_REAL_AND_INT32_TYPES(dtype, T, {
-        auto value = IndexSelect<T>(iter.second, arc_map, 0);
-        SetTensorAttr(iter.first, value);
-      });
-    }
+    Dtype dtype = ConvertDtype(iter.second.scalar_type());
+    FOR_REAL_AND_INT32_TYPES(dtype, T, {
+      auto value = IndexSelect<T>(iter.second, arc_map, 0);
+      SetTensorAttr(iter.first, value);
+    });
   }
 }
 
 void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
+  Array1<int32_t> indexes_array = Array1FromTorch<int32_t>(arc_map);
   for (auto &iter : src.ragged_tensor_attrs) {
-    if (!HasAttr(iter.first)) {
-      Array1<int32_t> indexes_array = Array1FromTorch<int32_t>(arc_map);
-      Ragged<int32_t> ans =
-          Index<int32_t>(iter.second, /*axis*/ 0, indexes_array, nullptr);
-      SetRaggedTensorAttr(iter.first, ans);
-    }
+    Ragged<int32_t> ans =
+        Index<int32_t>(iter.second, /*axis*/ 0, indexes_array, nullptr);
+    SetRaggedTensorAttr(iter.first, ans);
   }
 }
 
@@ -104,7 +100,7 @@ int32_t FsaClass::Properties() {
     } else {
       GetFsaVecBasicProperties(fsa, nullptr, &properties);
     }
-    if (!(properties & kFsaPropertiesValid)) {
+    if ((properties & kFsaPropertiesValid) != kFsaPropertiesValid) {
       K2_LOG(FATAL) << "Fsa is not valid, properties are : " << properties
                     << " = " << FsaPropertiesAsString(properties)
                     << ", arcs are : " << fsa;
@@ -135,6 +131,7 @@ void FsaClass::SetLabels(torch::Tensor labels) {
   K2_CHECK_EQ(labels.scalar_type(), torch::kInt32);
   K2_CHECK(ContextFromTensor(labels)->IsCompatible(*fsa.Context()));
   Labels().copy_(labels);
+  properties = 0;  // Clear cached properties as we changed the labels
 }
 
 void FsaClass::SetAttr(const std::string &name, torch::IValue value) {

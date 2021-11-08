@@ -59,4 +59,48 @@ Ragged<int32_t> GetTexts(FsaClass &lattice) {
   return ragged_aux_labels;
 }
 
+void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
+                           FsaClass *lattice) {
+  K2_CHECK(lattice->HasAttr("lm_scores"));
+
+  torch::Tensor am_scores =
+      lattice->Scores() - lattice->GetTensorAttr("lm_scores");
+  lattice->SetScores(am_scores);
+
+  // Now, lattice contains only acoustic scores, we will attach LM scores
+  // from the given n-gram LM
+  lattice->DeleteAttr("lm_scores");
+
+  K2_CHECK_EQ(G.NumAttrs(), 1)
+      << "G is expected to contain only 1 attribute: lm_scores.";
+  K2_CHECK_EQ(G.fsa.NumAxes(), 3);
+  K2_CHECK_EQ(G.fsa.Dim0(), 1);
+
+  k2::Invert(lattice);
+  // Now lattice has word IDs as labels and token IDs as aux_labels.
+
+  // TODO(fangjun): Use Intersect() when device is CPU
+  auto b_to_a_map =
+      k2::Array1<int32_t>(G.fsa.Context(), lattice->fsa.Dim0(), 0);
+  k2::Array1<int32_t> arc_map_a, arc_map_b;
+
+  k2::Fsa dest = k2::IntersectDevice(G.fsa, G.Properties(), lattice->fsa,
+                                     lattice->Properties(), b_to_a_map,
+                                     &arc_map_a, &arc_map_b, true);
+
+  lattice->properties = 0;
+  lattice->fsa = dest;
+  lattice->CopyAttrs(*lattice, k2::Array1ToTorch(arc_map_b));
+  lattice->CopyAttrs(G, k2::Array1ToTorch(arc_map_a));
+  k2::Connect(lattice);
+  k2::TopSort(lattice);
+  k2::Invert(lattice);
+
+  // Now lattice has token IDs as labels and word IDs as aux_labels
+  torch::Tensor lm_scores = lattice->GetTensorAttr("lm_scores");
+  am_scores = lattice->Scores() - lm_scores;
+  torch::Tensor scores = am_scores / ngram_lm_scale + lm_scores;
+  lattice->SetScores(scores);
+}
+
 }  // namespace k2
