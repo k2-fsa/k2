@@ -9,6 +9,7 @@ set(k2_torch_srcs
   features.cu
   fsa_algo.cu
   fsa_class.cu
+  nbest.cu
   symbol_table.cu
   utils.cu
   wave_reader.cu
