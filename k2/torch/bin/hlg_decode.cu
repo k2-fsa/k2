@@ -21,8 +21,8 @@
 #include "k2/torch/csrc/deserialization.h"
 #include "k2/torch/csrc/features.h"
 #include "k2/torch/csrc/fsa_algo.h"
+#include "k2/torch/csrc/symbol_table.h"
 #include "k2/torch/csrc/wave_reader.h"
-#include "sentencepiece_processor.h"  // NOLINT
 #include "torch/all.h"
 #include "torch/script.h"
 
@@ -31,10 +31,11 @@ This file implements decoding with a CTC topology, without any
 kinds of LM or lexicons.
 
 Usage:
-  ./bin/ctc_decode \
+  ./bin/hlg_decode \
     --use_gpu true \
     --nn_model <path to torch scripted pt file> \
-    --bpe_model <path to pre-trained BPE model> \
+    --hlg <path to HLG.pt> \
+    --word_table <path to words.txt> \
     <path to foo.wav> \
     <path to bar.wav> \
     <more waves if any>
@@ -51,7 +52,8 @@ Caution:
 
 C10_DEFINE_bool(use_gpu, false, "true to use GPU; false to use CPU");
 C10_DEFINE_string(nn_model, "", "Path to the model exported by torch script.");
-C10_DEFINE_string(bpe_model, "", "Path to the pretrained BPE model.");
+C10_DEFINE_string(hlg, "", "Path to HLG.pt.");
+C10_DEFINE_string(word_table, "", "Path to words.txt.");
 
 // Fsa decoding related
 C10_DEFINE_double(search_beam, 20, "search_beam in IntersectDensePruned");
@@ -83,8 +85,13 @@ static void CheckArgs() {
     exit(EXIT_FAILURE);
   }
 
-  if (FLAGS_bpe_model.empty()) {
-    std::cerr << "Please provide --bpe_model\n" << torch::UsageMessage();
+  if (FLAGS_hlg.empty()) {
+    std::cerr << "Please provide --hlg\n" << torch::UsageMessage();
+    exit(EXIT_FAILURE);
+  }
+
+  if (FLAGS_word_table.empty()) {
+    std::cerr << "Please provide --word_table\n" << torch::UsageMessage();
     exit(EXIT_FAILURE);
   }
 }
@@ -171,8 +178,10 @@ int main(int argc, char *argv[]) {
   torch::Tensor supervision_segments =
       k2::GetSupervisionSegments(supervisions, subsampling_factor);
 
-  K2_LOG(INFO) << "Build CTC topo";
-  auto decoding_graph = k2::CtcTopo(nnet_output.size(2) - 1, false, device);
+  K2_LOG(INFO) << "Load " << FLAGS_hlg;
+  k2::FsaClass decoding_graph = k2::LoadFsa(FLAGS_hlg, device);
+  K2_CHECK(decoding_graph.HasTensorAttr("aux_labels") ||
+           decoding_graph.HasRaggedTensorAttr("aux_labels"));
 
   K2_LOG(INFO) << "Decoding";
   k2::FsaClass lattice = k2::GetLattice(
@@ -185,15 +194,16 @@ int main(int argc, char *argv[]) {
   auto ragged_aux_labels = k2::GetTexts(lattice);
   auto aux_labels_vec = ragged_aux_labels.ToVecVec();
 
-  sentencepiece::SentencePieceProcessor processor;
-  auto status = processor.Load(FLAGS_bpe_model);
-  K2_CHECK(status.ok()) << status.ToString();
-
   std::vector<std::string> texts;
+  k2::SymbolTable symbol_table(FLAGS_word_table);
   for (const auto &ids : aux_labels_vec) {
     std::string text;
-    status = processor.Decode(ids, &text);
-    K2_CHECK(status.ok()) << status.ToString();
+    std::string sep = "";
+    for (auto id : ids) {
+      text.append(sep);
+      text.append(symbol_table[id]);
+      sep = " ";
+    }
     texts.emplace_back(std::move(text));
   }
 
