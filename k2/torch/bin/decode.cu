@@ -275,8 +275,7 @@ int main(int argc, char *argv[]) {
       method == DecodingMethod::kAttentionRescoring) {
     // Add `lm_scores` so that we can separate acoustic scores and lm scores
     // later in the rescoring stage.
-    // TODO(fangjun): Expose SetTensorAttr()
-    decoding_graph.SetAttr("lm_scores", decoding_graph.Scores().clone());
+    decoding_graph.SetTensorAttr("lm_scores", decoding_graph.Scores().clone());
   }
 
   K2_LOG(INFO) << "Decoding";
@@ -294,7 +293,7 @@ int main(int argc, char *argv[]) {
     K2_CHECK_EQ(G.NumAttrs(), 0) << "G is expected to be an acceptor.";
     k2::AddEpsilonSelfLoops(G.fsa, &G.fsa);
     k2::ArcSort(&G.fsa);
-    G.SetAttr("lm_scores", G.Scores().clone());
+    G.SetTensorAttr("lm_scores", G.Scores().clone());
 
     WholeLatticeRescoring(G, FLAGS_ngram_lm_scale, &lattice);
   }
