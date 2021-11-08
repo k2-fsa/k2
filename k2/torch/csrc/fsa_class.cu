@@ -131,6 +131,7 @@ void FsaClass::SetLabels(torch::Tensor labels) {
   K2_CHECK_EQ(labels.scalar_type(), torch::kInt32);
   K2_CHECK(ContextFromTensor(labels)->IsCompatible(*fsa.Context()));
   Labels().copy_(labels);
+  properties = 0;  // Clear cached properties as we changed the labels
 }
 
 void FsaClass::SetAttr(const std::string &name, torch::IValue value) {
