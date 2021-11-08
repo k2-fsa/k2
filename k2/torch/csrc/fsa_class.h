@@ -138,7 +138,7 @@ struct FsaClass {
     return ragged_tensor_attrs.at(name);
   }
 
-  Ragged<int32_t> GetRaggedTensorAttr(const std::string &name) {
+  Ragged<int32_t> &GetRaggedTensorAttr(const std::string &name) {
     return ragged_tensor_attrs.at(name);
   }
 
