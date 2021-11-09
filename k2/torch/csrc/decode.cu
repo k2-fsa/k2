@@ -94,12 +94,14 @@ void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
   k2::Connect(lattice);
   k2::TopSort(lattice);
   k2::Invert(lattice);
-
   // Now lattice has token IDs as labels and word IDs as aux_labels
-  torch::Tensor lm_scores = lattice->GetTensorAttr("lm_scores");
-  am_scores = lattice->Scores() - lm_scores;
-  torch::Tensor scores = am_scores / ngram_lm_scale + lm_scores;
-  lattice->SetScores(scores);
+
+  if (ngram_lm_scale != 1) {
+    torch::Tensor lm_scores = lattice->GetTensorAttr("lm_scores");
+    am_scores = lattice->Scores() - lm_scores;
+    torch::Tensor scores = am_scores / ngram_lm_scale + lm_scores;
+    lattice->SetScores(scores);
+  }
 }
 
 }  // namespace k2

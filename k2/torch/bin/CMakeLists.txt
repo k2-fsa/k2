@@ -39,3 +39,14 @@ endif()
 add_executable(ngram_lm_rescore ${ngram_lm_rescore_srcs})
 set_property(TARGET ngram_lm_rescore PROPERTY CXX_STANDARD 14)
 target_link_libraries(ngram_lm_rescore ${bin_dep_libs})
+
+#---------------------------------------------------------------
+#       HLG decoding + n-gram LM rescoring + attenion rescoring
+#---------------------------------------------------------------
+set(attention_rescore_srcs attention_rescore.cu)
+if(NOT K2_WITH_CUDA)
+  transform(OUTPUT_VARIABLE attention_rescore_srcs SRCS ${attention_rescore_srcs})
+endif()
+add_executable(attention_rescore ${attention_rescore_srcs})
+set_property(TARGET attention_rescore PROPERTY CXX_STANDARD 14)
+target_link_libraries(attention_rescore ${bin_dep_libs})
