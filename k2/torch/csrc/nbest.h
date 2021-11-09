@@ -64,22 +64,31 @@ struct Nbest {
   /** Construct an Nbest object by sampling num_paths from a lattice.
 
       @param lattice The input/output lattice to be sampled.
-                     Caution: lattice is changed in-place in this method!
       @param num_paths  Number of paths to sample.
       @param nbest_scale  Scale lattice.scores by this value before
                           sampling.
       @return Return an Nbest object containing the sampled paths, with
               duplicated paths being removed.
    */
-  static Nbest FromLattice(FsaClass *lattice, int32_t num_paths,
+  static Nbest FromLattice(FsaClass &lattice, int32_t num_paths,
                            float nbest_scale = 0.5);
 
   /// Intersect this object with a lattice to assign scores
   /// `this` nbest.
-  //
+  ///
+  ///  @param lattice The lattice to intersect. Note it is modified in-place.
+  ///
   /// Note: The scores for the return value of FromLattice() are
   ///  all 0s.
-  void Intersect(FsaClass &lattice);
+  void Intersect(FsaClass *lattice);
+
+  /// Compute the AM scores of each path
+  /// Return a 1-D torch.float32 tensor with dim equal to fsa.Dim0()
+  torch::Tensor ComputeAmScores() /*const*/;
+
+  /// Compute the LM scores of each path
+  /// Return a 1-D torch.float32 tensor with dim equal to fsa.Dim0()
+  torch::Tensor ComputeLmScores() /*const*/;
 };
 
 }  // namespace k2

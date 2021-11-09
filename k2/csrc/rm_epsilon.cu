@@ -1016,9 +1016,9 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
 }
 
 void RemoveEpsilonDevice(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
-                         Ragged<int32_t> *arc_map_out) {
+                         Ragged<int32_t> *arc_map_out /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(dest_fsa != nullptr && arc_map_out != nullptr);
+  K2_CHECK_NE(dest_fsa, nullptr);
   K2_CHECK_GE(src_fsa.NumAxes(), 2);
   K2_CHECK_LE(src_fsa.NumAxes(), 3);
   if (src_fsa.NumAxes() == 2) {

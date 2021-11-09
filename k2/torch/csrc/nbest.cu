@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include "k2/csrc/fsa_algo.h"
 #include "k2/torch/csrc/fsa_algo.h"
 #include "k2/torch/csrc/nbest.h"
 namespace k2 {
@@ -74,13 +75,44 @@ void Nbest::Intersect(FsaClass *lattice) {
 
   FsaClass ans(path_lattice);
   ans.CopyAttrs(*lattice, k2::Array1ToTorch(arc_map_a));
-  Connect(ans);
-  TopSort(ans);
+  Connect(&ans);
+  TopSort(&ans);
   ans = ShortestPath(ans);
-  Invert(*ans);
+  Invert(&ans);
   // now ans.fsa has token IDs as labels and word IDs as aux_labels.
 
   this->fsa = ans;
+}
+
+torch::Tensor Nbest::ComputeAmScores() {
+  K2_CHECK(fsa.HasTensorAttr("lm_scores"));
+  torch::Tensor am_scores =
+      (fsa.Scores() - fsa.GetTensorAttr("lm_scores")).contiguous();
+
+  // fsa.shape has axes [fsa][state][arc]
+  RaggedShape scores_shape = RemoveAxis(fsa.fsa.shape, 1);
+  // scores_shape has axes [fsa][arc]
+
+  Ragged<float> ragged_am_scores{scores_shape,
+                                 Array1FromTorch<float>(am_scores)};
+  Array1<float> tot_scores(fsa.fsa.Context(), fsa.fsa.Dim0());
+  SumPerSublist<float>(ragged_am_scores, 0, &tot_scores);
+  return Array1ToTorch(tot_scores);
+}
+
+torch::Tensor Nbest::ComputeLmScores() {
+  K2_CHECK(fsa.HasTensorAttr("lm_scores"));
+  torch::Tensor lm_scores = fsa.GetTensorAttr("lm_scores");
+
+  // fsa.shape has axes [fsa][state][arc]
+  RaggedShape scores_shape = RemoveAxis(fsa.fsa.shape, 1);
+  // scores_shape has axes [fsa][arc]
+
+  Ragged<float> ragged_lm_scores{scores_shape,
+                                 Array1FromTorch<float>(lm_scores)};
+  Array1<float> tot_scores(fsa.fsa.Context(), fsa.fsa.Dim0());
+  SumPerSublist<float>(ragged_lm_scores, 0, &tot_scores);
+  return Array1ToTorch(tot_scores);
 }
 
 }  // namespace k2
