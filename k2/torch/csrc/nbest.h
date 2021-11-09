@@ -20,6 +20,7 @@
 #define K2_TORCH_CSRC_NBEST_H_
 
 #include <sstream>
+#include <string>
 #include <vector>
 
 #include "k2/csrc/fsa.h"

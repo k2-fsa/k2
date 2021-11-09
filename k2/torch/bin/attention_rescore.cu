@@ -125,7 +125,7 @@ static void CheckArgs() {
   }
 
   if (FLAGS_eos_id == -1) {
-    std::cerr << "Please provide --sos_id\n" << torch::UsageMessage();
+    std::cerr << "Please provide --eos_id\n" << torch::UsageMessage();
     exit(EXIT_FAILURE);
   }
 
@@ -210,7 +210,7 @@ int main(int argc, char *argv[]) {
   assert(outputs->elements().size() == 3u);
 
   auto nnet_output = outputs->elements()[0].toTensor();  // shape (N, T, C)
-  auto memory = outputs->elements()[1].toTensor();       // shape (N, T, C)
+  auto memory = outputs->elements()[1].toTensor();       // shape (T, N, C)
   auto memory_key_padding_mask =
       outputs->elements()[2].toTensor();  // shape (N, T)
 
@@ -339,15 +339,15 @@ RuntimeError: Add new condition, expected Float, Complex, Int, or Bool but gotin
                       FLAGS_sos_id, FLAGS_eos_id)
           .toTensor();
   K2_CHECK_EQ(nll.dim(), 2);
-  K2_CHECK_EQ(nll.size(0), token_ids_list.size());
+  K2_CHECK_EQ(nll.size(0), nbest.shape.TotSize(1));
 
   K2_LOG(INFO) << "Rescoring";
 
   torch::Tensor attention_scores = -1 * nll.sum(1);
 
   torch::Tensor tot_scores = am_scores +
-                             (float)FLAGS_ngram_lm_scale * ngram_lm_scores +
-                             (float)FLAGS_attention_scale * attention_scores;
+                             FLAGS_ngram_lm_scale * ngram_lm_scores +
+                             FLAGS_attention_scale * attention_scores;
   k2::Array1<float> tot_scores_array = k2::Array1FromTorch<float>(tot_scores);
   k2::Ragged<float> ragged_tot_scores(nbest.shape, tot_scores_array);
   k2::Array1<int32_t> argmax(ragged_tot_scores.Context(),
