@@ -30,8 +30,33 @@
 // that k2 and PyTorch use a different copy
 // of CUB.
 
+#ifdef CUB_NS_PREFIX
+#undef CUB_NS_PREFIX
+#endif
+
+#ifdef CUB_NS_POSTFIX
+#undef CUB_NS_POSTFIX
+#endif
+
+#ifdef CUB_NS_QUALIFIER
+#undef CUB_NS_QUALIFIER
+#endif
+
+// see
+// https://github.com/NVIDIA/cub/commit/6631c72630f10e370d93814a59146b12f7620d85
+// The above commit replaced "thrust" with "THRUST_NS_QUALIFIER"
+#ifndef THRUST_NS_QUALIFIER
+#define THRUST_NS_QUALIFIER thrust
+#endif
+
 #define CUB_NS_PREFIX namespace k2 {
 #define CUB_NS_POSTFIX }
+
+// See
+// https://github.com/NVIDIA/cub/commit/6631c72630f10e370d93814a59146b12f7620d85
+// and
+// https://github.com/NVIDIA/cub/pull/350
+#define CUB_NS_QUALIFIER ::k2::cub
 
 #ifdef K2_WITH_CUDA
 #include "cub/cub.cuh"  // NOLINT
@@ -39,5 +64,6 @@
 
 #undef CUB_NS_PREFIX
 #undef CUB_NS_POSTFIX
+#undef CUB_NS_QUALIFIER
 
 #endif  // K2_CSRC_CUB_H_
