@@ -281,47 +281,7 @@ int main(int argc, char *argv[]) {
   std::vector<std::vector<int32_t>> token_ids = tokens.ToVecVec();
   // convert std::vector<std::vector<int32_t>>
   // to
-  // torch::List<torch::IValue> where torch::IValue is torch::List<int32_t>
-#if 0
-  // clang-format off
-  //
-  // This branch is used when `token_ids` is of type List[List[int]],
-  // but it throws the following error during runtime:
-  //
-/*
-terminate called after throwing an instance of 'std::runtime_error'
-  what():  The following operation failed in the TorchScript interpreter.
-Traceback of TorchScript, serialized code (most recent call last):
-  File "code/__torch__/conformer.py", line 97, in decoder_nll
-    for _22 in range(torch.len(ys_out)):
-      y1 = ys_out[_22]
-      _23 = torch.tensor(y1, dtype=None, device=None, requires_grad=False)
-            ~~~~~~~~~~~~ <--- HERE
-      _24 = torch.append(ys_out1, _23)
-    ys_out_pad = _15(ys_out1, True, -1., )
-
-Traceback of TorchScript, original code (most recent call last):
-  File "/ceph-fj/open-source/icefall-torchscript/egs/librispeech/ASR/conformer_ctc/transformer.py", line 340, in decoder_nll
-
-        ys_out = add_eos(token_ids, eos_id=eos_id)
-        ys_out = [torch.tensor(y) for y in ys_out]
-                  ~~~~~~~~~~~~ <--- HERE
-        ys_out_pad = pad_sequence(ys_out, batch_first=True, padding_value=float(-1))
-RuntimeError: Add new condition, expected Float, Complex, Int, or Bool but gotint
- */
-  torch::List<torch::IValue> token_ids_list(torch::ListType::ofInts());
-
-  token_ids_list.reserve(token_ids.size());
-  for (const auto tids : token_ids) {
-    torch::List<torch::IValue> tmp(torch::IntType::create());
-    tmp.reserve(tids.size());
-    for (auto i : tids) {
-      tmp.emplace_back(torch::IValue(i));
-    }
-    token_ids_list.push_back(std::move(tmp));
-  }
-  // clang-format on
-#else
+  // torch::List<torch::IValue> where torch::IValue is torch::Tensor
   torch::List<torch::IValue> token_ids_list(torch::TensorType::get());
 
   token_ids_list.reserve(token_ids.size());
@@ -329,7 +289,6 @@ RuntimeError: Add new condition, expected Float, Complex, Int, or Bool but gotin
     torch::Tensor tids_tensor = torch::tensor(tids);
     token_ids_list.emplace_back(tids_tensor);
   }
-#endif
 
   K2_LOG(INFO) << "Run attention decoder";
   torch::Tensor nll =

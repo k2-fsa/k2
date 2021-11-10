@@ -78,6 +78,7 @@ struct Nbest {
   /// `this` nbest.
   ///
   ///  @param lattice The lattice to intersect. Note it is modified in-place.
+  ///                 You should not use it after invoking this function.
   ///
   /// Note: The scores for the return value of FromLattice() are
   ///  all 0s.

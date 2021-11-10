@@ -126,6 +126,12 @@ void TopSort(FsaClass *lattice);
  */
 Nbest RandomPaths(FsaClass &lattice, int32_t num_paths);
 
+/// Wrapper for k2::IntersectDevice() in k2/csrc/fsa_algo.h
+/// to support attribute propagation.
+FsaClass IntersectDevice(FsaClass &a_fsas, FsaClass &b_fsas,
+                         const Array1<int32_t> &b_to_a_map,
+                         bool sorted_match_a);
+
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_FSA_ALGO_H_

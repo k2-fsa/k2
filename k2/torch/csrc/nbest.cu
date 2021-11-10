@@ -66,15 +66,13 @@ void Nbest::Intersect(FsaClass *lattice) {
   // Now lattice has word IDs as labels and token IDs as aux_labels
   ArcSort(lattice);
 
-  Array1<int32_t> arc_map_a, arc_map_b;
+  FsaClass word_fsa_with_epsilon_self_loops_wrapper(
+      word_fsa_with_epsilon_self_loops);
 
-  Fsa path_lattice = k2::IntersectDevice(
-      lattice->fsa, lattice->Properties(), word_fsa_with_epsilon_self_loops,
-      FsaClass(word_fsa_with_epsilon_self_loops).Properties(), path_to_utt_map,
-      &arc_map_a, &arc_map_b, true);
+  FsaClass ans =
+      IntersectDevice(*lattice, word_fsa_with_epsilon_self_loops_wrapper,
+                      path_to_utt_map, true);
 
-  FsaClass ans(path_lattice);
-  ans.CopyAttrs(*lattice, k2::Array1ToTorch(arc_map_a));
   Connect(&ans);
   TopSort(&ans);
   ans = ShortestPath(ans);
