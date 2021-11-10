@@ -242,13 +242,13 @@ FsaClass IntersectDevice(FsaClass &a_fsas, FsaClass &b_fsas,
                          bool sorted_match_a) {
   Array1<int32_t> arc_map_a, arc_map_b;
 
-  Fsa c_fsas = k2::IntersectDevice(a_fsas.fsa, a_fsas.Properties(), b_fsas.fsa,
-                                   b_fsas.Properties(), b_to_a_map, &arc_map_a,
-                                   &arc_map_b, sorted_match_a);
+  Fsa c_fsas = IntersectDevice(a_fsas.fsa, a_fsas.Properties(), b_fsas.fsa,
+                               b_fsas.Properties(), b_to_a_map, &arc_map_a,
+                               &arc_map_b, sorted_match_a);
 
   FsaClass ans(c_fsas);
-  ans.CopyAttrs(a_fsas, k2::Array1ToTorch(arc_map_a));
-  ans.CopyAttrs(b_fsas, k2::Array1ToTorch(arc_map_b));
+  ans.CopyAttrs(a_fsas, Array1ToTorch(arc_map_a));
+  ans.CopyAttrs(b_fsas, Array1ToTorch(arc_map_b));
   return ans;
 }
 
