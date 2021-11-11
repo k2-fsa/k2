@@ -71,10 +71,11 @@ struct WaveHeader {
 static_assert(sizeof(WaveHeader) == 44, "");
 
 // Read a wave file of mono-channel.
-// Return its samples in a 1-D torch.float32 tensor, normalized
-// by dividing 32768.
+// Return its samples in a 1-D torch.float32 tensor, divided by the given
+// normalizer.
 // Also, it returns the sample rate.
-std::pair<torch::Tensor, float> ReadWaveImpl(std::istream &is) {
+std::pair<torch::Tensor, float> ReadWaveImpl(std::istream &is,
+                                             float normalizer) {
   WaveHeader header;
   is.read(reinterpret_cast<char *>(&header), sizeof(header));
   K2_CHECK((bool)is) << "Failed to read wave header";
@@ -91,34 +92,41 @@ std::pair<torch::Tensor, float> ReadWaveImpl(std::istream &is) {
           header.subchunk2_size);
 
   K2_CHECK((bool)is) << "Failed to read wave samples";
-  data = (data / 32768.).to(torch::kFloat32);
+  data = (data / normalizer).to(torch::kFloat32);
   return {data, sample_rate};
 }
 
 }  // namespace
 
-WaveReader::WaveReader(const std::string &filename) {
+WaveReader::WaveReader(const std::string &filename,
+                       float normalizer /*=32768*/) {
   std::ifstream is(filename, std::ifstream::binary);
-  std::tie(data_, sample_rate_) = ReadWaveImpl(is);
+  std::tie(data_, sample_rate_) = ReadWaveImpl(is, normalizer);
 }
 
-WaveReader::WaveReader(std::istream &is) {
-  std::tie(data_, sample_rate_) = ReadWaveImpl(is);
+WaveReader::WaveReader(std::istream &is, float normalizer /*=32768*/) {
+  std::tie(data_, sample_rate_) = ReadWaveImpl(is, normalizer);
 }
 
-torch::Tensor ReadWave(const std::string &filename,
-                       float expected_sample_rate) {
-  WaveReader reader(filename);
-  K2_CHECK_EQ(reader.SampleRate(), expected_sample_rate);
-  return reader.Data();
+torch::Tensor ReadWave(const std::string &filename, float expected_sample_rate,
+                       float normalizer /*=32768*/) {
+  try {
+    WaveReader reader(filename, normalizer);
+    K2_CHECK_EQ(reader.SampleRate(), expected_sample_rate);
+    return reader.Data();
+  } catch (const std::runtime_error &) {
+    K2_LOG(INFO) << "Failed to read " << filename;
+    throw;
+  }
 }
 
 std::vector<torch::Tensor> ReadWave(const std::vector<std::string> &filenames,
-                                    float expected_sample_rate) {
+                                    float expected_sample_rate,
+                                    float normalizer /*=32768*/) {
   std::vector<torch::Tensor> ans;
   ans.reserve(filenames.size());
   for (const auto &path : filenames) {
-    ans.emplace_back(ReadWave(path, expected_sample_rate));
+    ans.emplace_back(ReadWave(path, expected_sample_rate, normalizer));
   }
   return ans;
 }
