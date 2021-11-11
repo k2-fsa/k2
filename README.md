@@ -20,7 +20,7 @@ speech recognition system with multiple decoding passes including lattice
 rescoring and confidence estimation.  We hope k2 will have many other
 applications as well.
 
-One of the key algorithms that we want to make efficient in the short term is
+One of the key algorithms that we have implemented is
 pruned composition of a generic FSA with a "dense" FSA (i.e. one that
 corresponds to log-probs of symbols at the output of a neural network).  This
 can be used as a fast implementation of decoding for ASR, and for CTC and
@@ -78,46 +78,21 @@ general and extensible framework to allow further development of ASR technology.
 
 ## Current state of the code
 
- A lot of the code is still unfinished (Sep 11, 2020).
- We finished the CPU versions of many algorithms and this code is in `k2/csrc/host/`;
- however, after that we figured out how to implement things on the GPU and decided
- to change the interfaces so the CPU and GPU code had a more unified interface.
- Currently in `k2/csrc/` we have more GPU-oriented implementations (although
- these algorithms will also work on CPU).  We had almost finished the Python
- wrapping for the older code, in the `k2/python/` subdirectory, but we decided not to
- release code with that wrapping because it would have had to be reworked to be compatible
- with our GPU algorithms.  Instead we will use the interfaces drafted in `k2/csrc/`
- e.g. the Context object (which encapsulates things like memory managers from external
- toolkits) and the Tensor object which can be used to wrap tensors from external toolkits;
- and wrap those in Python (using pybind11).  The code in host/ will eventually
- be either deprecated, rewritten or wrapped with newer-style interfaces.
+ We have wrapped all the C++ code to Python with [pybind11](https://github.com/pybind/pybind11)
+ and have finished the integration with [PyTorch](https://github.com/pytorch/pytorch).
 
-## Plans for initial release
-
- We hope to get the first version working in early October.  The current
- short-term aim is to finish the GPU implementation of pruned composition of a
- normal FSA with a dense FSA, which is the same as decoder search in speech
- recognition and can be used to implement CTC training and lattice-free MMI (LF-MMI) training.  The
- proof-of-concept that we will release initially is something that's like CTC
- but allowing more general supervisions (general FSAs rather than linear
- sequences).  This will work on GPU.  The same underlying code will support
- LF-MMI so that would be easy to implement soon after.  We plan to put
- example code in a separate repository.
+ We are currently writing speech recognition recipes using k2, which are hosted in a
+ separate repository. Please see <https://github.com/k2-fsa/icefall>.
 
 ## Plans after initial release
 
- We will then gradually implement more algorithms in a way that's compatible
- with the interfaces in `k2/csrc/`.  Some of them will be CPU-only to start
- with.  The idea is to eventually have very rich capabilities for operating on
- collections of sequences, including methods to convert from a lattice to a
- collection of linear sequences and back again (for purposes of neural language
- model rescoring, neural confidence estimation and the like).
+ We are currently trying to make k2 ready for production use (see the branch
+ [v2.0-pre](https://github.com/k2-fsa/k2/tree/v2.0-pre).
 
 ## Quick start
 
 Want to try it out without installing anything? We have setup a [Google Colab][1].
-
-Caution: k2 is not nearly ready for actual use!  We are still coding the core
-algorithms, and hope to have an early version working by early October.
+You can find more Colab notebooks using k2 in speech recognition at
+<https://icefall.readthedocs.io/en/latest/recipes/librispeech/conformer_ctc.html>.
 
 [1]: https://colab.research.google.com/drive/1qbHUhNZUX7AYEpqnZyf29Lrz2IPHBGlX?usp=sharing
