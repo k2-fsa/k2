@@ -87,7 +87,7 @@ general and extensible framework to allow further development of ASR technology.
 ## Plans after initial release
 
  We are currently trying to make k2 ready for production use (see the branch
- [v2.0-pre](https://github.com/k2-fsa/k2/tree/v2.0-pre).
+ [v2.0-pre](https://github.com/k2-fsa/k2/tree/v2.0-pre)).
 
 ## Quick start
 
