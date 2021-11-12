@@ -102,8 +102,7 @@ int32_t FsaClass::Properties() {
     }
     if ((properties & kFsaPropertiesValid) != kFsaPropertiesValid) {
       K2_LOG(FATAL) << "Fsa is not valid, properties are : " << properties
-                    << " = " << FsaPropertiesAsString(properties)
-                    << ", arcs are : " << fsa;
+                    << " = " << FsaPropertiesAsString(properties);
     }
   }
   return properties;
