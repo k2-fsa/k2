@@ -193,13 +193,13 @@ In k2, you would use the following code to compute it:
     fsa = k2.Fsa.from_str(s)
     fsa.draw('fsa2.svg')
     fsa = k2.create_fsa_vec([fsa])
-    total_scores = k2.get_tot_scores(fsa, log_semiring=False, use_double_scores=False)
+    total_scores = fsa.get_tot_scores(log_semiring=False, use_double_scores=False)
     print(total_scores)
     # It prints: tensor([0.2000])
 
 .. HINT::
 
-    :func:`k2.get_tot_scores` takes a vector of FSAs as input,
+    :func:`k2.Fsa.get_tot_scores` takes a vector of FSAs as input,
     so we use :func:`k2.create_fsa_vec` to turn an FSA into a vector of FSAs.
 
     Most operations in k2 take a vector of FSAs as input and process them
@@ -230,7 +230,7 @@ The code in k2 looks like:
     '''
     fsa = k2.Fsa.from_str(s)
     fsa = k2.create_fsa_vec([fsa])
-    total_scores = k2.get_tot_scores(fsa, log_semiring=True, use_double_scores=False)
+    total_scores = fsa.get_tot_scores(log_semiring=True, use_double_scores=False)
     print(total_scores)
     # It prints: tensor([0.8444])
 
@@ -319,7 +319,7 @@ the FSA given in :numref:`autograd example`:
   fsa.scores = nnet_output
   fsa.draw('autograd_tropical.svg')
   fsa_vec = k2.create_fsa_vec([fsa])
-  total_scores = k2.get_tot_scores(fsa_vec, log_semiring=False, use_double_scores=False)
+  total_scores = fsa.get_tot_scores(log_semiring=False, use_double_scores=False)
 
   total_scores.backward()
   print(nnet_output.grad)
@@ -366,11 +366,11 @@ Example 2: Autograd in log semiring
 
 For the log semiring, we just change::
 
-  total_scores = k2.get_tot_scores(fsa_vec, log_semiring=False, use_double_scores=False)
+  total_scores = fsa.get_tot_scores(log_semiring=False, use_double_scores=False)
 
 to::
 
-  total_scores = k2.get_tot_scores(fsa_vec, log_semiring=True, use_double_scores=False)
+  total_scores = fsa.get_tot_scores(log_semiring=True, use_double_scores=False)
 
 For completeness and ease of reference, we repost the code below.
 
@@ -392,7 +392,7 @@ For completeness and ease of reference, we repost the code below.
     fsa.scores = nnet_output
     fsa.draw('autograd_log.svg')
     fsa_vec = k2.create_fsa_vec([fsa])
-    total_scores = k2.get_tot_scores(fsa_vec, log_semiring=True, use_double_scores=False)
+    total_scores = fsa.get_tot_scores(log_semiring=True, use_double_scores=False)
 
     total_scores.backward()
     print(nnet_output.grad)
