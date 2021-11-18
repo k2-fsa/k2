@@ -59,4 +59,3 @@ endif()
 add_executable(attention_rescore ${attention_rescore_srcs})
 set_property(TARGET attention_rescore PROPERTY CXX_STANDARD 14)
 target_link_libraries(attention_rescore ${bin_dep_libs})
->>>>>>> 9832893d966f31fbd2f38ac65f8c8db672a30d00

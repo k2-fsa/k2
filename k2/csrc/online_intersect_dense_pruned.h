@@ -1,5 +1,5 @@
 /**
- * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey, Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -116,9 +116,8 @@ class OnlineIntersectDensePruned {
                            something more complicated.  Must have either the
                            same Dim0() as b_fsas, or Dim0()==1 in which
                            case the graph is shared.
-       @param [in] b_fsas  The neural-net output, with each frame containing the
-                           log-likes of each phone.  A series of sequences of
-                           (in general) different length.
+       @param [in] num_seqs  The number of sequesce, i.e. the batch size of the
+                             neural-net output
        @param [in] search_beam    "Default" search/decoding beam.  The actual
                            beam is dynamic and also depends on max_active and
                            min_active.
@@ -140,7 +139,14 @@ class OnlineIntersectDensePruned {
                              int32_t min_active, int32_t max_active);
 
   /* Does the main work of intersection/composition, but doesn't produce any
-     output; the output is provided when you call FormatOutput(). */
+     output; the output is provided when you call FormatOutput().
+
+     @param [in] b_fsas  The neural-net output, with each frame containing the
+                         log-likes of each phone.  A series of sequences of
+                         (in general) different length.
+     @param [in] is_final A flag to tell that whether current DenseFsaVec is the
+                          last chunk of the whole sequesce.
+   */
   void Intersect(std::shared_ptr<DenseFsaVec> &b_fsas, bool is_final = false);
 
   void BackwardPass();
@@ -148,10 +154,20 @@ class OnlineIntersectDensePruned {
   // Return FrameInfo for 1st frame, with `states` set but `arcs` not set.
   std::unique_ptr<FrameInfo> InitialFrameInfo();
 
+  /* Gets the partial/final decoding results.
+
+     @param [out] ofsa The FsaVec to contain the decoding results.
+     @param [out] arc_map_a  Will be set to a vector with Dim() equal to
+                     the number of arcs in `ofsa`, whose elements contain
+                     the corresponding arc_idx012 in a_fsas, i.e. decoding
+                     graphs.
+     @param [in] is_final False to get partial result, true to get final result.
+                          You can only get the final results after doing
+                          intersection for the last chunk (i.e. call Intersect
+                          with is_final setting to true).
+   */
   void FormatOutput(FsaVec *ofsa, Array1<int32_t> *arc_map_a,
                     bool is_final = false);
-  void FormatPartial(FsaVec *ofsa, Array1<int32_t> *arc_map_a);
-  void FormatPartial2(FsaVec *ofsa, Array1<int32_t> *arc_map_a);
 
   /*
     Computes pruning cutoffs for this frame: these are the cutoffs for the
@@ -310,11 +326,10 @@ class OnlineIntersectDensePruned {
                                  // search_beam_ but change due to
                                  // max_active/min_active constraints).
   Array1<int32_t> final_t_;      // record the final frame id of each DenseFsa.
-  Array1<char> reach_final_;     // whether current DenseFsa reach final or not,
-                                 // used for generating partial result, if
-                                 // current Fsa does not reach final state, we
-                                 // should add final arc for current fsa.
-  std::unique_ptr<FrameInfo> final_frame_;
+  int32_t reach_final_;
+
+  std::unique_ptr<FrameInfo> partial_final_frame_;  // store the final frame for
+                                                    // partial results
 
   int32_t state_map_fsa_stride_;  // state_map_fsa_stride_ is a_fsas_.TotSize(1)
                                   // if a_fsas_.Dim0() == 1, else 0.

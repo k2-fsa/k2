@@ -210,8 +210,9 @@ int main(int argc, char *argv[]) {
         k2::CtcTopo(nnet_output.size(2) - 1, /*modified*/ false, device);
   } else {
     K2_LOG(INFO) << "Load HLG.pt";
-    decoding_graph = k2::LoadFsa(FLAGS_hlg);
-    decoding_graph = decoding_graph.To(device);
+    decoding_graph = k2::LoadFsa(FLAGS_hlg, device);
+    K2_CHECK(decoding_graph.HasTensorAttr("aux_labels") ||
+             decoding_graph.HasRaggedTensorAttr("aux_labels"));
   }
 
   K2_LOG(INFO) << "Decoding";
@@ -222,17 +223,16 @@ int main(int argc, char *argv[]) {
       FLAGS_min_activate_states, FLAGS_max_activate_states);
 
   std::vector<std::string> texts(num_waves, "");
+
   int32_t T = nnet_output.size(1);
-  int32_t chunk_size = 21;
+  int32_t chunk_size = 20;  // 20 frames per chunk
   int32_t chunk_num = (T / chunk_size) + ((T % chunk_size) ? 1 : 0);
-  K2_LOG(INFO) << T << " " << chunk_num;
+
   for (int32_t c = 0; c < chunk_num; ++c) {
     int32_t start = c * chunk_size;
     int32_t end = (c + 1) * chunk_size >= T ? T : (c + 1) * chunk_size;
-    K2_LOG(INFO) << "start : " << start << " end : " << end;
     std::vector<int64_t> num_frame;
     for (auto &frame : num_frames) {
-      K2_LOG(INFO) << "frame : " << frame;
       if (frame < chunk_size * subsampling_factor) {
         num_frame.push_back(frame);
         frame = 0;
@@ -249,11 +249,10 @@ int main(int argc, char *argv[]) {
                    .to(torch::kInt));
     torch::IValue supervision(sup);
 
+    // cut nnet_output into chunks
     using namespace torch::indexing;
     auto sub_nnet_output =
         nnet_output.index({Slice(), Slice(start, end), Slice()});
-    K2_LOG(INFO) << "nnet_output : " << nnet_output.sizes();
-    K2_LOG(INFO) << "sub_nnet_output : " << sub_nnet_output.sizes();
 
     torch::Tensor supervision_segments =
         k2::GetSupervisionSegments(supervision, subsampling_factor);
@@ -261,64 +260,53 @@ int main(int argc, char *argv[]) {
     k2::DenseFsaVec dense_fsa_vec = k2::CreateDenseFsaVec(
         sub_nnet_output, supervision_segments, subsampling_factor - 1);
 
-    K2_LOG(INFO) << "dense fsa shape : " << dense_fsa_vec.shape;
-
     auto dense_fsa = std::make_shared<k2::DenseFsaVec>(dense_fsa_vec);
     bool is_final = c == chunk_num - 1 ? true : false;
     decoder.Intersect(dense_fsa, is_final);
 
-    k2::FsaVec tmp_fsa;
-    k2::Array1<int32_t> tmp_graph_arc_map;
-    decoder.FormatPartial2(&tmp_fsa, &tmp_graph_arc_map);
-    K2_LOG(INFO) << "partial fsa : " << tmp_fsa;
-    k2::FsaClass tmp_lattice(tmp_fsa);
-  }
+    k2::FsaVec fsa;
+    k2::Array1<int32_t> graph_arc_map;
+    decoder.FormatOutput(&fsa, &graph_arc_map, is_final);
 
-  k2::FsaVec fsa;
-  k2::Array1<int32_t> graph_arc_map;
-  decoder.FormatOutput(&fsa, &graph_arc_map, true);
+    k2::FsaClass lattice(fsa);
+    lattice.CopyAttrs(decoding_graph,
+                      k2::Array1ToTorch<int32_t>(graph_arc_map));
 
-  K2_LOG(INFO) << "Fsa : " << fsa;
+    lattice = k2::ShortestPath(lattice);
 
-  k2::FsaClass lattice(fsa);
-  lattice.CopyAttrs(decoding_graph, k2::Array1ToTorch<int32_t>(graph_arc_map));
+    auto ragged_aux_labels = k2::GetTexts(lattice);
 
-  lattice = k2::ShortestPath(lattice);
+    auto aux_labels_vec = ragged_aux_labels.ToVecVec();
 
-  // K2_LOG(INFO) << "Lattice : " << lattice.fsa;
-
-  auto ragged_aux_labels = k2::GetTexts(lattice);
-
-  auto aux_labels_vec = ragged_aux_labels.ToVecVec();
-
-  if (FLAGS_use_ctc_decoding) {
-    sentencepiece::SentencePieceProcessor processor;
-    auto status = processor.Load(FLAGS_bpe_model);
-    if (!status.ok()) {
-      K2_LOG(FATAL) << status.ToString();
-    }
-    for (int32_t i = 0; i < aux_labels_vec.size(); ++i) {
-      std::string text;
-      status = processor.Decode(aux_labels_vec[i], &text);
+    if (FLAGS_use_ctc_decoding) {
+      sentencepiece::SentencePieceProcessor processor;
+      auto status = processor.Load(FLAGS_bpe_model);
       if (!status.ok()) {
         K2_LOG(FATAL) << status.ToString();
       }
-      texts[i] += text + " ";
-    }
-  } else {
-    k2::SymbolTable symbol_table(FLAGS_word_table);
-    for (int32_t i = 0; i < aux_labels_vec.size(); ++i) {
-      std::string text;
-      std::string sep = "";
-      for (auto id : aux_labels_vec[i]) {
-        text.append(sep);
-        text.append(symbol_table[id]);
-        sep = " ";
+      for (size_t i = 0; i < aux_labels_vec.size(); ++i) {
+        std::string text;
+        status = processor.Decode(aux_labels_vec[i], &text);
+        if (!status.ok()) {
+          K2_LOG(FATAL) << status.ToString();
+        }
+        texts[i] = text;
       }
-      texts[i] += text + " ";
+    } else {
+      k2::SymbolTable symbol_table(FLAGS_word_table);
+      for (size_t i = 0; i < aux_labels_vec.size(); ++i) {
+        std::string text;
+        std::string sep = "";
+        for (auto id : aux_labels_vec[i]) {
+          text.append(sep);
+          text.append(symbol_table[id]);
+          sep = " ";
+        }
+        texts[i] = text;
+      }
     }
     std::ostringstream os;
-    os << "\nPartial result:\n\n";
+    os << "\nPartial result:\n";
     for (int32_t i = 0; i != num_waves; ++i) {
       os << wave_filenames[i] << "\n";
       os << texts[i];
@@ -328,7 +316,7 @@ int main(int argc, char *argv[]) {
   }
 
   std::ostringstream os;
-  os << "\nDecoding result:\n\n";
+  os << "\nDecoding result:\n";
   for (int32_t i = 0; i != num_waves; ++i) {
     os << wave_filenames[i] << "\n";
     os << texts[i];

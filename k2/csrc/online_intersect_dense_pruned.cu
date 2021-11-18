@@ -1,5 +1,5 @@
 /**
- * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey, Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -43,7 +43,7 @@ OnlineIntersectDensePruned::OnlineIntersectDensePruned(
       num_seqs_(num_seqs),
       dynamic_beams_(a_fsas.Context(), num_seqs, search_beam),
       final_t_(a_fsas.Context(), num_seqs, 0),
-      reach_final_(a_fsas.Context(), num_seqs, 0) {
+      reach_final_(0) {
   NVTX_RANGE(K2_FUNC);
   c_ = GetContext(a_fsas.shape);
   T_ = 0;
@@ -103,12 +103,16 @@ void OnlineIntersectDensePruned::Intersect(std::shared_ptr<DenseFsaVec> &b_fsas,
     1).  So the #states is 2 greater than the actual number of frames in the
     neural-net output.
   */
+
+  if (is_final) {
+    reach_final_ = 1;
+  } else {
+    K2_CHECK_EQ(reach_final_, 0);
+  }
+
   b_fsas_ = b_fsas;
   K2_CHECK_EQ(num_seqs_, b_fsas_->shape.Dim0());
-  int32_t append_t =
-      is_final ? b_fsas_->shape.MaxSize(1) : b_fsas_->shape.MaxSize(1) - 1;
   int32_t T = T_ + b_fsas_->shape.MaxSize(1);
-  // T = T_ + b_fsas_->shape.MaxSize(1);
 
   // we'll initially populate frames_[0.. T+1], but discard the one at T+1,
   // which has no arcs or states, the ones we use are from 0 to T.
@@ -126,13 +130,11 @@ void OnlineIntersectDensePruned::Intersect(std::shared_ptr<DenseFsaVec> &b_fsas,
       K2_CHECK_EQ(state_map_.NumKeyBits(), 40);
       frames_.push_back(PropagateForward<40>(t, frames_.back().get()));
     }
-    // if (t != 0 && (T_ + t) % prune_shift == 0 || is_final && (T_ + t) == T) {
-    if (t == b_fsas_->shape.MaxSize(1)) {
+    if (t != 0 && (T_ + t) % prune_shift == 0 ||
+        t == b_fsas_->shape.MaxSize(1)) {
       int32_t prune_t_begin =
           (T_ + t - prune_num_frames) > 0 ? (T_ + t - prune_num_frames) : 0;
       int32_t prune_t_end = T_ + t;
-      K2_LOG(INFO) << "range : " << prune_t_begin << " : " << prune_t_end
-                   << ", " << T_ << ", " << t << ", " << T;
       PruneTimeRange(prune_t_begin, prune_t_end);
     }
   }
@@ -140,26 +142,21 @@ void OnlineIntersectDensePruned::Intersect(std::shared_ptr<DenseFsaVec> &b_fsas,
   // last PropagateForward so that the 'arcs' member of frames_[T]
   // is set up (it has no arcs but we need the shape).
   frames_.pop_back();
+
   if (is_final) {
     T_ = T;
-    K2_LOG(INFO) << "back shape : " << frames_.back()->arcs.shape;
   } else {
     T_ = T - 1;
-    K2_LOG(INFO) << "back shape : " << frames_.back()->arcs.shape;
-    final_frame_ = std::move(frames_.back());
-    K2_LOG(INFO) << "back shape : " << final_frame_->arcs.shape;
+    partial_final_frame_ = std::move(frames_.back());
     frames_.pop_back();
   }
-  K2_LOG(INFO) << "frames size : " << frames_.size();
   const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
   int32_t *final_t_data = final_t_.Data();
-  char *reach_fianl_data = reach_final_.Data();
 
   K2_EVAL(
       c_, num_seqs_, lambda_set_final_and_final_t, (int32_t i)->void {
         int32_t b_chunk_size =
             b_fsas_row_splits1[i + 1] - b_fsas_row_splits1[i];
-        if (b_chunk_size == 1) reach_fianl_data[i] = 1;
         int32_t final_t = final_t_data[i];
         final_t =
             is_final ? final_t + b_chunk_size : final_t + b_chunk_size - 1;
@@ -206,332 +203,28 @@ std::unique_ptr<FrameInfo> OnlineIntersectDensePruned::InitialFrameInfo() {
   return ans;
 }
 
-void OnlineIntersectDensePruned::FormatPartial(FsaVec *ofsa,
-                                               Array1<int32_t> *arc_map_a) {
-  NVTX_RANGE("FormatPartial");
-
-  int32_t frame_shift = 20;
-  int32_t p = T_ % frame_shift, q = T_ / frame_shift, T;
-  if (p) {
-    T = frame_shift * q;
-  } else {
-    T = T_;
-  }
-  T = T_;
-  K2_LOG(INFO) << "output T : " << T;
-  // construct extra final arcs for those fsas which do not reach final state.
-  Array1<int32_t> num_extra_states(c_, num_seqs_ + 1);
-  char *reach_final_data = reach_final_.Data();
-  int32_t *num_extra_states_data = num_extra_states.Data();
-  K2_EVAL(
-      c_, num_seqs_, set_num_extra_states, (int32_t i)->void {
-        int32_t num_states = 0;
-        if (!reach_final_data[i]) num_states = 2;
-        num_extra_states_data[i] = num_states;
-      });
-
-  ExclusiveSum(num_extra_states, &num_extra_states);
-  RaggedShape state_shape = RaggedShape2(&num_extra_states, nullptr, -1);
-
-  K2_LOG(INFO) << "extra states : " << num_extra_states;
-
-  Array1<int32_t> num_extra_arcs(c_, state_shape.NumElements() + 1);
-  int32_t *extra_state_row_split1_data = state_shape.RowSplits(1).Data(),
-          *extra_state_row_ids1_data = state_shape.RowIds(1).Data(),
-          *num_extra_arcs_data = num_extra_arcs.Data();
-  K2_EVAL(
-      c_, state_shape.NumElements(), set_num_extra_arcs, (int32_t idx01)->void {
-        int32_t idx0 = extra_state_row_ids1_data[idx01],
-                idx0x = extra_state_row_split1_data[idx0], idx1 = idx01 - idx0x,
-                num_arcs = 0;
-        if ((extra_state_row_split1_data[idx0 + 1] -
-             extra_state_row_split1_data[idx0]) > 0 &&
-            idx1 == 0)
-          num_arcs = 1;
-        num_extra_arcs_data[idx01] = num_arcs;
-      });
-  ExclusiveSum(num_extra_arcs, &num_extra_arcs);
-
-  K2_LOG(INFO) << "extra arcs : " << num_extra_arcs;
-
-  RaggedShape state_to_arc_shape = RaggedShape2(&num_extra_arcs, nullptr, -1);
-
-  RaggedShape extra_arcs_shape =
-      ComposeRaggedShapes(state_shape, state_to_arc_shape);
-  Array1<ArcInfo> extra_arcs(c_, extra_arcs_shape.NumElements());
-  ArcInfo *extra_arcs_data = extra_arcs.Data();
-  K2_EVAL(
-      c_, extra_arcs_shape.NumElements(), set_extra_arcs,
-      (int32_t idx012)->void {
-        ArcInfo ai;
-        ai.a_fsas_arc_idx012 = -1;
-        ai.arc_loglike = 0;
-        ai.u.dest_info_state_idx1 = 1;
-        extra_arcs_data[idx012] = ai;
-      });
-
-  ContextPtr c_cpu = GetCpuContext();
-  Array1<ArcInfo *> arcs_data_ptrs(c_cpu, T + 1);
-  for (int32_t t = 0; t < T; t++) {
-    arcs_data_ptrs.Data()[t] = frames_[t]->arcs.values.Data();
-  }
-  arcs_data_ptrs.Data()[T] = final_frame_->arcs.values.Data();
-
-  // transfer to GPU if we're using a GPU
-  arcs_data_ptrs = arcs_data_ptrs.To(c_);
-  ArcInfo **arcs_data_ptrs_data = arcs_data_ptrs.Data();
-  const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
-  const int32_t *a_fsas_row_splits1 = a_fsas_.RowSplits(1).Data();
-
-  RaggedShape oshape;
-  // see documentation of Stack() in ragged_ops.h for explanation.
-  Array1<uint32_t> oshape_merge_map;
-
-  {
-    NVTX_RANGE("InitOshape");
-    // each of these have 3 axes.
-    std::vector<RaggedShape *> arcs_shapes(T + 1);
-    for (int32_t t = 0; t < T; t++) arcs_shapes[t] = &(frames_[t]->arcs.shape);
-    arcs_shapes[T] = &(final_frame_->arcs.shape);
-    // arcs_shapes[T] = &extra_arcs_shape;
-
-    K2_LOG(INFO) << "T - 2 shape : " << frames_[T - 2]->arcs.shape;
-
-    K2_LOG(INFO) << "T - 1 shape : " << frames_[T - 1]->arcs.shape;
-
-    K2_LOG(INFO) << "final shape : " << final_frame_->arcs.shape;
-    // oshape is a 4-axis ragged tensor which is indexed:
-    //   oshape[fsa_index][t][state_idx][arc_idx]
-    int32_t axis = 1;
-    oshape = Stack(axis, T + 1, arcs_shapes.data(), &oshape_merge_map);
-  }
-
-  int32_t *oshape_row_ids3 = oshape.RowIds(3).Data(),
-          *oshape_row_ids2 = oshape.RowIds(2).Data(),
-          *oshape_row_ids1 = oshape.RowIds(1).Data(),
-          *oshape_row_splits3 = oshape.RowSplits(3).Data(),
-          *oshape_row_splits2 = oshape.RowSplits(2).Data(),
-          *oshape_row_splits1 = oshape.RowSplits(1).Data();
-
-  int32_t num_arcs = oshape.NumElements();
-  *arc_map_a = Array1<int32_t>(c_, num_arcs);
-  int32_t *arc_map_a_data = arc_map_a->Data();
-  Array1<Arc> arcs_out(c_, num_arcs);
-  Arc *arcs_out_data = arcs_out.Data();
-  const Arc *a_fsas_arcs = a_fsas_.values.Data();
-
-  const uint32_t *oshape_merge_map_data = oshape_merge_map.Data();
-
-  K2_EVAL(
-      c_, num_arcs, lambda_format_arc_data,
-      (int32_t oarc_idx0123)
-          ->void {  // by 'oarc' we mean arc with shape `oshape`.
-            int32_t oarc_idx012 = oshape_row_ids3[oarc_idx0123],
-                    oarc_idx01 = oshape_row_ids2[oarc_idx012],
-                    oarc_idx0 = oshape_row_ids1[oarc_idx01],
-                    oarc_idx0x = oshape_row_splits1[oarc_idx0],
-                    oarc_idx0xx = oshape_row_splits2[oarc_idx0x],
-                    oarc_idx1 = oarc_idx01 - oarc_idx0x,
-                    oarc_idx01x_next = oshape_row_splits2[oarc_idx01 + 1];
-
-            int32_t m = oshape_merge_map_data[oarc_idx0123],
-                    t = m %
-                        (T + 1),  // actually we won't get t == T or t == T +
-                                  // 1 here since those frames have no arcs.
-                arcs_idx012 =
-                    m / (T + 1);  // arc_idx012 into FrameInfo::arcs on time
-                                  // t, index of the arc on that frame.
-
-            K2_CHECK_EQ(t, oarc_idx1);
-
-            const ArcInfo *arcs_data = arcs_data_ptrs_data[t];
-
-            ArcInfo arc_info = arcs_data[arcs_idx012];
-            Arc arc;
-            arc.src_state = oarc_idx012 - oarc_idx0xx;
-            // Note: the idx1 w.r.t. the frame's `arcs` is an idx2 w.r.t.
-            // `oshape`.
-            int32_t dest_state_idx012 =
-                oarc_idx01x_next + arc_info.u.dest_info_state_idx1;
-            arc.dest_state = dest_state_idx012 - oarc_idx0xx;
-
-            if (arc_info.a_fsas_arc_idx012 == -1)
-              arc.label = -1;
-            else
-              arc.label = a_fsas_arcs[arc_info.a_fsas_arc_idx012].label;
-
-            arc.score = arc_info.arc_loglike;
-            arc_map_a_data[oarc_idx0123] = arc_info.a_fsas_arc_idx012;
-            arcs_out_data[oarc_idx0123] = arc;
-          });
-
-  // Remove axis 1, which corresponds to time.
-  *ofsa = FsaVec(RemoveAxis(oshape, 1), arcs_out);
-}
-
-void OnlineIntersectDensePruned::FormatPartial2(FsaVec *ofsa,
-                                                Array1<int32_t> *arc_map_a) {
-  int32_t T = T_ + 1;
-
-  ContextPtr c_cpu = GetCpuContext();
-  Array1<ArcInfo *> arcs_data_ptrs(c_cpu, T + 1);
-  Array1<int32_t *> arcs_row_splits1_ptrs(c_cpu, T + 1);
-  for (int32_t t = 0; t < T; t++) {
-    arcs_data_ptrs.Data()[t] = frames_[t]->arcs.values.Data();
-    arcs_row_splits1_ptrs.Data()[t] = frames_[t]->arcs.RowSplits(1).Data();
-  }
-  arcs_data_ptrs.Data()[T] = final_frame_->arcs.values.Data();
-  arcs_row_splits1_ptrs.Data()[T] = final_frame_->arcs.RowSplits(1).Data();
-
-  // transfer to GPU if we're using a GPU
-  arcs_data_ptrs = arcs_data_ptrs.To(c_);
-  ArcInfo **arcs_data_ptrs_data = arcs_data_ptrs.Data();
-  arcs_row_splits1_ptrs = arcs_row_splits1_ptrs.To(c_);
-  int32_t **arcs_row_splits1_ptrs_data = arcs_row_splits1_ptrs.Data();
-  const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
-  const int32_t *a_fsas_row_splits1 = a_fsas_.RowSplits(1).Data();
-
-  int32_t *final_t_data = final_t_.Data();
-
-  int32_t a_fsas_stride = a_fsas_stride_;  // 0 or 1 depending if the decoding
-                                           // graph is shared.
-  int32_t num_fsas = num_seqs_;
-
-  RaggedShape final_arcs_shape;
-  {
-    /*  This block populates `final_arcs_shape`.  It is the shape
-       of a ragged tensor of arcs that conceptually would live at
-       frames_[T+1]->arcs.  It contains no actual arcs, but may
-       contain some states, that represent "missing" final-states.
-       The problem we are trying to solve is that there was a
-       start-state for an FSA but no final-state because it did
-        not survive pruning, and this could lead to an output FSA
-       that is invalid or is misinterpreted (because we are
-       interpreting a non-final state as a final state).
-     */
-    Array1<int32_t> num_extra_states(c_, num_fsas + 1);
-    int32_t *num_extra_states_data = num_extra_states.Data();
-    K2_EVAL(
-        c_, num_fsas, lambda_set_num_extra_states, (int32_t i)->void {
-          int32_t final_t = final_t_data[i] + 1;
-
-          int32_t *arcs_row_splits1_data = arcs_row_splits1_ptrs_data[final_t];
-          int32_t num_states_final_t =
-              arcs_row_splits1_data[i + 1] - arcs_row_splits1_data[i];
-          K2_CHECK_LE(num_states_final_t, 1);
-
-          // has_start_state is 1 if there is a start-state; note, we don't
-          // prune the start-states, so they'll be present if they were
-          // present in a_fsas_.
-          int32_t has_start_state = (a_fsas_row_splits1[i * a_fsas_stride] <
-                                     a_fsas_row_splits1[i * a_fsas_stride + 1]);
-
-          // num_extra_states_data[i] will be 1 if there was a start state but
-          // no final-state; else, 0.
-          num_extra_states_data[i] = has_start_state * (1 - num_states_final_t);
-        });
-    ExclusiveSum(num_extra_states, &num_extra_states);
-
-    RaggedShape top_shape = RaggedShape2(&num_extra_states, nullptr, -1),
-                bottom_shape =
-                    RegularRaggedShape(c_, top_shape.NumElements(), 0);
-    final_arcs_shape = ComposeRaggedShapes(top_shape, bottom_shape);
-  }
-
-  RaggedShape oshape;
-  // see documentation of Stack() in ragged_ops.h for explanation.
-  Array1<uint32_t> oshape_merge_map;
-
-  {
-    NVTX_RANGE("InitOshape");
-    // each of these have 3 axes.
-    std::vector<RaggedShape *> arcs_shapes(T + 2);
-    for (int32_t t = 0; t < T; t++) arcs_shapes[t] = &(frames_[t]->arcs.shape);
-    arcs_shapes[T] = &final_frame_->arcs.shape;
-    arcs_shapes[T + 1] = &final_arcs_shape;
-
-    // oshape is a 4-axis ragged tensor which is indexed:
-    //   oshape[fsa_index][t][state_idx][arc_idx]
-    int32_t axis = 1;
-    oshape = Stack(axis, T + 2, arcs_shapes.data(), &oshape_merge_map);
-  }
-
-  int32_t *oshape_row_ids3 = oshape.RowIds(3).Data(),
-          *oshape_row_ids2 = oshape.RowIds(2).Data(),
-          *oshape_row_ids1 = oshape.RowIds(1).Data(),
-          *oshape_row_splits3 = oshape.RowSplits(3).Data(),
-          *oshape_row_splits2 = oshape.RowSplits(2).Data(),
-          *oshape_row_splits1 = oshape.RowSplits(1).Data();
-
-  int32_t num_arcs = oshape.NumElements();
-  *arc_map_a = Array1<int32_t>(c_, num_arcs);
-  int32_t *arc_map_a_data = arc_map_a->Data();
-  Array1<Arc> arcs_out(c_, num_arcs);
-  Arc *arcs_out_data = arcs_out.Data();
-  const Arc *a_fsas_arcs = a_fsas_.values.Data();
-
-  const uint32_t *oshape_merge_map_data = oshape_merge_map.Data();
-
-  K2_EVAL(
-      c_, num_arcs, lambda_format_arc_data,
-      (int32_t oarc_idx0123)
-          ->void {  // by 'oarc' we mean arc with shape `oshape`.
-            int32_t oarc_idx012 = oshape_row_ids3[oarc_idx0123],
-                    oarc_idx01 = oshape_row_ids2[oarc_idx012],
-                    oarc_idx0 = oshape_row_ids1[oarc_idx01],
-                    oarc_idx0x = oshape_row_splits1[oarc_idx0],
-                    oarc_idx0xx = oshape_row_splits2[oarc_idx0x],
-                    oarc_idx1 = oarc_idx01 - oarc_idx0x,
-                    oarc_idx01x_next = oshape_row_splits2[oarc_idx01 + 1];
-
-            int32_t m = oshape_merge_map_data[oarc_idx0123],
-                    t = m %
-                        (T + 2),  // actually we won't get t == T or t == T +
-                                  // 1 here since those frames have no arcs.
-                arcs_idx012 =
-                    m / (T + 2);  // arc_idx012 into FrameInfo::arcs on time
-                                  // t, index of the arc on that frame.
-
-            K2_CHECK_EQ(t, oarc_idx1);
-
-            const ArcInfo *arcs_data = arcs_data_ptrs_data[t];
-
-            ArcInfo arc_info = arcs_data[arcs_idx012];
-            Arc arc;
-            arc.src_state = oarc_idx012 - oarc_idx0xx;
-            // Note: the idx1 w.r.t. the frame's `arcs` is an idx2 w.r.t.
-            // `oshape`.
-            int32_t dest_state_idx012 =
-                oarc_idx01x_next + arc_info.u.dest_info_state_idx1;
-            arc.dest_state = dest_state_idx012 - oarc_idx0xx;
-            arc.label = a_fsas_arcs[arc_info.a_fsas_arc_idx012].label;
-
-            arc.score = arc_info.arc_loglike;
-            arc_map_a_data[oarc_idx0123] = arc_info.a_fsas_arc_idx012;
-            arcs_out_data[oarc_idx0123] = arc;
-          });
-
-  // Remove axis 1, which corresponds to time.
-  *ofsa = FsaVec(RemoveAxis(oshape, 1), arcs_out);
-}
-
 void OnlineIntersectDensePruned::FormatOutput(FsaVec *ofsa,
                                               Array1<int32_t> *arc_map_a,
                                               bool is_final /*=false*/) {
   NVTX_RANGE("FormatOutput");
 
-  // Return partial result
-  if (!is_final) return FormatPartial(ofsa, arc_map_a);
+  K2_CHECK_EQ(is_final, reach_final_);
 
-  int32_t T = T_;
+  int32_t T = is_final ? T_ : T_ + 1;
 
   ContextPtr c_cpu = GetCpuContext();
   Array1<ArcInfo *> arcs_data_ptrs(c_cpu, T + 1);
   Array1<int32_t *> arcs_row_splits1_ptrs(c_cpu, T + 1);
-  for (int32_t t = 0; t <= T; t++) {
+  for (int32_t t = 0; t < T; t++) {
     arcs_data_ptrs.Data()[t] = frames_[t]->arcs.values.Data();
     arcs_row_splits1_ptrs.Data()[t] = frames_[t]->arcs.RowSplits(1).Data();
   }
+  arcs_data_ptrs.Data()[T] = is_final
+                                 ? frames_[T]->arcs.values.Data()
+                                 : partial_final_frame_->arcs.values.Data();
+  arcs_row_splits1_ptrs.Data()[T] =
+      is_final ? frames_[T]->arcs.RowSplits(1).Data()
+               : partial_final_frame_->arcs.RowSplits(1).Data();
 
   // transfer to GPU if we're using a GPU
   arcs_data_ptrs = arcs_data_ptrs.To(c_);
@@ -563,7 +256,7 @@ void OnlineIntersectDensePruned::FormatOutput(FsaVec *ofsa,
     int32_t *num_extra_states_data = num_extra_states.Data();
     K2_EVAL(
         c_, num_fsas, lambda_set_num_extra_states, (int32_t i)->void {
-          int32_t final_t = final_t_data[i];
+          int32_t final_t = is_final ? final_t_data[i] : final_t_data[i] + 1;
 
           int32_t *arcs_row_splits1_data = arcs_row_splits1_ptrs_data[final_t];
           int32_t num_states_final_t =
@@ -596,7 +289,10 @@ void OnlineIntersectDensePruned::FormatOutput(FsaVec *ofsa,
     NVTX_RANGE("InitOshape");
     // each of these have 3 axes.
     std::vector<RaggedShape *> arcs_shapes(T + 2);
-    for (int32_t t = 0; t <= T; t++) arcs_shapes[t] = &(frames_[t]->arcs.shape);
+    for (int32_t t = 0; t < T; t++) arcs_shapes[t] = &(frames_[t]->arcs.shape);
+    arcs_shapes[T] = is_final ? &(frames_[T]->arcs.shape)
+                              : &(partial_final_frame_->arcs.shape);
+
     arcs_shapes[T + 1] = &final_arcs_shape;
 
     // oshape is a 4-axis ragged tensor which is indexed:
