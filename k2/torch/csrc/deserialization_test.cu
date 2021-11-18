@@ -26,6 +26,9 @@
 
 namespace k2 {
 
+// defined in k2/torch/csrc/deserialization.cu
+Ragged<int32_t> ToRaggedInt(torch::IValue value);
+
 static void TestDictOfTensorIntStr(const std::string &dir_name) {
   std::string filename = dir_name + "/d1.pt";
   {

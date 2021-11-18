@@ -148,7 +148,10 @@ class OnlineIntersectDensePruned {
   // Return FrameInfo for 1st frame, with `states` set but `arcs` not set.
   std::unique_ptr<FrameInfo> InitialFrameInfo();
 
-  void FormatOutput(FsaVec *ofsa, Array1<int32_t> *arc_map_a);
+  void FormatOutput(FsaVec *ofsa, Array1<int32_t> *arc_map_a,
+                    bool is_final = false);
+  void FormatPartial(FsaVec *ofsa, Array1<int32_t> *arc_map_a);
+  void FormatPartial2(FsaVec *ofsa, Array1<int32_t> *arc_map_a);
 
   /*
     Computes pruning cutoffs for this frame: these are the cutoffs for the
@@ -306,7 +309,12 @@ class OnlineIntersectDensePruned {
   Array1<float> dynamic_beams_;  // dynamic beams (initially just
                                  // search_beam_ but change due to
                                  // max_active/min_active constraints).
-  Array1<int32_t> final_t_;
+  Array1<int32_t> final_t_;      // record the final frame id of each DenseFsa.
+  Array1<char> reach_final_;     // whether current DenseFsa reach final or not,
+                                 // used for generating partial result, if
+                                 // current Fsa does not reach final state, we
+                                 // should add final arc for current fsa.
+  std::unique_ptr<FrameInfo> final_frame_;
 
   int32_t state_map_fsa_stride_;  // state_map_fsa_stride_ is a_fsas_.TotSize(1)
                                   // if a_fsas_.Dim0() == 1, else 0.

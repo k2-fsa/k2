@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "caffe2/serialize/file_adapter.h"
 #include "caffe2/serialize/inline_container.h"
@@ -156,20 +157,6 @@ torch::Tensor TensorToTorch(Tensor &tensor) {
   return torch::from_blob(
       tensor.Data(), sizes, strides,
       [saved_region = tensor.GetRegion()](void *) {}, options);
-}
-
-bool IsRaggedInt(torch::IValue value) {
-  return value.type() ==
-         torch::getCustomClassType<torch::intrusive_ptr<RaggedIntHelper>>();
-}
-
-Ragged<int32_t> ToRaggedInt(torch::IValue value) {
-  auto ragged_int_holder = value.toCustomClass<RaggedIntHelper>();
-  return *ragged_int_holder;
-}
-
-torch::IValue ToIValue(const Ragged<int32_t> &ragged) {
-  return torch::make_custom_class<RaggedIntHelper>(ragged);
 }
 
 }  // namespace k2

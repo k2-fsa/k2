@@ -21,6 +21,7 @@
 
 #include "k2/csrc/fsa.h"
 #include "k2/torch/csrc/fsa_class.h"
+#include "k2/torch/csrc/nbest.h"
 
 namespace k2 {
 
@@ -116,6 +117,20 @@ void Connect(FsaClass *lattice);
   @param lattice The input/output lattice.
  */
 void TopSort(FsaClass *lattice);
+
+/** Sample num_paths from the given lattice.
+    @param lattice The input lattice to be sampled from.
+    @param num_paths  Number of paths to sample
+
+    @return Return a nbest object containing the sampled paths.
+ */
+Nbest RandomPaths(FsaClass &lattice, int32_t num_paths);
+
+/// Wrapper for k2::IntersectDevice() in k2/csrc/fsa_algo.h
+/// to support attribute propagation.
+FsaClass IntersectDevice(FsaClass &a_fsas, FsaClass &b_fsas,
+                         const Array1<int32_t> &b_to_a_map,
+                         bool sorted_match_a);
 
 }  // namespace k2
 

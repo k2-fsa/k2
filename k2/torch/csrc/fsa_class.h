@@ -1,5 +1,5 @@
 /**
- * @brief python wrapper for FsaOrVec
+ * @brief Wrapper for k2::Fsa to support attribute propagation.
  *
  * @copyright
  * Copyright      2021  Xiaomi Corp.  (authors: Wei Kang, Fangjun Kuang)
@@ -37,17 +37,19 @@ namespace k2 {
 
 // It is a wrapper of FsaOrVec to support attributes propagation
 struct FsaClass {
+  // TODO(fangjun): Make it a class and set its data members to private
   FsaOrVec fsa;
   int32_t properties = 0;
 
+  // TODO(fangjun): Use two arrays to represent tensor_attrs
+  // as there are usually only one or two attributes associated
+  // with an FSA in decoding.
+  //
   /// It contains all tensor attributes of this FSA
   std::unordered_map<std::string, torch::Tensor> tensor_attrs;
 
   /// It contains all ragged tensor attributes of this FSA
   std::unordered_map<std::string, Ragged<int32_t>> ragged_tensor_attrs;
-
-  /// The name of all attributes of this FSA
-  std::unordered_set<std::string> all_attr_names;
 
   // The default constructor initializes an invalid FSA.
   FsaClass() = default;
@@ -58,15 +60,15 @@ struct FsaClass {
     Properties();
   }
 
-  FsaClass(const FsaClass &other) = default;
+  FsaClass(const FsaClass &) = default;
+  FsaClass &operator=(const FsaClass &) = default;
+  FsaClass(FsaClass &&) = default;
+  FsaClass &operator=(FsaClass &&) = default;
 
-  FsaClass &operator=(const FsaClass &other) = default;
-
-  FsaClass(FsaClass &&other) = default;
-
-  FsaClass &operator=(FsaClass &&other) = default;
-
-  int32_t NumAttrs() const { return all_attr_names.size(); }
+  /// Returns the number of attributes contained in this FSA
+  int32_t NumAttrs() const {
+    return tensor_attrs.size() + ragged_tensor_attrs.size();
+  }
 
   /**
     Create an Fsa object, including propagating properties from the source FSA.
@@ -82,107 +84,100 @@ struct FsaClass {
   static FsaClass FromUnaryFunctionTensor(FsaClass &src, const FsaOrVec &arcs,
                                           torch::Tensor arc_map);
 
-  /* Return a 1-D float32 torch tensor.
-      @caution You should not modify the returned tensor since it shares
-      the underlying memory with this FSA.
+  /* Return a 1-D torch.float32 torch tensor.
+
+     @caution It shares the underlying memory with this FSA.
      */
   torch::Tensor Scores();
-  /* Set scores, will modify scores in fsa.arcs
 
-     @param scores The given scores.
+  /** Set scores, will modify scores in fsa.arcs
+
+     @param scores A 1-D tensor of dtype torch.float32.
    */
   void SetScores(torch::Tensor scores);
 
-  /* Return a 1-D int32 torch tensor.
-      @caution You should not modify the returned tensor since it shares
-      the underlying memory with this FSA.
-     */
-  torch::Tensor Labels() /*const*/;
-  /* Set labels, will modify labels in fsa.arcs
+  /** Return a 1-D int32 torch tensor.
+     @caution It shares the underlying memory with this FSA.
+   */
+  torch::Tensor Labels();
 
-     @param The given labels.
+  /** Set labels, will modify labels in fsa.arcs
+
+     @param labels  A 1-D tensor of dtype torch.int32.
    */
   void SetLabels(torch::Tensor labels);
 
   // Get fsa properties.
   int32_t Properties();
 
-  /** Associate an attribute with a value.
-    If there is no attribute with the given `name`,
-      - If `value` is an instance of `torch::Tensor`, add it to `tensor_attrs`
-      - If `value` is an instance of `Ragged<int32_t>`, add it to
-        `ragged_tensor_attrs`
-    If there is already an attribute with the given `name`, we first
-    remove this attribute and then add it using the above logic.
-    @param name  The attribute name.
-    @param value  The attribute value.
-   */
-  void SetAttr(const std::string &name, torch::IValue value);
-
-  /** Get an attribute by its name.
-    Raise a RuntimeError exception if there is no such attribute.
-    @param name The attribute name.
-    @return Return the value of the attribute.
-   */
-  torch::IValue GetAttr(const std::string &name) /*const*/;
-
+  /// Return the given tensor attribute by its name
   const torch::Tensor &GetTensorAttr(const std::string &name) const {
     return tensor_attrs.at(name);
   }
 
+  /// Return the given tensor attribute by its name
   torch::Tensor &GetTensorAttr(const std::string &name) {
     return tensor_attrs.at(name);
   }
 
+  /// Return the given ragged tensor attribute by its name
   const Ragged<int32_t> &GetRaggedTensorAttr(const std::string &name) const {
     return ragged_tensor_attrs.at(name);
   }
 
+  /// Return the given ragged tensor attribute by its name
   Ragged<int32_t> &GetRaggedTensorAttr(const std::string &name) {
     return ragged_tensor_attrs.at(name);
   }
 
+  /// Return true if this FSA has a tensor attribute with such a name.
+  /// Return false otherwise.
   bool HasTensorAttr(const std::string &name) const {
     return tensor_attrs.count(name) > 0;
   }
 
+  /// Return true if this FSA has a ragged tensor attribute with such a name.
+  /// Return false otherwise.
   bool HasRaggedTensorAttr(const std::string &name) const {
     return ragged_tensor_attrs.count(name) > 0;
   }
 
-  /** Delete an attribute by its name.
+  /** Delete a tensor attribute by its name.
+   *
     Raise a RuntimeError exception if there is no such attribute.
-    @param name The attribute name.
-   */
-  void DeleteAttr(const std::string &name);
 
-  /** Query if an attribute exists.
     @param name The attribute name.
-    @return Return `true` if the given attribute exists.
-            Return `false` otherwise.
    */
-  bool HasAttr(const std::string &name) const;
+  void DeleteTensorAttr(const std::string &name) {
+    auto it = tensor_attrs.find(name);
+    if (it == tensor_attrs.end()) {
+      K2_LOG(FATAL) << "No such tensor attribute: " << name;
+    }
+    tensor_attrs.erase(it);
+  }
+
+  /** Delete a ragged attribute by its name.
+
+      Raise a RuntimeError exception if there is no such attribute.
+
+      @param name The attribute name.
+   */
+  void DeleteRaggedTensorAttr(const std::string &name) {
+    auto it = ragged_tensor_attrs.find(name);
+    if (it == ragged_tensor_attrs.end()) {
+      K2_LOG(FATAL) << "No such ragged tensor attribute: " << name;
+    }
+    ragged_tensor_attrs.erase(it);
+  }
 
   /** Propagate attributes from source FsaClass via tensor arc_map.
-
-    Caution: If there are attributes in source FsaClass with the name
-    conflicting with current FsaClass, we will skip the attributes in source
-    FsaClass and keep the current one.
 
     @param src  The source FsaClass.
     @param arc_map  The arc_map (as idx012) to select items in attributes.
    */
   void CopyAttrs(FsaClass &src, torch::Tensor arc_map);
 
-  // Transfer current fsa to another device.
-  FsaClass To(torch::Device device) const;
-  FsaClass To(const std::string &device) const;
-
   /** Associate an tensor attribute with a value directly.
-
-    Caution: This function assumes that there is no other type of attribute
-    named the given `name`. And the tensor type attribute named the given `name`
-    will be overwritten.
 
     @param name  The attribute name.
     @param value  The attribute value.
@@ -192,15 +187,10 @@ struct FsaClass {
         << "'" << name
         << "': shape[0] of the tensor MUST be equal to number of arcs";
     K2_CHECK(ContextFromTensor(value)->IsCompatible(*fsa.Context()));
-    all_attr_names.insert(name);
     tensor_attrs[name] = value;
   }
 
   /** Associate a ragged tensor attribute with a value directly.
-
-    Caution: This function assumes that there is no other type of attribute
-    named the given `name`. And the ragged tensor type attribute named the given
-    `name` will be overwritten.
 
     @param name  The attribute name.
     @param value  The attribute value.
@@ -211,16 +201,11 @@ struct FsaClass {
         << "'" << name
         << "': dim0 of the tensor MUST be equal to number of arcs";
     K2_CHECK(value.Context()->IsCompatible(*fsa.Context()));
-    all_attr_names.insert(name);
     ragged_tensor_attrs[name] = value;
   }
 
  private:
   /** Propagate tensor attributes from source FsaClass via tensor arc_map.
-
-      Caution: If there are attributes in source FsaClass with the name
-      conflicting with current FsaClass, we will skip the attributes in source
-      FsaClass and keep the current one.
 
       @param src  The source FsaClass.
       @param arc_map  The arc_map (as idx012) to select items in attributes.
@@ -230,24 +215,10 @@ struct FsaClass {
   /** Propagate ragged tensor attributes from source FsaClass via tensor
     arc_map.
 
-    Caution: If there are attributes in source FsaClass with the name
-    conflicting with current FsaClass, we will skip the attributes in source
-    FsaClass and keep the current one.
-
     @param src  The source FsaClass.
     @param arc_map  The arc_map (as idx012) to select items in attributes.
    */
   void CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map);
-
-  /** Transfer current FsaClass to another devices.
-
-    Note: This function assumes that the target context is different from
-    current context. It crashes if you call this function with the context the
-    same as current one.
-
-    @param context  The target context.
-   */
-  FsaClass ToOtherContext(const ContextPtr &context) const;
 };
 
 }  // namespace k2

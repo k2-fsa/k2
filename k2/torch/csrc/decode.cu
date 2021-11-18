@@ -37,31 +37,30 @@ FsaClass GetLattice(torch::Tensor nnet_output, FsaClass &decoding_graph,
 }
 
 Ragged<int32_t> GetTexts(FsaClass &lattice) {
-  K2_CHECK(lattice.HasAttr("aux_labels"));
-  Ragged<int32_t> ragged_aux_labels;
-  torch::IValue aux_labels = lattice.GetAttr("aux_labels");
-  if (aux_labels.isTensor()) {
-    Array1<int32_t> aux_labels_array =
-        Array1FromTorch<int32_t>(aux_labels.toTensor());
+  if (lattice.HasTensorAttr("aux_labels")) {
+    torch::Tensor aux_labels = lattice.GetTensorAttr("aux_labels");
+    Array1<int32_t> aux_labels_array = Array1FromTorch<int32_t>(aux_labels);
     RaggedShape aux_labels_shape = RemoveAxis(lattice.fsa.shape, 1);
-    ragged_aux_labels = Ragged<int32_t>(aux_labels_shape, aux_labels_array);
+    auto ragged_aux_labels =
+        Ragged<int32_t>(aux_labels_shape, aux_labels_array);
+    return RemoveValuesLeq(ragged_aux_labels, 0);
   } else {
-    K2_CHECK(IsRaggedInt(aux_labels));
-    Ragged<int32_t> in_ragged_aux_labels = ToRaggedInt(aux_labels);
+    K2_CHECK(lattice.HasRaggedTensorAttr("aux_labels"));
+
+    auto aux_labels = lattice.GetRaggedTensorAttr("aux_labels");
     RaggedShape aux_labels_shape =
-        ComposeRaggedShapes(lattice.fsa.shape, in_ragged_aux_labels.shape);
+        ComposeRaggedShapes(lattice.fsa.shape, aux_labels.shape);
     aux_labels_shape = RemoveAxis(aux_labels_shape, 1);
     aux_labels_shape = RemoveAxis(aux_labels_shape, 1);
-    ragged_aux_labels =
-        Ragged<int32_t>(aux_labels_shape, in_ragged_aux_labels.values);
+    auto ragged_aux_labels =
+        Ragged<int32_t>(aux_labels_shape, aux_labels.values);
+    return RemoveValuesLeq(ragged_aux_labels, 0);
   }
-  ragged_aux_labels = RemoveValuesLeq(ragged_aux_labels, 0);
-  return ragged_aux_labels;
 }
 
 void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
                            FsaClass *lattice) {
-  K2_CHECK(lattice->HasAttr("lm_scores"));
+  K2_CHECK(lattice->HasTensorAttr("lm_scores"));
 
   torch::Tensor am_scores =
       lattice->Scores() - lattice->GetTensorAttr("lm_scores");
@@ -69,7 +68,7 @@ void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
 
   // Now, lattice contains only acoustic scores, we will attach LM scores
   // from the given n-gram LM
-  lattice->DeleteAttr("lm_scores");
+  lattice->DeleteTensorAttr("lm_scores");
 
   K2_CHECK_EQ(G.NumAttrs(), 1)
       << "G is expected to contain only 1 attribute: lm_scores.";
@@ -95,12 +94,14 @@ void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
   k2::Connect(lattice);
   k2::TopSort(lattice);
   k2::Invert(lattice);
-
   // Now lattice has token IDs as labels and word IDs as aux_labels
-  torch::Tensor lm_scores = lattice->GetTensorAttr("lm_scores");
-  am_scores = lattice->Scores() - lm_scores;
-  torch::Tensor scores = am_scores / ngram_lm_scale + lm_scores;
-  lattice->SetScores(scores);
+
+  if (ngram_lm_scale != 1) {
+    torch::Tensor lm_scores = lattice->GetTensorAttr("lm_scores");
+    am_scores = lattice->Scores() - lm_scores;
+    torch::Tensor scores = am_scores / ngram_lm_scale + lm_scores;
+    lattice->SetScores(scores);
+  }
 }
 
 }  // namespace k2
