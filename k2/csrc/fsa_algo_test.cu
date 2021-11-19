@@ -1293,8 +1293,8 @@ TEST(FsaAlgo, TestCtcGraph) {
                         "    [ 4 4 0 0 4 5 3 0 ] [ 5 6 0 0 5 5 3 0 5 7 -1 0 ] "
                         "    [ 6 6 0 0 6 7 -1 0 ] [ ] ] ]");
     Array1<int32_t> aux_labels_ref(c, "[ 0 1 0 0 2 0 2 0 0 0 2 0 0 3 "
-                                   "  0 3 0 0 0 0 0 0 1 0 0 2 0 2 "
-                                   "  0 0 3 0 3 0 0 0 0 0 ]");
+                                   "  0 3 0 0 -1 0 -1 0 1 0 0 2 0 2 "
+                                   "  0 0 3 0 3 0 0 -1 0 -1 ]");
     K2_CHECK(Equal(graph, graph_ref));
     K2_CHECK(Equal(aux_labels, aux_labels_ref));
   }
@@ -1315,8 +1315,8 @@ TEST(FsaAlgo, TestCtcGraphSimplified) {
                         "    [ 4 4 0 0 4 5 3 0 ] [ 5 6 0 0 5 5 3 0 5 7 -1 0 ] "
                         "    [ 6 6 0 0 6 7 -1 0 ] [ ] ] ]");
     Array1<int32_t> aux_labels_ref(c, "[ 0 1 0 0 2 0 2 0 0 2 0 2 0 "
-                                   "  0 3 0 3 0 0 0 0 0 0 1 0 0 2 "
-                                   "  0 2 0 0 3 0 3 0 0 0 0 0 ]");
+                                   "  0 3 0 3 0 0 -1 0 -1 0 1 0 0 2 "
+                                   "  0 2 0 0 3 0 3 0 0 -1 0 -1 ]");
     K2_CHECK(Equal(graph, graph_ref));
     K2_CHECK(Equal(aux_labels, aux_labels_ref));
   }
