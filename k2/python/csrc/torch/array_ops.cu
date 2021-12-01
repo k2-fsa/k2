@@ -20,11 +20,6 @@
  * limitations under the License.
  */
 
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/device_guard.h"
 #include "k2/python/csrc/torch/array_ops.h"
@@ -38,35 +33,35 @@ static void PybindMonotonicLowerBound(py::module &m) {
       [](torch::Tensor src, bool inplace = false) -> torch::Tensor {
         Dtype t = ScalarTypeToDtype(src.scalar_type());
         ContextPtr c = GetContext(src);
-        FOR_REAL_AND_INT32_TYPES(
-            t, T, {
-              if (src.dim() == 1) {
-                Array1<T> src_array = FromTorch<T>(src);
-                Array1<T> dest_array = src_array;
-                if (!inplace) {
-                  dest_array = Array1<T>(c, src_array.Dim());
-                }
-                MonotonicLowerBound(src_array, &dest_array);
-                return ToTorch<T>(dest_array);
-              } else if (src.dim() == 2) {
-                Array2<T> src_array = FromTorch<T>(src, Array2Tag{});
-                Array2<T> dest_array = src_array;
-                if (!inplace) {
-                  dest_array = Array2<T>(c, src_array.Dim0(), src_array.Dim1());
-                }
-                for (int32_t i = 0; i < src_array.Dim0(); ++i) {
-                  Array1<T> row = dest_array.Row(i);
-                  MonotonicLowerBound(src_array.Row(i), &row);
-                }
-                return ToTorch<T>(dest_array);
-              } else {
-                K2_LOG(FATAL)
-                    << "Only support 1 dimension and 2 dimension tensor, given "
-                       "dimension : "
-                    << src.dim();
-                return torch::Tensor();
-              }
-            });
+        DeviceGuard guard(c);
+        FOR_REAL_AND_INT32_TYPES(t, T, {
+          if (src.dim() == 1) {
+            Array1<T> src_array = FromTorch<T>(src);
+            Array1<T> dest_array = src_array;
+            if (!inplace) {
+              dest_array = Array1<T>(c, src_array.Dim());
+            }
+            MonotonicLowerBound(src_array, &dest_array);
+            return ToTorch<T>(dest_array);
+          } else if (src.dim() == 2) {
+            Array2<T> src_array = FromTorch<T>(src, Array2Tag{});
+            Array2<T> dest_array = src_array;
+            if (!inplace) {
+              dest_array = Array2<T>(c, src_array.Dim0(), src_array.Dim1());
+            }
+            for (int32_t i = 0; i < src_array.Dim0(); ++i) {
+              Array1<T> row = dest_array.Row(i);
+              MonotonicLowerBound(src_array.Row(i), &row);
+            }
+            return ToTorch<T>(dest_array);
+          } else {
+            K2_LOG(FATAL)
+                << "Only support 1 dimension and 2 dimensions tensor, given "
+                   "dimension : "
+                << src.dim();
+            return torch::Tensor();
+          }
+        });
         // Unreachable code, to make compiler happy
         return torch::Tensor();
       },
@@ -75,7 +70,4 @@ static void PybindMonotonicLowerBound(py::module &m) {
 
 }  // namespace k2
 
-void PybindArrayOps(py::module &m) {
-  using namespace k2;
-  PybindMonotonicLowerBound(m);
-}
+void PybindArrayOps(py::module &m) { k2::PybindMonotonicLowerBound(m); }
