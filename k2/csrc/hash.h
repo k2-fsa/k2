@@ -55,14 +55,43 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
   How class Hash works:
 
     - It can function as a map from key=uint32_t to value=uint32_t, or from
-      key=uint64_t to value=uint64_t where you choose NUM_KEY_BITS and
-      `key` must have only up to NUM_KEY_BITS set and `value` must have
-      only up to (64-NUM_KEY_BITS) set.  You decide NUM_KEY_BITS when
-      you call Hash::Accessor<NUM_KEY_BITS>()
-    - You can store any (key,value) pair except the pair where all the bits of
+      key=uint64_t to value=uint64_t, but you cannot use all 64 bits in the
+      key and value because we compress both of them into a single 64-bit
+      integer. There are several different modes of using this hash,
+      depending which accessor objects you use.  The modes are:
+
+        - Use Accessor<NUM_KEY_BITS> with num_key_bits known at compile time;
+          the number of values bits will be 64 - NUM_KEY_BITS.
+        - Use GenericAccessor, which is like Accessor but the number of
+          key bits is not known at compile time; and they both must still
+          sum to 64.
+        - Use PackedAccessor, which allows you to have the number of key
+          plus value bits greater than 64; the rest of the bits are
+          implicit in groups of buckets (the number of buckets must
+          be >= 32 * 1 << (num_key_bits + num_value_bits - 64).
+
+    - You must decide the number of key and value bits, and the number of
+      buckets, when you create the hash, but you can resize it (manually)
+      and when you resize it you can change the number of key and value bits.
+
+   Some constraints:
+    - You can store any (key,value) pair allowed by the number of key and value
+      bits, except the pair where all the bits of
       both and key and value are set [that is used to mean "nothing here"]
-    - The number of buckets is a power of 2 provided by the user to the constructor;
-      currently no resizing is supported.
+    - The number of buckets must always be a power of 2.
+    - When deleting values from the hash you must delete them all at
+      once (necessary because there is no concept of a "tombstone".
+
+   Some notes on usage:
+
+   You use it by: constructing it, obtaining its Accessor with GetAccessor()
+   with appropriate template args depending on your chosen accessor type; and
+   inside kernels (or host code), calling functions Insert(), Find() or Delete()
+   of the Accessor object.  Resizing is not automatic; it is the user's
+   responsibility to make sure the hash does not get too full (which could cause
+   assertaon failures in kernels, and will be very slow).
+
+   Some implementation notes:
     - When accessing hash[key], we use bucket_index == key % num_buckets,
       bucket_inc = 1 | (((key * 2) / num_buckets) ^ key).
     - If the bucket at `bucket_index` is occupied, we look in locations
@@ -72,15 +101,7 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
       being odd ensures we eventually try all locations (of course for
       reasonable hash occupancy levels, we shouldn't ever have to try
       more than two or three).
-    - When deleting values from the hash you must delete them all at
-      once (necessary because there is no concept of a "tombstone".
 
-  You use it by: constructing it, obtaining its Accessor with
-  GetAccessor<NUM_KEY_BITS>(), and inside kernels (or host code), calling
-  functions Insert(), Find() or Delete() of the Accessor object.  There is no
-  resizing; sizing it correctly is the caller's responsibility and if the hash
-  gets full the code will just loop forever (of course it will get extremely
-  slow before it reaches that point).
 */
 class Hash {
  public:
@@ -94,10 +115,14 @@ class Hash {
      @param [in] num_key_bits   Number of bits in the key of the hash;
                 must satisfy 0 < num_key_bits < 64, and keys used must
                 be less than (1<<num_key_bits)-1.
-     @param [in] num_value_bits  Number of bits in the value of the hash.
-                If not specified it defaults to 64 - num_key_bits; in future
-                we'll allow more bits than that, by making some bits of
-                the key implicit in the bucket index.
+     @param [in] num_value_bits  Number of bits in the value of the hash;
+                if not specified, will be set to 64 - num_key_bits.  There
+                are constraints on the num_value_bits, it interacts with
+                which accessor you use.  For Accessor<> or GenericAccessor,
+                we require that num_key_bits + num_value_bits == 64.
+                For PackedAccessor we allow that num_key_bits + num_value_bits > 64,
+                but with the constraint that
+                  (num_buckets >> (64 - num_key_bits - num_value_bits)) >= 32
   */
   Hash(ContextPtr c,
        int32_t num_buckets,
