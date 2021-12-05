@@ -89,7 +89,7 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
    inside kernels (or host code), calling functions Insert(), Find() or Delete()
    of the Accessor object.  Resizing is not automatic; it is the user's
    responsibility to make sure the hash does not get too full (which could cause
-   assertaon failures in kernels, and will be very slow).
+   assertion failures in kernels, and will be very slow).
 
    Some implementation notes:
     - When accessing hash[key], we use bucket_index == key % num_buckets,
