@@ -59,7 +59,6 @@ set(context_srcs
   intersect_dense_pruned.cu
   math.cu
   moderngpu_allocator.cu
-  online_intersect_dense_pruned.cu
   pinned_context.cu
   ragged.cu
   ragged_ops.cu

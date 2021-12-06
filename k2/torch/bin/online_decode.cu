@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "k2/csrc/online_intersect_dense_pruned.h"
+#include "k2/csrc/online_dense_intersector.h"
 #include "k2/torch/csrc/decode.h"
 #include "k2/torch/csrc/dense_fsa_vec.h"
 #include "k2/torch/csrc/deserialization.h"
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
   K2_LOG(INFO) << "Decoding";
 
   auto decoding_fsa = k2::FsaToFsaVec(decoding_graph.fsa);
-  k2::OnlineIntersectDensePruned decoder(
+  k2::OnlineDenseIntersecter decoder(
       decoding_fsa, num_waves, FLAGS_search_beam, FLAGS_output_beam,
       FLAGS_min_activate_states, FLAGS_max_activate_states);
 
@@ -260,9 +260,8 @@ int main(int argc, char *argv[]) {
     k2::DenseFsaVec dense_fsa_vec = k2::CreateDenseFsaVec(
         sub_nnet_output, supervision_segments, subsampling_factor - 1);
 
-    auto dense_fsa = std::make_shared<k2::DenseFsaVec>(dense_fsa_vec);
     bool is_final = c == chunk_num - 1 ? true : false;
-    decoder.Intersect(dense_fsa, is_final);
+    decoder.Intersect(dense_fsa_vec, is_final);
 
     k2::FsaVec fsa;
     k2::Array1<int32_t> graph_arc_map;
