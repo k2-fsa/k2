@@ -1,5 +1,6 @@
 /**
- * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey,
+ *                                                   Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -116,14 +117,15 @@ class MultiGraphDenseIntersectPruned {
                            something more complicated.  Must have either the
                            same Dim0() as b_fsas, or Dim0()==1 in which
                            case the graph is shared.
-       @param [in] b_fsas  The neural-net output, with each frame containing the
-                           log-likes of each phone.  A series of sequences of
-                           (in general) different length.
-       @param [in] search_beam    "Default" search/decoding beam.  The actual
+       @param [in] num_seqs  The number of sequences to do intersection at a
+                             time, i.e. batch size. The input DenseFsaVec in
+                             `Intersect` function MUST have `Dim0()` equals to
+                             this.
+       @param [in] search_beam  "Default" search/decoding beam.  The actual
                            beam is dynamic and also depends on max_active and
                            min_active.
-       @param [in] output_beam    Beam for pruning the output FSA, will
-                                  typically be smaller than search_beam.
+       @param [in] output_beam  Beam for pruning the output FSA, will
+                                typically be smaller than search_beam.
        @param [in] min_active  Minimum number of FSA states that are allowed to
                            be active on any given frame for any given
                            intersection/composition task. This is advisory,
@@ -134,6 +136,9 @@ class MultiGraphDenseIntersectPruned {
                            intersection/composition task. This is advisory,
                            in that it will try not to exceed that but may not
                            always succeed.  This determines the hash size.
+       @param [in] online_decoding  True for online decoding (i.e. chunk by
+                                    chunk decoding), false for running in batch
+                                    mode.
    */
   MultiGraphDenseIntersectPruned(FsaVec &a_fsas, int32_t num_seqs,
                                  float search_beam, float output_beam,
@@ -219,7 +224,12 @@ class MultiGraphDenseIntersectPruned {
   };
 
   /* Does the main work of intersection/composition, but doesn't produce any
-     output; the output is provided when you call FormatOutput(). */
+     output; the output is provided when you call FormatOutput().
+
+       @param [in] b_fsas  The neural-net output, with each frame containing the
+                           log-likes of each phone.  A series of sequences of
+                           (in general) different length.
+   */
   void Intersect(std::shared_ptr<DenseFsaVec> &b_fsas) {
     /*
       T is the largest number of (frames+1) of neural net output, or the largest
@@ -312,23 +322,35 @@ class MultiGraphDenseIntersectPruned {
     pool->WaitAllTasksFinished();
   }
 
+  /* Does the main work of intersection/composition, but doesn't produce any
+     output; the output is provided when you call FormatOutput().
+     Does almost the same work as `Intersect`, except that this would be call
+     serveral times for chunk by chunk decoding.
+
+       @param [in] b_fsas  The neural-net output, with each frame containing the
+                           log-likes of each phone.  A series of sequences of
+                           (in general) different length.
+       @param [in] is_final Whether this is the final chunk of the nnet_output,
+                            After calling this function with is_final is true,
+                            means decoding finished.
+  */
   void OnlineIntersect(std::shared_ptr<DenseFsaVec> &b_fsas, bool is_final) {
     /*
-      T is the largest number of (frames+1) of neural net output, or the largest
-      number of frames of log-likelihoods we count the final frame with (0,
-      -inf, -inf..) that is used for the final-arc.  The largest number of
-      states in the fsas represented by b_fsas equals T+1 (e.g. 1 frame would
-      require 2 states, because that 1 frame is the arc from state 0 to state
-      1).  So the #states is 2 greater than the actual number of frames in the
-      neural-net output.
+      T is the largest number of (frames+1) of neural net output currently
+      received, or the largest number of frames of log-likelihoods we count the
+      final frame with (0, -inf, -inf..) that is used for the final-arc.
+      The largest number of states in the fsas represented by b_fsas equals
+      T+1 (e.g. 1 frame would require 2 states, because that 1 frame is the arc
+      from state 0 to state 1). So the #states is 2 greater than the actual
+      number of frames in the neural-net output.
     */
     K2_CHECK(online_decoding_);
     K2_CHECK(c_->IsCompatible(*b_fsas->Context()));
 
+    K2_CHECK_EQ(reach_final_, 0) << "You can't continue decoding after "
+                                 << "reaching final.";
     if (is_final) {
       reach_final_ = 1;
-    } else {
-      K2_CHECK_EQ(reach_final_, 0);
     }
 
     b_fsas_ = b_fsas;
@@ -368,12 +390,15 @@ class MultiGraphDenseIntersectPruned {
       T_ = T;
     } else {
       T_ = T - 1;
+      // partial_final_frame_ is the last frame to generate partial result,
+      // but it should not be the start frame of next chunk decoding.
       partial_final_frame_ = std::move(frames_.back());
       frames_.pop_back();
     }
     const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
     int32_t *final_t_data = final_t_.Data();
 
+    // Get final frame of each sequences.
     K2_EVAL(
         c_, num_seqs_, lambda_set_final_and_final_t, (int32_t i)->void {
           int32_t b_chunk_size =
@@ -433,7 +458,6 @@ class MultiGraphDenseIntersectPruned {
             states_data[i] = info;
           });
     } else {
-      K2_LOG(INFO) << "exe here";
       Ragged<int32_t> start_states = GetStartStates(a_fsas_);
       ans->states =
           Ragged<StateInfo>(start_states.shape,
@@ -610,6 +634,8 @@ class MultiGraphDenseIntersectPruned {
           arc.score = arc_info.arc_loglike;
           arcs_out_data[oarc_idx0123] = arc;
 
+          // We won't preduce arc_map_b (for nnet_output) for online_decoding,
+          // in this case, b_fsas_ is only a part of the whole sequence.
           if (!online_decoding) {
             int32_t fsa_id = oarc_idx0,
               b_fsas_idx0x = b_fsas_row_splits1[fsa_id],
@@ -1300,7 +1326,7 @@ class MultiGraphDenseIntersectPruned {
 
 
     // contains respectively: row_splits1_ptrs, row_ids1_ptrs,
-    // row_splits1_ptrs, row_splits2_ptrs,
+    // row_splits2_ptrs, row_ids2_ptrs,
     // old_arcs_ptrs (really type ArcInfo*),
     // old_states_ptrs (really type StateInfo*).
     Array1<void*> old_all_ptrs(cpu, num_t * 6);
@@ -1543,9 +1569,12 @@ class MultiGraphDenseIntersectPruned {
   int32_t a_fsas_stride_;  // 1 if we use a different FSA per sequence
                            // (a_fsas_.Dim0() > 1), 0 if the decoding graph is
                            // shared (a_fsas_.Dim0() == 1).
-  std::shared_ptr<DenseFsaVec> b_fsas_;
-  int32_t num_seqs_;
-  int32_t T_;  // == b_fsas_->shape.MaxSize(1).
+  std::shared_ptr<DenseFsaVec> b_fsas_;  // nnet_output to be decoded.
+  int32_t num_seqs_;       // the number of sequences to decode at a time,
+                           // i.e. batch size for decoding.
+  int32_t T_;              // equals to b_fsas_->shape.MaxSize(1), for
+                           // batch intersection.
+                           // means the number of frames decoded currently.
   float search_beam_;
   float output_beam_;
   int32_t min_active_;
@@ -1554,9 +1583,10 @@ class MultiGraphDenseIntersectPruned {
                                  // but change due to max_active/min_active
                                  // constraints).
 
-  bool online_decoding_;
+  bool online_decoding_;         // true for online decoding.
   Array1<int32_t> final_t_;      // record the final frame id of each DenseFsa.
-  int32_t reach_final_;
+  int32_t reach_final_;          // only for online decoding, indicating whether
+                                 // the last chunk of audio received.
 
   std::unique_ptr<FrameInfo> partial_final_frame_;  // store the final frame for
                                                     // partial results
