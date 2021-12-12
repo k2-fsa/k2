@@ -18,6 +18,12 @@ set(torch_srcs
   v2/ragged_shape.cu
 )
 
+if (K2_WITH_CUDA)
+  list(APPEND torch_srcs mutual_information_cuda.cu)
+else()
+  list(APPEND torch_srcs mutual_information_cpu.cc)
+endif()
+
 set(torch_srcs_with_prefix)
 foreach(src IN LISTS torch_srcs)
   list(APPEND torch_srcs_with_prefix "torch/${src}")
