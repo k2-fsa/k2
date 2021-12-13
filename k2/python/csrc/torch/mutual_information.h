@@ -22,7 +22,10 @@
 #define K2_PYTHON_CSRC_TORCH_MUTUAL_INFORMATION_H_
 
 #include <torch/extension.h>
+
 #include <vector>
+
+#include "k2/python/csrc/torch.h"
 
 namespace k2 {
 /*
@@ -70,10 +73,17 @@ namespace k2 {
    The block-dim and grid-dim must both be 1-dimensional, and the block-dim must
    be at least 128.
 */
-torch::Tensor mutual_information(torch::Tensor px,  // [B][S][T+1]
-                                      torch::Tensor py,  // [B][S+1][T]
-                                      torch::Tensor boundary,  // [B][4], int64_t.
-                                      torch::Tensor p);  //  [B][S+1][T+1]; an output
+torch::Tensor MutualInformationCpu(
+    torch::Tensor px,        // [B][S][T+1]
+    torch::Tensor py,        // [B][S+1][T]
+    torch::Tensor boundary,  // [B][4], int64_t.
+    torch::Tensor p);        //  [B][S+1][T+1]; an output
+
+torch::Tensor MutualInformationCuda(
+    torch::Tensor px,        // [B][S][T+1]
+    torch::Tensor py,        // [B][S+1][T]
+    torch::Tensor boundary,  // [B][4], int64_t.
+    torch::Tensor p);        //  [B][S+1][T+1]; an output
 
 /*
   backward of mutual_information; returns (grad_px, grad_py)
@@ -83,14 +93,18 @@ torch::Tensor mutual_information(torch::Tensor px,  // [B][S][T+1]
   very close to the value of ans_grad at entry.  This can be used
   to validate the correctness of this code.
 */
-std::vector<torch::Tensor> mutual_information_backward(
-    torch::Tensor px,
-    torch::Tensor py,
-    torch::Tensor boundary,
-    torch::Tensor p,
-    torch::Tensor ans_grad,
-    bool overwrite_ans_grad);
+std::vector<torch::Tensor> MutualInformationBackwardCpu(torch::Tensor px,
+                                                        torch::Tensor py,
+                                                        torch::Tensor boundary,
+                                                        torch::Tensor p,
+                                                        torch::Tensor ans_grad);
+
+std::vector<torch::Tensor> MutualInformationBackwardCuda(
+    torch::Tensor px, torch::Tensor py, torch::Tensor boundary, torch::Tensor p,
+    torch::Tensor ans_grad, bool overwrite_ans_grad);
 
 }  // namespace k2
+
+void PybindMutualInformation(py::module &m);
 
 #endif  // K2_PYTHON_CSRC_TORCH_MUTUAL_INFORMATION_H_

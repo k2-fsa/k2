@@ -52,6 +52,8 @@ from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_algo import union
 from .fsa_properties import to_str as properties_to_str
+from .mutual_information import joint_mutual_information_recursion
+from .mutual_information import mutual_information_recursion
 from .nbest import Nbest
 from .ops import cat
 from .ops import compose_arc_maps

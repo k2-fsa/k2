@@ -6,6 +6,8 @@ set(torch_srcs
   fsa_algo.cu
   index_add.cu
   index_select.cu
+  mutual_information.cu
+  mutual_information_cpu.cu
   nbest.cu
   ragged.cu
   ragged_ops.cu
@@ -20,8 +22,6 @@ set(torch_srcs
 
 if (K2_WITH_CUDA)
   list(APPEND torch_srcs mutual_information_cuda.cu)
-else()
-  list(APPEND torch_srcs mutual_information_cpu.cc)
 endif()
 
 set(torch_srcs_with_prefix)
