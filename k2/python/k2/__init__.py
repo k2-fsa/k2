@@ -60,7 +60,14 @@ from .ops import compose_arc_maps
 from .ops import index_add
 from .ops import index_fsa
 from .ops import index_select
-#
+
+from .rnnt_loss import get_rnnt_logprobs
+from .rnnt_loss import get_rnnt_logprobs_aux
+from .rnnt_loss import get_rnnt_logprobs_joint
+from .rnnt_loss import rnnt_loss
+from .rnnt_loss import rnnt_loss_aux
+from .rnnt_loss import rnnt_loss_simple
+
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
 from .utils import create_sparse

@@ -300,7 +300,7 @@ __global__ void mutual_information_kernel(
         // the same as the recursion defined for p in
         // mutual_information.py:mutual_information_recursion(); and (eq. 0)
         // above.
-#if 1
+#if 0
         p_buf[s + 1][t + 1] = LogAdd<scalar_t>()(
             p_buf[s][t + 1] + px_buf[s][t], p_buf[s + 1][t] + py_buf[s][t]);
 
@@ -313,8 +313,8 @@ __global__ void mutual_information_kernel(
         // This is an optimization of the statement above (the other half of
         // this #if/#else) where we keep p_buf[s + 1][t] in a register to avoid
         // the need for a load from shared memory.
-        p_buf_s1_t =
-            LogAdd(p_buf[s][t + 1] + px_buf[s][t], p_buf_s1_t + py_buf[s][t]);
+        p_buf_s1_t = LogAdd<scalar_t>()(p_buf[s][t + 1] + px_buf[s][t],
+                                        p_buf_s1_t + py_buf[s][t]);
         // The next time this thread reads p_buf_s1_t, t will be one greater,
         // so p_buf_s1_t will contain p_buf[s + 1][t].  The first time this
         // thread uses p_buf_s1_t is when t == 0, except for thread 0 where
