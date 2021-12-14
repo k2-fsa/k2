@@ -25,6 +25,7 @@
 #if defined(K2_USE_PYTORCH)
 
 #include "k2/python/csrc/torch/arc.h"
+#include "k2/python/csrc/torch/array_ops.h"
 #include "k2/python/csrc/torch/discounted_cum_sum.h"
 #include "k2/python/csrc/torch/fsa.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
@@ -37,6 +38,7 @@
 
 void PybindTorch(py::module &m) {
   PybindArc(m);
+  PybindArrayOps(m);
   PybindDiscountedCumSum(m);
   PybindFsa(m);
   PybindFsaAlgo(m);

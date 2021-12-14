@@ -694,8 +694,8 @@ def random_fsa_vec(min_num_fsas: int = 1,
 
 
 def get_best_matching_stats(
-        tokens: k2.RaggedTensor, scores: torch.Tensor, counts: torch.Tensor,
-        eos: int, min_token: int, max_token: int, max_order: int
+    tokens: k2.RaggedTensor, scores: torch.Tensor, counts: torch.Tensor,
+    eos: int, min_token: int, max_token: int, max_order: int
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:  # noqa
     '''For "query" sentences, this function gets the mean and variance of
     scores from the best matching words-in-context in a set of provided "key"
@@ -781,3 +781,67 @@ def get_best_matching_stats(
     '''
     return _k2.get_best_matching_stats(tokens, scores, counts, eos, min_token,
                                        max_token, max_order)
+
+
+def monotonic_lower_bound(src: torch.Tensor,
+                          inplace: bool = False) -> torch.Tensor:
+    """Compute a monotonically increasing lower bound on the array `src`.
+    The basic idea is: we traverse the array in reverse order, and update
+    current element with the following statement,
+
+        min_value = min(src[i], min_value)
+        dest[i] = min_value
+
+    we initialize the min_value with `inf`, so the last element always keeps
+    the same. See the examples below, if the input tensor is
+    `[0, 2, 1, 3, 6, 5, 8]`, the output tensor will be `[0, 1, 1, 3, 5, 5, 8]`,
+    i.e. we traverse it in reverse order and guarantee that
+    `dest[i] <= dest[i+1]`.
+
+    Note: Only support 1 dimension and 2 dimensions tentor with dtype equals to
+      `torch.int32`,`torch.int64`, `torch.float` or `torch.float64`.
+
+    >>> import k2
+    >>> import torch
+    >>> src = torch.tensor([0, 2, 1, 3, 6, 5, 8], dtype=torch.int32)
+    >>> k2.monotonic_lower_bound(src)
+    tensor([0, 1, 1, 3, 5, 5, 8], dtype=torch.int32)
+    >>> src
+    tensor([0, 2, 1, 3, 6, 5, 8], dtype=torch.int32)
+    >>> k2.monotonic_lower_bound(src, inplace=True)
+    tensor([0, 1, 1, 3, 5, 5, 8], dtype=torch.int32)
+    >>> src
+    tensor([0, 1, 1, 3, 5, 5, 8], dtype=torch.int32)
+    >>> src = torch.randint(20, (3, 6), dtype=torch.int32)
+    >>> src
+    tensor([[12, 18,  5,  4, 18, 17],
+            [11, 14, 14,  3, 10,  4],
+            [19,  3,  8, 13,  7, 19]], dtype=torch.int32)
+    >>> k2.monotonic_lower_bound(src)
+    tensor([[ 4,  4,  4,  4, 17, 17],
+            [ 3,  3,  3,  3,  4,  4],
+            [ 3,  3,  7,  7,  7, 19]], dtype=torch.int32)
+    >>> k2.monotonic_lower_bound(src, inplace=True)
+    tensor([[ 4,  4,  4,  4, 17, 17],
+            [ 3,  3,  3,  3,  4,  4],
+            [ 3,  3,  7,  7,  7, 19]], dtype=torch.int32)
+    >>> src
+    tensor([[ 4,  4,  4,  4, 17, 17],
+            [ 3,  3,  3,  3,  4,  4],
+            [ 3,  3,  7,  7,  7, 19]], dtype=torch.int32)
+
+    Args:
+      src:
+        The source tensor, MUST be a 1 dimension or 2 dimensions tensor with
+        dtype equals to `torch.int32`,`torch.int64`,`torch.float` or
+        `torch.float64`.
+      inplace:
+        True to modify the source tensor inplace, Fasle to return another
+        tensor.
+
+    Returns:
+      Returns a tensor which is monotonic(i.e. satisfiy `dest[i] <= dest[i+1]`),
+      the returned tensor shares the same underlying memory with the source
+      tensor if inplace is True.
+    """
+    return _k2.monotonic_lower_bound(src, inplace)
