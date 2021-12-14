@@ -34,7 +34,7 @@ static void PybindMonotonicLowerBound(py::module &m) {
         Dtype t = ScalarTypeToDtype(src.scalar_type());
         ContextPtr c = GetContext(src);
         DeviceGuard guard(c);
-        FOR_REAL_AND_INT32_TYPES(t, T, {
+        FOR_REAL_AND_INT_TYPES(t, T, {
           if (src.dim() == 1) {
             Array1<T> src_array = FromTorch<T>(src);
             Array1<T> dest_array = src_array;

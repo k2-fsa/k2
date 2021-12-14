@@ -28,35 +28,35 @@ import k2
 
 
 class TestArrayOps(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
-        cls.devices = [torch.device('cpu')]
+        cls.devices = [torch.device("cpu")]
         if torch.cuda.is_available() and k2.with_cuda:
-            cls.devices.append(torch.device('cuda', 0))
+            cls.devices.append(torch.device("cuda", 0))
             if torch.cuda.device_count() > 1:
                 torch.cuda.set_device(1)
-                cls.devices.append(torch.device('cuda', 1))
+                cls.devices.append(torch.device("cuda", 1))
 
-        cls.dtypes = [torch.int32, torch.float32, torch.float64]
+        cls.dtypes = [torch.int32, torch.int64, torch.float32, torch.float64]
 
     def test_monotonic_lower_bound(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 # simple case
-                src = torch.tensor([2, 1, 3, 7, 5, 8, 20, 15],
-                                   dtype=dtype,
-                                   device=device)
-                expected = torch.tensor([1, 1, 3, 5, 5, 8, 15, 15],
-                                        dtype=dtype,
-                                        device=device)
+                src = torch.tensor(
+                    [2, 1, 3, 7, 5, 8, 20, 15], dtype=dtype, device=device
+                )
+                expected = torch.tensor(
+                    [1, 1, 3, 5, 5, 8, 15, 15], dtype=dtype, device=device
+                )
                 dest = k2.monotonic_lower_bound(src)
                 assert torch.allclose(dest, expected)
                 assert torch.allclose(
                     src,
-                    torch.tensor([2, 1, 3, 7, 5, 8, 20, 15],
-                                 dtype=dtype,
-                                 device=device))
+                    torch.tensor(
+                        [2, 1, 3, 7, 5, 8, 20, 15], dtype=dtype, device=device
+                    ),
+                )
                 k2.monotonic_lower_bound(src, inplace=True)
                 assert torch.allclose(src, expected)
 
@@ -77,5 +77,5 @@ class TestArrayOps(unittest.TestCase):
                 assert torch.allclose(src, expected)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

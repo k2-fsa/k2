@@ -785,10 +785,21 @@ def get_best_matching_stats(
 
 def monotonic_lower_bound(src: torch.Tensor,
                           inplace: bool = False) -> torch.Tensor:
-    '''Compute a monotonically increasing lower bound on the array `src`.
+    """Compute a monotonically increasing lower bound on the array `src`.
+    The basic idea is: we traverse the array in reverse order, and update
+    current element with the following statement,
+
+        min_value = min(src[i], min_value)
+        dest[i] = min_value
+
+    we initialize the min_value with `inf`, so the last element always keeps
+    the same. See the examples below, if the input tensor is
+    `[0, 2, 1, 3, 6, 5, 8]`, the output tensor will be `[0, 1, 1, 3, 5, 5, 8]`,
+    i.e. we traverse it in reverse order and guarantee that
+    `dest[i] <= dest[i+1]`.
 
     Note: Only support 1 dimension and 2 dimensions tentor with dtype equals to
-      `torch.int32`,`torch.float` and `torch.float64`.
+      `torch.int32`,`torch.int64`, `torch.float` or `torch.float64`.
 
     >>> import k2
     >>> import torch
@@ -822,7 +833,8 @@ def monotonic_lower_bound(src: torch.Tensor,
     Args:
       src:
         The source tensor, MUST be a 1 dimension or 2 dimensions tensor with
-        dtype equals to `torch.int32`,`torch.float` and `torch.float64`.
+        dtype equals to `torch.int32`,`torch.int64`,`torch.float` or
+        `torch.float64`.
       inplace:
         True to modify the source tensor inplace, Fasle to return another
         tensor.
@@ -831,5 +843,5 @@ def monotonic_lower_bound(src: torch.Tensor,
       Returns a tensor which is monotonic(i.e. satisfiy `dest[i] <= dest[i+1]`),
       the returned tensor shares the same underlying memory with the source
       tensor if inplace is True.
-    '''
+    """
     return _k2.monotonic_lower_bound(src, inplace)
