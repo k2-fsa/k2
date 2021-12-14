@@ -148,6 +148,11 @@ linear_fst
 
 .. autofunction:: linear_fst
 
+monotonic_lower_bound
+---------------------
+
+.. autofunction:: monotonic_lower_bound
+
 properties_to_str
 -----------------
 
