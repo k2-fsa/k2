@@ -18,18 +18,26 @@
  * limitations under the License.
  */
 
+#include "k2/csrc/device_guard.h"
 #include "k2/python/csrc/torch/mutual_information.h"
+#include "k2/python/csrc/torch/torch_util.h"
 
 void PybindMutualInformation(py::module &m) {
   m.def(
       "mutual_information_forward",
       [](torch::Tensor px, torch::Tensor py, torch::Tensor boundary,
          torch::Tensor p) -> torch::Tensor {
+        k2::DeviceGuard guard(k2::GetContext(px));
         if (px.device().is_cpu()) {
           return k2::MutualInformationCpu(px, py, boundary, p);
         } else {
-          // TODO: raise if not compiled with cuda
+#ifdef K2_WITH_CUDA
           return k2::MutualInformationCuda(px, py, boundary, p);
+#else
+          k2::K2_LOG(FATAL) << "Failed to find native CUDA module, make sure "
+                            << " that you compiled the code with K2_WITH_CUDA.";
+          return torch::Tensor();
+#endif
         }
       },
       py::arg("px"), py::arg("py"), py::arg("boundary"), py::arg("p"));
@@ -39,13 +47,19 @@ void PybindMutualInformation(py::module &m) {
       [](torch::Tensor px, torch::Tensor py, torch::Tensor boundary,
          torch::Tensor p,
          torch::Tensor ans_grad) -> std::vector<torch::Tensor> {
+        k2::DeviceGuard guard(k2::GetContext(px));
         if (px.device().is_cpu()) {
           return k2::MutualInformationBackwardCpu(px, py, boundary, p,
                                                   ans_grad);
         } else {
-          // TODO: raise if not compiled with cuda
+#ifdef K2_WITH_CUDA
           return k2::MutualInformationBackwardCuda(px, py, boundary, p,
                                                    ans_grad, true);
+#else
+          k2::K2_LOG(FATAL) << "Failed to find native CUDA module, make sure "
+                            << " that you compiled the code with K2_WITH_CUDA.";
+          return torch::Tensor();
+#endif
         }
       },
       py::arg("px"), py::arg("py"), py::arg("boundary"), py::arg("p"),
