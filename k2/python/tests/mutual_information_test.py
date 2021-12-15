@@ -150,15 +150,16 @@ class TestMutualInformation(unittest.TestCase):
                     else:
                         (m3.sum() * scale).backward()
 
-                    px_grads.append(px.grad.to('cpu'))
-                    py_grads.append(py.grad.to('cpu'))
-                    m_vals.append(m.to('cpu'))
-                assert torch.allclose(
-                        m_vals[0], m_vals[1], atol=1.0e-02, rtol=1.0e-02)
-                assert torch.allclose(
-                        px_grads[0], px_grads[1], atol=1.0e-02, rtol=1.0e-02)
-                assert torch.allclose(
-                        py_grads[0], py_grads[1], atol=1.0e-02, rtol=1.0e-02)
+                    if device == torch.device("cpu"):
+                        expected_px_grad = px.grad
+                        expected_py_grad = py.grad
+                        expected_m = m
+                    assert torch.allclose(px.grad, expected_px_grad.to(device),
+                                          atol=1.0e-02, rtol=1.0e-02)
+                    assert torch.allclose(py.grad, expected_py_grad.to(device),
+                                          atol=1.0e-02, rtol=1.0e-02)
+                    assert torch.allclose(m, expected_m.to(device),
+                                          atol=1.0e-02, rtol=1.0e-02)
 
     def test_mutual_information_deriv(self):
         for _iter in range(100):

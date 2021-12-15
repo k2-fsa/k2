@@ -34,8 +34,8 @@ void PybindMutualInformation(py::module &m) {
 #ifdef K2_WITH_CUDA
           return k2::MutualInformationCuda(px, py, boundary, p);
 #else
-          k2::K2_LOG(FATAL) << "Failed to find native CUDA module, make sure "
-                            << " that you compiled the code with K2_WITH_CUDA.";
+          K2_LOG(FATAL) << "Failed to find native CUDA module, make sure "
+                        << "that you compiled the code with K2_WITH_CUDA.";
           return torch::Tensor();
 #endif
         }
@@ -56,9 +56,9 @@ void PybindMutualInformation(py::module &m) {
           return k2::MutualInformationBackwardCuda(px, py, boundary, p,
                                                    ans_grad, true);
 #else
-          k2::K2_LOG(FATAL) << "Failed to find native CUDA module, make sure "
-                            << " that you compiled the code with K2_WITH_CUDA.";
-          return torch::Tensor();
+          K2_LOG(FATAL) << "Failed to find native CUDA module, make sure "
+                        << "that you compiled the code with K2_WITH_CUDA.";
+          return std::vector<torch::Tensor>();
 #endif
         }
       },
