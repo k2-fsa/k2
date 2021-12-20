@@ -25,7 +25,7 @@ namespace k2 {
 
 // forward of mutual_information.  See """... """ comment of
 // `mutual_information` in mutual_information.py for documentation of the
-// behavior of this function. px: of shape [B, S, T+1] where
+// behavior of this function.
 torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
                                    torch::Tensor boundary, torch::Tensor p) {
   TORCH_CHECK(px.dim() == 3, "px must be 3-dimensional");

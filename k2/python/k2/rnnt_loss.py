@@ -19,7 +19,7 @@ import os
 import k2
 import torch
 from torch import Tensor
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 from .mutual_information import (
     mutual_information_recursion,
     joint_mutual_information_recursion,
@@ -147,7 +147,7 @@ def rnnt_loss_simple(
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
     return_grad: bool = False,
-) -> Tensor:
+) -> Union[Tensor, Tuple[Tensor, Tuple[Tensor, Tensor]]]:
     """A simple case of the RNN-T loss, where the 'joiner' network is just
     addition. Returns negated total loss value.
 

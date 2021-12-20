@@ -18,7 +18,7 @@ import os
 import torch
 import _k2
 from torch import Tensor
-from typing import Tuple, Optional, Sequence
+from typing import Tuple, Optional, Sequence, Union
 
 
 class MutualInformationRecursionFunction(torch.autograd.Function):
@@ -76,10 +76,12 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         return (px_grad, py_grad, None)
 
 
-def mutual_information_recursion(px: Tensor,
-                                 py: Tensor,
-                                 boundary: Optional[Tensor] = None,
-                                 return_grad: bool = False):
+def mutual_information_recursion(
+    px: Tensor,
+    py: Tensor,
+    boundary: Optional[Tensor] = None,
+    return_grad: bool = False
+) -> Union[Tuple[Tensor, Tuple[Tensor, Tensor]], Tensor]:
     """A recursion that is useful in computing mutual information between two
     sequences of real vectors, but may be useful more generally in
     sequence-to-sequence tasks where monotonic alignment between pairs of
