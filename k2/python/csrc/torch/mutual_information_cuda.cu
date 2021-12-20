@@ -222,11 +222,11 @@ __global__ void mutual_information_kernel(
           (float)px_buf[s_in_p_buf][t_in_p_buf],
          (float)py_buf[s_in_p_buf][t_in_p_buf]); */
       p_buf[s_in_p_buf][t_in_p_buf] = this_p;
-    } else if (static_cast<unsigned int>(int(threadIdx.x) - 64) <=
+    } else if (static_cast<unsigned int>(static_cast<int>(threadIdx.x) - 64) <=
                static_cast<unsigned int>(BLOCK_SIZE)) {
       // Another warp handles the other leg.  Checking as unsigned
       // tests that threadIdx.x - 64 is both >= 0 and <= BLOCK_SIZE
-      int s_in_p_buf = 0, t_in_p_buf = (int)threadIdx.x - 64,
+      int s_in_p_buf = 0, t_in_p_buf = static_cast<int>(threadIdx.x) - 64,
           s = s_in_p_buf + s_block_begin - 1,
           t = t_in_p_buf + t_block_begin - 1;
 
@@ -622,11 +622,11 @@ __global__ void mutual_information_backward_kernel(
           s = s_in_block + s_block_begin, t = t_in_block + t_block_begin;
       p_buf[s_in_block][t_in_block] =
           (s <= s_end && t <= t_end ? p_grad[b][s][t] : 0.0);
-    } else if (static_cast<unsigned int>((int)threadIdx.x - 64) <
+    } else if (static_cast<unsigned int>(static_cast<int>(threadIdx.x) - 64) <
                static_cast<unsigned int>(block_T)) {
       // casting to unsigned before the comparison tests for both negative and
       // out-of-range values of (int)threadIdx.x - 64.
-      int s_in_block = block_S, t_in_block = (int)threadIdx.x - 64,
+      int s_in_block = block_S, t_in_block = static_cast<int>(threadIdx.x) - 64,
           s = s_in_block + s_block_begin, t = t_in_block + t_block_begin;
       p_buf[s_in_block][t_in_block] =
           (s <= s_end && t <= t_end ? p_grad[b][s][t] : 0.0);
