@@ -206,10 +206,11 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
           if (ans_grad_a[b] != 0.0) {
             float grad_ratio = p_grad_a[b][s_begin][t_begin] / ans_grad_a[b];
             if (fabs(grad_ratio - 1.0) > 0.01) {
-              printf(
-                  "Warning: mutual_information backprop: expected these "
-                  "numbers to be the same: %f vs. %f\n",
-                  (float)p_grad_a[b][s_begin][t_begin], (float)ans_grad_a[b]);
+              K2_LOG(WARNING)
+                  << "Warning: mutual_information backprop: expected these "
+                  << "numbers to be the same:"
+                  << static_cast<float>(p_grad_a[b][s_begin][t_begin]) << " vs "
+                  << static_cast<float>(ans_grad_a[b]);
             }
           }
         }

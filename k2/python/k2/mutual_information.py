@@ -76,7 +76,10 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         return (px_grad, py_grad, None)
 
 
-def mutual_information_recursion(px, py, boundary=None):
+def mutual_information_recursion(px: Tensor,
+                                 py: Tensor,
+                                 boundary: Optional[Tensor] = None,
+                                 return_grad: bool = False):
     """A recursion that is useful in computing mutual information between two
     sequences of real vectors, but may be useful more generally in
     sequence-to-sequence tasks where monotonic alignment between pairs of
@@ -133,6 +136,12 @@ def mutual_information_recursion(px, py, boundary=None):
         y sequences respectively, and can be used if not all sequences are
         of the same length.
 
+      return_grad:
+        Whether to return grads of px and py, this grad standing for the
+        occupation probability is the output of the backward with a
+        `fake gradient` input (all ones)  This is useful to implement the
+        pruned version of rnnt loss.
+
     Returns:
         Returns a torch.Tensor of shape [B], containing the log of the mutual
         information between the b'th pair of sequences.  This is defined by
@@ -167,7 +176,7 @@ def mutual_information_recursion(px, py, boundary=None):
     assert py.stride()[-1] == 1
     m, px_grad, py_grad = MutualInformationRecursionFunction.apply(
         px, py, boundary)
-    return m, (px_grad, py_grad)
+    return (m, (px_grad, py_grad)) if return_grad else m
 
 
 def _inner(a: Tensor, b: Tensor) -> Tensor:

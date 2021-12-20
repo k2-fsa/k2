@@ -28,8 +28,8 @@ import k2
 import torch
 
 
-# Caution: this will fail occasionally due to cutoffs not being quite large enough.
-# As long as it passes most of the time, it's OK.
+# Caution: this will fail occasionally due to cutoffs not being quite large
+# enough. As long as it passes most of the time, it's OK.
 class TestMutualInformation(unittest.TestCase):
 
     @classmethod
@@ -53,11 +53,7 @@ class TestMutualInformation(unittest.TestCase):
             big_py = (random.random() < 0.2)
 
             for dtype in self.dtypes:
-                px_grads = []
-                py_grads = []
-                m_vals = []
                 for device in self.devices:
-
                     if random_boundary:
 
                         def get_boundary_row():
@@ -121,7 +117,7 @@ class TestMutualInformation(unittest.TestCase):
                     px.requires_grad = True
                     py.requires_grad = True
 
-                    m, grad = k2.mutual_information_recursion(px, py, boundary)
+                    m = k2.mutual_information_recursion(px, py, boundary)
 
                     m2 = k2.joint_mutual_information_recursion((px,), (py,),
                                                                boundary)
@@ -154,12 +150,18 @@ class TestMutualInformation(unittest.TestCase):
                         expected_px_grad = px.grad
                         expected_py_grad = py.grad
                         expected_m = m
-                    assert torch.allclose(px.grad, expected_px_grad.to(device),
-                                          atol=1.0e-02, rtol=1.0e-02)
-                    assert torch.allclose(py.grad, expected_py_grad.to(device),
-                                          atol=1.0e-02, rtol=1.0e-02)
-                    assert torch.allclose(m, expected_m.to(device),
-                                          atol=1.0e-02, rtol=1.0e-02)
+                    assert torch.allclose(px.grad,
+                                          expected_px_grad.to(device),
+                                          atol=1.0e-02,
+                                          rtol=1.0e-02)
+                    assert torch.allclose(py.grad,
+                                          expected_py_grad.to(device),
+                                          atol=1.0e-02,
+                                          rtol=1.0e-02)
+                    assert torch.allclose(m,
+                                          expected_m.to(device),
+                                          atol=1.0e-02,
+                                          rtol=1.0e-02)
 
     def test_mutual_information_deriv(self):
         for _iter in range(100):
@@ -232,13 +234,13 @@ class TestMutualInformation(unittest.TestCase):
                     px.requires_grad = True
                     py.requires_grad = True
 
-                    m, grad = k2.mutual_information_recursion(px, py, boundary)
+                    m = k2.mutual_information_recursion(px, py, boundary)
 
                     m_grad = torch.randn(B, dtype=dtype, device=device)
                     m.backward(gradient=m_grad)
                     delta = 1.0e-04
                     delta_px = delta * torch.randn_like(px)
-                    m2, grad = k2.mutual_information_recursion(
+                    m2 = k2.mutual_information_recursion(
                         px + delta_px, py, boundary)
                     delta_m = m2 - m
                     observed_delta = (delta_m * m_grad).sum().to('cpu')
@@ -247,18 +249,22 @@ class TestMutualInformation(unittest.TestCase):
                     atol = 1.0e-02 if dtype == torch.float32 else 1.0e-04
                     rtol = 1.0e-02 if dtype == torch.float32 else 1.0e-04
 
-                    assert torch.allclose(observed_delta, predicted_delta,
-                                          atol=atol, rtol=rtol)
+                    assert torch.allclose(observed_delta,
+                                          predicted_delta,
+                                          atol=atol,
+                                          rtol=rtol)
 
                     delta_py = delta * torch.randn_like(py)
-                    m2, grad = k2.mutual_information_recursion(
+                    m2 = k2.mutual_information_recursion(
                         px, py + delta_py, boundary)
                     delta_m = m2 - m
                     observed_delta = (delta_m * m_grad).sum().to('cpu')
                     predicted_delta = (delta_py * py.grad).sum().to('cpu')
 
-                    assert torch.allclose(observed_delta, predicted_delta,
-                                          atol=atol, rtol=rtol)
+                    assert torch.allclose(observed_delta,
+                                          predicted_delta,
+                                          atol=atol,
+                                          rtol=rtol)
 
 
 if __name__ == "__main__":

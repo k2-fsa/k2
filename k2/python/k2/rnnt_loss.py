@@ -26,8 +26,9 @@ from .mutual_information import (
 )
 
 
-def get_rnnt_logprobs(lm: Tensor, am: Tensor, symbols: Tensor,
-                      termination_symbol: int) -> Tuple[Tensor, Tensor]:
+def get_rnnt_logprobs(
+    lm: Tensor, am: Tensor, symbols: Tensor, termination_symbol: int
+) -> Tuple[Tensor, Tensor]:
     """
     Reduces RNN-T problem (the simple case, where joiner network is just
     addition), to a compact, standard form that can then be given
@@ -83,8 +84,10 @@ def get_rnnt_logprobs(lm: Tensor, am: Tensor, symbols: Tensor,
           we cannot emit any symbols.  This is simply a way of incorporating
           the probability of the termination symbol on the last frame.
     """
-    assert (lm.ndim == 3 and am.ndim == 3 and lm.shape[0] == am.shape[0] and
-            lm.shape[2] == am.shape[2])
+    assert (
+        lm.ndim == 3 and am.ndim == 3 and lm.shape[0] == am.shape[0] and
+        lm.shape[2] == am.shape[2]
+    )
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
     assert symbols.shape == (B, S)
@@ -96,8 +99,9 @@ def get_rnnt_logprobs(lm: Tensor, am: Tensor, symbols: Tensor,
     am_probs = (am - am_max).exp()
     lm_probs = (lm - lm_max).exp()
     # normalizers: [B][S+1][T]
-    normalizers = (torch.matmul(lm_probs, am_probs.transpose(1, 2)) +
-                   1.0e-20).log()
+    normalizers = (
+        torch.matmul(lm_probs, am_probs.transpose(1, 2)) + 1.0e-20
+    ).log()
 
     # add lm_max and am_max to normalizers, to make it as if we had not
     # subtracted am_max and lm_max above.
@@ -108,15 +112,22 @@ def get_rnnt_logprobs(lm: Tensor, am: Tensor, symbols: Tensor,
         am.unsqueeze(1).expand(B, S, T, C),
         dim=3,
         index=symbols.reshape(B, S, 1, 1).expand(B, S, T, 1),
-    ).squeeze(-1)  # [B][S][T]
-    px_am = torch.cat((px_am, torch.full((B, S, 1),
-                                         float("-inf"),
-                                         device=px_am.device,
-                                         dtype=px_am.dtype),
-        ), dim=2,)  # now: [B][S][T+1], index [:,:,T] has -inf..
+    ).squeeze(
+        -1
+    )  # [B][S][T]
+    px_am = torch.cat(
+        (
+            px_am,
+            torch.full(
+                (B, S, 1), float("-inf"), device=px_am.device, dtype=px_am.dtype
+            ),
+        ),
+        dim=2,
+    )  # now: [B][S][T+1], index [:,:,T] has -inf..
 
-    px_lm = torch.gather(lm[:, :S], dim=2,
-                         index=symbols.unsqueeze(-1))  # [B][S][1]
+    px_lm = torch.gather(
+        lm[:, :S], dim=2, index=symbols.unsqueeze(-1)
+    )  # [B][S][1]
 
     px = px_am + px_lm  # [B][S][T+1], last slice indexed [:,:,T] is -inf
     px[:, :, :T] -= normalizers[:, :S, :]  # px: [B][S][T+1]
@@ -134,7 +145,8 @@ def rnnt_loss_simple(
     am: Tensor,
     symbols: Tensor,
     termination_symbol: int,
-    boundary: Tensor = None,
+    boundary: Optional[Tensor] = None,
+    return_grad: bool = False,
 ) -> Tensor:
     """A simple case of the RNN-T loss, where the 'joiner' network is just
     addition. Returns negated total loss value.
@@ -157,16 +169,22 @@ def rnnt_loss_simple(
         [0, 0, S, T]
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
+      return_grad:
+        Whether to return grads of px and py, this grad standing for the
+        occupation probability is the output of the backward with a
+        `fake gradient` input (all ones)  This is useful to implement the
+        pruned version of rnnt loss.
     Returns:
        a Tensor of shape (B,), containing the NEGATED total RNN-T loss values
        for each element of the batch (like log-probs of sequences).
     """
     px, py = get_rnnt_logprobs(lm, am, symbols, termination_symbol)
-    return mutual_information_recursion(px, py, boundary)
+    return mutual_information_recursion(px, py, boundary, return_grad)
 
 
-def get_rnnt_logprobs_joint(joint: Tensor, symbols: Tensor,
-                            termination_symbol: int) -> Tuple[Tensor, Tensor]:
+def get_rnnt_logprobs_joint(
+    joint: Tensor, symbols: Tensor, termination_symbol: int
+) -> Tuple[Tensor, Tensor]:
     """Reduces RNN-T problem to a compact, standard form that can then be given
     (with boundaries) to mutual_information_recursion().
     This function is called from rnnt_loss().
@@ -210,18 +228,24 @@ def get_rnnt_logprobs_joint(joint: Tensor, symbols: Tensor,
     normalizers = normalizers + max_value
     normalizers = normalizers.permute((0, 2, 1))
 
-    px = torch.gather(joint,
-                      dim=3,
-                      index=symbols.reshape(B, 1, S, 1).expand(B, T, S,
-                                                               1)).squeeze(-1)
+    px = torch.gather(
+        joint, dim=3, index=symbols.reshape(B, 1, S, 1).expand(B, T, S, 1)
+    ).squeeze(-1)
     px = px.permute((0, 2, 1))
-    px = torch.cat((px, torch.full((B, S, 1), float("-inf"),
-                                   device=px.device, dtype=px.dtype)),
-        dim=2,)  # now: [B][S][T+1], index [:,:,T] has -inf..
+    px = torch.cat(
+        (
+            px,
+            torch.full(
+                (B, S, 1), float("-inf"), device=px.device, dtype=px.dtype
+            ),
+        ),
+        dim=2,
+    )  # now: [B][S][T+1], index [:,:,T] has -inf..
     px[:, :, :T] -= normalizers[:, :S, :]
 
-    py = joint[:, :, :, termination_symbol].permute(
-        (0, 2, 1)).clone()  # [B][S+1][T]
+    py = (
+        joint[:, :, :, termination_symbol].permute((0, 2, 1)).clone()
+    )  # [B][S+1][T]
     py -= normalizers
     px = px.contiguous()
     py = py.contiguous()
@@ -229,10 +253,12 @@ def get_rnnt_logprobs_joint(joint: Tensor, symbols: Tensor,
     return (px, py)
 
 
-def rnnt_loss(joint: Tensor,
-              symbols: Tensor,
-              termination_symbol: int,
-              boundary: Tensor = None) -> Tensor:
+def rnnt_loss(
+    joint: Tensor,
+    symbols: Tensor,
+    termination_symbol: int,
+    boundary: Optional[Tensor] = None,
+) -> Tensor:
     """A normal RNN-T loss, which uses a 'joiner' network output as input,
     i.e. a 4 dimensions tensor.
 
@@ -259,8 +285,9 @@ def rnnt_loss(joint: Tensor,
     return mutual_information_recursion(px, py, boundary)
 
 
-def adjust_pruning_lower_bound(s_begin: torch.Tensor,
-                               s_range: int) -> torch.Tensor:
+def adjust_pruning_lower_bound(
+    s_begin: torch.Tensor, s_range: int
+) -> torch.Tensor:
     """Adjust s_begin (pruning lower bound) to make it satisfied the following
     constrains
 
@@ -298,29 +325,32 @@ def adjust_pruning_lower_bound(s_begin: torch.Tensor,
     (B, T) = s_begin.shape
     s_begin = k2.monotonic_lower_bound(s_begin)
     # do the magic transformation
-    s_begin = -(s_begin -
-                (s_range - 1) * torch.arange(0, T, device=s_begin.device))
+    s_begin = -(
+        s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device)
+    )
     # make the transformed tensor to be non-decreasing
     s_begin = k2.monotonic_lower_bound(s_begin)
     # make start symbol to be zero.
     s_begin = torch.where(s_begin < 0, 0, s_begin)
     # do the magic transformation again to recover s_begin
-    s_begin = -(s_begin -
-                (s_range - 1) * torch.arange(0, T, device=s_begin.device))
+    s_begin = -(
+        s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device)
+    )
     return s_begin
 
 
-def get_rnnt_prune_ranges(px_grad: torch.Tensor, py_grad: torch.Tensor,
-                          s_range: int) -> torch.Tensor:
-    """Get the pruning ranges for normal rnnt loss according to the grad of
+def get_rnnt_prune_ranges(
+    px_grad: torch.Tensor, py_grad: torch.Tensor, s_range: int
+) -> torch.Tensor:
+    """Get the pruning ranges of normal rnnt loss according to the grad of
     rnnt_loss_simple.
 
     Args:
       px_grad:
-        The gradient of px, see docs in mutual_information_recursion for more
+        The gradient of px, see docs in `mutual_information_recursion` for more
         details of px.
       py_grad:
-        The gradient of py, see docs in mutual_information_recursion for more
+        The gradient of py, see docs in `mutual_information_recursion` for more
         details of py.
       s_range:
         How many symbols to keep for each frame.
@@ -333,19 +363,21 @@ def get_rnnt_prune_ranges(px_grad: torch.Tensor, py_grad: torch.Tensor,
     assert py_grad.shape == (B, S + 1, T)
     assert s_range <= S
 
-    px_pad = torch.zeros((B, 1, T + 1),
-                         dtype=px_grad.dtype,
-                         device=px_grad.device)
-    py_pad = torch.zeros((B, S + 1, 1),
-                         dtype=py_grad.dtype,
-                         device=py_grad.device)
+    px_pad = torch.zeros(
+        (B, 1, T + 1), dtype=px_grad.dtype, device=px_grad.device
+    )
+    py_pad = torch.zeros(
+        (B, S + 1, 1), dtype=py_grad.dtype, device=py_grad.device
+    )
     tot_grad = torch.cat((px_grad, px_pad), dim=1) + torch.cat(
-        (py_grad, py_pad), dim=2)  # (B, S + 1, T + 1)
+        (py_grad, py_pad), dim=2
+    )  # (B, S + 1, T + 1)
 
     tot_grad = torch.cat(
         (
             torch.zeros(
-                (B, 1, T + 1), dtype=tot_grad.dtype, device=tot_grad.device),
+                (B, 1, T + 1), dtype=tot_grad.dtype, device=tot_grad.device
+            ),
             tot_grad,
         ),
         dim=1,
@@ -355,17 +387,19 @@ def get_rnnt_prune_ranges(px_grad: torch.Tensor, py_grad: torch.Tensor,
     s_begin = torch.argmax(diff_grad, dim=1)
     s_begin = s_begin[:, :T]
     # adjusting lower bound to make it satisfied constrains, see docs in
-    # adjust_pruning_lower_bound for more details of these constrains.
+    # `adjust_pruning_lower_bound` for more details of these constrains.
     s_begin = adjust_pruning_lower_bound(s_begin, s_range)
-    ranges = s_begin.reshape((B, T, 1)).expand(
-        (B, T, s_range)) + torch.arange(s_range, device=px_grad.device)
+    ranges = s_begin.reshape((B, T, 1)).expand((B, T, s_range)) + torch.arange(
+        s_range, device=px_grad.device
+    )
     return ranges
 
 
-def do_rnnt_pruning(am: torch.Tensor, lm: torch.Tensor,
-                    ranges: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Pruning the output of encoder(am) output and prediction(lm) output of
-    RNNT.
+def do_rnnt_pruning(
+    am: torch.Tensor, lm: torch.Tensor, ranges: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Pruning the output of encoder(am) output and prediction network(lm)
+    output of RNNT.
 
     Args:
       am:
@@ -373,10 +407,10 @@ def do_rnnt_pruning(am: torch.Tensor, lm: torch.Tensor,
       lm:
         The prediction network output, with shape (B, S + 1, C)
       ranges:
-        A tensor keeping the symbol ids for each frame that we want to keep.
+        A tensor containing the symbol ids for each frame that we want to keep.
 
     Returns:
-      Return the pruned am and lm with shape (B, T, S_range)
+      Return the pruned am and lm with shape (B, T, s_range, C)
     """
     # am (B, T, C)
     # lm (B, S + 1, C)
@@ -396,12 +430,11 @@ def do_rnnt_pruning(am: torch.Tensor, lm: torch.Tensor,
         dim=2,
         index=ranges.reshape((B, T, S_range, 1)).expand((B, T, S_range, C)),
     )
-
     return am_pruning, lm_pruning
 
 
 def roll_by_shifts(src: torch.Tensor, shifts: torch.LongTensor):
-    """Roll tensor with different shifts.
+    """Roll tensor with different shifts for each row.
 
     Note:
       We assume the src is a 3 dimensions tensor and roll the last dimension.
@@ -425,15 +458,19 @@ def roll_by_shifts(src: torch.Tensor, shifts: torch.LongTensor):
     (B, T, S) = src.shape
     assert shifts.shape == (B, T)
 
-    index = (torch.arange(S, device=src.device).view((1, S)).repeat(
-        (T, 1)).repeat((B, 1, 1)))
+    index = (
+        torch.arange(S, device=src.device)
+        .view((1, S))
+        .repeat((T, 1))
+        .repeat((B, 1, 1))
+    )
     index = (index - shifts.reshape(B, T, 1)) % S
     return torch.gather(src, 2, index)
 
 
 def get_rnnt_logprobs_pruned(
-        joint: Tensor, symbols: Tensor, ranges: Tensor,
-        termination_symbol: int) -> Tuple[Tensor, Tensor]:
+    joint: Tensor, symbols: Tensor, ranges: Tensor, termination_symbol: int
+) -> Tuple[Tensor, Tensor]:
     """Construct px, py for mutual_information_recursion with pruned output.
 
     Args:
@@ -442,10 +479,10 @@ def get_rnnt_logprobs_pruned(
       symbols:
         The symbol sequences, a LongTensor of shape [B][S], and elements in
         {0..C-1}.
+      ranges:
+        A tensor containing the symbol ids for each frame that we want to keep.
       termination_symbol:
         the termination symbol, with 0 <= termination_symbol < C
-      ranges:
-        A tensor keeping the symbol ids for each frame that we want to keep.
     Returns:
       Return the px (B, S, T + 1) and py (B, S + 1, T) needed by
       mutual_information_recursion.
@@ -463,45 +500,75 @@ def get_rnnt_logprobs_pruned(
     normalizers = torch.logsumexp(normalizers, dim=3)
     normalizers = normalizers + max_value
 
-    symbols_with_terminal = torch.cat((symbols,
-            torch.tensor([termination_symbol] * B,
-                         dtype=torch.int64,
-                         device=symbols.device).reshape((B, 1)),
-        ),dim=1,)
+    symbols_with_terminal = torch.cat(
+        (
+            symbols,
+            torch.tensor(
+                [termination_symbol] * B,
+                dtype=torch.int64,
+                device=symbols.device,
+            ).reshape((B, 1)),
+        ),
+        dim=1,
+    )
 
     # (B, T, S_range)
-    pruning_symbols = torch.gather(symbols_with_terminal.unsqueeze(1).expand(
-        (B, T, S + 1)), dim=2, index=ranges)
+    pruning_symbols = torch.gather(
+        symbols_with_terminal.unsqueeze(1).expand((B, T, S + 1)),
+        dim=2,
+        index=ranges,
+    )
 
     # (B, T, S_range)
-    px = torch.gather(joint,
-                      dim=3,
-                      index=pruning_symbols.reshape(B, T, S_range,
-                                                    1)).squeeze(-1)
+    px = torch.gather(
+        joint, dim=3, index=pruning_symbols.reshape(B, T, S_range, 1)
+    ).squeeze(-1)
     px = px - normalizers
 
     # (B, T, S) with index larger than s_range in dim 2 fill with -inf
-    px = torch.cat((px,torch.full((B, T, S + 1 - S_range),
-                                  float("-inf"),
-                                  device=px.device,
-                                  dtype=px.dtype),),dim=2,)  
+    px = torch.cat(
+        (
+            px,
+            torch.full(
+                (B, T, S + 1 - S_range),
+                float("-inf"),
+                device=px.device,
+                dtype=px.dtype,
+            ),
+        ),
+        dim=2,
+    )
 
     # (B, T, S) with index out of s_range in dim 2 fill with -inf
     px = roll_by_shifts(px, ranges[:, :, 0])[:, :, :S]
 
     px = px.permute((0, 2, 1))
-    px = torch.cat((px, torch.full((B, S, 1), float("-inf"),
-                                   device=px.device, dtype=px.dtype)),
-        dim=2,)  # now: [B][S][T+1], index [:,:,T] has -inf..
+    px = torch.cat(
+        (
+            px,
+            torch.full(
+                (B, S, 1), float("-inf"), device=px.device, dtype=px.dtype
+            ),
+        ),
+        dim=2,
+    )  # now: [B][S][T+1], index [:,:,T] has -inf..
 
     py = joint[:, :, :, termination_symbol]  # (B, T, S_range)
     py = py - normalizers
 
     # (B, T, S + 1) with index larger than s_range in dim 2 fill with -inf
-    py = torch.cat((py, torch.full((B, T, S + 1 - S_range),
-                                   float("-inf"),
-                                   device=py.device,
-                                   dtype=py.dtype),),dim=2,)  
+    py = torch.cat(
+        (
+            py,
+            torch.full(
+                (B, T, S + 1 - S_range),
+                float("-inf"),
+                device=py.device,
+                dtype=py.dtype,
+            ),
+        ),
+        dim=2,
+    )
 
     # (B, T, S + 1) with index out of s_range in dim 2 fill with -inf
     py = roll_by_shifts(py, ranges[:, :, 0])
@@ -511,6 +578,7 @@ def get_rnnt_logprobs_pruned(
     px = px.contiguous()
     py = py.contiguous()
     return (px, py)
+
 
 def rnnt_loss_pruned(
     joint: Tensor,
@@ -527,25 +595,25 @@ def rnnt_loss_pruned(
       joint:
         The pruned output of joiner network, with shape (B, T, s_range, C),
         i.e. batch, time_seq_len, pruning_range, num_classes
-     symbols:
-       The symbol sequences, a LongTensor of shape [B][S], and elements
-       in {0..C-1}.
-     ranges:
-       A tensor keeping the symbol ids for each frame that we want to keep.
-     termination_symbol:
-       The termination symbol, with 0 <= termination_symbol < C
-     boundary:
-       a LongTensor of shape [B, 4] with elements interpreted as
-       [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
-       [0, 0, S, T] if boundary is not supplied.
-       Most likely you will want begin_symbol and begin_frame to be zero.
-
+      symbols:
+        A LongTensor of shape [B][S], containing the symbols at each position
+        of the sequence, possibly including EOS
+      ranges:
+        A tensor containing the symbol ids for each frame that we want to keep.
+      termination_symbol:
+        The identity of the termination symbol, must be in {0..C-1}
+      boundary:
+        a LongTensor of shape [B, 4] with elements interpreted as
+        [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
+        [0, 0, S, T] if boundary is not supplied.
+        Most likely you will want begin_symbol and begin_frame to be zero.
     Returns:
       A Tensor of shape (B,), containing the total RNN-T loss values for each
       element of the batch (like log-probs of sequences).
     """
-    px, py = get_rnnt_logprobs_pruned(joint, symbols, ranges,
-                                       termination_symbol)
+    px, py = get_rnnt_logprobs_pruned(
+        joint, symbols, ranges, termination_symbol
+    )
     return mutual_information_recursion(px, py, boundary)
 
 
@@ -598,9 +666,30 @@ def get_rnnt_logprobs_aux(
         of the sequence, possibly including EOS
       termination_symbol:
         The identity of the termination symbol, must be in {0..C-1}
+    Returns:
+        (px, py) (the names are quite arbitrary).
+           px: logprobs, of shape [B][S][T+1]
+           py: logprobs, of shape [B][S+1][T]
+        in the recursion:
+          p[b,0,0] = 0.0
+          p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
+                             p[b,s,t-1] + py[b,s,t-1])
+          .. where p[b][s][t] is the "joint score" of the pair of subsequences
+          of length s and t respectively.  px[b][s][t] represents the
+          probability of extending the subsequences of length (s,t) by one in
+          the s direction, given the particular symbol, and py[b][s][t]
+          represents the probability of extending the subsequences of length
+          (s,t) by one in the t direction,
+          i.e. of emitting the termination/next-frame symbol.
+
+          px[:,:,T] equals -infinity, meaning on the "one-past-the-last" frame
+          we cannot emit any symbols.  This is simply a way of incorporating
+          the probability of the termination symbol on the last frame.
     """
-    assert (lm.ndim == 3 and am.ndim == 3 and lm.shape[0] == am.shape[0] and
-            lm.shape[2] == am.shape[2])
+    assert (
+        lm.ndim == 3 and am.ndim == 3 and lm.shape[0] == am.shape[0] and
+        lm.shape[2] == am.shape[2]
+    )
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
     assert symbols.shape == (B, S)
@@ -617,18 +706,23 @@ def get_rnnt_logprobs_aux(
     am_probs = (am - am_max).exp()  # [B][T][C]
     lm_probs = (lm - lm_max).exp()  # [B][S+1][C]
     # normalizers: [B][S+1][T]
-    normalizers = (torch.matmul(lm_probs, am_probs.transpose(1, 2)) +
-                   1.0e-20).log()
+    normalizers = (
+        torch.matmul(lm_probs, am_probs.transpose(1, 2)) + 1.0e-20
+    ).log()
 
     # normalizer per frame, if we take only the LM probs by themselves
     lmonly_normalizers = lm_probs.sum(
-        dim=2, keepdim=True)  # lmonly_normalizers: [B][S+1][1]
+        dim=2, keepdim=True
+    )  # lmonly_normalizers: [B][S+1][1]
     unigram_lm = (
         torch.mean(lm_probs / lmonly_normalizers, dim=(0, 1), keepdim=True) +
-        1.0e-20)  # [1][1][C]
-    amonly_normalizers = (torch.mv(am_probs.reshape(
-        -1, C), unigram_lm.reshape(C)).reshape(B, T, 1).log() + am_max
-                         )  # [B][T][1]
+        1.0e-20
+    )  # [1][1][C]
+    amonly_normalizers = (
+        torch.mv(am_probs.reshape(-1, C), unigram_lm.reshape(C))
+        .reshape(B, T, 1)
+        .log() + am_max
+    )  # [B][T][1]
     amonly_normalizers = amonly_normalizers.transpose(1, 2)  # [B][1][T]
     unigram_lm = unigram_lm.log()
     lmonly_normalizers = (
@@ -644,18 +738,25 @@ def get_rnnt_logprobs_aux(
         am.unsqueeze(1).expand(B, S, T, C),
         dim=3,
         index=symbols.reshape(B, S, 1, 1).expand(B, S, T, 1),
-    ).squeeze(-1)  # [B][S][T]
-    px_am = torch.cat((px_am, torch.full((B, S, 1),
-                                         float("-inf"),
-                                         device=px_am.device,
-                                         dtype=px_am.dtype),
-        ),dim=2,)  # now: [B][S][T+1], index [:,:,T] has -inf..
+    ).squeeze(
+        -1
+    )  # [B][S][T]
+    px_am = torch.cat(
+        (
+            px_am,
+            torch.full(
+                (B, S, 1), float("-inf"), device=px_am.device, dtype=px_am.dtype
+            ),
+        ),
+        dim=2,
+    )  # now: [B][S][T+1], index [:,:,T] has -inf..
 
-    px_lm = torch.gather(lm[:, :S], dim=2,
-                         index=symbols.unsqueeze(-1))  # [B][S][1]
-    px_lm_unigram = torch.gather(unigram_lm.expand(B, S, C),
-                                 dim=2,
-                                 index=symbols.unsqueeze(-1))  # [B][S][1]
+    px_lm = torch.gather(
+        lm[:, :S], dim=2, index=symbols.unsqueeze(-1)
+    )  # [B][S][1]
+    px_lm_unigram = torch.gather(
+        unigram_lm.expand(B, S, C), dim=2, index=symbols.unsqueeze(-1)
+    )  # [B][S][1]
 
     px = px_am + px_lm  # [B][S][T+1], last slice indexed [:,:,T] is -inf
     px[:, :, :T] -= normalizers[:, :S, :]  # px: [B][S][T+1]
@@ -669,8 +770,7 @@ def get_rnnt_logprobs_aux(
     py_lm = lm[:, :, termination_symbol].unsqueeze(2)  # [B][S+1][1]
     py = py_am + py_lm - normalizers
 
-    py_lm_unigram = unigram_lm[0][0][
-        termination_symbol]  # scalar, normalized..
+    py_lm_unigram = unigram_lm[0][0][termination_symbol]  # scalar, normalized..
     py_amonly = py_am + py_lm_unigram - amonly_normalizers  # [B][S+1][T]
     py_lmonly = py_lm - lmonly_normalizers  # [B][S+1][T]
 
@@ -683,10 +783,16 @@ def get_rnnt_logprobs_aux(
     if am_only_scale == 0.0:
         am_only_scale = 1.0e-20
 
-    px_interp = (px * combined_scale + px_lmonly * lm_only_scale +
-                 px_amonly * am_only_scale)
-    py_interp = (py * combined_scale + py_lmonly * lm_only_scale +
-                 py_amonly * am_only_scale)
+    px_interp = (
+        px * combined_scale +
+        px_lmonly * lm_only_scale +
+        px_amonly * am_only_scale
+    )
+    py_interp = (
+        py * combined_scale +
+        py_lmonly * lm_only_scale +
+        py_amonly * am_only_scale
+    )
 
     return (px_interp, py_interp)
 
@@ -698,7 +804,7 @@ def rnnt_loss_aux(
     termination_symbol: int,
     lm_only_scale: float = 0.1,
     am_only_scale: float = 0.1,
-    boundary: Tensor = None,
+    boundary: Optional[Tensor] = None,
 ) -> Tensor:
     """A simple case of the RNN-T loss, where the 'joiner' network is just
     addition. Returns negated total loss value.
@@ -725,6 +831,7 @@ def rnnt_loss_aux(
        a Tensor of shape (B,), containing the NEGATED total RNN-T loss values
        for each element of the batch (like log-probs of sequences).
     """
-    px, py = get_rnnt_logprobs_aux(lm, am, symbols, termination_symbol,
-                                   lm_only_scale, am_only_scale)
+    px, py = get_rnnt_logprobs_aux(
+        lm, am, symbols, termination_symbol, lm_only_scale, am_only_scale
+    )
     return mutual_information_recursion(px, py, boundary)

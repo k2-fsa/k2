@@ -43,7 +43,7 @@ class TestRnntLoss(unittest.TestCase):
         B = 1
         S = 3
         T = 4
-        C = 3
+        # C = 3
         for device in self.devices:
             # lm: [B][S+1][C]
             lm = torch.tensor([[[0, 0, 1], [0, 1, 1], [1, 0, 1], [2, 2, 0]]],
@@ -62,48 +62,46 @@ class TestRnntLoss(unittest.TestCase):
             assert px.shape == (B, S, T + 1)
             assert py.shape == (B, S + 1, T)
             assert symbols.shape == (B, S)
-            m, grad = k2.mutual_information_recursion(px, py)
+            m = k2.mutual_information_recursion(px, py)
 
             if device == torch.device("cpu"):
                 expected = m
             assert torch.allclose(m, expected.to(device))
 
-            m, grad = k2.rnnt_loss_simple(lm, am, symbols, termination_symbol,
-                                          None)
+            m = k2.rnnt_loss_simple(lm, am, symbols, termination_symbol, None)
             assert torch.allclose(m, expected.to(device))
 
             probs = am.unsqueeze(2) + lm.unsqueeze(1)
-            m, grad = k2.rnnt_loss(probs, symbols, termination_symbol, None)
+            m = k2.rnnt_loss(probs, symbols, termination_symbol, None)
             assert torch.allclose(m, expected.to(device))
 
-            m, grad = k2.rnnt_loss_aux(lm,
-                                       am,
-                                       symbols,
-                                       termination_symbol,
-                                       lm_only_scale=0.0,
-                                       am_only_scale=0.0,
-                                       boundary=None)
+            m = k2.rnnt_loss_aux(lm,
+                                 am,
+                                 symbols,
+                                 termination_symbol,
+                                 lm_only_scale=0.0,
+                                 am_only_scale=0.0,
+                                 boundary=None)
             assert torch.allclose(m, expected.to(device))
 
             # should be invariant to adding a constant for any frame.
             lm += torch.randn(B, S + 1, 1, device=device)
             am += torch.randn(B, T, 1, device=device)
 
-            m, grad = k2.rnnt_loss_simple(lm, am, symbols, termination_symbol,
-                                          None)
+            m = k2.rnnt_loss_simple(lm, am, symbols, termination_symbol, None)
             assert torch.allclose(m, expected.to(device))
 
             probs = am.unsqueeze(2) + lm.unsqueeze(1)
-            m, grad = k2.rnnt_loss(probs, symbols, termination_symbol, None)
+            m = k2.rnnt_loss(probs, symbols, termination_symbol, None)
             assert torch.allclose(m, expected.to(device))
 
-            m, grad = k2.rnnt_loss_aux(lm,
-                                       am,
-                                       symbols,
-                                       termination_symbol,
-                                       lm_only_scale=0.0,
-                                       am_only_scale=0.0,
-                                       boundary=None)
+            m = k2.rnnt_loss_aux(lm,
+                                 am,
+                                 symbols,
+                                 termination_symbol,
+                                 lm_only_scale=0.0,
+                                 am_only_scale=0.0,
+                                 boundary=None)
             assert torch.allclose(m, expected.to(device))
 
     def test_rnnt_logprobs_random(self):
@@ -115,10 +113,10 @@ class TestRnntLoss(unittest.TestCase):
         lm_ = torch.randn((B, S + 1, C), dtype=torch.float64)
         symbols_ = torch.randint(0, C, (B, S))
         termination_symbol = C - 1
- 
+
         for device in self.devices:
             # lm: [B][S+1][C]
-            lm = lm_.to(device) 
+            lm = lm_.to(device)
             # am: [B][T][C]
             am = am_.to(device)
             symbols = symbols_.to(device)
@@ -127,73 +125,75 @@ class TestRnntLoss(unittest.TestCase):
             assert px.shape == (B, S, T + 1)
             assert py.shape == (B, S + 1, T)
             assert symbols.shape == (B, S)
-            m, grad = k2.mutual_information_recursion(px, py)
+            m = k2.mutual_information_recursion(px, py)
 
             if device == torch.device("cpu"):
                 expected = m
             assert torch.allclose(m, expected.to(device))
 
-            m, grad = k2.rnnt_loss_simple(lm, am, symbols, termination_symbol,
-                                          None)
+            m = k2.rnnt_loss_simple(lm, am, symbols, termination_symbol, None)
             assert torch.allclose(m, expected.to(device))
 
             probs = am.unsqueeze(2) + lm.unsqueeze(1)
-            m, grad = k2.rnnt_loss(probs, symbols, termination_symbol, None)
+            m = k2.rnnt_loss(probs, symbols, termination_symbol, None)
             assert torch.allclose(m, expected.to(device))
 
-            m, grad = k2.rnnt_loss_aux(lm,
-                                       am,
-                                       symbols,
-                                       termination_symbol,
-                                       lm_only_scale=0.0,
-                                       am_only_scale=0.0,
-                                       boundary=None)
+            m = k2.rnnt_loss_aux(lm,
+                                 am,
+                                 symbols,
+                                 termination_symbol,
+                                 lm_only_scale=0.0,
+                                 am_only_scale=0.0,
+                                 boundary=None)
             assert torch.allclose(m, expected.to(device))
 
             # should be invariant to adding a constant for any frame.
             lm += torch.randn(B, S + 1, 1, device=device)
             am += torch.randn(B, T, 1, device=device)
 
-            m, grad = k2.rnnt_loss_simple(lm, am, symbols, termination_symbol,
-                                          None)
+            m = k2.rnnt_loss_simple(lm, am, symbols, termination_symbol, None)
             assert torch.allclose(m, expected.to(device))
 
             probs = am.unsqueeze(2) + lm.unsqueeze(1)
-            m, grad = k2.rnnt_loss(probs, symbols, termination_symbol, None)
+            m = k2.rnnt_loss(probs, symbols, termination_symbol, None)
             assert torch.allclose(m, expected.to(device))
 
-            m, grad = k2.rnnt_loss_aux(lm,
-                                       am,
-                                       symbols,
-                                       termination_symbol,
-                                       lm_only_scale=0.0,
-                                       am_only_scale=0.0,
-                                       boundary=None)
+            m = k2.rnnt_loss_aux(lm,
+                                 am,
+                                 symbols,
+                                 termination_symbol,
+                                 lm_only_scale=0.0,
+                                 am_only_scale=0.0,
+                                 boundary=None)
             assert torch.allclose(m, expected.to(device))
 
     def test_rnnt_logprobs_aux(self):
         B = 1
         S = 3
         T = 4
-        C = 3
+        # C = 3
         for device in self.devices:
             # lm: [B][S+1][C]
             lm = torch.tensor([[[0, 0, 1], [0, 1, 1], [1, 0, 1], [2, 2, 0]]],
-                              dtype=torch.float, device=device)
+                              dtype=torch.float,
+                              device=device)
             # am: [B][T][C]
             am = torch.tensor([[[0, 1, 2], [0, 0, 0], [0, 2, 4], [0, 3, 3]]],
-                              dtype=torch.float, device=device)
+                              dtype=torch.float,
+                              device=device)
 
             termination_symbol = 2
-            symbols = torch.tensor([[0, 1, 0]], dtype=torch.long, device=device)
+            symbols = torch.tensor([[0, 1, 0]],
+                                   dtype=torch.long,
+                                   device=device)
 
-            m, grad = k2.rnnt_loss_aux(lm,
-                                        am,
-                                        symbols,
-                                        termination_symbol,
-                                        lm_only_scale=0.0,
-                                        am_only_scale=0.333,
-                                        boundary=None)
+            m = k2.rnnt_loss_aux(lm,
+                                 am,
+                                 symbols,
+                                 termination_symbol,
+                                 lm_only_scale=0.0,
+                                 am_only_scale=0.333,
+                                 boundary=None)
 
             if device == torch.device("cpu"):
                 expected = m
@@ -203,13 +203,13 @@ class TestRnntLoss(unittest.TestCase):
             lm += torch.randn(B, S + 1, 1, device=device)
             am += torch.randn(B, T, 1, device=device)
 
-            m, grad = k2.rnnt_loss_aux(lm,
-                                        am,
-                                        symbols,
-                                        termination_symbol,
-                                        lm_only_scale=0.0,
-                                        am_only_scale=0.333,
-                                        boundary=None)
+            m = k2.rnnt_loss_aux(lm,
+                                 am,
+                                 symbols,
+                                 termination_symbol,
+                                 lm_only_scale=0.0,
+                                 am_only_scale=0.333,
+                                 boundary=None)
             assert torch.allclose(m, expected.to(device))
 
     def test_rnnt_logprobs_pruned(self):
@@ -232,14 +232,13 @@ class TestRnntLoss(unittest.TestCase):
             t_prob = t_am + t_lm
             # nonlinear transform
             t_prob = torch.sigmoid(t_prob)
-            k2_loss, grads = k2.rnnt_loss(t_prob, symbols, terminal_symbol,
-                                          None)
+            k2_loss = k2.rnnt_loss(t_prob, symbols, terminal_symbol, None)
 
             print("unpruned rnnt loss: ", k2_loss)
 
             # pruning
             k2_simple_loss, (px_grad, py_grad) = k2.rnnt_loss_simple(
-                lm, am, symbols, terminal_symbol, None)
+                lm, am, symbols, terminal_symbol, None, True)
 
             for r in range(2, 50, 5):
                 ranges = k2.get_rnnt_prune_ranges(px_grad, py_grad, r)
@@ -256,8 +255,8 @@ class TestRnntLoss(unittest.TestCase):
                 boundary[:, 2] = ranges[:, -1, -1]
                 boundary[:, 3] = T
 
-                pruning_loss, grads = k2.rnnt_loss_pruned(
-                    t_prob_p, symbols, ranges, terminal_symbol, boundary)
+                pruning_loss = k2.rnnt_loss_pruned(t_prob_p, symbols, ranges,
+                                                   terminal_symbol, boundary)
                 print(f"pruning loss with range {r} : ", pruning_loss)
 
 

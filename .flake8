@@ -2,6 +2,9 @@
 show-source=true
 statistics=true
 max-line-length=80
+per-file-ignores =
+    # line too long
+    k2/python/k2/rnnt_loss.py: E501,
 exclude =
   .git,
   setup.py,
