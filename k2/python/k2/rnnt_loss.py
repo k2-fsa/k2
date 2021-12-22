@@ -340,7 +340,8 @@ def adjust_pruning_lower_bound(
 
 
 def get_rnnt_prune_ranges(
-    px_grad: torch.Tensor, py_grad: torch.Tensor, s_range: int
+    px_grad: torch.Tensor, py_grad: torch.Tensor,
+    boundary: torch.Tensor, s_range: int
 ) -> torch.Tensor:
     """Get the pruning ranges of normal rnnt loss according to the grad of
     rnnt_loss_simple.
@@ -352,6 +353,9 @@ def get_rnnt_prune_ranges(
       py_grad:
         The gradient of py, see docs in `mutual_information_recursion` for more
         details of py.
+      boundary:
+        a LongTensor of shape [B, 4] with elements interpreted as
+        [begin_symbol, begin_frame, end_symbol, end_frame]
       s_range:
         How many symbols to keep for each frame.
     Returns:
@@ -361,6 +365,7 @@ def get_rnnt_prune_ranges(
     (B, S, T1) = px_grad.shape
     T = T1 - 1
     assert py_grad.shape == (B, S + 1, T)
+    assert boundary.shape == (B, 4)
     assert s_range <= S
 
     px_pad = torch.zeros(
@@ -386,6 +391,17 @@ def get_rnnt_prune_ranges(
     diff_grad = tot_grad[:, s_range:, :] - tot_grad[:, 0:-s_range, :]
     s_begin = torch.argmax(diff_grad, dim=1)
     s_begin = s_begin[:, :T]
+
+    # handle the values of s_begin in padding positions.
+    # set the s_begin in paddding positions to `len(symbols) - s_range`
+    mask = torch.stack([torch.arange(0, T, device=px_grad.device)] * B)
+    seq_lens = boundary[:, 3].reshape(B, 1)
+    mask = torch.where(mask < seq_lens, True, False)
+    s_begin_padding = boundary[:, 2].reshape(B, 1) - s_range
+    # handle the cases when `len(symbols) < s_range`
+    s_begin_padding = torch.where(s_begin_padding >= 0, s_begin_padding, 0)
+    s_begin = torch.where(mask, s_begin, s_begin_padding)
+
     # adjusting lower bound to make it satisfied constrains, see docs in
     # `adjust_pruning_lower_bound` for more details of these constrains.
     s_begin = adjust_pruning_lower_bound(s_begin, s_range)

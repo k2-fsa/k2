@@ -241,7 +241,12 @@ class TestRnntLoss(unittest.TestCase):
                 lm, am, symbols, terminal_symbol, None, True)
 
             for r in range(2, 50, 5):
-                ranges = k2.get_rnnt_prune_ranges(px_grad, py_grad, r)
+                boundary = torch.zeros((B, 4),
+                                       dtype=torch.int64,
+                                       device=device)
+                boundary[:, 2] = S
+                boundary[:, 3] = T
+                ranges = k2.get_rnnt_prune_ranges(px_grad, py_grad, boundary, r)
                 # (B, T, r, C)
                 am_p, lm_p = k2.do_rnnt_pruning(am, lm, ranges)
 
