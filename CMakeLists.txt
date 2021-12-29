@@ -24,6 +24,13 @@ endif()
 set(languages CXX)
 set(_K2_WITH_CUDA ON)
 
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    # require at least gcc 7.0
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
+        message(FATAL_ERROR "GCC version must be at least 7.0!")
+    endif()
+endif()
+
 find_program(K2_HAS_NVCC nvcc)
 if(NOT K2_HAS_NVCC AND "$ENV{CUDACXX}" STREQUAL "")
   message(STATUS "No NVCC detected. Disable CUDA support")
