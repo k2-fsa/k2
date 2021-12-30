@@ -317,8 +317,14 @@ void TestHash64Construct() {
                            RandUniformArray1<uint64_t>(c, num_elems, 0, 10000),
                        success(c, num_elems, 0);
 
-      Array1<int32_t> count_per_key =
-          GetCounts(reinterpret_cast<Array1<int32_t> &>(keys), key_bound);
+      Array1<uint64_t> cpu_keys = keys.To(GetCpuContext());
+      Array1<int32_t> count_per_key(GetCpuContext(), key_bound, 0);
+      int32_t *count_per_key_data = count_per_key.Data();
+
+      for (int32_t i = 0; i < cpu_keys.Dim(); ++i) {
+        ++count_per_key_data[cpu_keys[i]];
+      }
+      count_per_key = count_per_key.To(c);
 
       if (size <= 2048) {
         K2_LOG(INFO) << "keys = " << keys << ", values = " << values
@@ -339,7 +345,7 @@ void TestHash64Construct() {
               success = 1;
             } else {
               success = 0;
-              // K2_CHECK(count > 1) << ", key = " << key << ", i = " << i;
+              K2_CHECK(count > 1) << ", key = " << key << ", i = " << i;
             }
             uint64_t keyval = *key_value_location;
             if (success) {
