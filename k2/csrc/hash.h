@@ -1282,6 +1282,66 @@ class Hash64 {
     }
   }
 
+  /* Resize the hash to a new number of buckets.
+
+       @param [in] new_num_buckets   New number of buckets; must be a power of 2,
+                  and must be large enough to accommodate all values in the hash
+                  (we assume the caller is keeping track of the number of elements
+                  in the hash somehow).
+
+     CAUTION: Resizing will invalidate any accessor objects you have; you need
+     to re-get the accessors before accessing the hash again.
+  */
+  void Resize(int32_t new_num_buckets, bool copy_data = true) {
+    NVTX_RANGE(K2_FUNC);
+
+    K2_CHECK_GT(new_num_buckets, 0);
+    K2_CHECK_EQ(new_num_buckets & (new_num_buckets - 1), 0);  // power of 2.
+
+    ContextPtr c = data_.Context();
+    Hash64 new_hash(c, new_num_buckets);
+
+    if (copy_data) {
+      new_hash.CopyDataFromSimple(*this);
+    }
+
+    *this = new_hash;
+    new_hash.Destroy();  // avoid failed check in destructor (it would otherwise
+                       // expect the hash to be empty when destroyed).
+  }
+
+  /*
+    Copies all data elements from `src` to `*this`.
+   */
+  void CopyDataFromSimple(Hash64 &src) {
+    NVTX_RANGE(K2_FUNC);
+    int32_t num_buckets = data_.Dim() / 2,
+        src_num_buckets = src.data_.Dim() / 2;
+    const uint64_t *src_data = src.data_.Data();
+    uint64_t *data = data_.Data();
+    size_t new_num_buckets_mask = static_cast<size_t>(num_buckets) - 1,
+        new_buckets_num_bitsm1 = buckets_num_bitsm1_;
+    ContextPtr c = data_.Context();
+    K2_EVAL(c, src_num_buckets, lambda_copy_data, (int32_t i) -> void {
+        uint64_t key = src_data[2 * i];
+        uint64_t value = src_data[2 * i + 1];
+        if (~key == 0) return;  // equals -1.. nothing there.
+        uint64_t bucket_inc = 1 | ((key >> new_buckets_num_bitsm1) ^ key);
+        size_t cur_bucket = key & new_num_buckets_mask;
+        while (1) {
+          uint64_t assumed = ~((uint64_t)0),
+              old_elem = AtomicCAS((unsigned long long*)(data + 2 * cur_bucket),
+                                   assumed, key);
+          if (old_elem == assumed) {
+            *(data + 2 * cur_bucket + 1) = value;
+            return;
+          }
+          cur_bucket = (cur_bucket + bucket_inc) & new_num_buckets_mask;
+          // Keep iterating until we find a free spot in the new hash...
+        }
+      });
+  }
+
   // The destructor checks that the hash is empty, if we are in debug mode.
   // If you don't want this, call Destroy() before the destructor is called.
   ~Hash64() {

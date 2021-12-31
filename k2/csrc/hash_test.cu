@@ -355,6 +355,9 @@ void TestHash64Construct() {
             success_data[i] = success;
           });
 
+      hash.Resize(hash.NumBuckets() * 2);
+      acc = hash.GetAccessor();
+
       K2_EVAL(
           c, num_elems, lambda_check_find, (int32_t i)->void {
             uint64_t key = keys_data[i], value = values_data[i],
@@ -375,6 +378,8 @@ void TestHash64Construct() {
               K2_CHECK_EQ(*(key_val_addr + 1), value);
             }
           });
+
+
 
       K2_EVAL(
           c, num_elems, lambda_check_delete, (int32_t i)->void {
