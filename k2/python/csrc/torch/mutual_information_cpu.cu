@@ -23,8 +23,8 @@
 
 namespace k2 {
 
-// forward of mutual_information.  See """... """ comment of
-// `mutual_information` in mutual_information.py for documentation of the
+// forward of mutual_information.  See also comment of `mutual_information`
+// in k2/python/k2/mutual_information.py for documentation of the
 // behavior of this function.
 torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
                                    torch::Tensor boundary, torch::Tensor p) {

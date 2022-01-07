@@ -394,7 +394,7 @@ def get_rnnt_prune_ranges(
     """Get the pruning ranges of normal rnnt loss according to the grads
     of px and py returned by mutual_information_recursion.
 
-    For each sequence with T frames, we will generate tensor with the shape of
+    For each sequence with T frames, we will generate a tensor with the shape of
     (T, s_range) containing the information that which symbols will be token
     into consideration for each frame. For example, here is a sequence with 10
     frames and the corresponding symbols are `[A B C D E F]`, if the s_range
