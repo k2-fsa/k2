@@ -1022,7 +1022,7 @@ class Hash {
       it (manually).
 
    Note:
-     Each bucket contains a pair of key/value, each 64bit, key is stored at
+     Each bucket contains a pair of key/value, each 64bits, key is stored at
      data[2 * bucket_index] and value is stored at data[2 * bucket_index + 1].
 
    Some constraints:
