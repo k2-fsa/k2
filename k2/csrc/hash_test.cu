@@ -349,7 +349,7 @@ void TestHash64Construct() {
             }
             uint64_t keyval = *key_value_location;
             if (success) {
-              acc.SetValue(key_value_location, key, value);
+              acc.SetValue(key_value_location, value);
               K2_DCHECK_EQ(keyval, *key_value_location);
             }
             success_data[i] = success;
