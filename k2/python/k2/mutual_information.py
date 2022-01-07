@@ -26,7 +26,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
     @staticmethod
     def forward(
         ctx, px: torch.Tensor, py: torch.Tensor,
-        boundary: Optional[torch.Tensor]
+        boundary: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         (B, S, T1) = px.shape
         T = T1 - 1
@@ -52,8 +52,6 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         p = torch.empty(B, S + 1, T + 1, device=px.device, dtype=px.dtype)
 
         ans = _k2.mutual_information_forward(px, py, boundary, p)
-
-        # print(f"p = {p}, boundary = {boundary}, psum={p.sum()}")
 
         ans_grad = torch.ones(B, device=px.device, dtype=px.dtype)
         (px_grad,

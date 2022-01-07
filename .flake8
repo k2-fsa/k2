@@ -3,8 +3,10 @@ show-source=true
 statistics=true
 max-line-length=80
 per-file-ignores =
-    # line too long
-    k2/python/k2/rnnt_loss.py: E501,
+    # line too long E501
+    # line break before operator  W503
+    k2/python/k2/rnnt_loss.py: E501, W503
+    k2/python/tests/rnnt_loss_test.py: W503
 exclude =
   .git,
   setup.py,
