@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 
+#include <limits>
+
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/ragged_ops.h"
