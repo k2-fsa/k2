@@ -65,6 +65,7 @@ set(context_srcs
   ragged_utils.cu
   rand.cu
   rm_epsilon.cu
+  rnnt_decode.cu
   tensor.cu
   tensor_ops.cu
   thread_pool.cu
@@ -158,6 +159,7 @@ set(cuda_test_srcs
   ragged_utils_test.cu
   rand_test.cu
   rm_epsilon_test.cu
+  rnnt_decode_test.cu
   tensor_ops_test.cu
   tensor_test.cu
   thread_pool_test.cu
