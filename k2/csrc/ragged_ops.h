@@ -859,6 +859,65 @@ Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering,
   return Ragged<T>(src.values[*elems_renumbering.New2Old()]);
 }
 
+
+/*
+  This function creates a Renumbering object that can be used to obtain subsets
+  of ragged arrays via SubsampleRaggedShape().  It implements beam pruning as
+  used in pruned Viterbi search and similar algorithms, where there is both a
+  beam and a max-active (`max_elems`) constraint.  T will probably be float or
+  double, interpreted as a "positive-is-better" sense, i.e. as scores.
+
+   @param [in] src  The ragged object to be subsampled.
+   @param [in] axis  The axis to be subsampled, must satisfy
+              0 <= axis < src.NumAxes().  The axis before `axis`, if axis < 0,
+              will be interpreted as a "batch" axis.
+   @param [in] beam  The main pruning beam.  The sub-lists of elements on axis
+              `axis` will be removed if their maximum element (or the element
+              itself, if axis + 1 == src.NumAxes()) is less than
+              this_best_elem - beam, where this_best_elem
+              is the maximum element taken over axis `axis-1` (or over the
+              entire array, if axis == 0).   Think of axis `axis-1`, if
+              present, as the "batch" axis, and axis `axis` as the axis that we
+              actually remove elements or sub-lists on.  Empty sub-lists on axis
+              `axis` will always be pruned, as their score would be treated
+              as -infinity.
+   @param [in] max_elems  If max_elems > 0, it is the maximum number of sub-lists
+              or elements that are allowed within any sub-list on axis `axis-1`
+              (or the maximum number of top-level sub-lists after subsampling,
+              if axis == 0).  We keep the best ones, but behavior in case of ties is
+              undefined (TODO: check whether SortSublists() is a stable sort, and
+              change this doc if it is).  If max_elems <= 0, there is no such
+              constraint.
+    @return  Returns the renumbering object to be used to actually
+             prune/subsample the specified axis.
+
+   Example:
+      PruneRagged([ [0 -1 -2 -3], [ -10, -20 ], [ ] ], 1, 5.0, 3)
+    would create a Renumbering object that would prune the
+    ragged tensor to [ [0 -1 -2], [ -10 ], [ ] ]
+
+      PruneRagged([ [0 -1 -2 -3], [ -10, -20 ], [ ] ], 0, 5.0, 0)
+    would create a Renumbering object that would prune the
+    ragged tensor to [ [0 -1 -2 -3] ]
+
+
+  TODO: don't forget to change subsample->subset when we rename
+         SubsampleRaggedShape().
+  IMPLEMENTATION NOTES (please delete later):
+    - We might want/need to treat certain cases specially, e.g.
+      the case when axis == src.NumAxes() - 1, and/or when
+      axis == 0.
+    - If `max_elems` is <= 0, we might want to choose a different
+      implementation, e.g. using max on the sub-lists rather
+      than sorting.
+ */
+template <typename T>
+Renumbering PruneRagged(const Ragged<T> &src,
+                        int32_t axis,
+                        T beam,
+                        int32_t max_elems);
+
+
 /*
   Stack a list of Ragged arrays to create a Ragged array with one more axis.
   Similar to TF/PyTorch's Stack.  The result will have Dim0 == num_srcs.  All
