@@ -699,14 +699,32 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
                               int32_t max_num_elements = 2000);
 
 /*
-  Return ragged shape with only a subset of the bottom-level elements kept.
-  Require renumbering.NumOldElems() == src.NumElements().  Note: all
-  dimensions and tot-sizes preceding the final axis will remain the same, which
-  might give rise to empty lists.
+  Return ragged shape with only a subset of the elements or sub-lists
+  on the specified axis kept.  (This is not regular sampling, it is
+  irregular subsampling with specified elements kept).
+
+    @param [in] src  The ragged shape that we are subsampling
+    @param [in] renumbering  The renumbering object that dictates
+                    which elements of `src` we keep; we require
+                    renumbering.NumOldElems() == src.TotSize(axis2)
+                    where axis2 = (axis < 0 ? src.NumAxes() - axis : axis).
+    @param [in] axis  The axis to subsample; if negative, will be
+                    interpreted as an offset from src.NumAxes().
+    @param [out] elems_renumbering   If supplied, this function will
+                    output to this location a renumbering object that
+                    dictates how the elements of a ragged tensor
+                    with shape `src` would be renumbered.
+    @return  Returns the subsampled shape. All dimensions and tot-sizes
+       preceding the final axis will remain the same, which might give
+       rise to empty lists on those axes; these can be removed if
+       necessary with RemoveEmptyLists().
 
   Notice the other version of this function below.
  */
-RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
+RaggedShape SubsampleRaggedShape(RaggedShape &src,
+                                 Renumbering &renumbering,
+                                 int32_t axis = -1,
+                                 Renumbering *elems_renumbering = nullptr);
 
 
 /*
@@ -804,16 +822,41 @@ RaggedShape RemoveEmptyListsAxis0(RaggedShape &src_shape,
 RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
                                 Renumbering &renumbering);
 
+
+
 /*
-  Return ragged array with only a subset of the bottom-level elements kept.
-  Require renumbering.NumOldElems() == src.NumElements().  Note: all
-  dimensions and tot-sizes preceding the final axis will remain the same, which
-  might give rise to empty lists.
+  Return ragged array with only a subset of the elements or sub-lists
+  on the specified axis kept.  (This is not regular sampling, it is
+  irregular subsampling with specified elements kept).
+
+    @param [in] src  The ragged shape that we are subsampling
+    @param [in] renumbering  The renumbering object that dictates
+                    which elements of `src` we keep; we require
+                    renumbering.NumOldElems() == src.TotSize(axis2)
+                    where axis2 = (axis < 0 ? src.NumAxes() - axis : axis).
+    @param [in] axis  The axis to subsample; if negative, will be
+                    interpreted as an offset from src.NumAxes().
+    @param [out] elems_renumbering   If supplied, this function will
+                    output to this location a renumbering object that
+                    dictates how the elements of a ragged tensor
+                    with shape `src` would be renumbered.
+    @return  Returns the subsampled shape. All dimensions and tot-sizes
+       preceding the final axis will remain the same, which might give
+       rise to empty lists on those axes; these can be removed if
+       necessary with RemoveEmptyLists().
+
+  Notice the other version of this function below.
  */
 template <typename T>
-Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering) {
-  return Ragged<T>(SubsampleRaggedShape(src.shape, renumbering),
-                   src.values[renumbering.New2Old()]);
+Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering,
+                          int32_t axis = -1,
+                          Renumbering *elems_renumbering = nullptr) {
+  Renumbering tmp;
+  if (elems_renumbering == nullptr)
+    elems_renumbering = &tmp;
+  RaggedShape shape = SubsampleRaggedShape(src.shape, renumbering,
+                                           axis, elems_renumbering);
+  return Ragged<T>(src.values[*elems_renumbering.New2Old()]);
 }
 
 /*
@@ -855,8 +898,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
 /*
    Concatenate a list of Ragged<T> to form a single Ragged<T>.
 
-      @param [in] axis     Axis to append them on.  Currently
-                           we only support axis == 0 or axis == 1.
+      @param [in] axis     Axis to append them on.
                            Previous axes must
                            have the same shape, i.e. if axis == 1
                            then `src[i]->Dim0()` must all have the
