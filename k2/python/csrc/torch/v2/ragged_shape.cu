@@ -232,8 +232,8 @@ void PybindRaggedShape(py::module &m) {
 
   m.def(
       "create_ragged_shape2",
-      [](torch::optional<torch::Tensor> row_splits,
-         torch::optional<torch::Tensor> row_ids,
+      [](torch::optional<torch::Tensor> row_splits = torch::nullopt,
+         torch::optional<torch::Tensor> row_ids = torch::nullopt,
          int32_t cached_tot_size = -1) -> RaggedShape {
         if (!row_splits.has_value() && !row_ids.has_value())
           K2_LOG(FATAL) << "Both row_splits and row_ids are None";
@@ -257,7 +257,7 @@ void PybindRaggedShape(py::module &m) {
             row_splits.has_value() ? &array_row_splits : nullptr,
             row_ids.has_value() ? &array_row_ids : nullptr, cached_tot_size);
       },
-      py::arg("row_splits"), py::arg("row_ids"),
+      py::arg("row_splits") = py::none(), py::arg("row_ids") = py::none(),
       py::arg("cached_tot_size") = -1, kCreateRaggedShape2Doc);
 
   m.def("random_ragged_shape", &RandomRaggedShape, "RandomRaggedShape",
