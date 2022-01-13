@@ -509,9 +509,11 @@ the overall concepts, please see comments in k2/csrc/utils.h.
 
 Args:
   row_splits:
-    Optionally, a torch.Tensor with dtype=torch.int32 and one axis
+    Optional. A 1-D torch.Tensor with dtype torch.int32.
+    If ``None``, you have to specify ``row_ids``.
   row_ids:
-    Optionally, a torch.Tensor with dtype=torch.int32 and one axis.
+    Optional. A 1-D torch.Tensor with dtype torch.int32.
+    If ``None``, you have to specify ``row_splits``.
   cached_tot_size:
     The number of elements (length of row_ids, even if row_ids
     is not provided); would be identical to the last element of row_splits,
