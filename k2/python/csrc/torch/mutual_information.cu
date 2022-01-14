@@ -25,7 +25,8 @@
 void PybindMutualInformation(py::module &m) {
   m.def(
       "mutual_information_forward",
-      [](torch::Tensor px, torch::Tensor py, torch::Tensor boundary,
+      [](torch::Tensor px, torch::Tensor py,
+         torch::optional<torch::Tensor> boundary,
          torch::Tensor p) -> torch::Tensor {
         k2::DeviceGuard guard(k2::GetContext(px));
         if (px.device().is_cpu()) {
@@ -44,8 +45,8 @@ void PybindMutualInformation(py::module &m) {
 
   m.def(
       "mutual_information_backward",
-      [](torch::Tensor px, torch::Tensor py, torch::Tensor boundary,
-         torch::Tensor p,
+      [](torch::Tensor px, torch::Tensor py,
+         torch::optional<torch::Tensor> boundary, torch::Tensor p,
          torch::Tensor ans_grad) -> std::vector<torch::Tensor> {
         k2::DeviceGuard guard(k2::GetContext(px));
         if (px.device().is_cpu()) {

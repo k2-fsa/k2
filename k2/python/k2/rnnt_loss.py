@@ -19,7 +19,7 @@ import os
 import k2
 import torch
 from torch import Tensor
-from typing import Tuple, Optional, Union
+from typing import Optional, Tuple, Union
 from .mutual_information import mutual_information_recursion
 
 
@@ -91,12 +91,11 @@ def get_rnnt_logprobs(
           we cannot emit any symbols.  This is simply a way of incorporating
           the probability of the termination symbol on the last frame.
     """
-    assert (
-        lm.ndim == 3
-        and am.ndim == 3
-        and lm.shape[0] == am.shape[0]
-        and lm.shape[2] == am.shape[2]
-    )
+    assert lm.ndim == 3
+    assert am.ndim == 3
+    assert lm.shape[0] == am.shape[0]
+    assert lm.shape[2] == am.shape[2]
+
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
     assert symbols.shape == (B, S)
@@ -109,7 +108,8 @@ def get_rnnt_logprobs(
     lm_probs = (lm - lm_max).exp()
     # normalizers: [B][S+1][T]
     normalizers = (
-        torch.matmul(lm_probs, am_probs.transpose(1, 2)) + 1.0e-37
+        torch.matmul(lm_probs, am_probs.transpose(1, 2))
+        + torch.finfo(am_probs.dtype).tiny
     ).log()
 
     # add lm_max and am_max to normalizers, to make it as if we had not
@@ -137,8 +137,12 @@ def get_rnnt_logprobs(
 
     if boundary is not None:
         assert boundary.shape == (B, 4)
-        mask = torch.stack([torch.arange(0, T + 1, device=px_am.device)] * B)
-        mask = torch.where(mask < boundary[:, 3].reshape(B, 1), True, False)
+        mask = (
+            torch.arange(0, T + 1, device=px_am.device)
+            .reshape(1, T + 1)
+            .expand(B, T + 1)
+        )
+        mask = mask < boundary[:, 3].reshape(B, 1)
         mask = mask.reshape(B, 1, T + 1).expand(B, S, T + 1)
         px_am = torch.where(
             mask,
@@ -276,8 +280,12 @@ def get_rnnt_logprobs_joint(
 
     if boundary is not None:
         assert boundary.shape == (B, 4)
-        mask = torch.stack([torch.arange(0, T + 1, device=px.device)] * B)
-        mask = torch.where(mask < boundary[:, 3].reshape(B, 1), True, False)
+        mask = (
+            torch.arange(0, T + 1, device=px.device)
+            .reshape(1, T + 1)
+            .expand(B, T + 1)
+        )
+        mask = mask < boundary[:, 3].reshape(B, 1)
         mask = mask.reshape(B, 1, T + 1).expand(B, S, T + 1)
         px = torch.where(
             mask,
@@ -464,9 +472,8 @@ def get_rnnt_prune_ranges(
 
     # handle the values of s_begin in padding positions.
     # set the s_begin in paddding positions to `len(symbols) - s_range + 1`
-    mask = torch.stack([torch.arange(0, T, device=px_grad.device)] * B)
-    seq_lens = boundary[:, 3].reshape(B, 1)
-    mask = torch.where(mask < seq_lens, True, False)
+    mask = torch.arange(0, T, device=px_grad.device).reshape(1, T).expand(B, T)
+    mask = mask < boundary[:, 3].reshape(B, 1)
 
     s_begin_padding = boundary[:, 2].reshape(B, 1) - s_range + 1
     # handle the cases when `len(symbols) < s_range`
@@ -505,7 +512,8 @@ def do_rnnt_pruning(
     # am (B, T, C)
     # lm (B, S + 1, C)
     # ranges (B, T, s_range)
-    assert ranges.shape[0] == am.shape[0] and ranges.shape[0] == lm.shape[0]
+    assert ranges.shape[0] == am.shape[0]
+    assert ranges.shape[0] == lm.shape[0]
     assert am.shape[1] == ranges.shape[1]
     (B, T, s_range) = ranges.shape
     (B, S1, C) = lm.shape
@@ -652,8 +660,12 @@ def get_rnnt_logprobs_pruned(
 
     if boundary is not None:
         assert boundary.shape == (B, 4)
-        mask = torch.stack([torch.arange(0, T + 1, device=px.device)] * B)
-        mask = torch.where(mask < boundary[:, 3].reshape(B, 1), True, False)
+        mask = (
+            torch.arange(0, T + 1, device=px.device)
+            .reshape(1, T + 1)
+            .expand(B, T + 1)
+        )
+        mask = mask < boundary[:, 3].reshape(B, 1)
         mask = mask.reshape(B, 1, T + 1).expand(B, S, T + 1)
         px = torch.where(
             mask,
@@ -806,12 +818,10 @@ def get_rnnt_logprobs_smoothed(
           we cannot emit any symbols.  This is simply a way of incorporating
           the probability of the termination symbol on the last frame.
     """
-    assert (
-        lm.ndim == 3
-        and am.ndim == 3
-        and lm.shape[0] == am.shape[0]
-        and lm.shape[2] == am.shape[2]
-    )
+    assert lm.ndim == 3
+    assert am.ndim == 3
+    assert lm.shape[0] == am.shape[0]
+    assert lm.shape[2] == am.shape[2]
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
     assert symbols.shape == (B, S)
@@ -829,7 +839,8 @@ def get_rnnt_logprobs_smoothed(
     lm_probs = (lm - lm_max).exp()  # [B][S+1][C]
     # normalizers: [B][S+1][T]
     normalizers = (
-        torch.matmul(lm_probs, am_probs.transpose(1, 2)) + 1.0e-37
+        torch.matmul(lm_probs, am_probs.transpose(1, 2))
+        + torch.finfo(lm_probs.dtype).tiny
     ).log()
 
     # normalizer per frame, if we take only the LM probs by themselves
@@ -838,7 +849,7 @@ def get_rnnt_logprobs_smoothed(
     )  # lmonly_normalizers: [B][S+1][1]
     unigram_lm = (
         torch.mean(lm_probs / lmonly_normalizers, dim=(0, 1), keepdim=True)
-        + 1.0e-37
+        + torch.finfo(lm_probs.dtype).tiny
     )  # [1][1][C]
     amonly_normalizers = (
         torch.mv(am_probs.reshape(-1, C), unigram_lm.reshape(C))
@@ -876,8 +887,12 @@ def get_rnnt_logprobs_smoothed(
 
     if boundary is not None:
         assert boundary.shape == (B, 4)
-        mask = torch.stack([torch.arange(0, T + 1, device=px_am.device)] * B)
-        mask = torch.where(mask < boundary[:, 3].reshape(B, 1), True, False)
+        mask = (
+            torch.arange(0, T + 1, device=px_am.device)
+            .reshape(1, T + 1)
+            .expand(B, T + 1)
+        )
+        mask = mask < boundary[:, 3].reshape(B, 1)
         mask = mask.reshape(B, 1, T + 1).expand(B, S, T + 1)
         px_am = torch.where(
             mask,

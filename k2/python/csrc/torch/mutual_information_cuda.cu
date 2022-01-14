@@ -163,8 +163,7 @@ __global__ void mutual_information_kernel(
 
     __syncthreads();
 
-    if (boundary.size(0) != 0 && threadIdx.x < 4)
-      boundary_buf[threadIdx.x] = boundary[b][threadIdx.x];
+    if (threadIdx.x < 4) boundary_buf[threadIdx.x] = boundary[b][threadIdx.x];
 
     __syncthreads();
 
@@ -533,8 +532,7 @@ __global__ void mutual_information_backward_kernel(
     int s_block_begin = block * BLOCK_SIZE,
         t_block_begin = (iter - block) * BLOCK_SIZE;
 
-    if (threadIdx.x < 4 && boundary.size(0) != 0)
-      boundary_buf[threadIdx.x] = boundary[b][threadIdx.x];
+    if (threadIdx.x < 4) boundary_buf[threadIdx.x] = boundary[b][threadIdx.x];
     __syncthreads();
 
     int s_begin = boundary_buf[0], t_begin = boundary_buf[1],
@@ -707,7 +705,8 @@ __global__ void mutual_information_backward_kernel(
 // `mutual_information` in mutual_information.py for documentation of the
 // behavior of this function.
 torch::Tensor MutualInformationCuda(torch::Tensor px, torch::Tensor py,
-                                    torch::Tensor boundary, torch::Tensor p) {
+                                    torch::optional<torch::Tensor> opt_boundary,
+                                    torch::Tensor p) {
   TORCH_CHECK(px.dim() == 3, "px must be 3-dimensional");
   TORCH_CHECK(py.dim() == 3, "py must be 3-dimensional.");
   TORCH_CHECK(p.dim() == 3, "p must be 3-dimensional.");
@@ -721,8 +720,13 @@ torch::Tensor MutualInformationCuda(torch::Tensor px, torch::Tensor py,
   const int B = px.size(0), S = px.size(1), T = px.size(2) - 1;
   TORCH_CHECK(py.size(0) == B && py.size(1) == S + 1 && py.size(2) == T);
   TORCH_CHECK(p.size(0) == B && p.size(1) == S + 1 && p.size(2) == T + 1);
-  TORCH_CHECK((boundary.size(0) == 0 && boundary.size(1) == 0) ||
-              (boundary.size(0) == B && boundary.size(1) == 4));
+
+  auto boundary = opt_boundary.value_or(
+      torch::tensor({0, 0, S, T},
+                    torch::dtype(torch::kInt64).device(px.device()))
+          .reshape({1, 4})
+          .expand({B, 4}));
+  TORCH_CHECK(boundary.size(0) == B && boundary.size(1) == 4);
   TORCH_CHECK(boundary.device().is_cuda() && boundary.dtype() == torch::kInt64);
 
   torch::Tensor ans = torch::empty({B}, opts);
@@ -758,7 +762,8 @@ torch::Tensor MutualInformationCuda(torch::Tensor px, torch::Tensor py,
 // should be identical to the original ans_grad if the computation worked
 // as it should.
 std::vector<torch::Tensor> MutualInformationBackwardCuda(
-    torch::Tensor px, torch::Tensor py, torch::Tensor boundary, torch::Tensor p,
+    torch::Tensor px, torch::Tensor py,
+    torch::optional<torch::Tensor> opt_boundary, torch::Tensor p,
     torch::Tensor ans_grad, bool overwrite_ans_grad) {
   TORCH_CHECK(px.dim() == 3, "px must be 3-dimensional");
   TORCH_CHECK(py.dim() == 3, "py must be 3-dimensional.");
@@ -776,12 +781,17 @@ std::vector<torch::Tensor> MutualInformationBackwardCuda(
 
   TORCH_CHECK(py.size(0) == B && py.size(1) == S + 1 && py.size(2) == T);
   TORCH_CHECK(p.size(0) == B && p.size(1) == S + 1 && p.size(2) == T + 1);
-  TORCH_CHECK((boundary.size(0) == 0 && boundary.size(1) == 0) ||
-              (boundary.size(0) == B && boundary.size(1) == 4));
+
+  auto boundary = opt_boundary.value_or(
+      torch::tensor({0, 0, S, T},
+                    torch::dtype(torch::kInt64).device(px.device()))
+          .reshape({1, 4})
+          .expand({B, 4}));
+  TORCH_CHECK(boundary.size(0) == B && boundary.size(1) == 4);
   TORCH_CHECK(boundary.device().is_cuda() && boundary.dtype() == torch::kInt64);
   TORCH_CHECK(ans_grad.size(0) == B);
 
-  bool has_boundary = (boundary.size(0) != 0);
+  bool has_boundary = opt_boundary.has_value();
 
   torch::Tensor p_grad = torch::empty({B, S + 1, T + 1}, opts),
                 px_grad = (has_boundary ? torch::zeros({B, S, T + 1}, opts)

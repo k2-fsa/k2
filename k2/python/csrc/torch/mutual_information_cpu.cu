@@ -27,11 +27,11 @@ namespace k2 {
 // in k2/python/k2/mutual_information.py for documentation of the
 // behavior of this function.
 torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
-                                   torch::Tensor boundary, torch::Tensor p) {
+                                   torch::optional<torch::Tensor> opt_boundary,
+                                   torch::Tensor p) {
   TORCH_CHECK(px.dim() == 3, "px must be 3-dimensional");
   TORCH_CHECK(py.dim() == 3, "py must be 3-dimensional.");
   TORCH_CHECK(p.dim() == 3, "p must be 3-dimensional.");
-  TORCH_CHECK(boundary.dim() == 2, "boundary must be 2-dimensional.");
   TORCH_CHECK(
       px.device().is_cpu() && py.device().is_cpu() && p.device().is_cpu(),
       "inputs must be CPU tensors");
@@ -42,13 +42,17 @@ torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
   const int B = px.size(0), S = px.size(1), T = px.size(2) - 1;
   TORCH_CHECK(py.size(0) == B && py.size(1) == S + 1 && py.size(2) == T);
   TORCH_CHECK(p.size(0) == B && p.size(1) == S + 1 && p.size(2) == T + 1);
-  TORCH_CHECK((boundary.size(0) == 0 && boundary.size(1) == 0) ||
-              (boundary.size(0) == B && boundary.size(1) == 4));
+
+  auto boundary = opt_boundary.value_or(
+      torch::tensor({0, 0, S, T},
+                    torch::dtype(torch::kInt64).device(torch::kCPU))
+          .reshape({1, 4})
+          .expand({B, 4}));
+  TORCH_CHECK(boundary.dim() == 2, "boundary must be 2-dimensional.");
+  TORCH_CHECK(boundary.size(0) == B && boundary.size(1) == 4);
   TORCH_CHECK(boundary.device().is_cpu() && boundary.dtype() == torch::kInt64);
 
   torch::Tensor ans = torch::empty({B}, opts);
-
-  bool has_boundary = (boundary.size(0) != 0);
 
   AT_DISPATCH_FLOATING_TYPES(
       px.scalar_type(), "mutual_information_cpu_loop", ([&] {
@@ -58,18 +62,10 @@ torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
         auto ans_a = ans.accessor<scalar_t, 1>();
 
         for (int b = 0; b < B; b++) {
-          int s_begin, s_end, t_begin, t_end;
-          if (has_boundary) {
-            s_begin = boundary_a[b][0];
-            t_begin = boundary_a[b][1];
-            s_end = boundary_a[b][2];
-            t_end = boundary_a[b][3];
-          } else {
-            s_begin = 0;
-            t_begin = 0;
-            s_end = S;
-            t_end = T;
-          }
+          int s_begin = boundary_a[b][0];
+          int t_begin = boundary_a[b][1];
+          int s_end = boundary_a[b][2];
+          int t_end = boundary_a[b][3];
           p_a[b][s_begin][t_begin] = 0.0;
           for (int s = s_begin + 1; s <= s_end; ++s)
             p_a[b][s][t_begin] =
@@ -98,12 +94,12 @@ torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
 // backward of mutual_information.  Returns (px_grad, py_grad).
 // p corresponds to what we computed in the forward pass.
 std::vector<torch::Tensor> MutualInformationBackwardCpu(
-    torch::Tensor px, torch::Tensor py, torch::Tensor boundary, torch::Tensor p,
+    torch::Tensor px, torch::Tensor py,
+    torch::optional<torch::Tensor> opt_boundary, torch::Tensor p,
     torch::Tensor ans_grad) {
   TORCH_CHECK(px.dim() == 3, "px must be 3-dimensional");
   TORCH_CHECK(py.dim() == 3, "py must be 3-dimensional.");
   TORCH_CHECK(p.dim() == 3, "p must be 3-dimensional.");
-  TORCH_CHECK(boundary.dim() == 2, "boundary must be 2-dimensional.");
   TORCH_CHECK(ans_grad.dim() == 1, "ans_grad must be 1-dimensional.");
 
   TORCH_CHECK(px.device().is_cpu() && py.device().is_cpu() &&
@@ -116,12 +112,17 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
   const int B = px.size(0), S = px.size(1), T = px.size(2) - 1;
   TORCH_CHECK(py.size(0) == B && py.size(1) == S + 1 && py.size(2) == T);
   TORCH_CHECK(p.size(0) == B && p.size(1) == S + 1 && p.size(2) == T + 1);
-  TORCH_CHECK((boundary.size(0) == 0 && boundary.size(1) == 0) ||
-              (boundary.size(0) == B && boundary.size(1) == 4));
+
+  auto boundary = opt_boundary.value_or(
+      torch::tensor({0, 0, S, T},
+                    torch::dtype(torch::kInt64).device(torch::kCPU))
+          .reshape({1, 4})
+          .expand({B, 4}));
+  TORCH_CHECK(boundary.dim() == 2, "boundary must be 2-dimensional.");
+  TORCH_CHECK(boundary.size(0) == B && boundary.size(1) == 4);
   TORCH_CHECK(boundary.device().is_cpu() && boundary.dtype() == torch::kInt64);
 
-  bool has_boundary = (boundary.size(0) != 0);
-
+  bool has_boundary = opt_boundary.has_value();
   torch::Tensor p_grad = torch::zeros({B, S + 1, T + 1}, opts),
                 px_grad = (has_boundary ? torch::zeros({B, S, T + 1}, opts)
                                         : torch::empty({B, S, T + 1}, opts)),
@@ -139,18 +140,10 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
         auto boundary_a = boundary.accessor<int64_t, 2>();
 
         for (int b = 0; b < B; b++) {
-          int s_begin, s_end, t_begin, t_end;
-          if (has_boundary) {
-            s_begin = boundary_a[b][0];
-            t_begin = boundary_a[b][1];
-            s_end = boundary_a[b][2];
-            t_end = boundary_a[b][3];
-          } else {
-            s_begin = 0;
-            s_end = S;
-            t_begin = 0;
-            t_end = T;
-          }
+          int s_begin = boundary_a[b][0];
+          int t_begin = boundary_a[b][1];
+          int s_end = boundary_a[b][2];
+          int t_end = boundary_a[b][3];
           // Backprop for: ans_a[b] = p_a[b][s_end][t_end];
           p_grad_a[b][s_end][t_end] = ans_grad_a[b];
 

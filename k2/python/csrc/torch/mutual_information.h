@@ -73,16 +73,16 @@ namespace k2 {
    be at least 128.
 */
 torch::Tensor MutualInformationCpu(
-    torch::Tensor px,        // [B][S][T+1]
-    torch::Tensor py,        // [B][S+1][T]
-    torch::Tensor boundary,  // [B][4], int64_t.
-    torch::Tensor p);        //  [B][S+1][T+1]; an output
+    torch::Tensor px,                         // [B][S][T+1]
+    torch::Tensor py,                         // [B][S+1][T]
+    torch::optional<torch::Tensor> boundary,  // [B][4], int64_t.
+    torch::Tensor p);                         //  [B][S+1][T+1]; an output
 
 torch::Tensor MutualInformationCuda(
-    torch::Tensor px,        // [B][S][T+1]
-    torch::Tensor py,        // [B][S+1][T]
-    torch::Tensor boundary,  // [B][4], int64_t.
-    torch::Tensor p);        //  [B][S+1][T+1]; an output
+    torch::Tensor px,                         // [B][S][T+1]
+    torch::Tensor py,                         // [B][S+1][T]
+    torch::optional<torch::Tensor> boundary,  // [B][4], int64_t.
+    torch::Tensor p);                         //  [B][S+1][T+1]; an output
 
 /*
   backward of mutual_information; returns (grad_px, grad_py)
@@ -92,15 +92,13 @@ torch::Tensor MutualInformationCuda(
   very close to the value of ans_grad at entry.  This can be used
   to validate the correctness of this code.
 */
-std::vector<torch::Tensor> MutualInformationBackwardCpu(torch::Tensor px,
-                                                        torch::Tensor py,
-                                                        torch::Tensor boundary,
-                                                        torch::Tensor p,
-                                                        torch::Tensor ans_grad);
+std::vector<torch::Tensor> MutualInformationBackwardCpu(
+    torch::Tensor px, torch::Tensor py, torch::optional<torch::Tensor> boundary,
+    torch::Tensor p, torch::Tensor ans_grad);
 
 std::vector<torch::Tensor> MutualInformationBackwardCuda(
-    torch::Tensor px, torch::Tensor py, torch::Tensor boundary, torch::Tensor p,
-    torch::Tensor ans_grad, bool overwrite_ans_grad);
+    torch::Tensor px, torch::Tensor py, torch::optional<torch::Tensor> boundary,
+    torch::Tensor p, torch::Tensor ans_grad, bool overwrite_ans_grad);
 
 }  // namespace k2
 

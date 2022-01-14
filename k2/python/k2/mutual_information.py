@@ -22,19 +22,19 @@ from typing import Tuple, Optional, Sequence, Union
 
 
 class MutualInformationRecursionFunction(torch.autograd.Function):
-
     @staticmethod
     def forward(
-        ctx, px: torch.Tensor, py: torch.Tensor,
+        ctx,
+        px: torch.Tensor,
+        py: torch.Tensor,
         boundary: Optional[torch.Tensor] = None,
+        return_grad: bool = False,
     ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         (B, S, T1) = px.shape
         T = T1 - 1
         assert py.shape == (B, S + 1, T)
         if boundary is not None:
             assert boundary.shape == (B, 4)
-        else:
-            boundary = torch.zeros(0, 0, dtype=torch.int64, device=px.device)
 
         # p is a tensor of shape (B, S + 1, T + 1) were p[s][t] is the
         # the mutual information of the pair of subsequences of x and y that
@@ -53,32 +53,32 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
 
         ans = _k2.mutual_information_forward(px, py, boundary, p)
 
-        ans_grad = torch.ones(B, device=px.device, dtype=px.dtype)
-        (px_grad,
-         py_grad) = _k2.mutual_information_backward(px, py, boundary, p,
-                                                    ans_grad)
-
-        if px.requires_grad or py.requires_grad:
+        px_grad, py_grad = None, None
+        if return_grad or px.requires_grad or py.requires_grad:
+            ans_grad = torch.ones(B, device=px.device, dtype=px.dtype)
+            (px_grad, py_grad) = _k2.mutual_information_backward(
+                px, py, boundary, p, ans_grad
+            )
             ctx.save_for_backward(px_grad, py_grad)
         return ans, px_grad, py_grad
 
     @staticmethod
     def backward(
-            ctx, ans_grad: Tensor, dummy_px_grad: Tensor,
-            dummy_py_grad: Tensor) -> Tuple[torch.Tensor, torch.Tensor, None]:
+        ctx, ans_grad: Tensor, dummy_px_grad: Tensor, dummy_py_grad: Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, None, None]:
         (px_grad, py_grad) = ctx.saved_tensors
-        B, = ans_grad.shape
-        ans_grad = ans_grad.reshape((B, 1, 1))  # (B, 1, 1)
+        (B,) = ans_grad.shape
+        ans_grad = ans_grad.reshape(B, 1, 1)  # (B, 1, 1)
         px_grad *= ans_grad
         py_grad *= ans_grad
-        return (px_grad, py_grad, None)
+        return (px_grad, py_grad, None, None)
 
 
 def mutual_information_recursion(
     px: Tensor,
     py: Tensor,
     boundary: Optional[Tensor] = None,
-    return_grad: bool = False
+    return_grad: bool = False,
 ) -> Union[Tuple[Tensor, Tuple[Tensor, Tensor]], Tensor]:
     """A recursion that is useful in computing mutual information between two
     sequences of real vectors, but may be useful more generally in
@@ -168,24 +168,26 @@ def mutual_information_recursion(
     if boundary is not None:
         assert boundary.dtype == torch.int64
         assert boundary.shape == (B, 4)
-        for [s_begin, t_begin, s_end, t_end] in boundary.to('cpu').tolist():
+        for s_begin, t_begin, s_end, t_end in boundary.tolist():
             assert 0 <= s_begin <= s_end <= S
             assert 0 <= t_begin <= t_end <= T
     # The following assertions are for efficiency
-    assert px.stride()[-1] == 1
-    assert py.stride()[-1] == 1
+    assert px.is_contiguous()
+    assert py.is_contiguous()
+
     m, px_grad, py_grad = MutualInformationRecursionFunction.apply(
-        px, py, boundary)
+        px, py, boundary, return_grad
+    )
     return (m, (px_grad, py_grad)) if return_grad else m
 
 
-def _inner(a: Tensor, b: Tensor) -> Tensor:
+def _inner_product(a: Tensor, b: Tensor) -> Tensor:
     """
     Does inner product on the last dimension, with expected broadcasting,
     i.e. equivalent to (a * b).sum(dim=-1)
     without creating a large temporary.
     """
-    assert a.shape[-1] == b.shape[-1]  # last last dim be K
+    assert a.shape[-1] == b.shape[-1]  # The last dim must be equal
     a = a.unsqueeze(-2)  # (..., 1, K)
     b = b.unsqueeze(-1)  # (..., K, 1)
     c = torch.matmul(a, b)  # (..., 1, 1)
@@ -193,9 +195,10 @@ def _inner(a: Tensor, b: Tensor) -> Tensor:
 
 
 def joint_mutual_information_recursion(
-        px: Sequence[Tensor],
-        py: Sequence[Tensor],
-        boundary: Optional[Tensor] = None) -> Sequence[Tensor]:
+    px: Sequence[Tensor],
+    py: Sequence[Tensor],
+    boundary: Optional[Tensor] = None,
+) -> Sequence[Tensor]:
     """A recursion that is useful for modifications of RNN-T and similar loss
     functions, where the recursion probabilities have a number of terms and you
     want them reported separately.  See mutual_information_recursion() for more
@@ -254,16 +257,14 @@ def joint_mutual_information_recursion(
     if boundary is not None:
         assert boundary.dtype == torch.int64
         assert boundary.shape == (B, 4)
-        for [s_begin, t_begin, s_end, t_end] in boundary.to('cpu').tolist():
+        for s_begin, t_begin, s_end, t_end in boundary.tolist():
             assert 0 <= s_begin <= s_end <= S
             assert 0 <= t_begin <= t_end <= T
-    else:
-        boundary = torch.zeros(0, 0, dtype=torch.int64, device=px_tot.device)
 
     px_tot, py_tot = px_tot.contiguous(), py_tot.contiguous()
     # The following assertions are for efficiency
-    assert px_tot.stride()[-1] == 1 and px_tot.ndim == 3
-    assert py_tot.stride()[-1] == 1 and py_tot.ndim == 3
+    assert px_tot.ndim == 3
+    assert py_tot.ndim == 3
 
     p = torch.empty(B, S + 1, T + 1, device=px_tot.device, dtype=px_tot.dtype)
 
@@ -275,17 +276,20 @@ def joint_mutual_information_recursion(
     # actual derivative w.r.t. the total probs.
     ans_grad = torch.ones(B, device=px_tot.device, dtype=px_tot.dtype)
 
-    (px_grad,
-     py_grad) = _k2.mutual_information_backward(px_tot, py_tot, boundary, p,
-                                                ans_grad)
+    (px_grad, py_grad) = _k2.mutual_information_backward(
+        px_tot, py_tot, boundary, p, ans_grad
+    )
 
-    px_grad, py_grad = px_grad.reshape(1, B, -1), py_grad.reshape(1, B, -1)
-    px_cat, py_cat = px_cat.reshape(N, B, -1), py_cat.reshape(N, B, -1)
+    px_grad = px_grad.reshape(1, B, -1)
+    py_grad = py_grad.reshape(1, B, -1)
+    px_cat = px_cat.reshape(N, B, -1)
+    py_cat = py_cat.reshape(N, B, -1)
     # get rid of -inf, would generate nan on product with 0
-    px_cat, py_cat = px_cat.clamp(min=-1.0e+38), py_cat.clamp(min=-1.0e+38)
+    px_cat = px_cat.clamp(min=torch.finfo(px_cat.dtype).min)
+    py_cat = py_cat.clamp(min=torch.finfo(py_cat.dtype).min)
 
-    x_prods = _inner(px_grad, px_cat)  # (N, B)
-    y_prods = _inner(py_grad, py_cat)  # (N, B)
+    x_prods = _inner_product(px_grad, px_cat)  # (N, B)
+    y_prods = _inner_product(py_grad, py_cat)  # (N, B)
 
     # If all the occupation counts were exactly 1.0 (i.e. no partial counts),
     # "prods" should be equal to "tot_probs"; however, in general, "tot_probs"
