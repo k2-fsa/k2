@@ -369,34 +369,42 @@ class TestRnntLoss(unittest.TestCase):
         T = 300
         S = 50
         C = 10
+
+        frames = torch.randint(S, T, (B,))
+        seq_length = torch.randint(3, S - 1, (B,))
+        T = torch.max(frames)
+        S = torch.max(seq_length)
+
         am_ = torch.randn((B, T, C), dtype=torch.float64)
         lm_ = torch.randn((B, S + 1, C), dtype=torch.float64)
-        symbols_ = torch.randint(0, C, (B, S))
+        symbols_ = torch.randint(0, C - 1, (B, S))
         terminal_symbol = C - 1
+
+        boundary_ = torch.zeros((B, 4), dtype=torch.int64)
+        boundary_[:, 2] = seq_length
+        boundary_[:, 3] = frames
 
         for device in self.devices:
             # normal rnnt
             am = am_.to(device)
             lm = lm_.to(device)
             symbols = symbols_.to(device)
+            boundary = boundary_.to(device)
             t_am = am.unsqueeze(2).float()
             t_lm = lm.unsqueeze(1).float()
             t_prob = t_am + t_lm
             # nonlinear transform
             t_prob = torch.sigmoid(t_prob)
-            k2_loss = k2.rnnt_loss(t_prob, symbols, terminal_symbol, None)
+            k2_loss = k2.rnnt_loss(t_prob, symbols, terminal_symbol, boundary)
 
             print("unpruned rnnt loss: ", k2_loss)
 
             # pruning
             k2_simple_loss, (px_grad, py_grad) = k2.rnnt_loss_simple(
-                lm, am, symbols, terminal_symbol, None, True
+                lm, am, symbols, terminal_symbol, boundary, True
             )
 
             for r in range(2, 50, 5):
-                boundary = torch.zeros((B, 4), dtype=torch.int64, device=device)
-                boundary[:, 2] = S
-                boundary[:, 3] = T
                 ranges = k2.get_rnnt_prune_ranges(px_grad, py_grad, boundary, r)
                 # (B, T, r, C)
                 am_p, lm_p = k2.do_rnnt_pruning(am, lm, ranges)
@@ -405,9 +413,6 @@ class TestRnntLoss(unittest.TestCase):
 
                 # nonlinear transform
                 t_prob_p = torch.sigmoid(t_prob_p)
-                boundary = torch.zeros((B, 4), dtype=torch.int64, device=device)
-                boundary[:, 2] = ranges[:, -1, -1]
-                boundary[:, 3] = T
 
                 pruning_loss = k2.rnnt_loss_pruned(
                     t_prob_p, symbols, ranges, terminal_symbol, boundary

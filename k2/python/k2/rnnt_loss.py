@@ -444,7 +444,9 @@ def get_rnnt_prune_ranges(
     T = T1 - 1
     assert py_grad.shape == (B, S + 1, T)
     assert boundary.shape == (B, 4)
-    assert s_range <= S
+    assert s_range >= 1
+    if s_range > S:
+        s_range = S
 
     px_pad = torch.zeros(
         (B, 1, T + 1), dtype=px_grad.dtype, device=px_grad.device
