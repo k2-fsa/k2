@@ -7,6 +7,8 @@ set(torch_srcs
   fsa_algo.cu
   index_add.cu
   index_select.cu
+  mutual_information.cu
+  mutual_information_cpu.cu
   nbest.cu
   ragged.cu
   ragged_ops.cu
@@ -18,6 +20,10 @@ set(torch_srcs
   v2/ragged_any.cu
   v2/ragged_shape.cu
 )
+
+if (K2_WITH_CUDA)
+  list(APPEND torch_srcs mutual_information_cuda.cu)
+endif()
 
 set(torch_srcs_with_prefix)
 foreach(src IN LISTS torch_srcs)

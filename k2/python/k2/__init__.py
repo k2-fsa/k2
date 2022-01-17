@@ -52,13 +52,26 @@ from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_algo import union
 from .fsa_properties import to_str as properties_to_str
+from .mutual_information import joint_mutual_information_recursion
+from .mutual_information import mutual_information_recursion
 from .nbest import Nbest
 from .ops import cat
 from .ops import compose_arc_maps
 from .ops import index_add
 from .ops import index_fsa
 from .ops import index_select
-#
+
+from .rnnt_loss import do_rnnt_pruning
+from .rnnt_loss import get_rnnt_logprobs
+from .rnnt_loss import get_rnnt_logprobs_joint
+from .rnnt_loss import get_rnnt_logprobs_pruned
+from .rnnt_loss import get_rnnt_logprobs_smoothed
+from .rnnt_loss import get_rnnt_prune_ranges
+from .rnnt_loss import rnnt_loss
+from .rnnt_loss import rnnt_loss_pruned
+from .rnnt_loss import rnnt_loss_simple
+from .rnnt_loss import rnnt_loss_smoothed
+
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
 from .utils import create_sparse
