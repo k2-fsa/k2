@@ -33,13 +33,15 @@ namespace k2 {
   in mutual_information.py.  This is the core recursion
   in the sequence-to-sequence mutual information computation.
 
-    @param px  Tensor of shape [B][S][T + 1]; contains the log-odds ratio of
-               generating the next x in the sequence, i.e.
-               xy[b][s][t] is the log of
-                  p(x_s | x_0..x_{s-1}, y_0..y_{s-1}) / p(x_s),
-               i.e. the log-prob of generating x_s given subsequences of
-               lengths (s, t), divided by the prior probability of generating
-               x_s.  (See mutual_information.py for more info).
+    @param px  Tensor of shape [B][S][T + 1] if not modified, [B][S][T] if
+        modified. `modified` can be worked out from this. In not-modified case,
+        it can be thought of as the log-odds ratio of generating the next x in
+        the sequence, i.e.
+        xy[b][s][t] is the log of
+          p(x_s | x_0..x_{s-1}, y_0..y_{s-1}) / p(x_s),
+        i.e. the log-prob of generating x_s given subsequences of
+        lengths (s, t), divided by the prior probability of generating x_s.
+        (See mutual_information.py for more info).
     @param py  The log-odds ratio of generating the next y in the sequence.
                Shape [B][S + 1][T]
     @param p   This function writes to p[b][s][t] the mutual information between
@@ -49,10 +51,13 @@ namespace k2 {
                in the case where s_begin == t_begin == 0:
 
                 p[b,0,0] = 0.0
-                p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
+               if not modified:
+                 p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                                    p[b,s,t-1] + py[b,s,t-1])
-                        if s > 0 or t > 0,
-                        treating values with any -1 index as -infinity.
+               if modified:
+                 p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
+                                   p[b,s,t-1] + py[b,s,t-1])
+               ...     treating values with any -1 index as -infinity.
                .. if `boundary` is set, we start fom p[b,s_begin,t_begin]=0.0.
     @param boundary  If set, a tensor of shape [B][4] of type int64_t, which
                      contains, where for each batch element b, boundary[b]
@@ -79,8 +84,8 @@ torch::Tensor MutualInformationCpu(
     torch::Tensor p);                         //  [B][S+1][T+1]; an output
 
 torch::Tensor MutualInformationCuda(
-    torch::Tensor px,                         // [B][S][T+1]
-    torch::Tensor py,                         // [B][S+1][T]
+    torch::Tensor px,  // [B][S][T+1] if !modified, [B][S][T] if modified.
+    torch::Tensor py,  // [B][S+1][T]
     torch::optional<torch::Tensor> boundary,  // [B][4], int64_t.
     torch::Tensor p);                         //  [B][S+1][T+1]; an output
 

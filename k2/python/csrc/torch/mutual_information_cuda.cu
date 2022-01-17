@@ -42,13 +42,14 @@ namespace k2 {
                 is because we assume BLOCK_SIZE + 1 <= 64 in some data-loading
                 code).
   Args:
-      px:     Tensor of shape [B][S][T + 1]; contains the log-odds ratio of
-              generating the next x in the sequence, i.e.
-              xy[b][s][t] is the log of
-                 p(x_s | x_0..x_{s-1}, y_0..y_{s-1}) / p(x_s),
+      px:    Tensor of shape [B][S][T + 1], if !modified; [B][S][T] if modified;
+             may be interpreted as the log-odds ratio of
+             generating the next x in the sequence, i.e.
+             xy[b][s][t] is the log of
+                p(x_s | x_0..x_{s-1}, y_0..y_{s-1}) / p(x_s),
              i.e. the log-prob of generating x_s given subsequences of lengths
              (s, t), divided by the prior probability of generating x_s.  (See
-              mutual_information.py for more info).
+             mutual_information.py for more info).
       py:     The log-odds ratio of generating the next y in the sequence.
               Shape [B][S + 1][T]
       p:      This function writes to p[b][s][t] the mutual information between
@@ -58,10 +59,14 @@ namespace k2 {
               in the case where s_begin == t_begin == 0:
 
                p[b,0,0] = 0.0
+             if not `modified`:
                p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                                   p[b,s,t-1] + py[b,s,t-1])          (eq. 0)
-                       if s > 0 or t > 0,
-                       treating values with any -1 index as -infinity.
+             if `modified`:
+               p[b,s,t] = log_add(p[b,s-1,t-t] + px[b,s-1,t-1],
+                                  p[b,s,t-1] + py[b,s,t-1])          (eq. 0)
+
+             treating values with any -1 index as -infinity.
               .. if `boundary` is set, we start fom p[b,s_begin,t_begin]=0.0.
    boundary:  If set, a tensor of shape [B][4] of type int64_t, which
               contains, where for each batch element b, boundary[b] equals
@@ -98,6 +103,9 @@ __global__ void mutual_information_kernel(
                  // num_t_blocks = T / BLOCK_SIZE + 1
                  // so that each group depends on the previous group...
   const int B = px.size(0), S = px.size(1), T = py.size(2);
+  const bool modified = (px.size(2) == T);
+  const int t_offset = (modified ? -1 : 0);  // see CPU code to understand.
+
   // num_s_blocks and num_t_blocks are the number of blocks we need to cover the
   // array of size (S, T) with blocks of this size, in the s and t directions
   // respectively.
@@ -121,9 +129,9 @@ __global__ void mutual_information_kernel(
   int num_blocks_this_iter = min(iter + 1, num_s_blocks);
 
   // For the block with s_block_begin == 0 and t_block_begin == 0 (for
-  // easy illustration), px_buf[s][t] will contain exp(px[s - 1][t]); or 0
-  // for out-of-range indexes into px.
-  // Likewise, py_buf[s][t] will contain exp(py[s][t - 1]).
+  // easy illustration), px_buf[s][t] will contain px[s - 1][t + t_offset]; or
+  // -infinity. for out-of-range indexes into px. Likewise, py_buf[s][t] will
+  // contain (py[s][t - 1]).
   __shared__ scalar_t px_buf[BLOCK_SIZE][BLOCK_SIZE],
       py_buf[BLOCK_SIZE][BLOCK_SIZE];
 
@@ -183,19 +191,23 @@ __global__ void mutual_information_kernel(
 
     if (block_S <= 0 || block_T <= 0) continue;
 
-    // Load px_buf and py_buf.  We exponentiate; the assumption is that they
-    // most likely won't overflow or underflow, but if they do overflow we'll
-    // detect it later; we'll also detect certain kinds of underflow.
+    // Load px_buf and py_buf.
     for (int i = threadIdx.x; i < BLOCK_SIZE * BLOCK_SIZE; i += blockDim.x) {
       int s_in_block = i / BLOCK_SIZE, t_in_block = i % BLOCK_SIZE,
-          s = s_in_block + s_block_begin, t = t_in_block + t_block_begin;
+          s = s_in_block + s_block_begin, t = t_in_block + t_block_begin,
+          t_off = t + t_offset;
       // comparing as unsigned int makes sure the index is nonnegative.
       // Caution: if s_begin > 0 or t_begin > 0 we may end up loading some px
       // and py values that are outside the proper boundaries that we need, but
       // the corresponding p_buf values will end up being 0 so this won't
       // matter.
       scalar_t this_px = -INFINITY;
-      if (s > s_begin && s <= s_end && t <= t_end) this_px = px[b][s - 1][t];
+      // Below, "&& t <= t_end" can be interpreted as:
+      //  "&& (modified ? t_off < t_end : t_off <= t_end)
+      // [since px's last valid index is t_end - 1 if modified, else t_end.
+      if (s > s_begin && s <= s_end && t_off >= t_begin && t <= t_end)
+        this_px = px[b][s - 1][t_off];
+
       px_buf[s_in_block][t_in_block] = this_px;
 
       scalar_t this_py = -INFINITY;
@@ -203,12 +215,12 @@ __global__ void mutual_information_kernel(
       py_buf[s_in_block][t_in_block] = this_py;
     }
 
-    // Load the 1st row and 1st column of p_buf (except element[0][0] is not
-    // needed).  This is the context from previously computed blocks of the
+    // Load the 1st row and 1st column of p_buf.
+    // This is the context from previously computed blocks of the
     // image.  Remember: p_buf[s][t] will correspond to p[s + s_block_begin -
     // 1][t + t_block_begin - 1]
     if (threadIdx.x <= BLOCK_SIZE) {
-      // s_in_p_buf are simply the indexes into p_buf
+      // s_in_p_buf and t_in_pbuf are simply the indexes into p_buf
       int s_in_p_buf = threadIdx.x, t_in_p_buf = 0,
           s = s_in_p_buf + s_block_begin - 1,
           t = t_in_p_buf + t_block_begin - 1;
@@ -216,10 +228,6 @@ __global__ void mutual_information_kernel(
       scalar_t this_p = -INFINITY;
       if (s >= s_begin && s <= s_end && t >= t_begin && t <= t_end)
         this_p = p[b][s][t];
-      /*printf("p[%d][%d][%d] = %f, threadIdx.x = %d, px = %f, py = %f\n", b, s,
-         t, (float)this_p, (int)threadIdx.x,
-          (float)px_buf[s_in_p_buf][t_in_p_buf],
-         (float)py_buf[s_in_p_buf][t_in_p_buf]); */
       p_buf[s_in_p_buf][t_in_p_buf] = this_p;
     } else if (static_cast<unsigned int>(static_cast<int>(threadIdx.x) - 64) <=
                static_cast<unsigned int>(BLOCK_SIZE)) {
@@ -232,10 +240,6 @@ __global__ void mutual_information_kernel(
       scalar_t this_p = -INFINITY;
       if (s >= s_begin && s <= s_end && t >= t_begin && t <= t_end)
         this_p = p[b][s][t];
-      /*printf("p[%d][%d][%d] = %f, threadIdx.x = %d, px = %f, py = %f\n", b, s,
-        t, (float)this_p, (int)threadIdx.x,
-        (float)px_buf[s_in_p_buf][t_in_p_buf],
-        (float)py_buf[s_in_p_buf][t_in_p_buf]);*/
       p_buf[s_in_p_buf][t_in_p_buf] = this_p;
     }
 
@@ -253,18 +257,10 @@ __global__ void mutual_information_kernel(
       // probability of the pair of sequences of length (0, 0).
       p_buf[1][1] =
           (is_origin_block ? 0.0
-                           : LogAdd<scalar_t>()(p_buf[0][1] + px_buf[0][0],
-                                                p_buf[1][0] + py_buf[0][0]));
-    }
-
-    scalar_t p_buf_s1_t;  // This is for an optimization to avoid one
-                          // shared-memory read/write in the loop below.  it
-                          // represents p_buf[s + 1][t]; the first time we
-                          // access this, it will be for t == 0, except for
-                          // thread 0 when we first need it for t == 1.
-    if (threadIdx.x < BLOCK_SIZE) {
-      int s = threadIdx.x;
-      p_buf_s1_t = p_buf[s + 1][threadIdx.x == 0 ? 1 : 0];
+                           : LogAdd<scalar_t>()(
+                                 // px_buf has t_offset applied.
+                                 p_buf[0][1 + t_offset] + px_buf[0][0],
+                                 p_buf[1][0] + py_buf[0][0]));
     }
 
     int s = threadIdx.x;
@@ -299,27 +295,11 @@ __global__ void mutual_information_kernel(
         // the same as the recursion defined for p in
         // mutual_information.py:mutual_information_recursion(); and (eq. 0)
         // above.
-#if 0
-        p_buf[s + 1][t + 1] = LogAdd<scalar_t>()(
-            p_buf[s][t + 1] + px_buf[s][t], p_buf[s + 1][t] + py_buf[s][t]);
 
-        /*printf("threadIdx.x = %d, i = %d, s = %d, t = %d, p_buf[s+1][t+1] =
-          %f, p_buf[s][t+1] = %f, " "px_buf[s][t] = %f, p_buf[s + 1][t] = %f,
-          py_buf[s][t] = %f\n", (int)threadIdx.x, i, s, t,
-          (float)p_buf[s+1][t+1], (float)p_buf[s][t+1], (float)px_buf[s][t],
-          (float)p_buf[s+1][t], (float)py_buf[s][t]);*/
-#else
-        // This is an optimization of the statement above (the other half of
-        // this #if/#else) where we keep p_buf[s + 1][t] in a register to avoid
-        // the need for a load from shared memory.
-        p_buf_s1_t = LogAdd<scalar_t>()(p_buf[s][t + 1] + px_buf[s][t],
-                                        p_buf_s1_t + py_buf[s][t]);
-        // The next time this thread reads p_buf_s1_t, t will be one greater,
-        // so p_buf_s1_t will contain p_buf[s + 1][t].  The first time this
-        // thread uses p_buf_s1_t is when t == 0, except for thread 0 where
-        // the 1st item accessed is for s == 0, t == 1.
-        p_buf[s + 1][t + 1] = p_buf_s1_t;
-#endif
+        // note: px_buf has t_offset applied..
+        p_buf[s + 1][t + 1] =
+            LogAdd<scalar_t>()(p_buf[s][t + 1 + t_offset] + px_buf[s][t],
+                               p_buf[s + 1][t] + py_buf[s][t]);
         // We don't need to do __syncthreads() in this loop because all the
         // threads that are active are in the same warp.  (However, in future,
         // if NVidia changes some things, we might need to sync here).
@@ -327,8 +307,7 @@ __global__ void mutual_information_kernel(
     }
     __syncthreads();
 
-    // Write out the data to p; check that nothing has gone out of numerical
-    // range, and write 'panic' flag if it has.
+    // Write out the data to p;
     for (int i = threadIdx.x; i < BLOCK_SIZE * BLOCK_SIZE; i += blockDim.x) {
       int s_in_block = i / BLOCK_SIZE, t_in_block = i % BLOCK_SIZE,
           s = s_in_block + s_block_begin, t = t_in_block + t_block_begin;
@@ -355,90 +334,64 @@ __global__ void mutual_information_kernel(
   }
 }
 
+// like exp(), but returns 0 if arg is inf/nan, or if result would be
+// infinity or nan (note: this can happen for out-of-range elements
+// when setting px_buf and py_buf is block_S != BLOCK_SIZE or
+// block_T != BLOCK_SIZE, and it's a problem because even though
+// out-of-range gradients are zero, if we multiply them by infinity
+// we get NaN.
+template <typename Real>
+__forceinline__ __device__ Real safe_exp(Real x) {
+  if (x - x != 0)
+    return 0;
+  else {
+    Real ans = exp(x);
+    if (ans - ans != 0.0) return 0;
+    return ans;
+  }
+}
+
 /*
   Backward of mutual_information.
 
-  If we were to write the forward pass in non-log space, it would be (ignoring
-  edge cases), as follows... we'll prefix all the variable names with e, e.g.
-ep, to clarify that it's the exp of the actual argument p:
+  The forward pass is:
 
-         ep[b][s][t] = ep[b][s - 1][t] * epx[b][s - 1][t] +
-                       ep[b][s][t - 1] * epy[b][s][t - 1].    (eq. 1)
+               p[b,s,t] = log_add(p[b,s-1,t+t_offset] + px[b,s-1,t+t_offset],
+                                  p[b,s,t-1] + py[b,s,t-1])          (eq. 0)
 
-(A)
-  First we consider the part of the backprop that requires recursion or
-iteration, i.e. the part involving only gradients of ep.
- This is: ep_grad[b][s - 1][t] += ep_grad[b][s][t] * epx[b][s - 1][t]
-          ep_grad[b][s][t - 1] += ep_grad[b][s][t] * epy[b][s][t - 1].
+  where t_offset = (modified ? -1 : 0)
 
-  .. and if we add 1 to the s index of the first equation above and 1 to the
-     t index of the second equation, we can see that:
+  The backprop for the above, implemented in the obvious way, would be as
+  follows (note, we define term1 and term2 with offsets in the indexes, which
+  will be convenient later..):
 
-          ep_grad[b][s][t] = ep_grad[b][s + 1][t] * epx[b][s][t] +
-                             ep_grad[b][s][t + 1] * epy[b][s][t].
+     term1(b,s-1,t+t_offset) =
+       exp(p[b,s-1,t+t_offset] + px[b,s-1,t+t_offset] - p[b,s,t])       (0a)
+     term2(b,s,t-1) = exp(p[b,s,t-1] + py[b,s,t-1] - p[b,s,t])          (0b)
 
-  Now, if ep = exp(p), and y is the loss function we are backprop'ing,
-  then ep_grad == dy/dep == dy/dp
-       dp/dep == dy/dp / (dep/dp) == dy/dp / exp(p)
-              == dy/dp / ep.  == p_grad / ep.
-       I.e. ep_grad = p_grad / ep.
+  p_grad[b,s-1,t+t_offset] += p_grad[b,s,t] * term1(b,s-1,t+t_offset)      (1a)
+ px_grad[b,s-1,t+t_offset] += p_grad[b,s,t] * term1(b,s-1,t+t_offset)      (1b)
+           p_grad[b,s,t-1] += p_grad[b,s,t] * term2(b,s,t-1)       (1c)
+          py_grad[b,s,t-1] += p_grad[b,s,t] * term2(b,s,t-1)       (1d)
 
-  So we can write the above as:
-      p_grad[b][s][t] / ep[b][s][t]
-          = p_grad[b][s + 1][t] / ep[b][s + 1][t] * epx[b][s][t] +
-            p_grad[b][s][t + 1] / ep[b][s][t + 1] * epy[b][s][t].
+  Adding 1 and -t_offset to the s and t indexes of (1a) an (1b), and
+  1 to the t index of (1c) and (1d), the equations become:
 
-  Or, rearranging:
-      p_grad[b][s][t] =
-        p_grad[b][s + 1][t] * exp(p[b][s][t] + px[b][s][t] - p[b][s + 1][t]) +
-        p_grad[b][s][t + 1] * exp(p[b][s][t] + py[b][s][t] - p[b][s][t + 1]).
-                                                                       (eq. 2)
+      p_grad[b,s,t] += p_grad[b,s+1,t-t_offset] * term1(b,s,t)      (2a)
+     px_grad[b,s,t] += p_grad[b,s+1,t-t_offset] * term1(b,s,t)       (2b)
+      p_grad[b,s,t] += p_grad[b,s,t+1] * term2(b,s,t)       (2c)
+     py_grad[b,s,t] += p_grad[b,s,t+1] * term2(b,s,t)       (2d)
 
- (B)  The following is the backprop for epx and epy from (eq. 1):
+   .. and replacing "+=" with "=", we can write:
 
-        epx_grad[b][s - 1][t] += ep_grad[b][s][t] * ep[b][s - 1][t]
-        epy_grad[b][s][t - 1] += ep_grad[b][s][t] * ep[b][s][t - 1]
+      p_grad[b,s,t]  = p_grad[b,s+1,t-t_offset] * term1(b,s,t)  +    (3a)
+                       p_grad[b,s,t+1] * term2(b,s,t)
+      px_grad[b,s,t] = p_grad[b,s+1,t-t_offset] * term1(b,s,t)       (3b)
+      py_grad[b,s,t] = p_grad[b,s,t+1] * term2(b,s,t)                (3c)
 
-   .. adding 1 to the s indexes in the 1st equation and to the t indexes in the
-2nd:
-
-        epx_grad[b][s][t] = ep_grad[b][s + 1][t] * ep[b][s][t]
-        epy_grad[b][s][t] = ep_grad[b][s][t + 1] * ep[b][s][t]
-
-    Using, similar to the above, ep_grad = p_grad / ep, and similarly,
-    epx_grad = px_grad / epx and epy_grad = py_grad / epy, and writing exp(p)
-for p and so on, the above becomes:
-
-      px_grad[b][s][t] / exp(px[b][s][t]) =
-        p_grad[b][s + 1][t] / exp(p[b][s + 1][t]) * exp(p[b][s][t])
-      py_grad[b][s][t] / exp(py[b][s][t]) =
-        p_grad[b][s][t + 1] / exp(p[b][s][t + 1]) * exp(p[b][s][t])
-    Rearranging:
-      px_grad[b][s][t]  =
-        p_grad[b][s + 1][t] * exp(p[b][s][t] + px[b][s][t] - p[b][s + 1][t])
-                                                                       (eq. 3a)
-      py_grad[b][s][t]  =
-        p_grad[b][s][t + 1] * exp(p[b][s][t] + py[b][s][t] - p[b][s][t + 1])
-                                                                       (eq. 3b)
-
-
-   Defining terms that are common to (eq. 2) and (eqs. 3a,3b), write:
-
-   xderiv[b][s][t] := exp(p[b][s][t] + px[b][s][t] - p[b][s + 1][t])  (eq. 4)
-   yderiv[b][s][t] := exp(p[b][s][t] + py[b][s][t] - p[b][s][t + 1])  (eq. 5)
-
-   .. and note that these quantities are <= 1 so there is no problem doing
-   the exponentiation.  So the recursion can be simplified as from eqs. (2, 3a,
-3b), as:
-
-       p_grad[b][s][t]  = p_grad[b][s + 1][t] * xderiv[b][s][t] +
-                          p_grad[b][s][t + 1] * yderiv[b][s][t]         (eq. 6)
-       px_grad[b][s][t] = p_grad[b][s + 1][t] * xderiv[b][s][t]         (eq. 7)
-       py_grad[b][s][t] = p_grad[b][s][t + 1] * yderiv[b][s][t]         (eq. 8)
-
-  (It might seem like we could just reuse px_grad and py_grad for (eq. 6), but
-it's not clear to me that this is the best strategy since that would require an
-extra write to shared memory within the loop that's the limiting factor.)
+   Writing the definitions of term1 and term2 in a more convenient way:
+     term1(b,s,t) = exp(p[b,s,t] + px[b,s,t] - p[b,s+1,t-t_offset])     (4a)
+     term2(b,s,t) = exp(p[b,s,t] + py[b,s,t] - p[b,s,t+1])                 (4b)
 
   The backward pass will be slightly different from the forward pass in terms of
   how we store and index p (and p_grad), because for writing a particular block
@@ -447,15 +400,15 @@ extra write to shared memory within the loop that's the limiting factor.)
  */
 template <typename scalar_t, int BLOCK_SIZE>
 __global__ void mutual_information_backward_kernel(
-    // B, S, T + 1, i.e. batch, x_seq_length, y_seq_length + 1
-    torch::PackedTensorAccessor32<scalar_t, 3> px,
+    torch::PackedTensorAccessor32<scalar_t, 3>
+        px,  // B, S, T + 1 if !modified; B, S, T if modified.
     torch::PackedTensorAccessor32<scalar_t, 3> py,  // B, S + 1, T.
     // B, S + 1, T + 1.  Produced in forward pass.
     torch::PackedTensorAccessor32<scalar_t, 3> p,
     // [B].  This is an input.
     torch::PackedTensorAccessor32<scalar_t, 1> ans_grad,
-    // B, S + 1, T + 1.   This is a temporary.
-    torch::PackedTensorAccessor32<scalar_t, 3> p_grad,
+    torch::PackedTensorAccessor32<scalar_t, 3>
+        p_grad,  // B, S + 1, T + 1 if !modified; B, S, T if modified.
     torch::PackedTensorAccessor32<scalar_t, 3> px_grad,  // B, S, T + 1.
     torch::PackedTensorAccessor32<scalar_t, 3> py_grad,  // B, S + 1, T.
     // B, 4;  or 0, 0 if boundaries are the defaults (0, 0, S, T)
@@ -471,6 +424,8 @@ __global__ void mutual_information_backward_kernel(
                                 // identical or very close to the value of
                                 // ans_grad that was passed in.
   const int B = px.size(0), S = px.size(1), T = py.size(2);
+  const bool modified = (px.size(2) == T);
+  const int neg_t_offset = (modified ? 1 : 0);
 
   // For statements that are the same as the forward pass, we are omitting some
   // comments.  We'll focus, in the comments, on differences from the forward
@@ -487,17 +442,17 @@ __global__ void mutual_information_backward_kernel(
   //   px_buf[s][t] contains px[s+s_block_begin][t+t_block_begin];
   //   py_buf[s][t] contains py[s+s_block_begin][t+t_block_begin].
   // Later (see eq. 4 and eq. 5):
-  //  px_buf[s][t] contains
-  //         exp(p[b][ss][tt] + px[b][ss][tt] - p[b][ss + 1][tt]),
-  //  py_buf[s][t] contains
-  //         exp(p[b][ss][tt] + py[b][ss][tt] - p[b][ss][tt + 1]
+  //  px_buf[s][t] contains term1(b,ss,tt) ==
+  //    exp(p[b][ss][tt] + px[b][ss][tt] - p[b][ss + 1][tt-t_offset]),
+  //  py_buf[s][t] contains term2(b,ss,tt) ==
+
   // where ss == s + s_block_begin, tt = t + t_block_begin.
   // Unlike in the forward code, there is no offset of 1 in the indexes.
   __shared__ scalar_t px_buf[BLOCK_SIZE][BLOCK_SIZE],
       py_buf[BLOCK_SIZE][BLOCK_SIZE];
 
   // p_buf is initially used to store p, and then (after we are done putting
-  // xderiv and yderiv into px_buf and py_buf) it is repurposed to store
+  // term1 and term2 into px_buf and py_buf) it is repurposed to store
   // p_grad.
   //
   // Unlike in the forward pass, p_buf has the same numbering as px_buf and
@@ -588,7 +543,7 @@ __global__ void mutual_information_backward_kernel(
     }
     __syncthreads();
 
-    // Set xderiv and yderiv; see (eq. 4) and (eq. 5).
+    // Set term1 and term2; see equations (4a) and (4b) above.
     for (int i = threadIdx.x; i < BLOCK_SIZE * BLOCK_SIZE; i += blockDim.x) {
       // We can apply this formula to the entire block even if we are processing
       // a partial block; we have ensured that x_buf and y_buf contain
@@ -596,26 +551,28 @@ __global__ void mutual_information_backward_kernel(
       // x_buf and y_buf containing 0 after applying the followin formulas.
       int s = i / BLOCK_SIZE, t = i % BLOCK_SIZE;
       // Mathematically the following is doing:
-      //   xderiv[b][s][t] := exp(p[b][s][t] + px[b][s][t] - p[b][s + 1][t])
+      //  term1(b,s,t) = exp(p[b,s,t] + px[b,s,t] - p[b,s+1,t-t_offset])   (4a)
       // (with an offset on the s and t indexes)
-      px_buf[s][t] = exp(p_buf[s][t] + px_buf[s][t] - p_buf[s + 1][t]);
+      // Use safe_exp() not exp(), as we could have (-inf) - (-inf) = nan, want
+      // any finite number in this case as derivs would be zero.
+      // Also want -inf->zero.
+      px_buf[s][t] =
+          safe_exp(p_buf[s][t] + px_buf[s][t] - p_buf[s + 1][t + neg_t_offset]);
       // Mathematically the following is doing:
-      //   yderiv[b][s][t] := exp(p[b][s][t] + py[b][s][t] - p[b][s][t + 1])
+      // term2(b,s,t) = exp(p[b,s,t] + py[b,s,t] - p[b,s,t+1])             (4b)
       // (with an offset on the s and t indexes)
-      py_buf[s][t] = exp(p_buf[s][t] + py_buf[s][t] - p_buf[s][t + 1]);
+      py_buf[s][t] = safe_exp(p_buf[s][t] + py_buf[s][t] - p_buf[s][t + 1]);
     }
 
     __syncthreads();
 
     // Load p_grad for the top and right elements in p_buf: i.e. for elements
-    // p_buf[s][t] where s == block_S (exclusive-or) t == block_T.  We don't
-    // need to load the top-right corner [block_S][block_T]; that location will
-    // never be accessed.
+    // p_buf[s][t] where s == block_S (exclusive-or) t == block_T.
     // These are the p_grad values computed by previous instances of this kernel
     // If this is one of the top or right blocks, some or all of the p_grad
     // values we'd be reading here will be out of range, and we use zeros
     // to ensure no gradient gets propagated from those positions.
-    if (threadIdx.x < block_S) {
+    if (threadIdx.x <= block_S) {
       int s_in_block = threadIdx.x, t_in_block = block_T,
           s = s_in_block + s_block_begin, t = t_in_block + t_block_begin;
       p_buf[s_in_block][t_in_block] =
@@ -660,11 +617,12 @@ __global__ void mutual_information_backward_kernel(
             static_cast<unsigned int>(t) < static_cast<unsigned int>(block_T)) {
           // The following statement is really operating on the gradients;
           // it corresponds, with offsets of s_block_begin and t_block_begin
-          // on the indexes, to (eq. 6) defined above, i.e.:
-          //   p_grad[b][s][t]  = p_grad[b][s + 1][t] * xderiv[b][s][t] +
-          //                      p_grad[b][s][t + 1] * yderiv[b][s][t]
-          p_buf[s][t] =
-              (p_buf[s + 1][t] * px_buf[s][t] + p_buf[s][t + 1] * py_buf[s][t]);
+          // on the indexes, to equation (3a) above, i.e.:
+          //   p_grad[b,s,t]  =
+          //      p_grad[b,s+1,t-t_offset] * term1(b,s,t)  +             (3a)
+          //      p_grad[b,s,t+1] * term2(b,s,t)
+          p_buf[s][t] = (p_buf[s + 1][t + neg_t_offset] * px_buf[s][t] +
+                         p_buf[s][t + 1] * py_buf[s][t]);
         }
       }
     }
@@ -680,15 +638,20 @@ __global__ void mutual_information_backward_kernel(
       if (t <= t_end && s <= s_end) {
         p_grad[b][s][t] = p_buf[s_in_block][t_in_block];
 
-        if (s < s_end) {  // write px_grad, which is of shape [B][S][T + 1]
-          // From (eq. 7):
-          // px_grad[b][s][t] = p_grad[b][s + 1][t] * xderiv[b][s][t]
-          px_grad[b][s][t] = (p_buf[s_in_block + 1][t_in_block] *
+        if (s < s_end && t <= t_end - neg_t_offset) {
+          // write px_grad, which is of shape [B][S][T + 1] if !modified,
+          // [B][S][T] if modified.  the condition "t <= t_end - neg_t_offset"
+          // becomes "t <= t_end" if !modified, and "t <= t_end - 1" if
+          // modified, keeping us within the bounds of px_grad.
+
+          // From (eq. 3b):
+          // px_grad[b,s,t] = p_grad[b,s+1,t-t_offset] * term1(b,s,t)
+          px_grad[b][s][t] = (p_buf[s_in_block + 1][t_in_block + neg_t_offset] *
                               px_buf[s_in_block][t_in_block]);
         }
         if (t < t_end) {  // write py_grad, which is of shape [B][S + 1][T]
-          // from (eq. 8):
-          // py_grad[b][s][t] = p_grad[b][s][t + 1] * yderiv[b][s][t]
+          // from (eq. 3c):
+          // py_grad[b,s,t] = p_grad[b,s,t+1] * term2(b,s,t)
           py_grad[b][s][t] = (p_buf[s_in_block][t_in_block + 1] *
                               py_buf[s_in_block][t_in_block]);
         }
@@ -717,7 +680,8 @@ torch::Tensor MutualInformationCuda(torch::Tensor px, torch::Tensor py,
   auto scalar_t = px.scalar_type();
   auto opts = torch::TensorOptions().dtype(scalar_t).device(px.device());
 
-  const int B = px.size(0), S = px.size(1), T = px.size(2) - 1;
+  const int B = px.size(0), S = px.size(1), T = py.size(2);
+  TORCH_CHECK(px.size(2) == T || px.size(2) == T + 1);
   TORCH_CHECK(py.size(0) == B && py.size(1) == S + 1 && py.size(2) == T);
   TORCH_CHECK(p.size(0) == B && p.size(1) == S + 1 && p.size(2) == T + 1);
 
@@ -777,9 +741,12 @@ std::vector<torch::Tensor> MutualInformationBackwardCuda(
   auto scalar_t = px.scalar_type();
   auto opts = torch::TensorOptions().dtype(scalar_t).device(px.device());
 
-  const int B = px.size(0), S = px.size(1), T = px.size(2) - 1;
+  const int B = px.size(0), S = px.size(1), T = py.size(2);
 
-  TORCH_CHECK(py.size(0) == B && py.size(1) == S + 1 && py.size(2) == T);
+  TORCH_CHECK(px.size(2) == T ||
+              px.size(2) == T + 1);  // modified case ||  not-modified case
+  const bool modified = (px.size(2) == T);
+  TORCH_CHECK(py.size(0) == B && py.size(1) == S + 1);
   TORCH_CHECK(p.size(0) == B && p.size(1) == S + 1 && p.size(2) == T + 1);
 
   auto boundary = opt_boundary.value_or(
@@ -793,9 +760,10 @@ std::vector<torch::Tensor> MutualInformationBackwardCuda(
 
   bool has_boundary = opt_boundary.has_value();
 
+  int T1 = T + (modified ? 0 : 1);
   torch::Tensor p_grad = torch::empty({B, S + 1, T + 1}, opts),
-                px_grad = (has_boundary ? torch::zeros({B, S, T + 1}, opts)
-                                        : torch::empty({B, S, T + 1}, opts)),
+                px_grad = (has_boundary ? torch::zeros({B, S, T1}, opts)
+                                        : torch::empty({B, S, T1}, opts)),
                 py_grad = (has_boundary ? torch::zeros({B, S + 1, T}, opts)
                                         : torch::empty({B, S + 1, T}, opts));
 

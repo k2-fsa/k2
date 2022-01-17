@@ -31,7 +31,8 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         return_grad: bool = False,
     ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         (B, S, T1) = px.shape
-        T = T1 - 1
+        T = py.shape[-1]
+        assert T1 in [T, T + 1]
         assert py.shape == (B, S + 1, T)
         if boundary is not None:
             assert boundary.shape == (B, 4)
@@ -150,9 +151,12 @@ def mutual_information_recursion(
         and t:
 
              p[b,0,0] = 0.0
+        if !modified:
              p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                                 p[b,s,t-1] + py[b,s,t-1])
-                       (if s > 0 or t > 0)
+        if modified:
+             p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
+                                p[b,s,t-1] + py[b,s,t-1])
 
         where we handle edge cases by treating quantities with negative indexes
         as -infinity.  The extension to cases where the boundaries are specified
@@ -161,10 +165,10 @@ def mutual_information_recursion(
     """
     assert px.ndim == 3
     B, S, T1 = px.shape
-    T = T1 - 1
+    T = py.shape[-1]
+    assert px.shape[-1] in [T, T + 1]  # if T, then "modified".
     assert py.shape == (B, S + 1, T)
     assert px.dtype == py.dtype
-    (B, S, T) = px.shape
     if boundary is not None:
         assert boundary.dtype == torch.int64
         assert boundary.shape == (B, 4)
@@ -245,11 +249,14 @@ def joint_mutual_information_recursion(
     N = len(px)
     assert len(py) == N and N > 0
     B, S, T1 = px[0].shape
-    T = T1 - 1
+    T = py[0].shape[2]
+    assert T1 in [T, T + 1]  # T if modified...
     assert py[0].shape == (B, S + 1, T)
     assert px[0].dtype == py[0].dtype
 
-    px_cat = torch.stack(px, dim=0)  # (N, B, S, T+1)
+    px_cat = torch.stack(
+        px, dim=0
+    )  # (N, B, S, T+1) if !modified,(N, B, S, T) if modified.
     py_cat = torch.stack(py, dim=0)  # (N, B, S+1, T)
     px_tot = px_cat.sum(dim=0)  # (B, S, T+1)
     py_tot = py_cat.sum(dim=0)  # (B, S+1, T)
