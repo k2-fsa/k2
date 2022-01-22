@@ -12,6 +12,32 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
+  // `states` contains int64_t which represents the decoder state; this is:
+  //   context_state * num_graph_states + graph_state.
+  // the num_graph_states is specific to the decoding stream;
+  // it is held at an outer level, in the RnntDecodingStream
+  // or RnntDecodingStreams object.
+  //
+  // For a single RNN-T stream, `states` would be indexed
+  // [context_state][state], i.e. the states are grouped first
+  // by context_state (they are sorted, to make this possible).
+  // If this object represents multiple RNN-T streams,
+  // the `states` object is indexed [stream][context_state][state].
+  Ragged<int64_t> states;
+
+  // `scores` contains the forward scores of the states in `states`;
+  // it has the same shape as `states`.
+  Ragged<double> scores;
+
+  // forward_scores contains the forward scores of the states in `states.values`
+  // (best score from start state to here); the shape is the same as
+  // `states`
+  Ragged<double> forward_scores;
+
+  // frames contains the arc information, for previously decoded
+  // frames, that we can later use to create a lattice.
+  // It contains Ragged<ArcInfo> with 2 axes (state, arc).
+  std::vector<std::unique_ptr<Ragged<ArcInfo> > prev_frames;
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.

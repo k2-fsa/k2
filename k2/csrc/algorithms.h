@@ -121,17 +121,40 @@ class Renumbering {
     return new2old_;
   }
 
+  /* Return a mapping from new index to old index, with one extra element
+     containing the total number of kept elements if extra_element == true.
+     If Keep() can be interpreted as a tails vector, i.e. with 1 at the end
+     of sub-lists of elements, then New2Old(true) would corresponds to a
+     row-splits array and Old2New(false) would correspond to a row-ids
+     array.
+  */
+  Array1<int32_t> New2Old(bool extra_element) {
+    Array1<int32> &new2old_part = New2Old();
+    if (!extra_element) {
+      return new2old_part;
+    } else {
+      // This is a little perverse, using low-level interfaces to increase the
+      // dimension of the array; but we know it does have one more element.
+      // Because we normally use New2Old() with no arg (equivalent to false),
+      // the overloaded version of this function returns a reference for
+      // efficiency.
+      return Array1<int32_t>(new2old_part.Dim() + 1,
+                             new2old_part.GetRegion(), 0);
+    }
+  }
+
   /* Return a mapping from old index to new index. This is created on demand
      (must only be called after the Keep() array has been populated).
 
        @param [in] extra_element  If true, will return the array of size
                   NumOldElems() + 1, which includes one more element;
                   otherwise it will return an array of size NumOldElems().
+
+
+       @return    Returns an array mapping the old indexes to the new indexes.
                   This array is just the exclusive sum of Keep().
                   It gives the mapping for indexes that are kept; element
                   i is kept if `Old2New()[i+1] > Old2New()[i]`.
-
-       @return    Returns an array mapping the old indexes to the new indexes.
   */
   Array1<int32_t> Old2New(bool extra_element = false) {
     NVTX_RANGE(K2_FUNC);
