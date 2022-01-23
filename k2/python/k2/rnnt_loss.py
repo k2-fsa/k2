@@ -468,27 +468,27 @@ def get_rnnt_prune_ranges(
       (B, T, s_range).
     """
     (B, S, T1) = px_grad.shape
-    T = T1 - 1
+    T = py_grad.shape[-1]
+    assert T1 in [T, T + 1]
     assert py_grad.shape == (B, S + 1, T)
     assert boundary.shape == (B, 4)
     assert s_range >= 1
     if s_range > S:
         s_range = S
 
-    px_pad = torch.zeros(
-        (B, 1, T + 1), dtype=px_grad.dtype, device=px_grad.device
-    )
+    px_pad = torch.zeros((B, 1, T1), dtype=px_grad.dtype, device=px_grad.device)
     py_pad = torch.zeros(
         (B, S + 1, 1), dtype=py_grad.dtype, device=py_grad.device
     )
-    tot_grad = torch.cat((px_grad, px_pad), dim=1) + torch.cat(
-        (py_grad, py_pad), dim=2
-    )  # (B, S + 1, T + 1)
+    py_grad_padded = py_grad if T1 == T else torch.cat((py_grad, py_pad), dim=2)
+    tot_grad = (
+        torch.cat((px_grad, px_pad), dim=1) + py_grad_padded
+    )  # (B, S + 1, T1)
 
     tot_grad = torch.cat(
         (
             torch.zeros(
-                (B, 1, T + 1), dtype=tot_grad.dtype, device=tot_grad.device
+                (B, 1, T1), dtype=tot_grad.dtype, device=tot_grad.device
             ),
             tot_grad,
         ),
@@ -650,7 +650,7 @@ def get_rnnt_logprobs_pruned(
     )
 
     # (B, T, s_range)
-    pruning_symbols = torch.gather(
+    pruned_symbols = torch.gather(
         symbols_with_terminal.unsqueeze(1).expand((B, T, S + 1)),
         dim=2,
         index=ranges,
@@ -658,7 +658,7 @@ def get_rnnt_logprobs_pruned(
 
     # (B, T, s_range)
     px = torch.gather(
-        joint, dim=3, index=pruning_symbols.reshape(B, T, s_range, 1)
+        joint, dim=3, index=pruned_symbols.reshape(B, T, s_range, 1)
     ).squeeze(-1)
     px = px - normalizers
 

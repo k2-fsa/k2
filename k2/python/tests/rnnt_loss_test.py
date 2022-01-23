@@ -391,40 +391,58 @@ class TestRnntLoss(unittest.TestCase):
         boundary_[:, 2] = seq_length
         boundary_[:, 3] = frames
 
-        for device in self.devices:
-            # normal rnnt
-            am = am_.to(device)
-            lm = lm_.to(device)
-            symbols = symbols_.to(device)
-            boundary = boundary_.to(device)
-            t_am = am.unsqueeze(2).float()
-            t_lm = lm.unsqueeze(1).float()
-            t_prob = t_am + t_lm
-            # nonlinear transform
-            t_prob = torch.sigmoid(t_prob)
-            k2_loss = k2.rnnt_loss(t_prob, symbols, terminal_symbol, boundary)
-
-            print("unpruned rnnt loss: ", k2_loss)
-
-            # pruning
-            k2_simple_loss, (px_grad, py_grad) = k2.rnnt_loss_simple(
-                lm, am, symbols, terminal_symbol, boundary, return_grad=True
-            )
-
-            for r in range(2, 50, 5):
-                ranges = k2.get_rnnt_prune_ranges(px_grad, py_grad, boundary, r)
-                # (B, T, r, C)
-                am_p, lm_p = k2.do_rnnt_pruning(am, lm, ranges)
-
-                t_prob_p = am_p + lm_p
-
+        for modified in [True, False]:
+            for device in self.devices:
+                # normal rnnt
+                am = am_.to(device)
+                lm = lm_.to(device)
+                symbols = symbols_.to(device)
+                boundary = boundary_.to(device)
+                t_am = am.unsqueeze(2).float()
+                t_lm = lm.unsqueeze(1).float()
+                t_prob = t_am + t_lm
                 # nonlinear transform
-                t_prob_p = torch.sigmoid(t_prob_p)
-
-                pruning_loss = k2.rnnt_loss_pruned(
-                    t_prob_p, symbols, ranges, terminal_symbol, boundary
+                t_prob = torch.sigmoid(t_prob)
+                k2_loss = k2.rnnt_loss(
+                    t_prob, symbols, terminal_symbol, boundary, modified
                 )
-                print(f"pruning loss with range {r} : ", pruning_loss)
+
+                print(
+                    f"unpruned rnnt loss with modified {modified} : {k2_loss}"
+                )
+
+                # pruning
+                k2_simple_loss, (px_grad, py_grad) = k2.rnnt_loss_simple(
+                    lm,
+                    am,
+                    symbols,
+                    terminal_symbol,
+                    boundary,
+                    modified,
+                    return_grad=True,
+                )
+
+                for r in range(2, 50, 5):
+                    ranges = k2.get_rnnt_prune_ranges(
+                        px_grad, py_grad, boundary, r
+                    )
+                    # (B, T, r, C)
+                    am_p, lm_p = k2.do_rnnt_pruning(am, lm, ranges)
+
+                    t_prob_p = am_p + lm_p
+
+                    # nonlinear transform
+                    t_prob_p = torch.sigmoid(t_prob_p)
+
+                    pruned_loss = k2.rnnt_loss_pruned(
+                        t_prob_p,
+                        symbols,
+                        ranges,
+                        terminal_symbol,
+                        boundary,
+                        modified,
+                    )
+                    print(f"pruning loss with range {r} : {pruned_loss}")
 
 
 if __name__ == "__main__":
