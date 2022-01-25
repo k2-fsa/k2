@@ -950,11 +950,12 @@ def replace_fsa(
     labels outside this range are just copied. Labels on final-arcs in `src`
     (Which will be -1) would be set to 0(epsilon) in the result fsa.
 
-    Caution: Attributes of the result inherits from `index` and `src` via
-             `arc_map_index` and `arc_map_src`, But if there are attributes
-             with same name, only the attributes with dtype `torch.float32`
-             are supported, the other kinds of attributes are discarded.
-             See docs in `fsa_from_binary_function_tensor` for details.
+    Caution:
+      Attributes of the result inherits from `index` and `src` via
+      `arc_map_index` and `arc_map_src`, But if there are attributes
+      with same name, only the attributes with dtype `torch.float32`
+      are supported, the other kinds of attributes are discarded.
+      See docs in `fsa_from_binary_function_tensor` for details.
 
     Args:
       src:

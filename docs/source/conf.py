@@ -21,7 +21,7 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'k2'
-copyright = '2020-2021, k2 development team'
+copyright = '2020-2022, k2 development team'
 author = 'k2 development team'
 
 
