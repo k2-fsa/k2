@@ -147,7 +147,12 @@ def linkcode_resolve(domain, info):
 
 # Replace key with value in the generated doc
 REPLACE_PATTERN = {
-  '_k2.ragged': 'k2.ragged',
+  # somehow it results in errors
+  # Handler <function process_docstring at 0x7f47a290aca0> for event
+  # 'autodoc-process-docstring' threw an exception (exception:
+  # <module '_k2.ragged'> is a built-in module)
+  #
+  #  '_k2.ragged': 'k2.ragged',
   'at::Tensor': 'torch.Tensor'
 }
 
