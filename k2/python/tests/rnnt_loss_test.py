@@ -81,36 +81,55 @@ class TestRnntLoss(unittest.TestCase):
             termination_symbol = 2
             symbols = torch.tensor([[0, 1, 0]], dtype=torch.long, device=device)
 
-            px, py = k2.get_rnnt_logprobs(lm, am, symbols, termination_symbol)
+            px, py = k2.get_rnnt_logprobs(
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+            )
             assert px.shape == (B, S, T + 1)
             assert py.shape == (B, S + 1, T)
             assert symbols.shape == (B, S)
-            m = k2.mutual_information_recursion(px, py)
+            m = k2.mutual_information_recursion(px=px, py=py, boundary=None)
 
             if device == torch.device("cpu"):
-                expected = m
-            assert torch.allclose(m, expected.to(device))
+                expected = -m
+            assert torch.allclose(-m, expected.to(device))
 
             # test rnnt_loss_simple
-            m = k2.rnnt_loss_simple(lm, am, symbols, termination_symbol, None)
+            m = k2.rnnt_loss_simple(
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=None,
+                reduction="none",
+            )
             assert torch.allclose(m, expected.to(device))
 
             # test rnnt_loss_smoothed
             m = k2.rnnt_loss_smoothed(
-                lm,
-                am,
-                symbols,
-                termination_symbol,
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
                 lm_only_scale=0.0,
                 am_only_scale=0.0,
                 boundary=None,
+                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
             probs = am.unsqueeze(2) + lm.unsqueeze(1)
 
             # test rnnt_loss
-            m = k2.rnnt_loss(probs, symbols, termination_symbol, None)
+            m = k2.rnnt_loss(
+                logits=probs,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=None,
+                reduction="none",
+            )
             assert torch.allclose(m, expected.to(device))
 
             # compare with torchaudio rnnt_loss
@@ -129,28 +148,42 @@ class TestRnntLoss(unittest.TestCase):
                     blank=termination_symbol,
                     reduction="none",
                 )
-                assert torch.allclose(-m, expected.to(device))
+                assert torch.allclose(m, expected.to(device))
 
             # should be invariant to adding a constant for any frame.
             lm += torch.randn(B, S + 1, 1, device=device)
             am += torch.randn(B, T, 1, device=device)
 
-            m = k2.rnnt_loss_simple(lm, am, symbols, termination_symbol, None)
+            m = k2.rnnt_loss_simple(
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=None,
+                reduction="none",
+            )
             assert torch.allclose(m, expected.to(device))
 
             m = k2.rnnt_loss_smoothed(
-                lm,
-                am,
-                symbols,
-                termination_symbol,
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
                 lm_only_scale=0.0,
                 am_only_scale=0.0,
                 boundary=None,
+                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
             probs = am.unsqueeze(2) + lm.unsqueeze(1)
-            m = k2.rnnt_loss(probs, symbols, termination_symbol, None)
+            m = k2.rnnt_loss(
+                logits=probs,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=None,
+                reduction="none",
+            )
             assert torch.allclose(m, expected.to(device))
 
     def test_rnnt_loss_random(self):
@@ -182,35 +215,51 @@ class TestRnntLoss(unittest.TestCase):
             boundary = boundary_.to(device)
 
             px, py = k2.get_rnnt_logprobs(
-                lm, am, symbols, termination_symbol, boundary
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=boundary,
             )
             assert px.shape == (B, S, T + 1)
             assert py.shape == (B, S + 1, T)
             assert symbols.shape == (B, S)
-            m = k2.mutual_information_recursion(px, py, boundary)
+            m = k2.mutual_information_recursion(px=px, py=py, boundary=boundary)
 
             if device == torch.device("cpu"):
-                expected = m
-            assert torch.allclose(m, expected.to(device))
+                expected = -m
+            assert torch.allclose(-m, expected.to(device))
 
             m = k2.rnnt_loss_simple(
-                lm, am, symbols, termination_symbol, boundary
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=boundary,
+                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
             m = k2.rnnt_loss_smoothed(
-                lm,
-                am,
-                symbols,
-                termination_symbol,
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
                 lm_only_scale=0.0,
                 am_only_scale=0.0,
                 boundary=boundary,
+                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
             probs = am.unsqueeze(2) + lm.unsqueeze(1)
-            m = k2.rnnt_loss(probs, symbols, termination_symbol, boundary)
+            m = k2.rnnt_loss(
+                logits=probs,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=boundary,
+                reduction="none",
+            )
             assert torch.allclose(m, expected.to(device))
 
             # compare with torchaudio rnnt_loss
@@ -225,29 +274,41 @@ class TestRnntLoss(unittest.TestCase):
                     blank=termination_symbol,
                     reduction="none",
                 )
-                assert torch.allclose(-m, expected.to(device))
+                assert torch.allclose(m, expected.to(device))
 
             # should be invariant to adding a constant for any frame.
             lm += torch.randn(B, S + 1, 1, device=device)
             am += torch.randn(B, T, 1, device=device)
 
             m = k2.rnnt_loss_simple(
-                lm, am, symbols, termination_symbol, boundary
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=boundary,
+                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
             probs = am.unsqueeze(2) + lm.unsqueeze(1)
-            m = k2.rnnt_loss(probs, symbols, termination_symbol, boundary)
+            m = k2.rnnt_loss(
+                logits=probs,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=boundary,
+                reduction="none",
+            )
             assert torch.allclose(m, expected.to(device))
 
             m = k2.rnnt_loss_smoothed(
-                lm,
-                am,
-                symbols,
-                termination_symbol,
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
                 lm_only_scale=0.0,
                 am_only_scale=0.0,
                 boundary=boundary,
+                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
@@ -285,20 +346,24 @@ class TestRnntLoss(unittest.TestCase):
                 logprobs = am.unsqueeze(2) + lm.unsqueeze(1)
                 logprobs.requires_grad_()
                 k2_loss = k2.rnnt_loss(
-                    logprobs, symbols, termination_symbol, boundary
+                    logits=logprobs,
+                    symbols=symbols,
+                    termination_symbol=termination_symbol,
+                    boundary=boundary,
+                    reduction="none",
                 )
                 k2_grad = torch.autograd.grad(
-                    k2_loss, logprobs, -torch.ones_like(k2_loss)
+                    k2_loss, logprobs, torch.ones_like(k2_loss)
                 )
                 k2_grad = k2_grad[0]
 
                 logprobs2 = logprobs.detach().clone().float()
                 logprobs2.requires_grad_()
                 torch_loss = torchaudio.functional.rnnt_loss(
-                    logprobs2,
-                    symbols.int(),
-                    boundary[:, 3].int(),
-                    boundary[:, 2].int(),
+                    logits=logprobs2,
+                    targets=symbols.int(),
+                    logit_lengths=boundary[:, 3].int(),
+                    target_lengths=boundary[:, 2].int(),
                     blank=termination_symbol,
                     reduction="none",
                 )
@@ -307,9 +372,7 @@ class TestRnntLoss(unittest.TestCase):
                 )
                 torch_grad = torch_grad[0]
 
-                assert torch.allclose(
-                    -k2_loss, torch_loss, atol=1e-2, rtol=1e-2
-                )
+                assert torch.allclose(k2_loss, torch_loss, atol=1e-2, rtol=1e-2)
 
                 assert torch.allclose(k2_grad, torch_grad, atol=1e-2, rtol=1e-2)
 
@@ -336,10 +399,10 @@ class TestRnntLoss(unittest.TestCase):
             symbols = torch.tensor([[0, 1, 0]], dtype=torch.long, device=device)
 
             m = k2.rnnt_loss_smoothed(
-                lm,
-                am,
-                symbols,
-                termination_symbol,
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
                 lm_only_scale=0.0,
                 am_only_scale=0.333,
                 boundary=None,
@@ -354,10 +417,10 @@ class TestRnntLoss(unittest.TestCase):
             am += torch.randn(B, T, 1, device=device)
 
             m = k2.rnnt_loss_smoothed(
-                lm,
-                am,
-                symbols,
-                termination_symbol,
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
                 lm_only_scale=0.0,
                 am_only_scale=0.333,
                 boundary=None,
@@ -395,19 +458,36 @@ class TestRnntLoss(unittest.TestCase):
             t_prob = t_am + t_lm
             # nonlinear transform
             t_prob = torch.sigmoid(t_prob)
-            k2_loss = k2.rnnt_loss(t_prob, symbols, terminal_symbol, boundary)
+            k2_loss = k2.rnnt_loss(
+                logits=t_prob,
+                symbols=symbols,
+                termination_symbol=terminal_symbol,
+                boundary=boundary,
+                reduction="none",
+            )
 
             print("unpruned rnnt loss: ", k2_loss)
 
             # pruning
             k2_simple_loss, (px_grad, py_grad) = k2.rnnt_loss_simple(
-                lm, am, symbols, terminal_symbol, boundary, True
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=terminal_symbol,
+                boundary=boundary,
+                return_grad=True,
+                reduction="none",
             )
 
             for r in range(2, 50, 5):
-                ranges = k2.get_rnnt_prune_ranges(px_grad, py_grad, boundary, r)
+                ranges = k2.get_rnnt_prune_ranges(
+                    px_grad=px_grad,
+                    py_grad=py_grad,
+                    boundary=boundary,
+                    s_range=r,
+                )
                 # (B, T, r, C)
-                am_p, lm_p = k2.do_rnnt_pruning(am, lm, ranges)
+                am_p, lm_p = k2.do_rnnt_pruning(am=am, lm=lm, ranges=ranges)
 
                 t_prob_p = am_p + lm_p
 
@@ -415,7 +495,12 @@ class TestRnntLoss(unittest.TestCase):
                 t_prob_p = torch.sigmoid(t_prob_p)
 
                 pruning_loss = k2.rnnt_loss_pruned(
-                    t_prob_p, symbols, ranges, terminal_symbol, boundary
+                    logits=t_prob_p,
+                    symbols=symbols,
+                    ranges=ranges,
+                    termination_symbol=terminal_symbol,
+                    boundary=boundary,
+                    reduction="none",
                 )
                 print(f"pruning loss with range {r} : ", pruning_loss)
 
