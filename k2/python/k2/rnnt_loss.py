@@ -464,10 +464,13 @@ def get_rnnt_prune_ranges(
     s_begin = torch.argmax(diff_grad, dim=1)
     s_begin = s_begin[:, :T]
 
-    # handle the values of s_begin in padding positions.
-    # set the s_begin in paddding positions to `len(symbols) - s_range + 1`
+    # Handle the values of s_begin in padding positions.
+    # Set the s_begin in paddding positions to `len(symbols) - s_range + 1`
     mask = torch.arange(0, T, device=px_grad.device).reshape(1, T).expand(B, T)
-    mask = mask < boundary[:, 3].reshape(B, 1)
+
+    # -1 here to guarantee that we reach the last symbol at last frame of real
+    # data.
+    mask = mask < boundary[:, 3].reshape(B, 1) - 1
 
     s_begin_padding = boundary[:, 2].reshape(B, 1) - s_range + 1
     # handle the cases when `len(symbols) < s_range`
