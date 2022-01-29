@@ -5,7 +5,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Python API reference &mdash; k2 1.11 documentation</title>
+  <title>Python API reference &mdash; k2 1.13 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -32,7 +32,7 @@
             <a href="../index.html" class="icon icon-home"> k2
           </a>
               <div class="version">
-                1.11
+                1.13
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -99,8 +99,14 @@
 <li class="toctree-l2"><a class="reference internal" href="api.html#ctc-loss">ctc_loss</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#ctc-topo">ctc_topo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#determinize">determinize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#do-rnnt-pruning">do_rnnt_pruning</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#expand-ragged-attributes">expand_ragged_attributes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#get-best-matching-stats">get_best_matching_stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#get-rnnt-logprobs">get_rnnt_logprobs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#get-rnnt-logprobs-joint">get_rnnt_logprobs_joint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#get-rnnt-logprobs-pruned">get_rnnt_logprobs_pruned</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#get-rnnt-logprobs-smoothed">get_rnnt_logprobs_smoothed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#get-rnnt-prune-ranges">get_rnnt_prune_ranges</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#index-add">index_add</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#index-fsa">index_fsa</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#index-select">index_select</a></li>
@@ -110,11 +116,13 @@
 <li class="toctree-l2"><a class="reference internal" href="api.html#intersect-device">intersect_device</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#invert">invert</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#is-rand-equivalent">is_rand_equivalent</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#joint-mutual-information-recursion">joint_mutual_information_recursion</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#levenshtein-alignment">levenshtein_alignment</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#levenshtein-graph">levenshtein_graph</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#linear-fsa">linear_fsa</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#linear-fst">linear_fst</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#monotonic-lower-bound">monotonic_lower_bound</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#mutual-information-recursion">mutual_information_recursion</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#properties-to-str">properties_to_str</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#prune-on-arc-post">prune_on_arc_post</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#random-fsa">random_fsa</a></li>
@@ -124,6 +132,10 @@
 <li class="toctree-l2"><a class="reference internal" href="api.html#remove-epsilon-and-add-self-loops">remove_epsilon_and_add_self_loops</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#remove-epsilon-self-loops">remove_epsilon_self_loops</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#replace-fsa">replace_fsa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#rnnt-loss">rnnt_loss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#rnnt-loss-pruned">rnnt_loss_pruned</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#rnnt-loss-simple">rnnt_loss_simple</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#rnnt-loss-smoothed">rnnt_loss_smoothed</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#shortest-path">shortest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#simple-ragged-index-select">simple_ragged_index_select</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#to-dot">to_dot</a></li>
@@ -143,15 +155,15 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html#k2-ragged">k2.ragged</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api.html#id41">cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id43">cat</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#create-ragged-shape2">create_ragged_shape2</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#create-ragged-tensor">create_ragged_tensor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#id42">index</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id44">index</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#index-and-sum">index_and_sum</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#random-ragged-shape">random_ragged_shape</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#id43">regular_ragged_shape</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#id44">RaggedShape</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#id66">RaggedTensor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id45">regular_ragged_shape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id46">RaggedShape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id68">RaggedTensor</a></li>
 </ul>
 </li>
 </ul>
@@ -169,7 +181,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2020-2021, k2 development team.</p>
+    <p>&#169; Copyright 2020-2022, k2 development team.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

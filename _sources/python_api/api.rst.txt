@@ -73,6 +73,11 @@ determinize
 
 .. autofunction:: determinize
 
+do_rnnt_pruning
+---------------
+
+.. autofunction:: do_rnnt_pruning
+
 expand_ragged_attributes
 ------------------------
 
@@ -82,6 +87,31 @@ get_best_matching_stats
 -----------------------
 
 .. autofunction:: get_best_matching_stats
+
+get_rnnt_logprobs
+-----------------
+
+.. autofunction:: get_rnnt_logprobs
+
+get_rnnt_logprobs_joint
+-----------------------
+
+.. autofunction:: get_rnnt_logprobs_joint
+
+get_rnnt_logprobs_pruned
+------------------------
+
+.. autofunction:: get_rnnt_logprobs_pruned
+
+get_rnnt_logprobs_smoothed
+--------------------------
+
+.. autofunction:: get_rnnt_logprobs_smoothed
+
+get_rnnt_prune_ranges
+---------------------
+
+.. autofunction:: get_rnnt_prune_ranges
 
 index_add
 ---------
@@ -128,6 +158,11 @@ is_rand_equivalent
 
 .. autofunction:: is_rand_equivalent
 
+joint_mutual_information_recursion
+----------------------------------
+
+.. autofunction:: joint_mutual_information_recursion
+
 levenshtein_alignment
 ---------------------
 
@@ -152,6 +187,11 @@ monotonic_lower_bound
 ---------------------
 
 .. autofunction:: monotonic_lower_bound
+
+mutual_information_recursion
+----------------------------
+
+.. autofunction:: mutual_information_recursion
 
 properties_to_str
 -----------------
@@ -197,6 +237,26 @@ replace_fsa
 -----------
 
 .. autofunction:: replace_fsa
+
+rnnt_loss
+---------
+
+.. autofunction:: rnnt_loss
+
+rnnt_loss_pruned
+----------------
+
+.. autofunction:: rnnt_loss_pruned
+
+rnnt_loss_simple
+----------------
+
+.. autofunction:: rnnt_loss_simple
+
+rnnt_loss_smoothed
+------------------
+
+.. autofunction:: rnnt_loss_smoothed
 
 shortest_path
 -------------

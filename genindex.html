@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Index &mdash; k2 1.11 documentation</title>
+  <title>Index &mdash; k2 1.13 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -28,7 +28,7 @@
             <a href="index.html" class="icon icon-home"> k2
           </a>
               <div class="version">
-                1.11
+                1.13
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -82,6 +82,7 @@
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
  | <a href="#I"><strong>I</strong></a>
+ | <a href="#J"><strong>J</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#N"><strong>N</strong></a>
@@ -302,8 +303,6 @@
         <li><a href="python_api/api.html#k2.RaggedTensor.device">(k2.RaggedTensor attribute)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.ragged.RaggedShape.dim0">dim0 (k2.ragged.RaggedShape attribute)</a>
 
       <ul>
@@ -314,6 +313,10 @@
         <li><a href="python_api/api.html#k2.RaggedTensor.dim0">(k2.RaggedTensor attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="python_api/api.html#k2.do_rnnt_pruning">do_rnnt_pruning() (in module k2)</a>
+</li>
       <li><a href="python_api/api.html#k2.Fsa.draw">draw() (k2.Fsa method)</a>
 </li>
       <li><a href="python_api/api.html#k2.ragged.RaggedTensor.dtype">dtype (k2.ragged.RaggedTensor attribute)</a>
@@ -370,14 +373,24 @@
 </li>
       <li><a href="python_api/api.html#k2.Fsa.get_forward_scores">get_forward_scores() (k2.Fsa method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.ragged.RaggedShape.get_layer">get_layer() (k2.ragged.RaggedShape method)</a>
 
       <ul>
         <li><a href="python_api/api.html#k2.RaggedShape.get_layer">(k2.RaggedShape method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="python_api/api.html#k2.get_rnnt_logprobs">get_rnnt_logprobs() (in module k2)</a>
+</li>
+      <li><a href="python_api/api.html#k2.get_rnnt_logprobs_joint">get_rnnt_logprobs_joint() (in module k2)</a>
+</li>
+      <li><a href="python_api/api.html#k2.get_rnnt_logprobs_pruned">get_rnnt_logprobs_pruned() (in module k2)</a>
+</li>
+      <li><a href="python_api/api.html#k2.get_rnnt_logprobs_smoothed">get_rnnt_logprobs_smoothed() (in module k2)</a>
+</li>
+      <li><a href="python_api/api.html#k2.get_rnnt_prune_ranges">get_rnnt_prune_ranges() (in module k2)</a>
+</li>
       <li><a href="python_api/api.html#k2.Fsa.get_tot_scores">get_tot_scores() (k2.Fsa method)</a>
 </li>
       <li><a href="python_api/api.html#k2.Fsa.grad">grad (k2.Fsa attribute)</a>
@@ -449,6 +462,14 @@
   </ul></td>
 </tr></table>
 
+<h2 id="J">J</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="python_api/api.html#k2.joint_mutual_information_recursion">joint_mutual_information_recursion() (in module k2)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -493,6 +514,8 @@
 </li>
       </ul></li>
       <li><a href="python_api/api.html#k2.monotonic_lower_bound">monotonic_lower_bound() (in module k2)</a>
+</li>
+      <li><a href="python_api/api.html#k2.mutual_information_recursion">mutual_information_recursion() (in module k2)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -598,14 +621,14 @@
         <li><a href="python_api/api.html#k2.RaggedTensor.remove_values_eq">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.ragged.RaggedTensor.remove_values_leq">remove_values_leq() (k2.ragged.RaggedTensor method)</a>
 
       <ul>
         <li><a href="python_api/api.html#k2.RaggedTensor.remove_values_leq">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="python_api/api.html#k2.Fsa.rename_tensor_attribute_">rename_tensor_attribute_() (k2.Fsa method)</a>
 </li>
       <li><a href="python_api/api.html#k2.replace_fsa">replace_fsa() (in module k2)</a>
@@ -626,6 +649,14 @@
         <li><a href="python_api/api.html#k2.RaggedTensor.requires_grad_">(k2.RaggedTensor method)</a>
 </li>
       </ul></li>
+      <li><a href="python_api/api.html#k2.rnnt_loss">rnnt_loss() (in module k2)</a>
+</li>
+      <li><a href="python_api/api.html#k2.rnnt_loss_pruned">rnnt_loss_pruned() (in module k2)</a>
+</li>
+      <li><a href="python_api/api.html#k2.rnnt_loss_simple">rnnt_loss_simple() (in module k2)</a>
+</li>
+      <li><a href="python_api/api.html#k2.rnnt_loss_smoothed">rnnt_loss_smoothed() (in module k2)</a>
+</li>
       <li><a href="python_api/api.html#k2.ragged.RaggedShape.row_ids">row_ids() (k2.ragged.RaggedShape method)</a>
 
       <ul>
@@ -780,7 +811,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2020-2021, k2 development team.</p>
+    <p>&#169; Copyright 2020-2022, k2 development team.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
