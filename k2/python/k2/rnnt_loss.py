@@ -229,10 +229,10 @@ def rnnt_loss_simple(
         termination_symbol=termination_symbol,
         boundary=boundary,
     )
-    loss_and_grad = mutual_information_recursion(
+    scores_and_grads = mutual_information_recursion(
         px=px, py=py, boundary=boundary, return_grad=return_grad
     )
-    negated_loss = loss_and_grad[0] if return_grad else loss_and_grad
+    negated_loss = scores_and_grads[0] if return_grad else scores_and_grads
     if reduction == "none":
         loss = -negated_loss
     elif reduction == "mean":
@@ -243,7 +243,7 @@ def rnnt_loss_simple(
         assert (
             False
         ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
-    return (loss, loss_and_grad[1]) if return_grad else loss
+    return (loss, scores_and_grads[1]) if return_grad else loss
 
 
 def get_rnnt_logprobs_joint(
@@ -1058,10 +1058,10 @@ def rnnt_loss_smoothed(
         am_only_scale=am_only_scale,
         boundary=boundary,
     )
-    loss_and_grad = mutual_information_recursion(
+    scores_and_grads = mutual_information_recursion(
         px=px, py=py, boundary=boundary, return_grad=return_grad
     )
-    negated_loss = loss_and_grad[0] if return_grad else loss_and_grad
+    negated_loss = scores_and_grads[0] if return_grad else scores_and_grads
     if reduction == "none":
         loss = -negated_loss
     elif reduction == "mean":
@@ -1072,4 +1072,4 @@ def rnnt_loss_smoothed(
         assert (
             False
         ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
-    return (loss, loss_and_grad[1]) if return_grad else loss
+    return (loss, scores_and_grads[1]) if return_grad else loss
