@@ -90,74 +90,78 @@ def mutual_information_recursion(
 
     Args:
       px:
-        A torch.Tensor of some floating point type, with shape [B][S][T+1],
-        where B is the batch size, S is the length of the 'x' sequence
-        (including representations of EOS symbols but not BOS symbols), and
-        S is the length of the 'y' sequence (including representations of
-        EOS symbols but not BOS symbols).  In the mutual information
-        application, px[b][s][t] would represent the following log odds
+        A torch.Tensor of some floating point type, with shape ``[B][S][T+1]``,
+        where ``B`` is the batch size, ``S`` is the length of the ``x`` sequence
+        (including representations of ``EOS`` symbols but not ``BOS`` symbols),
+        and ``S`` is the length of the ``y`` sequence (including representations
+        of ``EOS`` symbols but not ``BOS`` symbols).  In the mutual information
+        application, ``px[b][s][t]`` would represent the following log odds
         ratio; ignoring the b index on the right to make the notation more
-        compact,
+        compact::
 
           px[b][s][t] =  log [ p(x_s | x_{0..s-1}, y_{0..t-1}) / p(x_s) ]
 
         This expression also implicitly includes the log-probability of
-        choosing to generate an x value as opposed to a y value.  In
-        practice it might be computed as a + b, where a is the log
-        probability of choosing to extend the sequence of length (s,t)
-        with an x as opposed to a y value; and b might in practice be
-        of the form:
-            log(N exp f(x_s, y_{t-1}) / sum_t'  exp f(x_s, y_t'))
-        where N is the number of terms that the sum over t' included, which
-        might include some or all of the other sequences as well as this one.
+        choosing to generate an ``x`` value as opposed to a ``y`` value.  In
+        practice it might be computed as ``a + b``, where ``a`` is the log
+        probability of choosing to extend the sequence of length ``(s,t)``
+        with an ``x`` as opposed to a ``y`` value; and ``b`` might in practice
+        be of the form::
 
-        Note: we don't require px and py to be contiguous, but the
-        code assumes for optimization purposes that the T axis has
-        stride 1.
+            log(N exp f(x_s, y_{t-1}) / sum_t'  exp f(x_s, y_t'))
+
+        where ``N`` is the number of terms that the sum over ``t'`` included,
+        which might include some or all of the other sequences as well as this
+        one.
+
+        Note:
+          we don't require ``px`` and py to be contiguous, but the
+          code assumes for optimization purposes that the ``T`` axis has
+          stride 1.
 
       py:
-        A torch.Tensor of the same dtype as px, with shape [B][S+1][T],
-        representing
+        A torch.Tensor of the same dtype as ``px``, with shape ``[B][S+1][T]``,
+        representing::
 
           py[b][s][t] =  log [ p(y_t | x_{0..s-1}, y_{0..t-1}) / p(y_t) ]
 
-        This function does not treat x and y differently; the only difference
-        is that for optimization purposes we assume the last axis
-        (the t axis) has stride of 1; this is true if px and py are
+        This function does not treat ``x`` and ``y`` differently; the only
+        difference is that for optimization purposes we assume the last axis
+        (the ``t`` axis) has stride of 1; this is true if ``px`` and ``py`` are
         contiguous.
 
       boundary:
-        If supplied, a torch.LongTensor of shape [B][4], where each
-        row contains [s_begin, t_begin, s_end, t_end],
-        with 0 <= s_begin <= s_end < S and 0 <= t_begin <= t_end < T
+        If supplied, a torch.LongTensor of shape ``[B][4]``, where each
+        row contains ``[s_begin, t_begin, s_end, t_end]``,
+        with ``0 <= s_begin <= s_end < S`` and ``0 <= t_begin <= t_end < T``
         (this implies that empty sequences are allowed).
-        If not supplied, the values [0, 0, S, T] will be assumed.
-        These are the beginning and one-past-the-last positions in the x and
-        y sequences respectively, and can be used if not all sequences are
+        If not supplied, the values ``[0, 0, S, T]`` will be assumed.
+        These are the beginning and one-past-the-last positions in the ``x`` and
+        ``y`` sequences respectively, and can be used if not all sequences are
         of the same length.
 
       return_grad:
-        Whether to return grads of px and py, this grad standing for the
+        Whether to return grads of ``px`` and ``py``, this grad standing for the
         occupation probability is the output of the backward with a
-        `fake gradient` input (all ones)  This is useful to implement the
+        ``fake gradient`` input (all ones)  This is useful to implement the
         pruned version of rnnt loss.
 
     Returns:
-        Returns a torch.Tensor of shape [B], containing the log of the mutual
-        information between the b'th pair of sequences.  This is defined by
-        the following recursion on p[b,s,t] (where p is of shape [B,S+1,T+1]),
-        representing a mutual information between sub-sequences of lengths s
-        and t:
+      Returns a torch.Tensor of shape ``[B]``, containing the log of the mutual
+      information between the b'th pair of sequences.  This is defined by
+      the following recursion on ``p[b,s,t]`` (where ``p`` is of shape
+      ``[B,S+1,T+1]``), representing a mutual information between sub-sequences
+      of lengths ``s`` and ``t``::
 
              p[b,0,0] = 0.0
              p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                                 p[b,s,t-1] + py[b,s,t-1])
                        (if s > 0 or t > 0)
 
-        where we handle edge cases by treating quantities with negative indexes
-        as -infinity.  The extension to cases where the boundaries are specified
-        should be obvious; it just works on shorter sequences with offsets into
-        px and py.
+      where we handle edge cases by treating quantities with negative indexes
+      as **-infinity**.  The extension to cases where the boundaries are
+      specified should be obvious; it just works on shorter sequences with offsets
+      into ``px`` and ``py``.
     """
     assert px.ndim == 3
     B, S, T1 = px.shape
@@ -227,7 +231,7 @@ def joint_mutual_information_recursion(
 
       The recursion below applies if boundary == None, when it defaults
       to (0, 0, S, T); where px_sum, py_sum are the sums of the elements of px
-      and py:
+      and py::
 
           p = tensor of shape (B, S+1, T+1), containing -infinity
           p[b,0,0] = 0.0

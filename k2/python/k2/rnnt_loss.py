@@ -59,8 +59,10 @@ def get_rnnt_logprobs(
     Args:
       lm:
         Language model part of un-normalized logprobs of symbols, to be added to
-        acoustic model part before normalizing.  Of shape:
+        acoustic model part before normalizing.  Of shape::
+
            [B][S+1][C]
+
         where B is the batch size, S is the maximum sequence length of
         the symbol sequence, possibly including the EOS symbol; and
         C is size of the symbol vocabulary, including the termination/next-frame
@@ -72,8 +74,10 @@ def get_rnnt_logprobs(
         the termination/next-frame symbol at this point.
       am:
         Acoustic-model part of un-normalized logprobs of symbols, to be added
-        to language-model part before normalizing.  Of shape:
+        to language-model part before normalizing.  Of shape::
+
            [B][T][C]
+
         where B is the batch size, T is the maximum sequence length of
         the acoustic sequences (in frames); and C is size of the symbol
         vocabulary, including the termination/next-frame symbol.  It reflects
@@ -91,24 +95,28 @@ def get_rnnt_logprobs(
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
     Returns:
-        (px, py) (the names are quite arbitrary).
+      (px, py) (the names are quite arbitrary)::
+
            px: logprobs, of shape [B][S][T+1]
            py: logprobs, of shape [B][S+1][T]
-        in the recursion:
+
+      in the recursion::
+
           p[b,0,0] = 0.0
           p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                              p[b,s,t-1] + py[b,s,t-1])
-          .. where p[b][s][t] is the "joint score" of the pair of subsequences
-          of length s and t respectively.  px[b][s][t] represents the
-          probability of extending the subsequences of length (s,t) by one in
-          the s direction, given the particular symbol, and py[b][s][t]
-          represents the probability of extending the subsequences of length
-          (s,t) by one in the t direction,
-          i.e. of emitting the termination/next-frame symbol.
 
-          px[:,:,T] equals -infinity, meaning on the "one-past-the-last" frame
-          we cannot emit any symbols.  This is simply a way of incorporating
-          the probability of the termination symbol on the last frame.
+      where p[b][s][t] is the "joint score" of the pair of subsequences
+      of length s and t respectively.  px[b][s][t] represents the
+      probability of extending the subsequences of length (s,t) by one in
+      the s direction, given the particular symbol, and py[b][s][t]
+      represents the probability of extending the subsequences of length
+      (s,t) by one in the t direction,
+      i.e. of emitting the termination/next-frame symbol.
+
+      px[:,:,T] equals -infinity, meaning on the "one-past-the-last" frame
+      we cannot emit any symbols.  This is simply a way of incorporating
+      the probability of the termination symbol on the last frame.
     """
     assert lm.ndim == 3
     assert am.ndim == 3
@@ -272,14 +280,18 @@ def get_rnnt_logprobs_joint(
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
     Returns:
-      (px, py) (the names are quite arbitrary).
+      (px, py) (the names are quite arbitrary)::
+
           px: logprobs, of shape [B][S][T+1]
           py: logprobs, of shape [B][S+1][T]
-      in the recursion:
+
+      in the recursion::
+
          p[b,0,0] = 0.0
          p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                             p[b,s,t-1] + py[b,s,t-1])
-      .. where p[b][s][t] is the "joint score" of the pair of subsequences of
+
+      where p[b][s][t] is the "joint score" of the pair of subsequences of
       length s and t respectively.  px[b][s][t] represents the probability of
       extending the subsequences of length (s,t) by one in the s direction,
       given the particular symbol, and py[b][s][t] represents the probability
@@ -447,7 +459,7 @@ def get_rnnt_prune_ranges(
     (T, s_range) containing the information that which symbols will be token
     into consideration for each frame. For example, here is a sequence with 10
     frames and the corresponding symbols are `[A B C D E F]`, if the s_range
-    equals 3, one possible ranges tensor will be:
+    equals 3, one possible ranges tensor will be::
 
       [[0, 1, 2], [0, 1, 2], [0, 1, 2], [0, 1, 2], [1, 2, 3],
        [1, 2, 3], [1, 2, 3], [3, 4, 5], [3, 4, 5], [3, 4, 5]]
@@ -804,21 +816,25 @@ def get_rnnt_logprobs_smoothed(
     """Reduces RNN-T problem (the simple case, where joiner network is just
     addition), to a compact, standard form that can then be given
     (with boundaries) to mutual_information_recursion().
-    This version allows you to make the loss-function one of the form:
+    This version allows you to make the loss-function one of the form::
+
           lm_only_scale * lm_probs +
           am_only_scale * am_probs +
           (1-lm_only_scale-am_only_scale) * combined_probs
+
     where lm_probs and am_probs are the probabilities given the lm and acoustic
     model independently.
 
     This function is called from
-    rnnt_loss_smoothed(), but may be useful for other purposes.
+    :func:`rnnt_loss_smoothed`, but may be useful for other purposes.
 
     Args:
       lm:
         Language model part of un-normalized logprobs of symbols, to be added to
-        acoustic model part before normalizing.  Of shape:
+        acoustic model part before normalizing.  Of shape::
+
            [B][S+1][C]
+
         where B is the batch size, S is the maximum sequence length of
         the symbol sequence, possibly including the EOS symbol; and
         C is size of the symbol vocabulary, including the termination/next-frame
@@ -830,8 +846,10 @@ def get_rnnt_logprobs_smoothed(
         the termination/next-frame symbol at this point.
       am:
         Acoustic-model part of un-normalized logprobs of symbols, to be added
-        to language-model part before normalizing.  Of shape:
+        to language-model part before normalizing.  Of shape::
+
            [B][T][C]
+
         where B is the batch size, T is the maximum sequence length of
         the acoustic sequences (in frames); and C is size of the symbol
         vocabulary, including the termination/next-frame symbol.  It reflects
@@ -854,24 +872,28 @@ def get_rnnt_logprobs_smoothed(
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
     Returns:
-        (px, py) (the names are quite arbitrary).
+        (px, py) (the names are quite arbitrary)::
+
            px: logprobs, of shape [B][S][T+1]
            py: logprobs, of shape [B][S+1][T]
-        in the recursion:
+
+        in the recursion::
+
           p[b,0,0] = 0.0
           p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                              p[b,s,t-1] + py[b,s,t-1])
-          .. where p[b][s][t] is the "joint score" of the pair of subsequences
-          of length s and t respectively.  px[b][s][t] represents the
-          probability of extending the subsequences of length (s,t) by one in
-          the s direction, given the particular symbol, and py[b][s][t]
-          represents the probability of extending the subsequences of length
-          (s,t) by one in the t direction,
-          i.e. of emitting the termination/next-frame symbol.
 
-          px[:,:,T] equals -infinity, meaning on the "one-past-the-last" frame
-          we cannot emit any symbols.  This is simply a way of incorporating
-          the probability of the termination symbol on the last frame.
+        where p[b][s][t] is the "joint score" of the pair of subsequences
+        of length s and t respectively.  px[b][s][t] represents the
+        probability of extending the subsequences of length (s,t) by one in
+        the s direction, given the particular symbol, and py[b][s][t]
+        represents the probability of extending the subsequences of length
+        (s,t) by one in the t direction,
+        i.e. of emitting the termination/next-frame symbol.
+
+        px[:,:,T] equals -infinity, meaning on the "one-past-the-last" frame
+        we cannot emit any symbols.  This is simply a way of incorporating
+        the probability of the termination symbol on the last frame.
     """
     assert lm.ndim == 3
     assert am.ndim == 3
