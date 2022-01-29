@@ -205,8 +205,7 @@ def rnnt_loss_simple(
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
-        `mean`: the output losses will be divided by the target lengths and
-                then the mean over the batch is taken.
+        `mean`: apply `torch.mean` over the batches.
         `sum`: the output will be summed.
         Default: `mean`
       return_grad:
@@ -352,8 +351,7 @@ def rnnt_loss(
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
-        `mean`: the output losses will be divided by the target lengths and
-                then the mean over the batch is taken.
+        `mean`: apply `torch.mean` over the batches.
         `sum`: the output will be summed.
         Default: `mean`
 
@@ -765,8 +763,7 @@ def rnnt_loss_pruned(
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
-        `mean`: the output losses will be divided by the target lengths and
-                then the mean over the batch is taken.
+        `mean`: apply `torch.mean` over the batches.
         `sum`: the output will be summed.
         Default: `mean`
     Returns:
@@ -1031,8 +1028,7 @@ def rnnt_loss_smoothed(
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
-        `mean`: the output losses will be divided by the target lengths and
-                then the mean over the batch is taken.
+        `mean`: apply `torch.mean` over the batches.
         `sum`: the output will be summed.
         Default: `mean`
       return_grad:

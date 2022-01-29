@@ -227,8 +227,8 @@ class TestRnntLoss(unittest.TestCase):
             m = k2.mutual_information_recursion(px=px, py=py, boundary=boundary)
 
             if device == torch.device("cpu"):
-                expected = -m
-            assert torch.allclose(-m, expected.to(device))
+                expected = -torch.mean(m)
+            assert torch.allclose(-torch.mean(m), expected.to(device))
 
             m = k2.rnnt_loss_simple(
                 lm=lm,
@@ -236,7 +236,6 @@ class TestRnntLoss(unittest.TestCase):
                 symbols=symbols,
                 termination_symbol=termination_symbol,
                 boundary=boundary,
-                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
@@ -248,7 +247,6 @@ class TestRnntLoss(unittest.TestCase):
                 lm_only_scale=0.0,
                 am_only_scale=0.0,
                 boundary=boundary,
-                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
@@ -258,7 +256,6 @@ class TestRnntLoss(unittest.TestCase):
                 symbols=symbols,
                 termination_symbol=termination_symbol,
                 boundary=boundary,
-                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
@@ -272,7 +269,6 @@ class TestRnntLoss(unittest.TestCase):
                     logit_lengths=boundary[:, 3].int(),
                     target_lengths=boundary[:, 2].int(),
                     blank=termination_symbol,
-                    reduction="none",
                 )
                 assert torch.allclose(m, expected.to(device))
 
@@ -286,7 +282,6 @@ class TestRnntLoss(unittest.TestCase):
                 symbols=symbols,
                 termination_symbol=termination_symbol,
                 boundary=boundary,
-                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
@@ -296,7 +291,6 @@ class TestRnntLoss(unittest.TestCase):
                 symbols=symbols,
                 termination_symbol=termination_symbol,
                 boundary=boundary,
-                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
@@ -308,7 +302,6 @@ class TestRnntLoss(unittest.TestCase):
                 lm_only_scale=0.0,
                 am_only_scale=0.0,
                 boundary=boundary,
-                reduction="none",
             )
             assert torch.allclose(m, expected.to(device))
 
