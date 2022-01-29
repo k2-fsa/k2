@@ -26,15 +26,14 @@ from .mutual_information import mutual_information_recursion
 def fix_for_boundary(px: Tensor, boundary: Optional[Tensor] = None) -> Tensor:
     """
     Insert -inf's into `px` in appropriate places if `boundary` is not
-    None.  If boundary == None and modified == False, px[:,:,-1] will
-    be -infinity, but if boundary is specified, we need px[b,:,boundary[b,3]]
+    None.  If boundary == None, px[:,:,-1] will be -infinity,
+    but if boundary is specified, we need px[b,:,boundary[b,3]]
     to be -infinity.
      Args:
-          px: a Tensor of of shape [B][S][T+1] (this function is only
-              called if modified == False, see other docs for `modified`)
-              px is modified in-place and returned.
-           boundary: None, or a Tensor of shape [B][3] containing
-              [s_begin, t_begin, s_end, t_end]; we need only t_end.
+       px: a Tensor of of shape [B][S][T+1], px is modified in-place
+         and returned.
+       boundary: None, or a Tensor of shape [B][3] containing
+         [s_begin, t_begin, s_end, t_end]; we need only t_end.
     """
     if boundary is None:
         return px
@@ -82,7 +81,7 @@ def get_rnnt_logprobs(
         next on this frame.
       symbols:
         A LongTensor of shape [B][S], containing the symbols at each position
-        of the sequence, possibly including EOS
+        of the sequence.
       termination_symbol:
         The identity of the termination symbol, must be in {0..C-1}
       boundary:
@@ -182,7 +181,7 @@ def rnnt_loss_simple(
     return_grad: bool = False,
 ) -> Union[Tensor, Tuple[Tensor, Tuple[Tensor, Tensor]]]:
     """A simple case of the RNN-T loss, where the 'joiner' network is just
-    addition. Returns negated total loss value.
+    addition.
 
     Args:
       lm:
@@ -211,14 +210,16 @@ def rnnt_loss_simple(
       return_grad:
         Whether to return grads of px and py, this grad standing for the
         occupation probability is the output of the backward with a
-        `fake gradient` input (all ones)  This is useful to implement the
-        pruned version of rnnt loss.
+        `fake gradient`, the `fake gradient` is the same as the gradient you'd
+        get if you did `torch.autograd.grad((-loss.sum()), [px, py])`, note, the
+        loss here is the loss with reduction "none".
+        This is useful to implement the pruned version of rnnt loss.
     Returns:
        If return_grad is False, returns a tensor of shape (B,), containing the
        total RNN-T loss values for each element of the batch if reduction equals
        to "none", otherwise a scalar with the reduction applied.
        If return_grad is True, the grads of px and py, which is the output of
-       backward with a `fake gradient` input, will be returned too. And the
+       backward with a `fake gradient`(see above), will be returned too. And the
        returned value will be a tuple like (loss, (px_grad, py_grad)).
     """
     px, py = get_rnnt_logprobs(
@@ -261,7 +262,7 @@ def get_rnnt_logprobs_joint(
         i.e. batch, time_seq_len, symbol_seq_len+1, num_classes
       symbols:
         A LongTensor of shape [B][S], containing the symbols at each position
-        of the sequence, possibly including EOS
+        of the sequence.
       termination_symbol:
         The identity of the termination symbol, must be in {0..C-1}
       boundary:
@@ -745,12 +746,12 @@ def rnnt_loss_pruned(
     s_range means the symbols number kept for each frame.
 
     Args:
-      joint:
+      logits:
         The pruned output of joiner network, with shape (B, T, s_range, C),
         i.e. batch, time_seq_len, prune_range, num_classes
       symbols:
         A LongTensor of shape [B][S], containing the symbols at each position
-        of the sequence, possibly including EOS
+        of the sequence.
       ranges:
         A tensor containing the symbol ids for each frame that we want to keep.
       termination_symbol:
@@ -838,7 +839,7 @@ def get_rnnt_logprobs_smoothed(
         next on this frame.
       symbols:
         A LongTensor of shape [B][S], containing the symbols at each position
-        of the sequence, possibly including EOS
+        of the sequence.
       termination_symbol:
         The identity of the termination symbol, must be in {0..C-1}
       lm_only_scale:
@@ -998,7 +999,7 @@ def rnnt_loss_smoothed(
     return_grad: bool = False,
 ) -> Tensor:
     """A simple case of the RNN-T loss, where the 'joiner' network is just
-    addition. Returns negated total loss value.
+    addition.
 
     Args:
       lm:
@@ -1034,15 +1035,17 @@ def rnnt_loss_smoothed(
       return_grad:
         Whether to return grads of px and py, this grad standing for the
         occupation probability is the output of the backward with a
-        `fake gradient` input (all ones)  This is useful to implement the
-        pruned version of rnnt loss.
+        `fake gradient`, the `fake gradient` is the same as the gradient you'd
+        get if you did `torch.autograd.grad((-loss.sum()), [px, py])`, note, the
+        loss here is the loss with reduction "none".
+        This is useful to implement the pruned version of rnnt loss.
 
     Returns:
        If return_grad is False, returns a tensor of shape (B,), containing the
        total RNN-T loss values for each element of the batch if reduction equals
        to "none", otherwise a scalar with the reduction applied.
        If return_grad is True, the grads of px and py, which is the output of
-       backward with a `fake gradient` input, will be returned too. And the
+       backward with a `fake gradient`(see above), will be returned too. And the
        returned value will be a tuple like (loss, (px_grad, py_grad)).
     """
     px, py = get_rnnt_logprobs_smoothed(

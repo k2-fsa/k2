@@ -343,11 +343,8 @@ class TestRnntLoss(unittest.TestCase):
                     symbols=symbols,
                     termination_symbol=termination_symbol,
                     boundary=boundary,
-                    reduction="none",
                 )
-                k2_grad = torch.autograd.grad(
-                    k2_loss, logprobs, torch.ones_like(k2_loss)
-                )
+                k2_grad = torch.autograd.grad(k2_loss, logprobs)
                 k2_grad = k2_grad[0]
 
                 logprobs2 = logprobs.detach().clone().float()
@@ -358,11 +355,8 @@ class TestRnntLoss(unittest.TestCase):
                     logit_lengths=boundary[:, 3].int(),
                     target_lengths=boundary[:, 2].int(),
                     blank=termination_symbol,
-                    reduction="none",
                 )
-                torch_grad = torch.autograd.grad(
-                    torch_loss, logprobs2, torch.ones_like(torch_loss)
-                )
+                torch_grad = torch.autograd.grad(torch_loss, logprobs2)
                 torch_grad = torch_grad[0]
 
                 assert torch.allclose(k2_loss, torch_loss, atol=1e-2, rtol=1e-2)
@@ -495,7 +489,7 @@ class TestRnntLoss(unittest.TestCase):
                     boundary=boundary,
                     reduction="none",
                 )
-                print(f"pruning loss with range {r} : ", pruning_loss)
+                print(f"pruned loss with range {r} : ", pruning_loss)
 
 
 if __name__ == "__main__":
