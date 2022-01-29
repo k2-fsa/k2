@@ -143,8 +143,8 @@ def mutual_information_recursion(
       return_grad:
         Whether to return grads of ``px`` and ``py``, this grad standing for the
         occupation probability is the output of the backward with a
-        ``fake gradient`` the ``fake gradient`` is the same as the gradient you'd
-        get if you did ``torch.autograd.grad((scores.sum()), [px, py])``.
+        ``fake gradient`` the ``fake gradient`` is the same as the gradient
+        you'd get if you did ``torch.autograd.grad((scores.sum()), [px, py])``.
         This is useful to implement the pruned version of rnnt loss.
 
     Returns:
@@ -161,8 +161,8 @@ def mutual_information_recursion(
 
       where we handle edge cases by treating quantities with negative indexes
       as **-infinity**.  The extension to cases where the boundaries are
-      specified should be obvious; it just works on shorter sequences with offsets
-      into ``px`` and ``py``.
+      specified should be obvious; it just works on shorter sequences with
+      offsets into ``px`` and ``py``.
     """
     assert px.ndim == 3
     B, S, T1 = px.shape
