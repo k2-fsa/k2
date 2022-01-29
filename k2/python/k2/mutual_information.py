@@ -143,8 +143,9 @@ def mutual_information_recursion(
       return_grad:
         Whether to return grads of ``px`` and ``py``, this grad standing for the
         occupation probability is the output of the backward with a
-        ``fake gradient`` input (all ones)  This is useful to implement the
-        pruned version of rnnt loss.
+        ``fake gradient`` the ``fake gradient`` is the same as the gradient you'd
+        get if you did ``torch.autograd.grad((scores.sum()), [px, py])``.
+        This is useful to implement the pruned version of rnnt loss.
 
     Returns:
       Returns a torch.Tensor of shape ``[B]``, containing the log of the mutual
@@ -179,10 +180,10 @@ def mutual_information_recursion(
     assert px.is_contiguous()
     assert py.is_contiguous()
 
-    m, px_grad, py_grad = MutualInformationRecursionFunction.apply(
+    scores, px_grad, py_grad = MutualInformationRecursionFunction.apply(
         px, py, boundary, return_grad
     )
-    return (m, (px_grad, py_grad)) if return_grad else m
+    return (scores, (px_grad, py_grad)) if return_grad else scores
 
 
 def _inner_product(a: Tensor, b: Tensor) -> Tensor:
