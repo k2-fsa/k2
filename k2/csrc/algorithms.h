@@ -129,7 +129,7 @@ class Renumbering {
      array.
   */
   Array1<int32_t> New2Old(bool extra_element) {
-    Array1<int32> &new2old_part = New2Old();
+    Array1<int32_t> &new2old_part = New2Old();
     if (!extra_element) {
       return new2old_part;
     } else {

@@ -360,11 +360,6 @@ TEST(RaggedShapeTest, RemoveEmptyLists) {
   }
 }
 
-
-
-
-
-
 TEST(RaggedShapeTest, RaggedShapeIterator) {
   // note RaggedShapeIndexIterator works only for CPU
   ContextPtr context = GetCpuContext();
@@ -422,6 +417,59 @@ TEST(RaggedShapeTest, RandomRaggedShape) {
     EXPECT_GE(shape.NumElements(), 100);
     const auto &axes = shape.Layers();
     EXPECT_GE(axes.back().row_ids.Dim(), 100);
+  }
+}
+
+TEST(RaggedShapeTest, SubsampleRaggedShape) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+      RaggedShape src(c, "[ [ [ x x ] [ x ] ] [ [ x x x ] [ ] ] [ [ x ] [ x x ] ] ]");
+      // axis = 2
+      Array1<char> ref_keep(c, std::vector<char>({1, 0, 1, 0, 0, 1, 0, 1, 0}));
+      Renumbering renumbering(c, src.NumElements());
+      auto &keep = renumbering.Keep();
+      keep.CopyFrom(ref_keep);
+      Array1<int32_t> new2old;
+      auto dest = SubsampleRaggedShape(src, renumbering, 2, &new2old);
+      Array1<int32_t> ref_new2old(c, std::vector<int32_t>({0, 2, 5, 7}));
+      RaggedShape ref_dest(c, "[ [ [ x ] [ x ] ] [ [ x ] [ ] ] [ [ ] [ x ] ] ]");
+      EXPECT_TRUE(Equal(dest, ref_dest));
+      EXPECT_TRUE(Equal(new2old, ref_new2old));
+      // test axis = -1
+      dest = SubsampleRaggedShape(src, renumbering, -1, &new2old);
+      EXPECT_TRUE(Equal(dest, ref_dest));
+      EXPECT_TRUE(Equal(new2old, ref_new2old));
+
+
+      // axis = 1
+      ref_keep = Array1<char>(c, std::vector<char>({1, 0, 0, 1, 1, 1}));
+      renumbering = Renumbering(c, src.TotSize(1));
+      keep = renumbering.Keep();
+      keep.CopyFrom(ref_keep);
+      dest = SubsampleRaggedShape(src, renumbering, 1, &new2old);
+      ref_new2old = Array1<int32_t>(c, std::vector<int32_t>({0, 1, 6, 7, 8}));
+      ref_dest = RaggedShape(c, "[ [ [ x x ] ] [ [ ] ] [ [ x ] [ x x ] ] ]");
+      EXPECT_TRUE(Equal(dest, ref_dest));
+      EXPECT_TRUE(Equal(new2old, ref_new2old));
+      // test axis = -2
+      dest = SubsampleRaggedShape(src, renumbering, -2, &new2old);
+      EXPECT_TRUE(Equal(dest, ref_dest));
+      EXPECT_TRUE(Equal(new2old, ref_new2old));
+
+
+      // axis = 0
+      ref_keep = Array1<char>(c, std::vector<char>({1, 0, 1}));
+      renumbering = Renumbering(c, src.TotSize(0));
+      keep = renumbering.Keep();
+      keep.CopyFrom(ref_keep);
+      dest = SubsampleRaggedShape(src, renumbering, 0, &new2old);
+      ref_new2old = Array1<int32_t>(c, std::vector<int32_t>({0, 1, 2, 6, 7, 8}));
+      ref_dest = RaggedShape(c, "[ [ [ x x ] [ x ] ] [ [ x ] [ x x ] ] ]");
+      EXPECT_TRUE(Equal(dest, ref_dest));
+      EXPECT_TRUE(Equal(new2old, ref_new2old));
+      // test axis = -3
+      dest = SubsampleRaggedShape(src, renumbering, -3, &new2old);
+      EXPECT_TRUE(Equal(dest, ref_dest));
+      EXPECT_TRUE(Equal(new2old, ref_new2old));
   }
 }
 

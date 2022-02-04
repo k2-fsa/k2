@@ -844,21 +844,18 @@ RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
        preceding the final axis will remain the same, which might give
        rise to empty lists on those axes; these can be removed if
        necessary with RemoveEmptyLists().
-
-  Notice the other version of this function below.
  */
 template <typename T>
 Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering,
                           int32_t axis = -1,
-                          Array1<int32_t> *elems_new2old = nullptr);
-  Renumbering tmp;
+                          Array1<int32_t> *elems_new2old = nullptr) {
+  Array1<int32_t> tmp;
   if (elems_new2old == nullptr)
     elems_new2old = &tmp;
   RaggedShape shape = SubsampleRaggedShape(src.shape, renumbering,
                                            axis, elems_new2old);
-  return Ragged<T>(src.values[*elems_new2old]);
+  return Ragged<T>(shape, src.values[*elems_new2old]);
 }
-
 
 /*
   This function creates a Renumbering object that can be used to obtain subsets

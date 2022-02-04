@@ -45,6 +45,9 @@ TEST(AlgorithmsTest, TestRenumbering) {
       Array1<int32_t> new2old = numbering.New2Old();
       EXPECT_EQ(new2old.Dim(), 0);
       EXPECT_EQ(numbering.NumNewElems(), 0);
+      new2old = numbering.New2Old(true);
+      EXPECT_EQ(new2old.Dim(), 1);
+      EXPECT_EQ(new2old.Back(), 0);
     }
 
     {
@@ -67,6 +70,9 @@ TEST(AlgorithmsTest, TestRenumbering) {
       Array1<int32_t> new2old = numbering.New2Old();
       EXPECT_EQ(new2old.Dim(), 0);
       EXPECT_EQ(numbering.NumNewElems(), 0);
+      new2old = numbering.New2Old(true);
+      EXPECT_EQ(new2old.Dim(), 1);
+      EXPECT_EQ(new2old.Back(), 5);
     }
 
     {
@@ -93,6 +99,9 @@ TEST(AlgorithmsTest, TestRenumbering) {
       std::vector<int32_t> cpu_new2old(new2old.Data(),
                                        new2old.Data() + new2old.Dim());
       EXPECT_THAT(cpu_new2old, ::testing::ElementsAre(0, 2, 3, 6));
+      new2old = numbering.New2Old(true);
+      EXPECT_EQ(new2old.Dim(), 5);
+      EXPECT_EQ(new2old.Back(), 7);
     }
   }
 }
