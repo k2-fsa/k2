@@ -909,7 +909,7 @@ Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering,
       than sorting.
  */
 template <typename T>
-Renumbering PruneRagged(const Ragged<T> &src,
+Renumbering PruneRagged(Ragged<T> &src,
                         int32_t axis,
                         T beam,
                         int32_t max_elems);
