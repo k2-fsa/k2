@@ -91,7 +91,7 @@ case ${torch} in
         ;;
     esac
     ;;
-  1.10)
+  1.10.*)
     case ${cuda} in
       10.2)
         package="torch==${torch}"
