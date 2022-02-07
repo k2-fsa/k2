@@ -44,6 +44,18 @@ From source
   git clone https://github.com/k2-fsa/k2.git
   cd k2
   python3 setup.py install
+  
+From source (with CUDA support)
+===========
+
+.. code-block:: bash
+
+  git clone https://github.com/k2-fsa/k2.git
+  cd k2
+  export K2_CMAKE_ARGS="-DK2_WITH_CUDA=ON"
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib
+  export PATH=$PATH:/usr/local/cuda/bin
+  python3 setup.py install
 
 Read `<https://k2.readthedocs.io/en/latest/installation/from_source.html>`_
 to learn more
