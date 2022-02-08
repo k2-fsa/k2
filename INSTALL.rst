@@ -52,7 +52,7 @@ From source (with CUDA support)
 
   git clone https://github.com/k2-fsa/k2.git
   cd k2
-  export K2_CMAKE_ARGS="-DK2_WITH_CUDA=ON"
+  export K2_CMAKE_ARGS="-DK2_WITH_CUDA=ON -DCMAKE_BUILD_TYPE=Release"
   export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib
   export PATH=$PATH:/usr/local/cuda/bin
   python3 setup.py install
