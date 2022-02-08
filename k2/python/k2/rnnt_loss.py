@@ -62,8 +62,10 @@ def get_rnnt_logprobs(
     Args:
       lm:
         Language model part of un-normalized logprobs of symbols, to be added to
-        acoustic model part before normalizing.  Of shape:
+        acoustic model part before normalizing.  Of shape::
+
            [B][S+1][C]
+
         where B is the batch size, S is the maximum sequence length of
         the symbol sequence, possibly including the EOS symbol; and
         C is size of the symbol vocabulary, including the termination/next-frame
@@ -75,8 +77,10 @@ def get_rnnt_logprobs(
         the termination/next-frame symbol at this point.
       am:
         Acoustic-model part of un-normalized logprobs of symbols, to be added
-        to language-model part before normalizing.  Of shape:
+        to language-model part before normalizing.  Of shape::
+
            [B][T][C]
+
         where B is the batch size, T is the maximum sequence length of
         the acoustic sequences (in frames); and C is size of the symbol
         vocabulary, including the termination/next-frame symbol.  It reflects
@@ -84,7 +88,7 @@ def get_rnnt_logprobs(
         next on this frame.
       symbols:
         A LongTensor of shape [B][S], containing the symbols at each position
-        of the sequence, possibly including EOS
+        of the sequence.
       termination_symbol:
         The identity of the termination symbol, must be in {0..C-1}
       boundary:
@@ -99,7 +103,9 @@ def get_rnnt_logprobs(
         (px, py) (the names are quite arbitrary).
            px: logprobs, of shape [B][S][T+1] if !modified, [B][S][T] if modified.
            py: logprobs, of shape [B][S+1][T]
-        in the recursion:
+
+      in the recursion::
+
           p[b,0,0] = 0.0
           if !modified:
              p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
@@ -194,10 +200,11 @@ def rnnt_loss_simple(
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
     modified: bool = False,
+    reduction: Optional[str] = "mean",
     return_grad: bool = False,
 ) -> Union[Tensor, Tuple[Tensor, Tuple[Tensor, Tensor]]]:
     """A simple case of the RNN-T loss, where the 'joiner' network is just
-    addition. Returns negated total loss value.
+    addition.
 
     Args:
       lm:
@@ -219,27 +226,54 @@ def rnnt_loss_simple(
         Most likely you will want begin_symbol and begin_frame to be zero.
       modified: if True, each time a real symbol is consumed a frame will
          also be consumed, so at most 1 symbol can appear per frame.
+      reduction:
+        Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
+        `none`: no reduction will be applied.
+        `mean`: apply `torch.mean` over the batches.
+        `sum`: the output will be summed.
+        Default: `mean`
       return_grad:
         Whether to return grads of px and py, this grad standing for the
         occupation probability is the output of the backward with a
-        `fake gradient` input (all ones)  This is useful to implement the
-        pruned version of rnnt loss.
+        `fake gradient`, the `fake gradient` is the same as the gradient you'd
+        get if you did `torch.autograd.grad((-loss.sum()), [px, py])`, note, the
+        loss here is the loss with reduction "none".
+        This is useful to implement the pruned version of rnnt loss.
     Returns:
-       If return_grad is False, returns a Tensor of shape (B,), containing the
-       NEGATED total RNN-T loss values for each element of the batch
-       (like log-probs of sequences).
+       If return_grad is False, returns a tensor of shape (B,), containing the
+       total RNN-T loss values for each element of the batch if reduction equals
+       to "none", otherwise a scalar with the reduction applied.
        If return_grad is True, the grads of px and py, which is the output of
-       backward with a `fake gradient` input, will be returned too. And the
+       backward with a `fake gradient`(see above), will be returned too. And the
        returned value will be a tuple like (loss, (px_grad, py_grad)).
     """
     px, py = get_rnnt_logprobs(
-        lm, am, symbols, termination_symbol, boundary, modified
+        lm=lm,
+        am=am,
+        symbols=symbols,
+        termination_symbol=termination_symbol,
+        boundary=boundary,
+        modified=modified,
     )
-    return mutual_information_recursion(px, py, boundary, return_grad)
+    scores_and_grads = mutual_information_recursion(
+        px=px, py=py, boundary=boundary, return_grad=return_grad
+    )
+    negated_loss = scores_and_grads[0] if return_grad else scores_and_grads
+    if reduction == "none":
+        loss = -negated_loss
+    elif reduction == "mean":
+        loss = -torch.mean(negated_loss)
+    elif reduction == "sum":
+        loss = -torch.sum(negated_loss)
+    else:
+        assert (
+            False
+        ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+    return (loss, scores_and_grads[1]) if return_grad else loss
 
 
 def get_rnnt_logprobs_joint(
-    joint: Tensor,
+    logits: Tensor,
     symbols: Tensor,
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
@@ -250,12 +284,12 @@ def get_rnnt_logprobs_joint(
     This function is called from rnnt_loss().
 
     Args:
-      joint:
+      logits:
         The output of joiner network, with shape (B, T, S + 1, C),
         i.e. batch, time_seq_len, symbol_seq_len+1, num_classes
       symbols:
         A LongTensor of shape [B][S], containing the symbols at each position
-        of the sequence, possibly including EOS
+        of the sequence.
       termination_symbol:
         The identity of the termination symbol, must be in {0..C-1}
       boundary:
@@ -267,10 +301,13 @@ def get_rnnt_logprobs_joint(
       modified: if True, each time a real symbol is consumed a frame will
           also be consumed, so at most 1 symbol can appear per frame.
     Returns:
-      (px, py) (the names are quite arbitrary).
+      (px, py) (the names are quite arbitrary)::
+
           px: logprobs, of shape [B][S][T+1]
           py: logprobs, of shape [B][S+1][T]
-      in the recursion:
+
+      in the recursion::
+
          p[b,0,0] = 0.0
          if !modified:
             p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
@@ -290,16 +327,16 @@ def get_rnnt_logprobs_joint(
       This is simply a way of incorporating
       the probability of the termination symbol on the last frame.
     """
-    assert joint.ndim == 4
-    (B, T, S1, C) = joint.shape
+    assert logits.ndim == 4
+    (B, T, S1, C) = logits.shape
     S = S1 - 1
     assert symbols.shape == (B, S)
 
-    normalizers = torch.logsumexp(joint, dim=3)
+    normalizers = torch.logsumexp(logits, dim=3)
     normalizers = normalizers.permute((0, 2, 1))
 
     px = torch.gather(
-        joint, dim=3, index=symbols.reshape(B, 1, S, 1).expand(B, T, S, 1)
+        logits, dim=3, index=symbols.reshape(B, 1, S, 1).expand(B, T, S, 1)
     ).squeeze(-1)
     px = px.permute((0, 2, 1))
 
@@ -317,7 +354,7 @@ def get_rnnt_logprobs_joint(
     px[:, :, :T] -= normalizers[:, :S, :]
 
     py = (
-        joint[:, :, :, termination_symbol].permute((0, 2, 1)).clone()
+        logits[:, :, :, termination_symbol].permute((0, 2, 1)).clone()
     )  # [B][S+1][T]
     py -= normalizers
     px = px.contiguous()
@@ -330,17 +367,18 @@ def get_rnnt_logprobs_joint(
 
 
 def rnnt_loss(
-    joint: Tensor,
+    logits: Tensor,
     symbols: Tensor,
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
     modified: bool = False,
+    reduction: Optional[str] = "mean",
 ) -> Tensor:
     """A normal RNN-T loss, which uses a 'joiner' network output as input,
     i.e. a 4 dimensions tensor.
 
     Args:
-      joint:
+      logits:
         The output of joiner network, with shape (B, T, S + 1, C),
         i.e. batch, time_seq_len, symbol_seq_len+1, num_classes
       symbols:
@@ -355,15 +393,36 @@ def rnnt_loss(
         Most likely you will want begin_symbol and begin_frame to be zero.
       modified: if True, each time a real symbol is consumed a frame will
           also be consumed, so at most 1 symbol can appear per frame.
+      reduction:
+        Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
+        `none`: no reduction will be applied.
+        `mean`: apply `torch.mean` over the batches.
+        `sum`: the output will be summed.
+        Default: `mean`
 
     Returns:
-      A Tensor of shape (B,), containing the total RNN-T loss values for each
-      element of the batch (like log-probs of sequences).
+      If recursion is `none`, returns a tensor of shape (B,), containing the
+      total RNN-T loss values for each element of the batch, otherwise a scalar
+      with the reduction applied.
     """
     px, py = get_rnnt_logprobs_joint(
-        joint, symbols, termination_symbol, boundary, modified
+        logits=logits,
+        symbols=symbols,
+        termination_symbol=termination_symbol,
+        boundary=boundary,
+        modified=modified,
     )
-    return mutual_information_recursion(px, py, boundary)
+    negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
+    if reduction == "none":
+        return -negated_loss
+    elif reduction == "mean":
+        return -torch.mean(negated_loss)
+    elif reduction == "sum":
+        return -torch.sum(negated_loss)
+    else:
+        assert (
+            False
+        ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
 
 
 def _adjust_pruning_lower_bound(
@@ -433,7 +492,7 @@ def get_rnnt_prune_ranges(
     (T, s_range) containing the information that which symbols will be token
     into consideration for each frame. For example, here is a sequence with 10
     frames and the corresponding symbols are `[A B C D E F]`, if the s_range
-    equals 3, one possible ranges tensor will be:
+    equals 3, one possible ranges tensor will be::
 
       [[0, 1, 2], [0, 1, 2], [0, 1, 2], [0, 1, 2], [1, 2, 3],
        [1, 2, 3], [1, 2, 3], [3, 4, 5], [3, 4, 5], [3, 4, 5]]
@@ -499,10 +558,13 @@ def get_rnnt_prune_ranges(
     s_begin = torch.argmax(diff_grad, dim=1)
     s_begin = s_begin[:, :T]
 
-    # handle the values of s_begin in padding positions.
-    # set the s_begin in paddding positions to `len(symbols) - s_range + 1`
+    # Handle the values of s_begin in padding positions.
+    # -1 here means we fill the position of the last frame of real data with
+    # padding value which is `len(symbols) - s_range + 1`.
+    # This is to guarantee that we reach the last symbol at last frame of real
+    # data.
     mask = torch.arange(0, T, device=px_grad.device).reshape(1, T).expand(B, T)
-    mask = mask < boundary[:, 3].reshape(B, 1)
+    mask = mask < boundary[:, 3].reshape(B, 1) - 1
 
     s_begin_padding = boundary[:, 2].reshape(B, 1) - s_range + 1
     # handle the cases when `len(symbols) < s_range`
@@ -599,7 +661,7 @@ def _roll_by_shifts(src: torch.Tensor, shifts: torch.LongTensor):
 
 
 def get_rnnt_logprobs_pruned(
-    joint: Tensor,
+    logits: Tensor,
     symbols: Tensor,
     ranges: Tensor,
     termination_symbol: int,
@@ -609,7 +671,7 @@ def get_rnnt_logprobs_pruned(
     """Construct px, py for mutual_information_recursion with pruned output.
 
     Args:
-      joint:
+      logits:
         The pruned output of joiner network, with shape (B, T, s_range, C)
       symbols:
         The symbol sequences, a LongTensor of shape [B][S], and elements in
@@ -630,15 +692,15 @@ def get_rnnt_logprobs_pruned(
       Return the px (B, S, T) if modified else (B, S, T + 1) and
       py (B, S + 1, T) needed by mutual_information_recursion.
     """
-    # joint (B, T, s_range, C)
+    # logits (B, T, s_range, C)
     # symbols (B, S)
     # ranges (B, T, s_range)
-    assert joint.ndim == 4
-    (B, T, s_range, C) = joint.shape
+    assert logits.ndim == 4
+    (B, T, s_range, C) = logits.shape
     assert ranges.shape == (B, T, s_range)
     (B, S) = symbols.shape
 
-    normalizers = torch.logsumexp(joint, dim=3)
+    normalizers = torch.logsumexp(logits, dim=3)
 
     symbols_with_terminal = torch.cat(
         (
@@ -661,7 +723,7 @@ def get_rnnt_logprobs_pruned(
 
     # (B, T, s_range)
     px = torch.gather(
-        joint, dim=3, index=pruned_symbols.reshape(B, T, s_range, 1)
+        logits, dim=3, index=pruned_symbols.reshape(B, T, s_range, 1)
     ).squeeze(-1)
     px = px - normalizers
 
@@ -695,7 +757,7 @@ def get_rnnt_logprobs_pruned(
             dim=2,
         )  # now: [B][S][T+1], index [:,:,T] has -inf..
 
-    py = joint[:, :, :, termination_symbol]  # (B, T, s_range)
+    py = logits[:, :, :, termination_symbol].clone()  # (B, T, s_range)
     py = py - normalizers
 
     # (B, T, S + 1) with index larger than s_range in dim 2 filled with -inf
@@ -727,24 +789,25 @@ def get_rnnt_logprobs_pruned(
 
 
 def rnnt_loss_pruned(
-    joint: Tensor,
+    logits: Tensor,
     symbols: Tensor,
     ranges: Tensor,
     termination_symbol: int,
     boundary: Tensor = None,
     modified: bool = False,
+    reduction: Optional[str] = "mean",
 ) -> Tensor:
     """A RNN-T loss with pruning, which uses a pruned 'joiner' network output
     as input, i.e. a 4 dimensions tensor with shape (B, T, s_range, C),
     s_range means the symbols number kept for each frame.
 
     Args:
-      joint:
+      logits:
         The pruned output of joiner network, with shape (B, T, s_range, C),
         i.e. batch, time_seq_len, prune_range, num_classes
       symbols:
         A LongTensor of shape [B][S], containing the symbols at each position
-        of the sequence, possibly including EOS
+        of the sequence.
       ranges:
         A tensor containing the symbol ids for each frame that we want to keep.
       termination_symbol:
@@ -756,14 +819,36 @@ def rnnt_loss_pruned(
         Most likely you will want begin_symbol and begin_frame to be zero.
       modified: if True, each time a real symbol is consumed a frame will
         also be consumed, so at most 1 symbol can appear per frame.
+      reduction:
+        Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
+        `none`: no reduction will be applied.
+        `mean`: apply `torch.mean` over the batches.
+        `sum`: the output will be summed.
+        Default: `mean`
     Returns:
-      A Tensor of shape (B,), containing the total RNN-T loss values for each
-      element of the batch (like log-probs of sequences).
+      If recursion is `none`, returns a tensor of shape (B,), containing the
+      total RNN-T loss values for each element of the batch, otherwise a scalar
+      with the reduction applied.
     """
     px, py = get_rnnt_logprobs_pruned(
-        joint, symbols, ranges, termination_symbol, boundary, modified
+        logits=logits,
+        symbols=symbols,
+        ranges=ranges,
+        termination_symbol=termination_symbol,
+        boundary=boundary,
+        modified=modified,
     )
-    return mutual_information_recursion(px, py, boundary)
+    negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
+    if reduction == "none":
+        return -negated_loss
+    elif reduction == "mean":
+        return -torch.mean(negated_loss)
+    elif reduction == "sum":
+        return -torch.sum(negated_loss)
+    else:
+        assert (
+            False
+        ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
 
 
 def get_rnnt_logprobs_smoothed(
@@ -780,21 +865,25 @@ def get_rnnt_logprobs_smoothed(
     Reduces RNN-T problem (the simple case, where joiner network is just
     addition), to a compact, standard form that can then be given
     (with boundaries) to mutual_information_recursion().
-    This version allows you to make the loss-function one of the form:
+    This version allows you to make the loss-function one of the form::
+
           lm_only_scale * lm_probs +
           am_only_scale * am_probs +
           (1-lm_only_scale-am_only_scale) * combined_probs
+
     where lm_probs and am_probs are the probabilities given the lm and acoustic
     model independently.
 
     This function is called from
-    rnnt_loss_smoothed(), but may be useful for other purposes.
+    :func:`rnnt_loss_smoothed`, but may be useful for other purposes.
 
     Args:
       lm:
         Language model part of un-normalized logprobs of symbols, to be added to
-        acoustic model part before normalizing.  Of shape:
+        acoustic model part before normalizing.  Of shape::
+
            [B][S+1][C]
+
         where B is the batch size, S is the maximum sequence length of
         the symbol sequence, possibly including the EOS symbol; and
         C is size of the symbol vocabulary, including the termination/next-frame
@@ -806,8 +895,10 @@ def get_rnnt_logprobs_smoothed(
         the termination/next-frame symbol at this point.
       am:
         Acoustic-model part of un-normalized logprobs of symbols, to be added
-        to language-model part before normalizing.  Of shape:
+        to language-model part before normalizing.  Of shape::
+
            [B][T][C]
+
         where B is the batch size, T is the maximum sequence length of
         the acoustic sequences (in frames); and C is size of the symbol
         vocabulary, including the termination/next-frame symbol.  It reflects
@@ -815,7 +906,7 @@ def get_rnnt_logprobs_smoothed(
         next on this frame.
       symbols:
         A LongTensor of shape [B][S], containing the symbols at each position
-        of the sequence, possibly including EOS
+        of the sequence.
       termination_symbol:
         The identity of the termination symbol, must be in {0..C-1}
       lm_only_scale:
@@ -835,7 +926,9 @@ def get_rnnt_logprobs_smoothed(
         (px, py) (the names are quite arbitrary).
            px: logprobs, of shape [B][S][T+1] if !modified, [B][S][T] if modified.
            py: logprobs, of shape [B][S+1][T]
-        in the recursion:
+
+        in the recursion::
+
           p[b,0,0] = 0.0
           if !modified:
              p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
@@ -987,10 +1080,11 @@ def rnnt_loss_smoothed(
     am_only_scale: float = 0.1,
     boundary: Optional[Tensor] = None,
     modified: bool = False,
+    reduction: Optional[str] = "mean",
     return_grad: bool = False,
 ) -> Tensor:
     """A simple case of the RNN-T loss, where the 'joiner' network is just
-    addition. Returns negated total loss value.
+    addition.
 
     Args:
       lm:
@@ -1019,28 +1113,50 @@ def rnnt_loss_smoothed(
         Most likely you will want begin_symbol and begin_frame to be zero.
       modified: if True, each time a real symbol is consumed a frame will
         also be consumed, so at most 1 symbol can appear per frame.
+      reduction:
+        Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
+        `none`: no reduction will be applied.
+        `mean`: apply `torch.mean` over the batches.
+        `sum`: the output will be summed.
+        Default: `mean`
       return_grad:
         Whether to return grads of px and py, this grad standing for the
         occupation probability is the output of the backward with a
-        `fake gradient` input (all ones)  This is useful to implement the
-        pruned version of rnnt loss.
+        `fake gradient`, the `fake gradient` is the same as the gradient you'd
+        get if you did `torch.autograd.grad((-loss.sum()), [px, py])`, note, the
+        loss here is the loss with reduction "none".
+        This is useful to implement the pruned version of rnnt loss.
 
     Returns:
-       If return_grad is False, returns a Tensor of shape (B,), containing the
-       NEGATED total RNN-T loss values for each element of the batch
-       (like log-probs of sequences).
+       If return_grad is False, returns a tensor of shape (B,), containing the
+       total RNN-T loss values for each element of the batch if reduction equals
+       to "none", otherwise a scalar with the reduction applied.
        If return_grad is True, the grads of px and py, which is the output of
-       backward with a `fake gradient` input, will be returned too. And the
+       backward with a `fake gradient`(see above), will be returned too. And the
        returned value will be a tuple like (loss, (px_grad, py_grad)).
     """
     px, py = get_rnnt_logprobs_smoothed(
-        lm,
-        am,
-        symbols,
-        termination_symbol,
-        lm_only_scale,
-        am_only_scale,
-        boundary,
-        modified,
+        lm=lm,
+        am=am,
+        symbols=symbols,
+        termination_symbol=termination_symbol,
+        lm_only_scale=lm_only_scale,
+        am_only_scale=am_only_scale,
+        boundary=boundary,
+        modified=modified,
     )
-    return mutual_information_recursion(px, py, boundary, return_grad)
+    scores_and_grads = mutual_information_recursion(
+        px=px, py=py, boundary=boundary, return_grad=return_grad
+    )
+    negated_loss = scores_and_grads[0] if return_grad else scores_and_grads
+    if reduction == "none":
+        loss = -negated_loss
+    elif reduction == "mean":
+        loss = -torch.mean(negated_loss)
+    elif reduction == "sum":
+        loss = -torch.sum(negated_loss)
+    else:
+        assert (
+            False
+        ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+    return (loss, scores_and_grads[1]) if return_grad else loss
