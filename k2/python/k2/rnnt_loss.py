@@ -510,9 +510,12 @@ def get_rnnt_prune_ranges(
 
     s_begin = torch.where(mask, s_begin, s_begin_padding)
 
-    # adjusting lower bound to make it satisfied constrains, see docs in
+    # adjusting lower bound to make it satisfied some constrains, see docs in
     # `adjust_pruning_lower_bound` for more details of these constrains.
-    s_begin = _adjust_pruning_lower_bound(s_begin, s_range)
+    # T1 == T here means we are using the modified version of transducer,
+    # the third constrain becomes `s_begin[i + 1] - s_begin[i] < 2`, because
+    # it only emits one symbol per frame.
+    s_begin = _adjust_pruning_lower_bound(s_begin, 2 if T1 == T else s_range)
     ranges = s_begin.reshape((B, T, 1)).expand((B, T, s_range)) + torch.arange(
         s_range, device=px_grad.device
     )
