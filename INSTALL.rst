@@ -46,7 +46,7 @@ From source
   python3 setup.py install
   
 From source (with CUDA support)
-===========
+=========================
 
 .. code-block:: bash
 
