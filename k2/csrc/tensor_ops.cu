@@ -607,7 +607,7 @@ static __global__ void DiscountedCumSumKernel(int N, int T, const Real *x,
 
   BlockPrefixCallbackOp<Real> prefix_callback;
 
-  typedef cub::BlockScan<Elem, ThreadsPerBlock> BlockScan;
+  typedef CUB_NS_QUALIFIER::BlockScan<Elem, ThreadsPerBlock> BlockScan;
   // shared memory for BlockScan
   __shared__ typename BlockScan::TempStorage temp_storage;
 

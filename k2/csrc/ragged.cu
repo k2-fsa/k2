@@ -27,12 +27,12 @@
 namespace {
 
 // will be used in RaggedShape::MaxSize(int32_t axis) to call
-// cub::DeviceReduce::Max
+// CUB_NS_QUALIFIER::DeviceReduce::Max
 struct RowSplitsDiff {
   const int32_t *row_splits_data;
   explicit RowSplitsDiff(const int32_t *row_splits)
       : row_splits_data(row_splits) {}
-  // operator[] and operator+ are required by cub::DeviceReduce::Max
+  // operator[] and operator+ are required by CUB_NS_QUALIFIER::DeviceReduce::Max
   __device__ __forceinline__ int32_t operator[](int32_t i) const {
     return row_splits_data[i + 1] - row_splits_data[i];
   }
@@ -46,7 +46,7 @@ struct RowSplitsDiff {
 }  // namespace
 
 namespace std {
-// vaule_type is required by cub::DeviceReduce::Max
+// vaule_type is required by CUB_NS_QUALIFIER::DeviceReduce::Max
 template <>
 struct iterator_traits<::RowSplitsDiff> {
   typedef int32_t value_type;
@@ -157,11 +157,11 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
 
     size_t temp_storage_bytes = 0;
     // the first time is to determine temporary device storage requirements
-    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Max(nullptr, temp_storage_bytes,
+    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceReduce::Max(nullptr, temp_storage_bytes,
                                              row_splits_diff, max_value,
                                              num_rows, c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Max(
+    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceReduce::Max(
         d_temp_storage.Data(), temp_storage_bytes, row_splits_diff, max_value,
         num_rows, c->GetCudaStream()));
     // this will convert to memory on CPU

@@ -49,12 +49,12 @@ void ExclusiveSum(ContextPtr c, int32_t n, const SrcPtr src, DestPtr dest) {
     // See https://github.com/NVIDIA/cub/issues/302
     // for why to prefer ExclusiveScan over ExclusiveSum
     //
-    K2_CUDA_SAFE_CALL(cub::DeviceScan::ExclusiveScan(
-        nullptr, temp_storage_bytes, src, dest, cub::Sum(), SumType(0), n,
+    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceScan::ExclusiveScan(
+        nullptr, temp_storage_bytes, src, dest, CUB_NS_QUALIFIER::Sum(), SumType(0), n,
         c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CUDA_SAFE_CALL(cub::DeviceScan::ExclusiveScan(
-        d_temp_storage.Data(), temp_storage_bytes, src, dest, cub::Sum(),
+    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceScan::ExclusiveScan(
+        d_temp_storage.Data(), temp_storage_bytes, src, dest, CUB_NS_QUALIFIER::Sum(),
         SumType(0), n, c->GetCudaStream()));
   }
 }
@@ -76,11 +76,11 @@ void InclusiveSum(ContextPtr c, int32_t n, const SrcPtr src, DestPtr dest) {
     std::size_t temp_storage_bytes = 0;
     // the following function will compute the number of required bytes
     // for InclusiveSum
-    K2_CUDA_SAFE_CALL(cub::DeviceScan::InclusiveSum(
+    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceScan::InclusiveSum(
         nullptr, temp_storage_bytes, src, dest, n, c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
     K2_CUDA_SAFE_CALL(
-        cub::DeviceScan::InclusiveSum(d_temp_storage.Data(), temp_storage_bytes,
+        CUB_NS_QUALIFIER::DeviceScan::InclusiveSum(d_temp_storage.Data(), temp_storage_bytes,
                                       src, dest, n, c->GetCudaStream()));
   }
 }
@@ -103,11 +103,11 @@ T MaxValue(ContextPtr c, int32_t nelems, const T *t) {
     T *max_value = max_array.Data();
     std::size_t temp_storage_bytes = 0;
     // the first time is to determine temporary device storage requirements
-    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes,
+    K2_CHECK_CUDA_ERROR(CUB_NS_QUALIFIER::DeviceReduce::Reduce(nullptr, temp_storage_bytes,
                                                   t, max_value, nelems, max_op,
                                                   init, c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
+    K2_CHECK_CUDA_ERROR(CUB_NS_QUALIFIER::DeviceReduce::Reduce(
         d_temp_storage.Data(), temp_storage_bytes, t, max_value, nelems, max_op,
         init, c->GetCudaStream()));
     // this will convert to memory on CPU

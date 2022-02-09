@@ -43,7 +43,7 @@
 namespace k2 {
 namespace internal {
 // Will be used in ExclusiveSumDeref to call ExclusiveSum (which calls
-// cub::DeviceScan::ExclusiveSum internally).
+// CUB_NS_QUALIFIER::DeviceScan::ExclusiveSum internally).
 template <typename T>
 struct PtrPtr {
   const T **data;
@@ -51,7 +51,7 @@ struct PtrPtr {
   explicit PtrPtr(const T **data) : data(data) {}
 
   // operator[], operator+, and operator* are required by
-  // cub::DeviceScan::ExclusiveSum
+  // CUB_NS_QUALIFIER::DeviceScan::ExclusiveSum
   __host__ __device__ __forceinline__ const T &operator[](int32_t i) const {
     return *(data[i]);
   }
@@ -66,7 +66,7 @@ struct PtrPtr {
 };
 
 // Will be used (as both InputIterator and OutputIterator) in
-// MonotonicLowerBound to call cub::DeviceScan::InclusiveScan.
+// MonotonicLowerBound to call CUB_NS_QUALIFIER::DeviceScan::InclusiveScan.
 template <typename T>
 struct ConstReversedPtr {
   const T *data;
@@ -76,7 +76,7 @@ struct ConstReversedPtr {
       : data(data + size - 1) {}
 
   // operator[], operator+, and operator* are required by
-  // cub::DeviceScan::InclusiveScan
+  // CUB_NS_QUALIFIER::DeviceScan::InclusiveScan
   __host__ __device__ __forceinline__ const T &operator[](int32_t i) const {
     return data[-i];
   }
@@ -99,7 +99,7 @@ struct ReversedPtr {
   explicit ReversedPtr(T *data, int32_t size) : data(data + size - 1) {}
 
   // operator[], operator+, and operator* are required by
-  // cub::DeviceScan::InclusiveScan
+  // CUB_NS_QUALIFIER::DeviceScan::InclusiveScan
   __host__ __device__ __forceinline__ T &operator[](int32_t i) {
     return data[-i];
   }
@@ -197,12 +197,12 @@ static void RandArray1Internal(int32_t dim, T min_value, T max_value, T *data,
 }  // namespace k2
 
 namespace std {
-// vaule_type is required by cub::DeviceScan::ExclusiveSum
+// vaule_type is required by CUB_NS_QUALIFIER::DeviceScan::ExclusiveSum
 template <typename T>
 struct iterator_traits<k2::internal::PtrPtr<T>> {
   typedef T value_type;
 };
-// vaule_type is required by cub::DeviceScan::InclusiveSum
+// vaule_type is required by CUB_NS_QUALIFIER::DeviceScan::InclusiveSum
 template <typename T>
 struct iterator_traits<k2::internal::ConstReversedPtr<T>> {
   typedef T value_type;
@@ -392,11 +392,11 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
 
     size_t temp_storage_bytes = 0;
     // the first time is to determine temporary device storage requirements
-    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Reduce(
+    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceReduce::Reduce(
         nullptr, temp_storage_bytes, src_data, dest_data, size, op,
         default_value, c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Reduce(
+    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceReduce::Reduce(
         d_temp_storage.Data(), temp_storage_bytes, src_data, dest_data, size,
         op, default_value, c->GetCudaStream()));
   }
@@ -720,11 +720,11 @@ void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
         internal::ReversedPtr<T>(dest_data, dim);
     // The first time is to determine temporary device storage requirements.
     std::size_t temp_storage_bytes = 0;
-    K2_CHECK_CUDA_ERROR(cub::DeviceScan::InclusiveScan(
+    K2_CHECK_CUDA_ERROR(CUB_NS_QUALIFIER::DeviceScan::InclusiveScan(
         nullptr, temp_storage_bytes, src_ptr, dest_ptr, min_op, dim,
         c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CHECK_CUDA_ERROR(cub::DeviceScan::InclusiveScan(
+    K2_CHECK_CUDA_ERROR(CUB_NS_QUALIFIER::DeviceScan::InclusiveScan(
         d_temp_storage.Data(), temp_storage_bytes, src_ptr, dest_ptr, min_op,
         dim, c->GetCudaStream()));
   }
@@ -759,11 +759,11 @@ void MonotonicDecreasingUpperBound(const Array1<S> &src, Array1<T> *dest) {
         internal::ReversedPtr<T>(dest_data, dim);
     // The first time is to determine temporary device storage requirements.
     std::size_t temp_storage_bytes = 0;
-    K2_CHECK_CUDA_ERROR(cub::DeviceScan::InclusiveScan(
+    K2_CHECK_CUDA_ERROR(CUB_NS_QUALIFIER::DeviceScan::InclusiveScan(
         nullptr, temp_storage_bytes, src_ptr, dest_ptr, max_op, dim,
         c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CHECK_CUDA_ERROR(cub::DeviceScan::InclusiveScan(
+    K2_CHECK_CUDA_ERROR(CUB_NS_QUALIFIER::DeviceScan::InclusiveScan(
         d_temp_storage.Data(), temp_storage_bytes, src_ptr, dest_ptr, max_op,
         dim, c->GetCudaStream()));
   }
@@ -1008,11 +1008,11 @@ T Sum(ContextPtr c, const T *src, int32_t dim) {
   size_t temp_storage_bytes = 0;
   Array1<T> out(c, 1);
   cudaStream_t stream = c->GetCudaStream();
-  K2_CUDA_SAFE_CALL(cub::DeviceReduce::Sum(nullptr, temp_storage_bytes, src,
+  K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceReduce::Sum(nullptr, temp_storage_bytes, src,
                                            out.Data(), dim, stream));
 
   Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-  K2_CUDA_SAFE_CALL(cub::DeviceReduce::Sum(
+  K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceReduce::Sum(
       d_temp_storage.Data(), temp_storage_bytes, src, out.Data(), dim, stream));
   return out[0];
 }

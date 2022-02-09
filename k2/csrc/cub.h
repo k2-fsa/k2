@@ -48,22 +48,25 @@
 #ifndef THRUST_NS_QUALIFIER
 #define THRUST_NS_QUALIFIER thrust
 #endif
-
-#define CUB_NS_PREFIX namespace k2 {
-#define CUB_NS_POSTFIX }
-
+#if __CUDACC_VER_MAJOR__ > 11 || \
+    (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ > 5)
+#define CUB_NS_PREFIX namespace thrust {
 // See
 // https://github.com/NVIDIA/cub/commit/6631c72630f10e370d93814a59146b12f7620d85
 // and
 // https://github.com/NVIDIA/cub/pull/350
+#define CUB_NS_QUALIFIER ::thrust::cub
+
+#else
+
+#define CUB_NS_PREFIX namespace k2 {
 #define CUB_NS_QUALIFIER ::k2::cub
+#endif
+
+#define CUB_NS_POSTFIX }
 
 #ifdef K2_WITH_CUDA
 #include "cub/cub.cuh"  // NOLINT
 #endif
-
-#undef CUB_NS_PREFIX
-#undef CUB_NS_POSTFIX
-#undef CUB_NS_QUALIFIER
 
 #endif  // K2_CSRC_CUB_H_
