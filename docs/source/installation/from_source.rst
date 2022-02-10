@@ -9,13 +9,13 @@ The following versions of Python, CUDA, and PyTorch are known to work.
     - |source_cuda_versions|
     - |source_pytorch_versions|
 
-.. |source_python_versions| image:: ./images/source_python-3.6_3.7_3.8_3.9-blue.svg
+.. |source_python_versions| image:: ./images/python_gt_3.6-blue.svg
   :alt: Supported python versions
 
-.. |source_cuda_versions| image:: ./images/source_cuda-10.1_10.2_11.0_11.1_11.2_11.3-orange.svg
+.. |source_cuda_versions| image:: ./images/cuda_gt_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |source_pytorch_versions| image:: ./images/source_pytorch-1.6.0_1.7.0_1.7.1_1.8.0_1.8.1-green.svg
+.. |source_pytorch_versions| image:: ./images/pytorch_gt_1.5.0-green.svg
   :alt: Supported pytorch versions
 
 Before compiling k2, some preparation work has to be done:
