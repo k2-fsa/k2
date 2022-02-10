@@ -1,13 +1,13 @@
 Install using pip (k2-fsa.org)
 ==============================
 
-.. |pip_python_versions| image:: ./images/python_gt_3.6-blue.svg
+.. |pip_python_versions| image:: ./images/python_ge_3.6-blue.svg
   :alt: Supported python versions
 
-.. |pip_cuda_versions| image:: ./images/cuda_gt_10.1-orange.svg
+.. |pip_cuda_versions| image:: ./images/cuda_ge_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |pip_pytorch_versions| image:: ./images/pytorch_gt_1.5.0-green.svg
+.. |pip_pytorch_versions| image:: ./images/pytorch_ge_1.5.0-green.svg
   :alt: Supported pytorch versions
 
 You can find a list of nightly pre-built

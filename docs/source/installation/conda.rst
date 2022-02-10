@@ -57,13 +57,13 @@ Read the following if you want to learn more.
 Supported versions
 ------------------
 
-.. |conda_python_versions| image:: ./images/python_gt_3.6-blue.svg
+.. |conda_python_versions| image:: ./images/python_ge_3.6-blue.svg
   :alt: Supported python versions
 
-.. |conda_cuda_versions| image:: ./images/cuda_gt_10.1-orange.svg
+.. |conda_cuda_versions| image:: ./images/cuda_ge_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |conda_pytorch_versions| image:: ./images/pytorch_gt_1.5.0-green.svg
+.. |conda_pytorch_versions| image:: ./images/pytorch_ge_1.5.0-green.svg
   :alt: Supported pytorch versions
 
 - |conda_python_versions|
