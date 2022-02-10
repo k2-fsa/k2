@@ -1256,7 +1256,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   // Enable it only for NVCC > 10.1.105
   //
   // Refer to https://github.com/LLNL/axom/issues/88
-  // NVCC 10.1.105 has a known issue for CUB_NS_QUALIFIER::DeviceRadixSort
+  // NVCC 10.1.105 has a known issue for cub::DeviceRadixSort
   int32_t num_buckets = num_cols;
   int32_t num_elements = src.values.Dim();
   int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
@@ -1268,13 +1268,13 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   cudaStream_t stream = context->GetCudaStream();
 
   size_t temp_storage_bytes = 0;
-  K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceRadixSort::SortPairs(
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
       nullptr, temp_storage_bytes, src.values.Data(), src_tmp_out.Data(),
       order.Data(), ans.Data(), num_elements, 0, log_buckets, stream));
 
   Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
 
-  K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceRadixSort::SortPairs(
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
       d_temp_storage.Data(), temp_storage_bytes, src.values.Data(),
       src_tmp_out.Data(), order.Data(), ans.Data(), num_elements, 0,
       log_buckets, stream));
@@ -2190,7 +2190,7 @@ struct HashCombineOp {
 }  // namespace k2
 
 namespace std {
-// those below typedefs are required by CUB_NS_QUALIFIER::DeviceSegmentedReduce:Reduce
+// those below typedefs are required by cub::DeviceSegmentedReduce:Reduce
 template <typename T>
 struct iterator_traits<k2::hash_internal::HashInputIterator<T>> {
   typedef k2::hash_internal::Hash<T> value_type;
@@ -2242,11 +2242,11 @@ Array1<T> ComputeHash(Ragged<int32_t> &src) {
     std::size_t temp_storage_bytes = 0;
 
     // the first time is to determine temporary device storage requirements
-    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceSegmentedReduce::Reduce(
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         nullptr, temp_storage_bytes, input_iter, output_iter, num_rows,
         row_splits, row_splits + 1, op, initial_hash, c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceSegmentedReduce::Reduce(
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
         num_rows, row_splits, row_splits + 1, op, initial_hash,
         c->GetCudaStream()));

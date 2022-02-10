@@ -79,11 +79,11 @@ void SegmentedReduce(const Ragged<T> &src, T initial_value, Array1<T> *dst) {
     std::size_t temp_storage_bytes = 0;
 
     // the first time is to determine temporary device storage requirements
-    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceSegmentedReduce::Reduce(
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         nullptr, temp_storage_bytes, values_data, output_data, num_rows,
         row_splits, row_splits + 1, op, initial_value, c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceSegmentedReduce::Reduce(
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         d_temp_storage.Data(), temp_storage_bytes, values_data, output_data,
         num_rows, row_splits, row_splits + 1, op, initial_value,
         c->GetCudaStream()));
@@ -521,7 +521,7 @@ struct PairMaxOp {
 }  // namespace k2
 
 namespace std {
-// those below typedefs are required by CUB_NS_QUALIFIER::DeviceSegmentedReduce:Reduce
+// those below typedefs are required by cub::DeviceSegmentedReduce:Reduce
 template <typename T>
 struct iterator_traits<k2::argmax_internal::PairInputIterator<T>> {
   typedef k2::argmax_internal::Pair<T> value_type;
@@ -578,11 +578,11 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
     std::size_t temp_storage_bytes = 0;
 
     // the first time is to determine temporary device storage requirements
-    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceSegmentedReduce::Reduce(
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         nullptr, temp_storage_bytes, input_iter, output_iter, num_rows,
         row_splits, row_splits + 1, op, initial_pair, c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceSegmentedReduce::Reduce(
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
         num_rows, row_splits, row_splits + 1, op, initial_pair,
         c->GetCudaStream()));
@@ -592,22 +592,22 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
 #if 0
     const Array1<int32_t> &row_ids_array = src.RowIds(last_axis);
     const int32_t *row_ids = row_ids_array.Data();
-    size_t align = alignof(CUB_NS_QUALIFIER::KeyValuePair<int, T>);
+    size_t align = alignof(cub::KeyValuePair<int, T>);
     Array1<int8_t> out_storage(c,
-        num_rows * sizeof(CUB_NS_QUALIFIER::KeyValuePair<int, T>) + align);
+        num_rows * sizeof(cub::KeyValuePair<int, T>) + align);
     size_t shift = reinterpret_cast<std::intptr_t>(out_storage.Data()) % align;
     shift = shift ? align - shift : 0;
 
-    CUB_NS_QUALIFIER::KeyValuePair<int, T> *d_out_data =
-      reinterpret_cast<CUB_NS_QUALIFIER::KeyValuePair<int, T>*>(out_storage.Data() + shift);
+    cub::KeyValuePair<int, T> *d_out_data =
+      reinterpret_cast<cub::KeyValuePair<int, T>*>(out_storage.Data() + shift);
 
     std::size_t temp_storage_bytes = 0;
 
-    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceSegmentedReduce::ArgMax(
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::ArgMax(
         nullptr, temp_storage_bytes, values_data, d_out_data, num_rows,
         row_splits, row_splits + 1));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CUDA_SAFE_CALL(CUB_NS_QUALIFIER::DeviceSegmentedReduce::ArgMax(
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::ArgMax(
         d_temp_storage.Data(), temp_storage_bytes, values_data, d_out_data,
         num_rows, row_splits, row_splits + 1));
 
