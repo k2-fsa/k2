@@ -715,9 +715,12 @@ def get_best_matching_stats(
         a collection of key and query sequences. If 3 axes, this represents a
         set of such collections.
 
-          2-axis example:
+          2-axis example::
+
             [ [ the, cat, said, eos ], [ the, cat, fed, eos ] ]
-          3-axis example:
+
+          3-axis example::
+
             [ [ [ the, cat, said, eos ], [ the, cat, fed, eos ] ],
               [ [ hi, my, name, is, eos ], [ bye, my, name, is, eos ] ], ... ]
 
