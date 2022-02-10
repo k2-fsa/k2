@@ -14,7 +14,7 @@ below:
   - From conda (**recommended**)
 
     - |conda_python_versions|
-    - |conda_cuda_versions|-
+    - |conda_cuda_versions|
     - |conda_pytorch_versions|
 
   - From pip (k2-fsa.org)
@@ -26,7 +26,7 @@ below:
   - From pypi (pypi.org)
 
     - |pypi_python_versions|
-    - |pypi_cuda_versions|-
+    - |pypi_cuda_versions|
     - |pypi_pytorch_versions|
 
   - From source (**for advanced users**)
@@ -44,22 +44,22 @@ below:
    from_source
    for_developers
 
-.. |conda_python_versions| image:: ./images/python-3.6_3.7_3.8-blue.svg
+.. |conda_python_versions| image:: ./images/python_ge_3.6-blue.svg
   :alt: Supported python versions
 
-.. |conda_cuda_versions| image:: ./images/cuda-10.1_10.2_11.0_11.1-orange.svg
+.. |conda_cuda_versions| image:: ./images/cuda_ge_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |conda_pytorch_versions| image:: ./images/pytorch-1.6.0_1.7.0_1.7.1_1.8.0_1.8.1-green.svg
+.. |conda_pytorch_versions| image:: ./images/pytorch_ge_1.5.0-green.svg
   :alt: Supported pytorch versions
 
-.. |pip_python_versions| image:: ./images/pip_python-3.6_3.7_3.8-blue.svg
+.. |pip_python_versions| image:: ./images/python_ge_3.6-blue.svg
   :alt: Supported python versions
 
-.. |pip_cuda_versions| image:: ./images/pip_cuda-10.1_10.2_11.0-orange.svg
+.. |pip_cuda_versions| image:: ./images/cuda_ge_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |pip_pytorch_versions| image:: ./images/pip_pytorch-1.7.1-green.svg
+.. |pip_pytorch_versions| image:: ./images/pytorch_ge_1.5.0-green.svg
   :alt: Supported pytorch versions
 
 .. |pypi_python_versions| image:: ./images/pypi_python-3.6_3.7_3.8-blue.svg
@@ -71,13 +71,13 @@ below:
 .. |pypi_pytorch_versions| image:: ./images/pypi_pytorch-1.7.1-green.svg
   :alt: Supported pytorch versions
 
-.. |source_python_versions| image:: ./images/source_python-3.6_3.7_3.8_3.9-blue.svg
+.. |source_python_versions| image:: ./images/python_ge_3.6-blue.svg
   :alt: Supported python versions
 
-.. |source_cuda_versions| image:: ./images/source_cuda-10.1_10.2_11.0_11.1_11.2_11.3-orange.svg
+.. |source_cuda_versions| image:: ./images/cuda_ge_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |source_pytorch_versions| image:: ./images/source_pytorch-1.6.0_1.7.0_1.7.1_1.8.0_1.8.1-green.svg
+.. |source_pytorch_versions| image:: ./images/pytorch_ge_1.5.0-green.svg
   :alt: Supported pytorch versions
 
 Reporting issues
