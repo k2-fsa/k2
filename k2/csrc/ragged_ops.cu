@@ -235,11 +235,18 @@ RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(num_axes, 2);
   std::vector<RaggedShapeLayer> axes(num_axes - 1);
-  // In future we might choose to allocate everything in one big array, to avoid
-  // multiple allocations, but for now just do it the simple way.
+  int32_t tot_size = 0;
   for (int32_t axis = 1; axis < num_axes; ++axis) {
-    axes[axis - 1].row_splits = Array1<int32_t>(c, tot_sizes[axis - 1] + 1);
-    axes[axis - 1].row_ids = Array1<int32_t>(c, tot_sizes[axis]);
+    tot_size += tot_sizes[axis - 1] + 1 + tot_sizes[axis];
+  }
+  Array1<int32_t> splits_ids(c, tot_size);
+  int32_t start = 0;
+  for (int32_t axis = 1; axis < num_axes; ++axis) {
+    axes[axis - 1].row_splits = splits_ids.Arange(start,
+        start + tot_sizes[axis - 1] + 1);
+    start += tot_sizes[axis - 1] + 1;
+    axes[axis - 1].row_ids = splits_ids.Arange(start, start + tot_sizes[axis]);
+    start += tot_sizes[axis];
     axes[axis - 1].cached_tot_size = tot_sizes[axis];
   }
   // Not check here as we did not set the values of row_splits and row_ids
@@ -470,7 +477,6 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
                                      tot_sizes.data[i]);
   }
 
-
   int32_t *elem_indexes_data = (elem_indexes != nullptr ?
                                 elem_indexes->Data() : nullptr);
 
@@ -575,6 +581,7 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
     Array1<int32_t> last_row_splits(last_row_ids.Context(),
                                     src.TotSize(num_axes - 2) + 1);
     RowIdsToRowSplits(last_row_ids, &last_row_splits);
+
     if (elem_indexes)
       *elem_indexes = indexes;
 
@@ -701,7 +708,6 @@ static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
   // It shape is (num_axes_in + 1 == num_axes_out, num_srcs + 1).
   Array2<int32_t> offsets = GetOffsets(num_srcs, src);
   auto offsets_acc = offsets.Accessor();
-
 
   SmallVec<int32_t, 6> tot_sizes_out;
   K2_CHECK(num_axes_out <= 6);
@@ -1100,6 +1106,249 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
   return RaggedShape(ans_layers);
 }
 
+static void UnstackAxis0(RaggedShape &src, std::vector<RaggedShape> *out,
+                  std::vector<Array1<int32_t>> *split_map = nullptr) {
+  NVTX_RANGE(K2_FUNC);
+  int32_t num_layers = src.NumLayers(),
+          num_layers_out = num_layers - 1,
+          num_axes_out = num_layers_out + 1,
+          dim0 = src.Dim0();
+  K2_CHECK_LE(num_layers, 5);  // If this fails, add something to the 5s below.
+  K2_CHECK_GT(num_layers, 1);
+  K2_CHECK(out != nullptr);
+
+  ContextPtr &c = src.Context();
+
+  // composite_row_splits is of shape (src.NumLayers() + 1, src.Dim0() + 1).
+  // Row 0 contains [ 0, 1, 2, ..  ];
+  // Row 1 contains src.RowSplits(1)
+  // Row 2 contains the row_splits12 = src.RowSplits(2)[src.RowSplits(1)]
+  //    .. etc.
+  Array2<int32_t> composite_row_splits(c, num_layers + 1, dim0 + 1);
+  Array2Accessor<int32_t> composite_row_splits_acc =
+      composite_row_splits.Accessor();
+
+  RowSplitsAccessor<5> src_row_splits_acc(src);
+
+  // set composite_row_splits
+  K2_EVAL(
+      c, dim0 + 1, lambda_set_composite_row_splits, (int32_t i)->void {
+        int32_t cur_pos = i;
+        composite_row_splits_acc(0, i) = cur_pos;
+        for (int32_t l = 0; l < num_layers; l++) {
+          cur_pos = src_row_splits_acc.ptrs[l][cur_pos];
+          composite_row_splits_acc(l + 1, i) = cur_pos;
+        }
+      });
+
+  // Contains the tot_size of each layer for the output RaggedShapes
+  Array2<int32_t> tot_sizes(c, dim0, num_axes_out);
+  Array2Accessor<int32_t> tot_sizes_acc = tot_sizes.Accessor();
+
+  // set tot_sizes for the output RaggedShapes
+  K2_EVAL2(c, dim0, num_axes_out, lambda_set_tot_sizes,
+      (int32_t i, int32_t j) {
+      // j plus 1 here because the axis0 of src will be removed
+      // the dest.TotSize(i) actually corresponds to src.TotSize(i + 1)
+      tot_sizes_acc(i, j) = composite_row_splits_acc(j + 1, i + 1) -
+                            composite_row_splits_acc(j + 1, i);
+  });
+
+  Array2<int32_t> tot_sizes_cpu = tot_sizes.To(GetCpuContext());
+  Array2Accessor<int32_t> tot_sizes_cpu_acc = tot_sizes_cpu.Accessor();
+
+  out->resize(dim0);
+  if (split_map != nullptr) split_map->resize(dim0);
+  // We can not avoid this for loop on dim0, as we want to allocate mememory
+  // seperately, may consider using a ThreadPool later.
+  for (int32_t i = 0; i < dim0; ++i) {
+    out->at(i) = RaggedShapeFromTotSizes(c,
+          num_axes_out, tot_sizes_cpu.Row(i).Data());
+    if (split_map != nullptr) {
+      split_map->at(i) =
+          Array1<int32_t>(c, tot_sizes_cpu_acc(i, num_axes_out - 1));
+    };
+  }
+
+  // Right now to_idx0 maps from an idx0 to an idx0 (identity map); next time it
+  // will map from an idx01 to to an idx0, then idx012 to idx0 (all w.r.t. src).
+  // It doesn't include the extra last element like a row_splits would; it's
+  // like a composite row_ids vector: row_ids1, row_ids12 and so on.
+  Array1<int32_t> to_idx0 = composite_row_splits.Row(0).Arange(0, dim0);
+
+  Array1<int32_t> garbage(c,
+                           src.TotSize(1));  // corresponds to row_ids_out_[-1].
+
+  for (int32_t layer = 0; layer <= num_layers_out; layer++) {
+    // num_elems is the number of elements we process in this kernel.
+    int32_t num_elems = src.TotSize(layer + 1);
+
+    // The names here are valid for layer == 1; this just happens to be useful
+    // for exposition.
+    const int32_t *src_row_ids2_data = src.RowIds(layer + 1).Data(),
+                  *idx01_to_idx0_data = to_idx0.Data();
+
+    // Contains the RowSplits & RowIds pointer for current layer,
+    // has a dimension of dim0 * 2, the layout is splits_pointer0, ids_pointer0,
+    // splits_pointer1, ids_pointer1, ...
+    Array1<int32_t *> splits_ids_ptr(GetCpuContext(), dim0 * 2);
+    int32_t **splits_ids_ptr_data = splits_ids_ptr.Data();
+
+    // Contains the pointers for split_map
+    Array1<int32_t *> split_map_ptr;
+    int32_t **split_map_ptr_data;
+
+    if (layer == num_layers_out && split_map != nullptr) {
+      split_map_ptr = Array1<int32_t *>(GetCpuContext(), dim0);
+      split_map_ptr_data = split_map_ptr.Data();
+    }
+
+    for (int32_t i = 0; i < dim0; ++i) {
+      splits_ids_ptr_data[2 * i] = layer == num_layers_out ? nullptr :
+        out->at(i).RowSplits(layer + 1).Data();
+
+      splits_ids_ptr_data[2 * i + 1] =
+        layer == 0 ? garbage.Data() : out->at(i).RowIds(layer).Data();
+
+      if (layer == num_layers_out && split_map != nullptr) {
+        split_map_ptr_data[i] = split_map->at(i).Data();
+      }
+    }
+
+    // transfer to GPU if we're using a GPU
+    splits_ids_ptr = splits_ids_ptr.To(c);
+    splits_ids_ptr_data = splits_ids_ptr.Data();
+
+    if (layer < num_layers_out) {
+      Array1<int32_t> to_idx0_next(c, num_elems);
+      int32_t *idx012_to_idx0_data = to_idx0_next.Data();
+      const int32_t *src_row_splits3_data = src.RowSplits(layer + 2).Data();
+      // row_splits3 maps from idx012 -> idx012x.
+
+      // remember: the names are valid for layer == 1, just as an example.
+      K2_EVAL(
+          c, num_elems, lambda_set_row_splits_and_ids,
+          (int32_t src_idx012)->void {
+            int32_t src_idx01 = src_row_ids2_data[src_idx012],
+                    src_idx012x_next = src_row_splits3_data[src_idx012 + 1],
+                    src_idx0 = idx01_to_idx0_data[src_idx01];
+
+            idx012_to_idx0_data[src_idx012] = src_idx0;  // <-- output here.
+
+            int32_t src_idx0x = composite_row_splits_acc(layer, src_idx0),
+                    src_idx0xxx = composite_row_splits_acc(layer + 2, src_idx0),
+                    src_idx1 = src_idx01 - src_idx0x,
+                    src_idx12x_next = src_idx012x_next - src_idx0xxx,
+                    out_idx0 = src_idx1,
+                    out_idx01x_next = src_idx12x_next,
+                    src_idx0xx = composite_row_splits_acc(layer + 1, src_idx0),
+                    src_idx12 = src_idx012 - src_idx0xx;
+
+            // set row_ids
+            splits_ids_ptr_data[2 * src_idx0 + 1][src_idx12] = out_idx0;
+
+            // handle the first element of each row_splits (should be zero)
+            if (src_idx12 == 0) {
+              splits_ids_ptr_data[2 * src_idx0][src_idx12] = 0;
+            }
+            // below, the "+1" is because each element handles the next one
+            // within this output row_splits array.
+            splits_ids_ptr_data[2 * src_idx0][src_idx12 + 1] = out_idx01x_next;
+          });
+      to_idx0 = to_idx0_next;
+    } else {
+      // The next code is a subset of the other branch.
+      if (split_map != nullptr) {
+        split_map_ptr = split_map_ptr.To(c);
+        split_map_ptr_data = split_map_ptr.Data();
+      }
+      K2_EVAL(
+          c, num_elems, lambda_set_row_ids, (int32_t src_idx012)->void {
+            int32_t src_idx01 = src_row_ids2_data[src_idx012],
+                    idx0 = idx01_to_idx0_data[src_idx01],
+                    src_idx0x = composite_row_splits_acc(layer, idx0),
+                    src_idx1 = src_idx01 - src_idx0x, out_idx0 = src_idx1,
+                    src_idx0xx = composite_row_splits_acc(layer + 1, idx0),
+                    src_idx12 = src_idx012 - src_idx0xx;
+            splits_ids_ptr_data[2 * idx0 + 1][src_idx12] = out_idx0;
+            if (split_map != nullptr)
+              split_map_ptr_data[idx0][src_idx12] = src_idx012;
+          });
+    }
+  }
+}
+
+
+void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
+             std::vector<Array1<int32_t>> *split_map) {
+  ContextPtr &c = src.Context();
+  if (axis == 0) {
+    if (src.NumAxes() == 2) {
+        auto new_src = ComposeRaggedShapes(
+            TrivialShape(c, src.TotSize(0)), src);
+        return Unstack(new_src, 1, out, split_map);
+    }
+    UnstackAxis0(src, out, split_map);
+  } else {
+    int32_t tot_size_axis_minus1 = src.TotSize(axis - 1),
+            tot_size_axis = src.TotSize(axis);
+    const int32_t *row_splits_axis = src.RowSplits(axis).Data(),
+                  *row_ids_axis = src.RowIds(axis).Data();
+
+    Array1<int32_t> sublists_size(c, tot_size_axis_minus1);
+    int32_t *sublists_size_data = sublists_size.Data();
+    K2_EVAL(c, tot_size_axis_minus1, lambda_get_sublists_size, (int32_t i) {
+        sublists_size_data[i] = row_splits_axis[i + 1] - row_splits_axis[i];
+    });
+
+    int32_t num_out = MaxValue(sublists_size);
+    out->resize(num_out);
+    if (split_map != nullptr) split_map->resize(num_out);
+
+    Array2<int32_t> indexes(c, num_out, tot_size_axis_minus1, -1);
+    Array2Accessor<int32_t> indexes_acc = indexes.Accessor();
+
+    K2_EVAL(c, tot_size_axis, lambda_set_indexes, (int32_t idx01) {
+        int32_t idx0 = row_ids_axis[idx01],
+                idx0x = row_splits_axis[idx0],
+                idx1 = idx01 - idx0x;
+        indexes_acc(idx1, idx0) = idx01;
+    });
+
+    bool remove_last_axis = false;
+    if (axis == src.NumAxes() - 1) {
+      src = ComposeRaggedShapes(src,
+         RegularRaggedShape(c, src.NumElements(), 1));
+      remove_last_axis = true;
+    }
+
+    RaggedShape top, bottom;
+    DecomposeRaggedShape(src, axis, &top, &bottom);
+    bool remove_axis0 = false;
+    if (top.NumAxes() == 2) {
+      top = ComposeRaggedShapes(
+          TrivialShape(c, top.TotSize(0)), top);
+      remove_axis0 = true;
+    }
+
+    top = RemoveAxis(top, top.NumAxes() - 1);
+
+    // TODO: Remove this loop by implementing parallel IndexAxis0
+    for (int32_t i = 0; i < num_out; ++i) {
+      out->at(i) = IndexAxis0(bottom, indexes.Row(i),
+          split_map == nullptr ? nullptr : &(split_map->at(i)));
+      out->at(i) = ComposeRaggedShapes(top, out->at(i));
+      if (remove_axis0 && !remove_last_axis)
+        out->at(i) = RemoveAxis(out->at(i), 0);
+      if (remove_last_axis) {
+        out->at(i) = RemoveEmptyLists(out->at(i), out->at(i).NumAxes() - 2);
+        out->at(i) = RemoveAxis(out->at(i), out->at(i).NumAxes() - 1);
+      }
+    }
+  }
+}
+
+
 RaggedShape Merge(int32_t num_srcs, RaggedShape **src,
                   const Array1<uint32_t> &merge_map,
                   Array1<uint32_t> *merge_map_out) {
@@ -1126,7 +1375,7 @@ RaggedShape Merge(int32_t num_srcs, RaggedShape **src,
 
 RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
   NVTX_RANGE(K2_FUNC);
-  // row_splits= [
+  // row_splits= [0, num_elems]
   Array1<int32_t> row_splits = Range<int32_t>(c, 2, 0, num_elems);
   Array1<int32_t> row_ids(c, num_elems, 0);
   return RaggedShape2(&row_splits, &row_ids, num_elems);
@@ -1632,17 +1881,12 @@ Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
   return Ragged<int32_t>(dst_shape, dst_values);
 }
 
-RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {
+RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering,
+                                 int32_t axis, Array1<int32_t> *elems_new2old) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK_EQ(renumbering.NumOldElems(), src.NumElements());
-
-  // Make sure final row-ids are populated.
-  src.RowIds(src.NumAxes() - 1);
-  std::vector<RaggedShapeLayer> axes = src.Layers();
-  axes.back().row_ids = axes.back().row_ids[renumbering.New2Old()];
-  axes.back().row_splits = renumbering.Old2New()[axes.back().row_splits];
-  axes.back().cached_tot_size = axes.back().row_ids.Dim();
-  return RaggedShape(axes);
+  axis = axis < 0 ? src.NumAxes() + axis : axis;
+  K2_CHECK_EQ(renumbering.NumOldElems(), src.TotSize(axis));
+  return Index(src, axis, renumbering.New2Old(), elems_new2old);
 }
 
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &r_before_last,

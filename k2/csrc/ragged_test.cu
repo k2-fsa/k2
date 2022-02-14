@@ -102,6 +102,149 @@ TEST(RaggedShapeOpsTest, StackMoreAxes) {
   }
 }
 
+TEST(RaggedShapeOpsTest, Unstack) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    RaggedShape shape(c, "[ [ [ [ x x ] [ x ] ] [ [ x ] [ x x ] ] ]"
+                         "  [ [ [ x x x ] ] ] ]");
+    // axis = 0
+    std::vector<RaggedShape> out;
+    std::vector<Array1<int32_t>> out_map;
+    Unstack(shape, 0, &out, &out_map);
+
+    K2_CHECK(Equal(out[0],
+          RaggedShape(c, "[ [ [ x x ] [ x ] ] [ [ x ] [ x x ] ] ]")));
+    K2_CHECK(Equal(out_map[0],
+          Array1<int32_t>(c, std::vector<int32_t>{0, 1, 2, 3, 4, 5})));
+    K2_CHECK(Equal(out[1],
+          RaggedShape(c, "[ [ [ x x x ] ] ]")));
+    K2_CHECK(Equal(out_map[1],
+          Array1<int32_t>(c, std::vector<int32_t>{6, 7, 8})));
+
+    std::vector<RaggedShape *> out_ptr;
+    for (size_t i = 0; i < out.size(); ++i) out_ptr.emplace_back(&(out[i]));
+    auto dest = Stack(0, out.size(), out_ptr.data());
+    K2_CHECK(Equal(dest, shape));
+
+    // axis = 1
+    Unstack(shape, 1, &out, &out_map);
+    K2_CHECK(Equal(out[0],
+          RaggedShape(c, "[ [ [ x x ] [ x ] ] [ [ x x x ] ] ]")));
+    K2_CHECK(Equal(out_map[0],
+          Array1<int32_t>(c, std::vector<int32_t>{0, 1, 2, 6, 7, 8})));
+    K2_CHECK(Equal(out[1],
+          RaggedShape(c, "[ [ [ x ] [ x x ] ] [ ] ]")));
+    K2_CHECK(Equal(out_map[1],
+          Array1<int32_t>(c, std::vector<int32_t>{3, 4, 5})));
+
+    out_ptr.clear();
+    for (size_t i = 0; i < out.size(); ++i) out_ptr.emplace_back(&(out[i]));
+    dest = Stack(1, out.size(), out_ptr.data());
+    dest = RemoveEmptyLists(dest, 1);
+    K2_CHECK(Equal(dest, shape));
+
+    // axis = 2
+    Unstack(shape, 2, &out, &out_map);
+    K2_CHECK(Equal(out[0],
+          RaggedShape(c, "[ [ [ x x ] [ x ] ] [ [ x x x ] ] ]")));
+    K2_CHECK(Equal(out_map[0],
+          Array1<int32_t>(c, std::vector<int32_t>{0, 1, 3, 6, 7, 8})));
+    K2_CHECK(Equal(out[1],
+          RaggedShape(c, "[ [ [ x ] [ x x ] ] [ [ ] ] ]")));
+    K2_CHECK(Equal(out_map[1],
+          Array1<int32_t>(c, std::vector<int32_t>{2, 4, 5})));
+
+    out_ptr.clear();
+    for (size_t i = 0; i < out.size(); ++i) out_ptr.emplace_back(&(out[i]));
+    dest = Stack(2, out.size(), out_ptr.data());
+    dest = RemoveEmptyLists(dest, 2);
+    K2_CHECK(Equal(dest, shape));
+
+    // axis = 3
+    Unstack(shape, 3, &out, &out_map);
+    K2_CHECK(Equal(out[0],
+          RaggedShape(c, "[ [ [ x x ] [ x x ] ] [ [ x ] ] ]")));
+    K2_CHECK(Equal(out_map[0],
+          Array1<int32_t>(c, std::vector<int32_t>{0, 2, 3, 4, 6})));
+    K2_CHECK(Equal(out[1],
+          RaggedShape(c, "[ [ [ x ] [ x ] ] [ [ x ] ] ]")));
+    K2_CHECK(Equal(out_map[1],
+          Array1<int32_t>(c, std::vector<int32_t>{1, 5, 7})));
+    K2_CHECK(Equal(out[2],
+          RaggedShape(c, "[ [ [ ] [ ] ] [ [ x ] ] ]")));
+    K2_CHECK(Equal(out_map[2],
+          Array1<int32_t>(c, std::vector<int32_t>{8})));
+    // can not test Stack here, because the element numbers of axis 3 is not
+    // the same
+
+    // Test NumAxes() == 2
+    shape = RaggedShape(c, "[ [ x x ] [ x x x ] [ x ] ]");
+
+    // axis = 0
+    Unstack(shape, 0, &out, &out_map);
+    K2_CHECK(Equal(out[0],
+          RaggedShape(c, "[ [ x x ] ]")));
+    K2_CHECK(Equal(out_map[0],
+          Array1<int32_t>(c, std::vector<int32_t>{0, 1})));
+    K2_CHECK(Equal(out[1],
+          RaggedShape(c, "[ [ x x x ] ]")));
+    K2_CHECK(Equal(out_map[1],
+          Array1<int32_t>(c, std::vector<int32_t>{2, 3, 4})));
+    K2_CHECK(Equal(out[2],
+          RaggedShape(c, "[ [ x ] ]")));
+    K2_CHECK(Equal(out_map[2],
+          Array1<int32_t>(c, std::vector<int32_t>{5})));
+
+    out_ptr.clear();
+    for (size_t i = 0; i < out.size(); ++i) out_ptr.emplace_back(&(out[i]));
+    dest = Stack(0, out.size(), out_ptr.data());
+    dest = RemoveAxis(dest, 1);
+    K2_CHECK(Equal(dest, shape));
+
+    // axis = 1
+    Unstack(shape, 1, &out, &out_map);
+    K2_CHECK(Equal(out[0],
+          RaggedShape(c, "[ [ x x x ] ]")));
+    K2_CHECK(Equal(out_map[0],
+          Array1<int32_t>(c, std::vector<int32_t>{0, 2, 5})));
+    K2_CHECK(Equal(out[1],
+          RaggedShape(c, "[ [ x x ] ]")));
+    K2_CHECK(Equal(out_map[1],
+          Array1<int32_t>(c, std::vector<int32_t>{1, 3})));
+    K2_CHECK(Equal(out[2],
+          RaggedShape(c, "[ [ x ] ]")));
+    K2_CHECK(Equal(out_map[2],
+          Array1<int32_t>(c, std::vector<int32_t>{4})));
+    // can not test Stack here, because the element numbers of axis 3 is not
+    // the same
+  }
+}
+
+TEST(RaggedShapeOpsTest, UnstackRandom) {
+  RaggedShape random_shape_ = RandomRaggedShape(true,   // set_row_ids
+                                                3,      // min_num_axes
+                                                3,      // max_num_axes
+                                                1,      // min_num_elements
+                                                100);   // max_num_elements
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    auto random_shape0 = random_shape_.To(c);
+    std::vector<RaggedShape> out;
+    std::vector<RaggedShape *> out_ptr;
+    for (int32_t axis = 0; axis < 2; axis++) {
+      auto random_shape = RemoveEmptyLists(random_shape0, axis);
+
+      Unstack(random_shape, axis, &out, nullptr);
+
+      out_ptr.clear();
+      for (size_t i = 0; i < out.size(); ++i) {
+        out_ptr.emplace_back(&(out[i]));
+      }
+      auto dest = Stack(axis, out.size(), out_ptr.data());
+      dest = RemoveEmptyLists(dest, axis);
+
+      K2_CHECK(Equal(dest, random_shape));
+    }
+  }
+}
 
 class RaggedShapeOpsSuiteTest : public ::testing::Test {
  protected:
@@ -1549,7 +1692,6 @@ TEST(RaggedShapeOpsTest, TestIndex) {
   }
 }
 
-
 TEST(RaggedShapeOpsTest, TestIndexAxis1) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     {
@@ -2794,6 +2936,124 @@ static void TestPadRagged() {
 TEST(RaggedTest, TestPadRagged) {
   TestPadRagged<int32_t>();
   TestPadRagged<double>();
+}
+
+
+template <typename T>
+static void TestPruneRagged() {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<T> src(c, "[ [ [ 1.1 2.1 5.2 ] [ 1.0 5.1 ] [ 6.1 ] ] "
+                         "  [ [ 1.2 ] [ 2.2 6.3 ] [ ] ] "
+                         "  [ [ 1.3 4.4 ] [ 2.3 5.0 ] ] ]");
+
+    T beam = 2.0;
+    auto renumbering = PruneRagged(src, 0, beam, 2);
+    // best_score=6.3, best scores for sublists are [6.1, 6.3, 5.0]
+    // no sublist is pruned by beam, 5.0 is pruned by max-elems
+    // keep : [ [ [ 1.1 2.1 5.2 ] [ 1.0 5.1 ] [ 6.1 ] ]
+    //          [ [ 1.2 ] [ 2.2 6.3 ] [ ] ] ]
+    Array1<char> keep_ref(c, std::vector<char>{1, 1, 0});
+    K2_CHECK(Equal(renumbering.Keep(), keep_ref));
+
+    beam = 0.1;
+    renumbering = PruneRagged(src, 0, beam, 3);
+    // best_score=6.3, best scores for sublists are [6.1, 6.3, 5.0]
+    // 6.1 & 5.0 are pruned by beam
+    // keep : [ [ [ 1.2 ] [ 2.2 6.3 ] [ ] ] ]
+    keep_ref = Array1<char>(c, std::vector<char>{0, 1, 0});
+    K2_CHECK(Equal(renumbering.Keep(), keep_ref));
+
+    beam = 2.0;
+    renumbering = PruneRagged(src, 1, beam, 5);
+    // best_score=6.3, best scores for sublists are
+    // [5.2, 5.1, 6.1, 1.2, 6.3, -inf, 4.4, 5.0]
+    // 1.2 & -inf are pruned by beam, 4.4 is pruned by max-elems.
+    // keep : [ [ [ 1.1 2.1 5.2 ] [ 1.0 5.1 ] [ 6.1 ] ] [ [ 2.2 6.3 ] ]
+    //          [ [ 2.3 5.0 ] ] ]
+    keep_ref = Array1<char>(c, std::vector<char>{1, 1, 1, 0, 1, 0, 0, 1});
+    K2_CHECK(Equal(renumbering.Keep(), keep_ref));
+
+    beam = 1.0;
+    renumbering = PruneRagged(src, 1, beam, 5);
+    // best_score=6.3, best scores for sublists are
+    // [5.2, 5.1, 6.1, 1.2, 6.3, -inf, 4.4, 5.0]
+    // all sublists are pruned by beam, except 6.1 & 6.3
+    // keep : [ [ [ 6.1 ] ] [ [ 2.2 6.3 ] ] ]
+    keep_ref = Array1<char>(c, std::vector<char>{0, 0, 1, 0, 1, 0, 0, 0});
+    K2_CHECK(Equal(renumbering.Keep(), keep_ref));
+
+    beam = 4.0;
+    renumbering = PruneRagged(src, 2, beam, 3);
+    // best scores for sublists are
+    // [5.2, 5.1, 6.1, 1.2, 6.3, -inf, 4.4, 5.0]
+    // 1.1, 1.0, 2.2 are pruned by beam.
+    // keep : [ [ [ 2.1 5.2 ] [ 5.1 ] [ 6.1 ] ] [ [ 1.2 ] [ 6.3 ] ]
+    //          [ [ 1.3 4.4 ] [ 2.3 5.0 ] ] ]
+    keep_ref = Array1<char>(c,
+      std::vector<char>{0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1});
+    K2_CHECK(Equal(renumbering.Keep(), keep_ref));
+
+    beam = 5.0;
+    renumbering = PruneRagged(src, 2, beam, 2);
+    // best scores for sublists are
+    // [5.2, 5.1, 6.1, 1.2, 6.3, -inf, 4.4, 5.0]
+    // 1.1 is pruned by max-elems.
+    // keep : [ [ [ 2.1 5.2 ] [ 1.0 5.1 ] [ 6.1 ] ] [ [ 1.2 ] [ 2.2 6.3 ] ]
+    //          [ [ 1.3 4.4 ] [ 2.3 5.0 ] ] ]
+    keep_ref = Array1<char>(c,
+      std::vector<char>{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+    K2_CHECK(Equal(renumbering.Keep(), keep_ref));
+  }
+}
+
+TEST(RaggedTest, TestPruneRagged) {
+  TestPruneRagged<float>();
+  TestPruneRagged<double>();
+}
+
+template <typename T>
+static void TestPruneRaggedAndSubsampleRagged() {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<T> src(c, "[ [ [ 1.1 4.2 2.1 1.8 ] [ 5.0 3.1 ] ] "
+                         "  [ [ 1.2 ] [ 2.2 6.3 ] [ 2.4 6.1 ] [ 5.1 ] ] "
+                         "  [ [ 1.3 4.4 ] [ 1.4 0.8 2.3 5.2 3.6 ] ] ]");
+    T beam = 1.0;
+    auto renumbering = PruneRagged(src, 0, beam, 3);
+    Array1<int32_t> new2old;
+    auto dest = SubsampleRagged(src, renumbering, 0, &new2old);
+    Ragged<T> dest_ref(c,
+        "[ [ [ 1.2 ] [ 2.2 6.3 ] [ 2.4 6.1 ] [ 5.1 ] ] ]");
+    Array1<int32_t> new2old_ref(c, std::vector<int32_t>{6, 7, 8, 9, 10, 11});
+    K2_CHECK(Equal(dest, dest_ref));
+    K2_CHECK(Equal(new2old, new2old_ref));
+
+    beam = 2.0;
+    renumbering = PruneRagged(src, 1, beam, 5);
+    dest = SubsampleRagged(src, renumbering, 1, &new2old);
+    dest_ref = Ragged<T>(c,
+        "[ [ [ 5.0 3.1 ] ] [ [ 2.2 6.3 ] [ 2.4 6.1 ] [ 5.1 ] ] "
+        "  [ [ 1.4 0.8 2.3 5.2 3.6 ] ] ]");
+    new2old_ref = Array1<int32_t>(c,
+        std::vector<int32_t>{4, 5, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18});
+    K2_CHECK(Equal(dest, dest_ref));
+    K2_CHECK(Equal(new2old, new2old_ref));
+
+    beam = 3.0;
+    renumbering = PruneRagged(src, 2, beam, 3);
+    dest = SubsampleRagged(src, renumbering, 2, &new2old);
+    dest_ref = Ragged<T>(c,
+        "[ [ [ 4.2 2.1 1.8 ] [ 5.0 3.1 ] ] [ [ 1.2 ] [ 6.3 ] [ 6.1 ] [ 5.1 ] ]"
+        "  [ [ 4.4 ] [ 2.3 5.2 3.6 ] ] ]");
+    new2old_ref = Array1<int32_t>(c,
+        std::vector<int32_t>{1, 2, 3, 4, 5, 6, 8, 10, 11, 13, 16, 17, 18});
+    K2_CHECK(Equal(dest, dest_ref));
+    K2_CHECK(Equal(new2old, new2old_ref));
+  }
+}
+
+TEST(RaggedTest, TestPruneRaggedAndSubsampleRagged) {
+  TestPruneRaggedAndSubsampleRagged<float>();
+  TestPruneRaggedAndSubsampleRagged<double>();
 }
 
 }  // namespace k2
