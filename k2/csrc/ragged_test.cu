@@ -2870,7 +2870,7 @@ TEST(RaggedTest, TestPruneRagged) {
 }
 
 template <typename T>
-static void TestPruneRaggedAndSubsampleRagged() {
+static void TestPruneRaggedAndSubsetRagged() {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     Ragged<T> src(c, "[ [ [ 1.1 4.2 2.1 1.8 ] [ 5.0 3.1 ] ] "
                          "  [ [ 1.2 ] [ 2.2 6.3 ] [ 2.4 6.1 ] [ 5.1 ] ] "
@@ -2878,7 +2878,7 @@ static void TestPruneRaggedAndSubsampleRagged() {
     T beam = 1.0;
     auto renumbering = PruneRagged(src, 0, beam, 3);
     Array1<int32_t> new2old;
-    auto dest = SubsampleRagged(src, renumbering, 0, &new2old);
+    auto dest = SubsetRagged(src, renumbering, 0, &new2old);
     Ragged<T> dest_ref(c,
         "[ [ [ 1.2 ] [ 2.2 6.3 ] [ 2.4 6.1 ] [ 5.1 ] ] ]");
     Array1<int32_t> new2old_ref(c, std::vector<int32_t>{6, 7, 8, 9, 10, 11});
@@ -2887,7 +2887,7 @@ static void TestPruneRaggedAndSubsampleRagged() {
 
     beam = 2.0;
     renumbering = PruneRagged(src, 1, beam, 5);
-    dest = SubsampleRagged(src, renumbering, 1, &new2old);
+    dest = SubsetRagged(src, renumbering, 1, &new2old);
     dest_ref = Ragged<T>(c,
         "[ [ [ 5.0 3.1 ] ] [ [ 2.2 6.3 ] [ 2.4 6.1 ] [ 5.1 ] ] "
         "  [ [ 1.4 0.8 2.3 5.2 3.6 ] ] ]");
@@ -2898,7 +2898,7 @@ static void TestPruneRaggedAndSubsampleRagged() {
 
     beam = 3.0;
     renumbering = PruneRagged(src, 2, beam, 3);
-    dest = SubsampleRagged(src, renumbering, 2, &new2old);
+    dest = SubsetRagged(src, renumbering, 2, &new2old);
     dest_ref = Ragged<T>(c,
         "[ [ [ 4.2 2.1 1.8 ] [ 5.0 3.1 ] ] [ [ 1.2 ] [ 6.3 ] [ 6.1 ] [ 5.1 ] ]"
         "  [ [ 4.4 ] [ 2.3 5.2 3.6 ] ] ]");
@@ -2909,9 +2909,9 @@ static void TestPruneRaggedAndSubsampleRagged() {
   }
 }
 
-TEST(RaggedTest, TestPruneRaggedAndSubsampleRagged) {
-  TestPruneRaggedAndSubsampleRagged<float>();
-  TestPruneRaggedAndSubsampleRagged<double>();
+TEST(RaggedTest, TestPruneRaggedAndSubsetRagged) {
+  TestPruneRaggedAndSubsetRagged<float>();
+  TestPruneRaggedAndSubsetRagged<double>();
 }
 
 }  // namespace k2

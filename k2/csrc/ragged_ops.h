@@ -721,7 +721,7 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
 
   Notice the other version of this function below.
  */
-RaggedShape SubsampleRaggedShape(RaggedShape &src,
+RaggedShape SubsetRaggedShape(RaggedShape &src,
                                  Renumbering &renumbering,
                                  int32_t axis = -1,
                                  Array1<int32_t> *elems_new2old = nullptr);
@@ -736,7 +736,7 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src,
   Note: all dimensions and tot-sizes preceding the last two axes will remain the
   same, which might give rise to empty lists.
  */
-RaggedShape SubsampleRaggedShape(RaggedShape &src,
+RaggedShape SubsetRaggedShape(RaggedShape &src,
                                  Renumbering &renumbering_before_last,
                                  Renumbering &renumbering_last);
 
@@ -846,20 +846,20 @@ RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
        necessary with RemoveEmptyLists().
  */
 template <typename T>
-Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering,
+Ragged<T> SubsetRagged(Ragged<T> &src, Renumbering &renumbering,
                           int32_t axis = -1,
                           Array1<int32_t> *elems_new2old = nullptr) {
   Array1<int32_t> tmp;
   if (elems_new2old == nullptr)
     elems_new2old = &tmp;
-  RaggedShape shape = SubsampleRaggedShape(src.shape, renumbering,
+  RaggedShape shape = SubsetRaggedShape(src.shape, renumbering,
                                            axis, elems_new2old);
   return Ragged<T>(shape, src.values[*elems_new2old]);
 }
 
 /*
   This function creates a Renumbering object that can be used to obtain subsets
-  of ragged arrays via SubsampleRaggedShape().  It implements beam pruning as
+  of ragged arrays via SubsetRaggedShape().  It implements beam pruning as
   used in pruned Viterbi search and similar algorithms, where there is both a
   beam and a max-active (`max_elems`) constraint.  T will probably be float or
   double, interpreted as a "positive-is-better" sense, i.e. as scores.
@@ -896,17 +896,6 @@ Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering,
       PruneRagged([ [0 -1 -2 -3], [ -10, -20 ], [ ] ], 0, 5.0, 0)
     would create a Renumbering object that would prune the
     ragged tensor to [ [0 -1 -2 -3] ]
-
-
-  TODO: don't forget to change subsample->subset when we rename
-         SubsampleRaggedShape().
-  IMPLEMENTATION NOTES (please delete later):
-    - We might want/need to treat certain cases specially, e.g.
-      the case when axis == src.NumAxes() - 1, and/or when
-      axis == 0.
-    - If `max_elems` is <= 0, we might want to choose a different
-      implementation, e.g. using max on the sub-lists rather
-      than sorting.
  */
 template <typename T>
 Renumbering PruneRagged(Ragged<T> &src,
@@ -1347,7 +1336,7 @@ Ragged<T> Merge(int32_t num_srcs, Ragged<T> **src,
 /*
   Returns a ragged tensor after removing all 'values' that were <= a provided
   cutoff.  Leaves all layers of the shape except for the last one unaffected.
-  Equivalent to SubsampleRaggedShape with a numbering given by (src.values[i] <=
+  Equivalent to SubsetRaggedShape with a numbering given by (src.values[i] <=
   cutoff).
  */
 template <typename T>
@@ -1356,7 +1345,7 @@ Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff);
 /*
   Returns a ragged tensor after removing all 'values' that equal a provided
   target.  Leaves all layers of the shape except for the last one unaffected.
-  Equivalent to SubsampleRaggedShape with a numbering given by (src.values[i] ==
+  Equivalent to SubsetRaggedShape with a numbering given by (src.values[i] ==
   target).
 */
 template <typename T>

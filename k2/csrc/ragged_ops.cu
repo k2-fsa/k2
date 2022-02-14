@@ -564,7 +564,7 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
   if (axis == 0) {
     return IndexAxis0(src, indexes, elem_indexes);
   } else if (axis == src.NumAxes() - 1) {
-    // This code is related to SubsampleRaggedShape(). `indexes` corresponds
+    // This code is related to SubsetRaggedShape(). `indexes` corresponds
     // to `new2old`.
     Array1<int32_t> last_row_ids = src.RowIds(num_axes - 1)[indexes];
 #ifndef NDEBUG
@@ -1632,7 +1632,7 @@ Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
   return Ragged<int32_t>(dst_shape, dst_values);
 }
 
-RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering,
+RaggedShape SubsetRaggedShape(RaggedShape &src, Renumbering &renumbering,
                                  int32_t axis, Array1<int32_t> *elems_new2old) {
   NVTX_RANGE(K2_FUNC);
   axis = axis < 0 ? src.NumAxes() + axis : axis;
@@ -1640,7 +1640,7 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering,
   return Index(src, axis, renumbering.New2Old(), elems_new2old);
 }
 
-RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &r_before_last,
+RaggedShape SubsetRaggedShape(RaggedShape &src, Renumbering &r_before_last,
                                  Renumbering &r_last) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(r_before_last.NumOldElems(), src.TotSize(src.NumAxes() - 2));
@@ -1786,7 +1786,7 @@ RaggedShape RemoveEmptyLists(RaggedShape &src_shape, int32_t axis,
   Renumbering r_temp;
   if (!renumbering_out) renumbering_out = &r_temp;
   bottom_shape = RemoveEmptyListsAxis0(bottom_shape, renumbering_out);
-  top_shape = SubsampleRaggedShape(top_shape, *renumbering_out);
+  top_shape = SubsetRaggedShape(top_shape, *renumbering_out);
   return ComposeRaggedShapes(top_shape, bottom_shape);
 }
 
@@ -1800,7 +1800,7 @@ RaggedShape RemoveSomeEmptyLists(RaggedShape &src_shape, int32_t axis,
   DecomposeRaggedShape(src_shape, axis, &top_shape, &bottom_shape);
 
   bottom_shape = RenumberAxis0Simple(bottom_shape, renumbering);
-  top_shape = SubsampleRaggedShape(top_shape, renumbering);
+  top_shape = SubsetRaggedShape(top_shape, renumbering);
   return ComposeRaggedShapes(top_shape, bottom_shape);
 }
 

@@ -420,7 +420,7 @@ TEST(RaggedShapeTest, RandomRaggedShape) {
   }
 }
 
-TEST(RaggedShapeTest, SubsampleRaggedShape) {
+TEST(RaggedShapeTest, SubsetRaggedShape) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
       RaggedShape src(c,
           "[ [ [ x x ] [ x ] ] [ [ x x x ] [ ] ] [ [ x ] [ x x ] ] ]");
@@ -430,14 +430,14 @@ TEST(RaggedShapeTest, SubsampleRaggedShape) {
       auto &keep = renumbering.Keep();
       keep.CopyFrom(ref_keep);
       Array1<int32_t> new2old;
-      auto dest = SubsampleRaggedShape(src, renumbering, 2, &new2old);
+      auto dest = SubsetRaggedShape(src, renumbering, 2, &new2old);
       Array1<int32_t> ref_new2old(c, std::vector<int32_t>({0, 2, 5, 7}));
       RaggedShape ref_dest(c,
           "[ [ [ x ] [ x ] ] [ [ x ] [ ] ] [ [ ] [ x ] ] ]");
       EXPECT_TRUE(Equal(dest, ref_dest));
       EXPECT_TRUE(Equal(new2old, ref_new2old));
       // test axis = -1
-      dest = SubsampleRaggedShape(src, renumbering, -1, &new2old);
+      dest = SubsetRaggedShape(src, renumbering, -1, &new2old);
       EXPECT_TRUE(Equal(dest, ref_dest));
       EXPECT_TRUE(Equal(new2old, ref_new2old));
 
@@ -447,13 +447,13 @@ TEST(RaggedShapeTest, SubsampleRaggedShape) {
       renumbering = Renumbering(c, src.TotSize(1));
       keep = renumbering.Keep();
       keep.CopyFrom(ref_keep);
-      dest = SubsampleRaggedShape(src, renumbering, 1, &new2old);
+      dest = SubsetRaggedShape(src, renumbering, 1, &new2old);
       ref_new2old = Array1<int32_t>(c, std::vector<int32_t>({0, 1, 6, 7, 8}));
       ref_dest = RaggedShape(c, "[ [ [ x x ] ] [ [ ] ] [ [ x ] [ x x ] ] ]");
       EXPECT_TRUE(Equal(dest, ref_dest));
       EXPECT_TRUE(Equal(new2old, ref_new2old));
       // test axis = -2
-      dest = SubsampleRaggedShape(src, renumbering, -2, &new2old);
+      dest = SubsetRaggedShape(src, renumbering, -2, &new2old);
       EXPECT_TRUE(Equal(dest, ref_dest));
       EXPECT_TRUE(Equal(new2old, ref_new2old));
 
@@ -463,14 +463,14 @@ TEST(RaggedShapeTest, SubsampleRaggedShape) {
       renumbering = Renumbering(c, src.TotSize(0));
       keep = renumbering.Keep();
       keep.CopyFrom(ref_keep);
-      dest = SubsampleRaggedShape(src, renumbering, 0, &new2old);
+      dest = SubsetRaggedShape(src, renumbering, 0, &new2old);
       ref_new2old = Array1<int32_t>(c,
           std::vector<int32_t>({0, 1, 2, 6, 7, 8}));
       ref_dest = RaggedShape(c, "[ [ [ x x ] [ x ] ] [ [ x ] [ x x ] ] ]");
       EXPECT_TRUE(Equal(dest, ref_dest));
       EXPECT_TRUE(Equal(new2old, ref_new2old));
       // test axis = -3
-      dest = SubsampleRaggedShape(src, renumbering, -3, &new2old);
+      dest = SubsetRaggedShape(src, renumbering, -3, &new2old);
       EXPECT_TRUE(Equal(dest, ref_dest));
       EXPECT_TRUE(Equal(new2old, ref_new2old));
   }

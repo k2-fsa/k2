@@ -232,7 +232,7 @@ Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff) {
   K2_EVAL(
       c, src.NumElements(), lambda_set_keep,
       (int32_t i)->void { keep[i] = (char)(values_data[i] > cutoff); });
-  return SubsampleRagged(src, r);
+  return SubsetRagged(src, r);
 }
 
 template <typename T>
@@ -245,7 +245,7 @@ Ragged<T> RemoveValuesEq(Ragged<T> &src, T target) {
   K2_EVAL(
       c, src.NumElements(), lambda_set_keep,
       (int32_t i)->void { keep[i] = (char)(values_data[i] != target); });
-  return SubsampleRagged(src, r);
+  return SubsetRagged(src, r);
 }
 
 // Recursive function that prints (part of) a ragged shape.
