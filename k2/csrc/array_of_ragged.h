@@ -30,22 +30,11 @@
 namespace k2 {
 
 /*
-  ArrayOfRagged<T> is a 1-dimensional array of Ragged<T>.
-  It is intended for situations where you want to do some operations on
-  arrays of ragged arrays, without explicitly concatenating them (e.g. to
-  save time).   This is a fairly low-level interface, intended to
-  be used mostly by CUDA/C++ implementation code.  It is a convenience
-  wrapper that saves you the trouble of creating arrays of pointers.
- */
-
-
-/*
   ArrayOfRaggedShape is a convenience function that gives you easy access
   to pointers-of-pointers for an array of ragged shapes.
  */
 class Array1OfRaggedShape {
  public:
-
   /*
     Constructor.
     Args:
@@ -57,7 +46,6 @@ class Array1OfRaggedShape {
    the MetaRowSplits() and MetaRowIds() are to be pre-populated; this should
    enable us to save kernels by combining certain operations across the
    axes.
-
   */
   ArrayOfRaggedShape(RaggedShape *src,
                      int32_t num_srcs);
@@ -126,7 +114,7 @@ class Array1OfRaggedShape {
     this is the cumulative sum of the TotSize(axis) for all of the sources,
     with MetaRowSplits(axis).Dim() == NumSrcs() + 1.
 
-    Note: in ragged_opts.cu we refer to this as composed_row_splits
+    Note: in ragged_ops.cu we refer to this as composed_row_splits
   */
   Array1<int32_t> MetaRowSplits(int32_t axis);
 
@@ -153,7 +141,14 @@ class Array1OfRaggedShape {
 };
 
 
-
+/*
+  ArrayOfRagged<T> is a 1-dimensional array of Ragged<T>.
+  It is intended for situations where you want to do some operations on
+  arrays of ragged arrays, without explicitly concatenating them (e.g. to
+  save time).   This is a fairly low-level interface, intended to
+  be used mostly by CUDA/C++ implementation code.  It is a convenience
+  wrapper that saves you the trouble of creating arrays of pointers.
+ */
 template <typename T>
 struct Array1OfRagged {
 
@@ -169,8 +164,6 @@ struct Array1OfRagged {
                 int32_t num_srcs);
 
 }
-
-
 
 }  // namespace k2
 

@@ -186,6 +186,9 @@ void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
 RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
                   Array1<uint32_t> *merge_map = nullptr);
 
+void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
+             std::vector<Array1<int32_t>> *split_map = nullptr);
+
 /*
   Return a modified version of `src` in which all sub-lists on the last axis of
   the tenor have size modified by `size_delta`.  `size_delta` may have either
