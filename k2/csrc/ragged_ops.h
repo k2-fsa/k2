@@ -722,9 +722,9 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
   Notice the other version of this function below.
  */
 RaggedShape SubsetRaggedShape(RaggedShape &src,
-                                 Renumbering &renumbering,
-                                 int32_t axis = -1,
-                                 Array1<int32_t> *elems_new2old = nullptr);
+                              Renumbering &renumbering,
+                              int32_t axis = -1,
+                              Array1<int32_t> *elems_new2old = nullptr);
 
 
 /*
@@ -737,8 +737,8 @@ RaggedShape SubsetRaggedShape(RaggedShape &src,
   same, which might give rise to empty lists.
  */
 RaggedShape SubsetRaggedShape(RaggedShape &src,
-                                 Renumbering &renumbering_before_last,
-                                 Renumbering &renumbering_last);
+                              Renumbering &renumbering_before_last,
+                              Renumbering &renumbering_last);
 
 /*
   Removes empty lists on a particular axis (not last axis) of a RaggedShape,
@@ -847,8 +847,8 @@ RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
  */
 template <typename T>
 Ragged<T> SubsetRagged(Ragged<T> &src, Renumbering &renumbering,
-                          int32_t axis = -1,
-                          Array1<int32_t> *elems_new2old = nullptr) {
+                       int32_t axis = -1,
+                       Array1<int32_t> *elems_new2old = nullptr) {
   Array1<int32_t> tmp;
   if (elems_new2old == nullptr)
     elems_new2old = &tmp;

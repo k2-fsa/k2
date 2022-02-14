@@ -1633,7 +1633,7 @@ Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
 }
 
 RaggedShape SubsetRaggedShape(RaggedShape &src, Renumbering &renumbering,
-                                 int32_t axis, Array1<int32_t> *elems_new2old) {
+                              int32_t axis, Array1<int32_t> *elems_new2old) {
   NVTX_RANGE(K2_FUNC);
   axis = axis < 0 ? src.NumAxes() + axis : axis;
   K2_CHECK_EQ(renumbering.NumOldElems(), src.TotSize(axis));
@@ -1641,7 +1641,7 @@ RaggedShape SubsetRaggedShape(RaggedShape &src, Renumbering &renumbering,
 }
 
 RaggedShape SubsetRaggedShape(RaggedShape &src, Renumbering &r_before_last,
-                                 Renumbering &r_last) {
+                              Renumbering &r_last) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(r_before_last.NumOldElems(), src.TotSize(src.NumAxes() - 2));
   K2_CHECK_EQ(r_last.NumOldElems(), src.NumElements());

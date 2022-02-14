@@ -441,7 +441,6 @@ TEST(RaggedShapeTest, SubsetRaggedShape) {
       EXPECT_TRUE(Equal(dest, ref_dest));
       EXPECT_TRUE(Equal(new2old, ref_new2old));
 
-
       // axis = 1
       ref_keep = Array1<char>(c, std::vector<char>({1, 0, 0, 1, 1, 1}));
       renumbering = Renumbering(c, src.TotSize(1));
@@ -456,7 +455,6 @@ TEST(RaggedShapeTest, SubsetRaggedShape) {
       dest = SubsetRaggedShape(src, renumbering, -2, &new2old);
       EXPECT_TRUE(Equal(dest, ref_dest));
       EXPECT_TRUE(Equal(new2old, ref_new2old));
-
 
       // axis = 0
       ref_keep = Array1<char>(c, std::vector<char>({1, 0, 1}));

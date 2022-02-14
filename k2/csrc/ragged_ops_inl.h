@@ -805,8 +805,8 @@ Renumbering PruneRaggedAxis0(Ragged<T> &src, T beam, int32_t max_elems) {
 
 // Prune a two axes ragged tensor on axis1
 template <typename T>
-Renumbering PruneRaggedLastAxis(Ragged<T> &src, T beam,
-                                int32_t max_elems) {
+Renumbering PruneRaggedAxis1(Ragged<T> &src, T beam,
+                             int32_t max_elems) {
   K2_CHECK_EQ(src.NumAxes(), 2);
   const ContextPtr &c = src.Context();
   int32_t total_elements = src.TotSize(1);
@@ -873,7 +873,7 @@ Renumbering PruneRagged(Ragged<T> &src, int32_t axis, T beam,
     while (reduced_src.NumAxes() > 2) {
       reduced_src = RemoveAxis(reduced_src, 0);
     }
-    return PruneRaggedLastAxis(reduced_src, beam, max_elems);
+    return PruneRaggedAxis1(reduced_src, beam, max_elems);
   } else {
     RaggedShape top, bottom;
     DecomposeRaggedShape(src.shape, axis, &top, &bottom);
