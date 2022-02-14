@@ -1375,7 +1375,7 @@ RaggedShape Merge(int32_t num_srcs, RaggedShape **src,
 
 RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
   NVTX_RANGE(K2_FUNC);
-  // row_splits= [0, num_elems]
+  // row_splits= [
   Array1<int32_t> row_splits = Range<int32_t>(c, 2, 0, num_elems);
   Array1<int32_t> row_ids(c, num_elems, 0);
   return RaggedShape2(&row_splits, &row_ids, num_elems);
@@ -1881,12 +1881,17 @@ Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
   return Ragged<int32_t>(dst_shape, dst_values);
 }
 
-RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering,
-                                 int32_t axis, Array1<int32_t> *elems_new2old) {
+RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {
   NVTX_RANGE(K2_FUNC);
-  axis = axis < 0 ? src.NumAxes() + axis : axis;
-  K2_CHECK_EQ(renumbering.NumOldElems(), src.TotSize(axis));
-  return Index(src, axis, renumbering.New2Old(), elems_new2old);
+  K2_CHECK_EQ(renumbering.NumOldElems(), src.NumElements());
+
+  // Make sure final row-ids are populated.
+  src.RowIds(src.NumAxes() - 1);
+  std::vector<RaggedShapeLayer> axes = src.Layers();
+  axes.back().row_ids = axes.back().row_ids[renumbering.New2Old()];
+  axes.back().row_splits = renumbering.Old2New()[axes.back().row_splits];
+  axes.back().cached_tot_size = axes.back().row_ids.Dim();
+  return RaggedShape(axes);
 }
 
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &r_before_last,
