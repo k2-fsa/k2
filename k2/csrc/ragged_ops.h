@@ -858,6 +858,10 @@ template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
                 Array1<uint32_t> *merge_map = nullptr);
 
+template <typename T>
+void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
+             std::vector<Array1<int32_t>> *split_map = nullptr);
+
 /*
    Concatenate a list of Ragged<T> to form a single Ragged<T>.
 
