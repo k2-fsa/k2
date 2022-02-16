@@ -111,9 +111,7 @@ class Renumbering {
                   (pre-renumbering) indexes. Its dimension is the number of
                   new indexes (i.e. the number of 1 in keep_), but internally
                   it has one extra element which contains the number of old
-                  elements, so it's OK to read one past the end.  (We may
-                  later make it possible to access the array with the one-larger
-                  dimension).
+                  elements, so it's OK to read one past the end.
   */
   Array1<int32_t> &New2Old() {
     NVTX_RANGE(K2_FUNC);

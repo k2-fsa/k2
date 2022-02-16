@@ -707,7 +707,7 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
     @param [in] renumbering  The renumbering object that dictates
                     which elements of `src` we keep; we require
                     renumbering.NumOldElems() == src.TotSize(axis2)
-                    where axis2 = (axis < 0 ? src.NumAxes() - axis : axis).
+                    where axis2 = (axis < 0 ? src.NumAxes() + axis : axis).
     @param [in] axis  The axis to subsample; if negative, will be
                     interpreted as an offset from src.NumAxes().
     @param [out] elems_new2old   If supplied, this function will
@@ -715,7 +715,7 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
                     dictates how the elements of a ragged tensor
                     with shape `src` would be renumbered.
     @return  Returns the subsampled shape. All dimensions and tot-sizes
-       preceding the final axis will remain the same, which might give
+       preceding the axis `axis` will remain the same, which might give
        rise to empty lists on those axes; these can be removed if
        necessary with RemoveEmptyLists().
 
@@ -841,7 +841,7 @@ RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
                     dictates how the elements of a ragged tensor
                     with shape `src` would be renumbered.
     @return  Returns the subsampled shape. All dimensions and tot-sizes
-       preceding the final axis will remain the same, which might give
+       preceding the axis `axis` will remain the same, which might give
        rise to empty lists on those axes; these can be removed if
        necessary with RemoveEmptyLists().
  */
@@ -866,7 +866,7 @@ Ragged<T> SubsetRagged(Ragged<T> &src, Renumbering &renumbering,
 
    @param [in] src  The ragged object to be subsampled.
    @param [in] axis  The axis to be subsampled, must satisfy
-              0 <= axis < src.NumAxes().  The axis before `axis`, if axis < 0,
+              0 <= axis < src.NumAxes().  The axis before `axis`, if axis > 0,
               will be interpreted as a "batch" axis.
    @param [in] beam  The main pruning beam.  The sub-lists of elements on axis
               `axis` will be removed if their maximum element (or the element
@@ -874,17 +874,15 @@ Ragged<T> SubsetRagged(Ragged<T> &src, Renumbering &renumbering,
               this_best_elem - beam, where this_best_elem
               is the maximum element taken over axis `axis-1` (or over the
               entire array, if axis == 0).   Think of axis `axis-1`, if
-              present, as the "batch" axis, and axis `axis` as the axis that we
+              axis > 0, as the "batch" axis, and axis `axis` as the axis that we
               actually remove elements or sub-lists on.  Empty sub-lists on axis
               `axis` will always be pruned, as their score would be treated
               as -infinity.
-   @param [in] max_elems  If max_elems > 0, it is the maximum number of sub-lists
-              or elements that are allowed within any sub-list on axis `axis-1`
-              (or the maximum number of top-level sub-lists after subsampling,
-              if axis == 0).  We keep the best ones, but behavior in case of ties is
-              undefined (TODO: check whether SortSublists() is a stable sort, and
-              change this doc if it is).  If max_elems <= 0, there is no such
-              constraint.
+   @param [in] max_elems  If max_elems > 0, it is the maximum number of
+              sub-lists or elements that are allowed within any sub-list
+              on axis `axis-1` (or the maximum number of top-level sub-lists
+              after subsampling, if axis == 0).  We keep the best ones.
+              If max_elems <= 0, there is no such constraint.
     @return  Returns the renumbering object to be used to actually
              prune/subsample the specified axis.
 
@@ -902,7 +900,6 @@ Renumbering PruneRagged(Ragged<T> &src,
                         int32_t axis,
                         T beam,
                         int32_t max_elems);
-
 
 /*
   Stack a list of Ragged arrays to create a Ragged array with one more axis.

@@ -317,9 +317,9 @@ static void SortSublistsCpu(Ragged<T> *src, Array1<int32_t> *order) {
     int32_t cur = row_splits[i];
     int32_t next = row_splits[i + 1];
     if (order != nullptr)
-      std::sort(order->Data() + cur, order->Data() + next, lambda_comp);
+      std::stable_sort(order->Data() + cur, order->Data() + next, lambda_comp);
 
-    std::sort(p + cur, p + next, comp);
+    std::stable_sort(p + cur, p + next, comp);
   }
 }
 
@@ -759,7 +759,11 @@ Array2<T> PadRagged(Ragged<T> &src, const std::string &mode, T padding_value) {
   return res;
 }
 
-// Prune a two axes ragged tensor on axis0
+/* Prune a two axes ragged tensor on axis0.
+ * This is a special case of PruneRagged with axis == 0 and src.NumAxes() == 2,
+ * To get more details, please refer to the docs for PruneRagged in
+ * ragged_ops.h.
+ */
 template <typename T>
 Renumbering PruneRaggedAxis0(Ragged<T> &src, T beam, int32_t max_elems) {
   K2_CHECK_EQ(src.NumAxes(), 2);
@@ -803,7 +807,11 @@ Renumbering PruneRaggedAxis0(Ragged<T> &src, T beam, int32_t max_elems) {
   return renumbering;
 }
 
-// Prune a two axes ragged tensor on axis1
+/* Prune a two axes ragged tensor on axis1
+ * This is a special case of PruneRagged with axis == 1 and src.NumAxes() == 2,
+ * To get more details, please refer to the docs for PruneRagged in
+ * ragged_ops.h.
+ */
 template <typename T>
 Renumbering PruneRaggedAxis1(Ragged<T> &src, T beam,
                              int32_t max_elems) {
