@@ -1104,7 +1104,31 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
   return RaggedShape(ans_layers);
 }
 
-static void IndexMultiAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
+/*
+  Select ragged tensor's shape on axis 0 with a two axes ragged indexes.
+
+    @param [in] src  Source RaggedShape to select.
+    @param [in] indexes  A `TWO` axes ragged tensor containing the indexes into
+                         the axis 0 of src. we also support -1 as an index,
+                         which will result in the empty list (as if it were the
+                         index into a position in `src` that had an empty list)
+                         i.e. with `-1 <= indexes[i] < src.TotSize(0)`.
+    @param [out] out  The container where the output RaggedShape will write to,
+                      MUST NOT be a nullptr. Will be reallocated and the final
+                      size of `out` would equal to `indexes.TotSize(0)`.
+                      Note, The NumAxes of output RaggedShape is the same as the
+                      NumAxes of src.
+    @param [out] split_map  If not nullptr will store the indexes mapping from
+                            the splited RaggedShape to original RaggedShape.
+                            Will be reallocated and the final size of
+                            `split_map` would equal to `indexes.TotSize(0)`.
+
+    Suppose indexes is `[ [ 0 3 5 ] [ 1 2 4] [ 6 -1 ] ]`, it means that we will
+    select elements 0,3,5 of src's axis 0 to construct the first output
+    RaggedShape, 1,2,4 to construct the second output RaggedShape, 6 and a empty
+    list to construct the third output RaggedShape.
+ */
+static void SelectAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
     std::vector<RaggedShape> *out, std::vector<Array1<int32_t>> *split_map) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
@@ -1129,6 +1153,7 @@ static void IndexMultiAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
   const int32_t *indexes_row_split1_data = indexes.RowSplits(1).Data(),
                 *indexes_row_ids1_data = indexes.RowIds(1).Data();
 
+  // Contains the `TotSize` of each axes of each output RaggedShape
   Array2<int32_t> tot_sizes(c, out_size, num_axes);
   Array2Accessor<int32_t> tot_sizes_acc = tot_sizes.Accessor();
   Array2Accessor<int32_t> new_offsets_acc = new_offsets.Accessor();
@@ -1145,7 +1170,7 @@ static void IndexMultiAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
   auto tot_sizes_cpu_acc = tot_sizes_cpu.Accessor();
   out->resize(out_size);
   if (split_map != nullptr) split_map->resize(out_size);
-  // We can not avoid this for loop on dim0, as we want to allocate mememory
+  // We can not avoid this for loop on dim0, as we want to allocate memory
   // seperately, may consider using a ThreadPool later.
   for (int32_t i = 0; i < out_size; ++i) {
     out->at(i) = RaggedShapeFromTotSizes(c,
@@ -1161,6 +1186,8 @@ static void IndexMultiAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
   RowIdsAccessor<5> old_row_ids_acc(src);
   auto old_offsets_acc = old_offsets.Accessor();
 
+  // axes_elems contains the elements number of each axes before splitting into
+  // different RaggedShape, it should equal to the Col sum of `tot_sizes` above.
   Array1<int32_t> axes_elems =
       Array1<int32_t>(new_offsets.Col(tot_elems)).To(GetCpuContext());
 
@@ -1201,17 +1228,22 @@ static void IndexMultiAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
           int32_t index_idx0 = indexes_row_ids1_data[idx01],
                   idx0x = indexes_row_split1_data[index_idx0];
           splits_ids_ptr_data[2 * index_idx0][idx01 - idx0x]
-              = new_offsets_acc(1, idx01) - new_offsets_acc(1, idx0x);
+              = new_offsets_acc(axis + 1, idx01) -
+                  new_offsets_acc(axis + 1, idx0x);
+
+          // Set the last elements of row_splits1 of each output shape
           if (idx01 == tot_elems - 1 ||
               index_idx0 != indexes_row_ids1_data[idx01 + 1]) {
             splits_ids_ptr_data[2 * index_idx0][idx01 - idx0x + 1]
-                = new_offsets_acc(1, idx01 + 1) - new_offsets_acc(1, idx0x);
+                = new_offsets_acc(axis + 1, idx01 + 1) -
+                    new_offsets_acc(axis + 1, idx0x);
           }
       });
       continue;
     }
 
     // set last element of each row_splits
+    // TODO: Integrate this kernel into the kernel below.
     if (axis < num_axes - 1) {
       K2_EVAL(c, out_size, lambda_set_last_row_splits, (int32_t idx0) {
           int32_t idx0x = indexes_row_split1_data[idx0],
@@ -1229,33 +1261,36 @@ static void IndexMultiAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
     }
 
     int32_t num_elems = axes_elems[axis];
+
+    // composed_row_ids maps current idx to idx01 of indexes
     Array1<int32_t> composed_row_ids(c, num_elems);
     RowSplitsToRowIds(new_offsets.Row(axis), &composed_row_ids);
 
     const int32_t *composed_row_ids_data = composed_row_ids.Data();
 
     K2_EVAL(c, num_elems, lambda_set_row_splits_and_ids, (int32_t i) {
+      // tot_elems = indexes.NumElements(), so tot_idx0 can be interpreted as
+      // index_idx01
       int32_t tot_idx0 = composed_row_ids_data[i],
               index_idx0 = indexes_row_ids1_data[tot_idx0],
               index_idx0x = indexes_row_split1_data[index_idx0],
 
-              job_begin_idx0 = new_offsets_acc(axis, index_idx0x),
+              begin_base = new_offsets_acc(axis, index_idx0x),
+              begin = new_offsets_acc(axis, tot_idx0),
+              this_idx0 = i - begin,
+              this_idx01 = i - begin_base;
 
-              job_begin = new_offsets_acc(axis, tot_idx0),
-              job_this_idx0 = i - job_begin,
-              job_this_idx01 = i - job_begin_idx0;
-
-      K2_CHECK_GE(job_this_idx0, 0);
-      K2_CHECK_GE(job_this_idx01, 0);
+      K2_CHECK_GE(this_idx0, 0);
+      K2_CHECK_GE(this_idx01, 0);
 
       // "prev" means for axis - 1
       int32_t new_prev_offset = new_offsets_acc(axis - 1, tot_idx0),
           old_prev_offset = old_offsets_acc(axis - 1, tot_idx0),
           old_offset = old_offsets_acc(axis, tot_idx0),
-          old_idx = old_offset + job_this_idx0;
+          old_idx = old_offset + this_idx0;
 
       if (split_map != nullptr && axis == num_axes - 1)
-        split_map_ptr_data[index_idx0][job_this_idx01] = old_idx;
+        split_map_ptr_data[index_idx0][this_idx01] = old_idx;
 
       // set row ids
       const int32_t *this_old_row_ids = old_row_ids_acc(axis - 1);
@@ -1263,7 +1298,7 @@ static void IndexMultiAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
           new_row_id = old_row_id + new_prev_offset - old_prev_offset,
           new_pre_offset_idx0x = new_offsets_acc(axis - 1, index_idx0x);
 
-      splits_ids_ptr_data[2 * index_idx0 + 1][job_this_idx01] =
+      splits_ids_ptr_data[2 * index_idx0 + 1][this_idx01] =
           new_row_id - new_pre_offset_idx0x;
 
       // set row splits
@@ -1275,7 +1310,7 @@ static void IndexMultiAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
         int32_t row_split_value =
             next_offset_diff + old_row_splits_data[old_idx],
                 new_next_offset_idx0x = new_offsets_acc(axis + 1, index_idx0x);
-        splits_ids_ptr_data[2 * index_idx0][job_this_idx01]
+        splits_ids_ptr_data[2 * index_idx0][this_idx01]
             = row_split_value - new_next_offset_idx0x;
       }
     });
@@ -1294,7 +1329,7 @@ void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
     auto indexes = Ragged<int32_t>(RegularRaggedShape(c, src.Dim0(), 1),
         Arange(c, 0, src.Dim0()));
 
-    IndexMultiAxis0(src, indexes, out, split_map);
+    SelectAxis0(src, indexes, out, split_map);
     for (size_t i = 0; i < out->size(); ++i) {
       out->at(i) = RemoveAxis(out->at(i), 0);
     }
@@ -1304,20 +1339,30 @@ void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
     const int32_t *row_splits_axis = src.RowSplits(axis).Data(),
                   *row_ids_axis = src.RowIds(axis).Data();
 
+    // Get the number of elements of current axis on each sublist
     Array1<int32_t> sublists_size(c, tot_size_axis_minus1);
     int32_t *sublists_size_data = sublists_size.Data();
     K2_EVAL(c, tot_size_axis_minus1, lambda_get_sublists_size, (int32_t i) {
         sublists_size_data[i] = row_splits_axis[i + 1] - row_splits_axis[i];
     });
 
+    // Each sublist contains the elements of axis `axis`, unstack operation will
+    // split all these elements in a sublist to different RaggedShapes, so the
+    // number of output RaggedShapes is the size of the sublist with max
+    // elements.
     int32_t num_out = MaxValue(sublists_size);
 
     out->resize(num_out);
     if (split_map != nullptr) split_map->resize(num_out);
 
+    // We will select the elements of axis `axis` on each sublist, the number
+    // of sublits equals to `src.TotSize(axis - 1)`.
+    // Initialize with -1 here, because not all the sublists have the same size,
+    // -1s here mean that we don't select anything on those positions
     Array1<int32_t> indexes(c, num_out * tot_size_axis_minus1, -1);
     int32_t *indexes_data = indexes.Data();
 
+    // Decide the elements of axis `axis` will go to which output RaggedShape
     K2_EVAL(c, tot_size_axis, lambda_set_indexes, (int32_t idx01) {
         int32_t idx0 = row_ids_axis[idx01],
                 idx0x = row_splits_axis[idx0],
@@ -1325,6 +1370,9 @@ void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
         indexes_data[idx1 * tot_size_axis_minus1 + idx0] = idx01;
     });
 
+    // To make `DecomposeRaggedShape` work, we add a RegularRaggedShape
+    // layer after axis `axis` if axis equals to `src.NumAxes() - 1`.
+    // Of course, we have to remove the added layer finally.
     bool remove_last_axis = false;
     if (axis == src.NumAxes() - 1) {
       src = ComposeRaggedShapes(src,
@@ -1334,6 +1382,10 @@ void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
 
     RaggedShape top, bottom;
     DecomposeRaggedShape(src, axis, &top, &bottom);
+
+    // Unstack will remove current axis (the last axis of top after decomposing
+    // on axis), to make `RemoveAxis` work, we add a TrivialShape layer before
+    // axix 0, finally we will remove the added layer.
     bool remove_axis0 = false;
     if (top.NumAxes() == 2) {
       top = ComposeRaggedShapes(
@@ -1345,7 +1397,8 @@ void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
     auto ragged_indexes = Ragged<int32_t>(RegularRaggedShape(c,
           num_out, tot_size_axis_minus1), indexes);
 
-    IndexMultiAxis0(bottom, ragged_indexes, out, split_map);
+    // Select elements according to indexes into corresponding RaggedShape
+    SelectAxis0(bottom, ragged_indexes, out, split_map);
 
     for (int32_t i = 0; i < num_out; ++i) {
       out->at(i) = ComposeRaggedShapes(top, out->at(i));

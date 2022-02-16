@@ -187,7 +187,51 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
                   Array1<uint32_t> *merge_map = nullptr);
 
 
-//TODO: Add docs.
+/*
+  Unstack a RaggedShape to a list of RaggedShape, all the output RaggedShapes
+  have one less axis.
+
+    @param [in] src  The shapes to be unstacked.
+    @param [in] axis  The axis to be removed, all the elements of this axis will
+                      be rearranged into output RaggedShapes.
+    @param [out] out  The container where the output RaggedShapes would write
+                      to. MUST NOT be a nullptr, will be reallocated.
+    @param [out] split_map  If not nullptr will store the indexes mapping from
+                            the splited RaggedShape to original RaggedShape.
+                            Will be reallocated.
+
+  Caution: If `src.NumAxes() == 2`, the output shapes will only have one
+           dimension, to make it a RaggedShape, we will add a TrivialShape on
+           each of the output tensors.
+
+  Note: The output RaggedShape will contain empty lists on axis `axis`, you can
+        remove them by RemoveEmptyLists if needed.
+
+  The number of output RaggedShapes is decided by the max size of sublists on
+  axis `axis`.
+
+  A small example of unstacking a 3 axes RaggedShape:
+
+    src: [ [ [ x x ] [ x ] ] [ [ x ] ] ]
+    unstack on axis 0:
+    one sublist on axis 0, its size is 2, will produce 2 RaggedShape.
+
+    out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 1, 2]
+    out[1] : [ [ x ] ]           split_map[1] : [3]
+
+    unstack on axis 1:
+    two sublists on axis 1, the sizes are [2, 1], will produce 2 RaggedShape
+
+    out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 1, 3]
+    out[1] : [ [ x ] [ ] ]       split_map[1] : [2]
+
+    unstack on axis 2:
+    three sublists on axis 2, the sizes are [2, 1, 1], will produce 2
+    RaggedShape.
+
+    out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 2, 3]
+    out[1] : [ [ x ] [ ] ]       split_map[1] : [1]
+ */
 void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
              std::vector<Array1<int32_t>> *split_map = nullptr);
 
@@ -857,6 +901,52 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src,
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
                 Array1<uint32_t> *merge_map = nullptr);
+
+/*
+  Unstack a Ragged tensor to a list of Ragged, tensors all the output Ragged
+  tensors have one less axis. Similar to TF's Unstack (or unbind in Pytorch).
+
+    @param [in] src  The ragged tensor to be unstacked.
+    @param [in] axis  The axis to be removed, all the elements of this axis will
+                      be rearranged into output Raggeds.
+    @param [out] out  The container where the output ragged tensors would write
+                      to. MUST NOT be a nullptr, will be reallocated.
+    @param [out] split_map  If not nullptr will store the indexes mapping from
+                            the splited Raggeds to the original Ragged.
+                            Will be reallocated.
+
+  Caution: If `src.NumAxes() == 2`, the output shapes will only have one
+           dimension, to make it a ragged tensor, we will add a TrivialShape on
+           each of the output tensors.
+
+  Note: The output ragged tensors will contain empty lists on axis `axis`,
+        you can remove them by RemoveEmptyLists if needed.
+
+  The number of output ragged tensors is decided by the max size of sublists on
+  axis `axis`.
+
+  A small example of unstacking a 3 axes Ragged:
+
+    src: [ [ [ 1 2 ] [ 3 ] ] [ [ 4 ] ] ]
+    unstack on axis 0:
+    one sublist on axis 0, its size is 2, will produce 2 ragged tensors.
+
+    out[0] : [ [ 1 2 ] [ 3 ] ]   split_map[0] : [0, 1, 2]
+    out[1] : [ [ 4 ] ]           split_map[1] : [3]
+
+    unstack on axis 1:
+    two sublists on axis 1, the sizes are [2, 1], will produce 2 ragged tensors
+
+    out[0] : [ [ 1 2 ] [ 4 ] ]   split_map[0] : [0, 1, 3]
+    out[1] : [ [ 3 ] [ ] ]       split_map[1] : [2]
+
+    unstack on axis 2:
+    three sublists on axis 2, the sizes are [2, 1, 1], will produce 2
+    ragged tensors.
+
+    out[0] : [ [ 1 3 ] [ 4 ] ]   split_map[0] : [0, 2, 3]
+    out[1] : [ [ 2 ] [ ] ]       split_map[1] : [1]
+ */
 
 template <typename T>
 void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,

@@ -183,6 +183,7 @@ void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
   Unstack(src.shape, axis, &shape_out, split_map_ptr);
 
   out->resize(shape_out.size());
+  // +1 here because we need to do ExclusiveSum on this Array1 later
   Array1<int32_t> elem_nums(GetCpuContext(), shape_out.size() + 1);
   Array1<T *> values_ptr(GetCpuContext(), shape_out.size());
   Array1<int32_t *> map_ptr(GetCpuContext(), shape_out.size());
@@ -191,6 +192,7 @@ void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
   int32_t **map_ptr_data = map_ptr.Data();
 
   int32_t tot_elems = 0;
+  // Can not avoid this for loop as we want to allocate memory separately.
   for (size_t i = 0; i < shape_out.size(); ++i) {
     int32_t elem_num = shape_out[i].NumElements();
     out->at(i) = Ragged<T>(shape_out[i], Array1<T>(c, elem_num));
@@ -202,11 +204,14 @@ void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
 
   Array1<int32_t> row_splits(c, shape_out.size() + 1);
   ExclusiveSum(elem_nums.To(c), &row_splits);
+
   Array1<int32_t> row_ids(c, tot_elems);
   RowSplitsToRowIds(row_splits, &row_ids);
+
   const int32_t *row_splits_data = row_splits.Data(),
                 *row_ids_data = row_ids.Data();
   const T *src_value_data = src.values.Data();
+  // Transfer to GPU if we are using a GPU
   map_ptr = map_ptr.To(c);
   map_ptr_data = map_ptr.Data();
   values_ptr = values_ptr.To(c);

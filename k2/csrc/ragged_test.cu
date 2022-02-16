@@ -147,7 +147,7 @@ TEST(RaggedShapeOpsTest, Unstack2Axes) {
           RaggedShape(c, "[ [ x ] ]")));
     K2_CHECK(Equal(out_map[2],
           Array1<int32_t>(c, std::vector<int32_t>{4})));
-    // can not test Stack here, because the element numbers of axis 3 is not
+    // can not test Stack here, because the element numbers of axis 1 is not
     // the same
   }
 }
@@ -2235,7 +2235,6 @@ void TestUnstackRagged() {
     K2_CHECK(Equal(out[0], Ragged<T>(c, "[ [ 10 30 60 ] ]")));
     K2_CHECK(Equal(out[1], Ragged<T>(c, "[ [ 20 40 ] ]")));
     K2_CHECK(Equal(out[2], Ragged<T>(c, "[ [ 50 ] ]")));
-
 
     // more axes
     ragged = Ragged<T>(c, "[ [ [ [ 1 11 21 ] [ 21 22 ] [ 31 ] ]"
