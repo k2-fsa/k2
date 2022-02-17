@@ -188,20 +188,25 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
 
 
 /*
-  Unstack a RaggedShape to a list of RaggedShape, all the output RaggedShapes
+  Unstack a RaggedShape to a list of RaggedShapes, all the output RaggedShapes
   have one less axis.
+  This function tries to do the opposite of Stack(), i.e. to generate an array
+  out such that `Equal(src, Stack(axis, out->size(), out->data()))`. But notes
+  that `Stack` needs a pointer of RaggedShape pointer, Unstack produces only a
+  pointer of RaggedShape, you should do some convertion before using Stack.
 
-    @param [in] src  The shapes to be unstacked.
+    @param [in] src  The shape to unstack.
     @param [in] axis  The axis to be removed, all the elements of this axis will
                       be rearranged into output RaggedShapes.
     @param [out] out  The container where the output RaggedShapes would write
                       to. MUST NOT be a nullptr, will be reallocated.
-    @param [out] split_map  If not nullptr will store the indexes mapping from
-                   the split RaggedShapes to the original RaggedShape, see notes
-                   below for the dimension for this `split_map`. For Array1 in
-                   each of the `split_map`, It satifies
-                   `split_map[i].Dim() == out[i].NumElements()`, and it contains
-                   the element-index within `src`.
+    @param [out] split_map  If not nullptr will store the element-index within
+                   `src` telling where the elements of each split RaggedShapes
+                   come from. It has the same size of `out`, see notes below
+                   for the dimension of it. For Array1 in each of the
+                   `split_map`, It satifies
+                   `split_map[i].Dim() == out[i].NumElements()`, and
+                   `0 <= split_map[i][j] < src.NumElements()`.
                    `split_map` will be reallocated by this function.
 
   Caution: If `src.NumAxes() == 2`, the output shapes will only have one
@@ -917,9 +922,10 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
                       be rearranged into output Raggeds.
     @param [out] out  The container where the output ragged tensors would write
                       to. MUST NOT be a nullptr, will be reallocated.
-    @param [out] split_map  If not nullptr will store the indexes mapping from
-                   the split Raggeds to the original Ragged, see notes below for
-                   the dimension for this `split_map`. For Array1 in each of the
+    @param [out] split_map  If not nullptr will store the element-index within
+                   the `src` telling where the elements of each split Raggeds
+                   comes from. It has same size as `out`, see notes below for
+                   the dimension of `out`. For Array1 in each of the
                    `split_map`, It satifies
                    `split_map[i].Dim() == out[i].values.Dim()`, and it contains
                    the element-index within `src`.

@@ -1105,22 +1105,22 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
 }
 
 /*
-  Select ragged tensor's shape on axis 0 with a two axes ragged indexes.
+  Select ragged tensor's shape on axis 0 with a two axes ragged index.
 
     @param [in] src  Source RaggedShape to select.
-    @param [in] indexes  A `TWO` axes ragged tensor containing the indexes into
-                         the axis 0 of src. we also support -1 as an index,
+    @param [in] indexes  A **TWO** axes ragged tensor containing the indexes
+                         into the axis 0 of src. we also support -1 as an index,
                          which will result in the empty list (as if it were the
                          index into a position in `src` that had an empty list)
                          i.e. with `-1 <= indexes[i] < src.TotSize(0)`.
     @param [out] out  The container where the output RaggedShape will write to,
                       MUST NOT be a nullptr. Will be reallocated and the final
                       size of `out` would equal to `indexes.TotSize(0)`.
-                      Note, The NumAxes of output RaggedShape is the same as the
-                      NumAxes of src.
-    @param [out] split_map  If not nullptr will store the indexes mapping from
-                            the splited RaggedShape to original RaggedShape.
-                            Will be reallocated and the final size of
+                      Note, The `NumAxes()` of output RaggedShape is the same
+                      as the `NumAxes()` of src.
+    @param [out] split_map  If not nullptr will store the element-index within
+                            src telling where the elements of split RaggedShape
+                            come from. Will be reallocated and the final size of
                             `split_map` would equal to `indexes.TotSize(0)`.
 
     Suppose indexes is `[ [ 0 3 5 ] [ 1 2 4] [ 6 -1 ] ]`, it means that we will
