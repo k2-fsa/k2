@@ -197,36 +197,42 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
     @param [out] out  The container where the output RaggedShapes would write
                       to. MUST NOT be a nullptr, will be reallocated.
     @param [out] split_map  If not nullptr will store the indexes mapping from
-                            the splited RaggedShape to original RaggedShape.
-                            Will be reallocated.
+                   the split RaggedShapes to the original RaggedShape, see notes
+                   below for the dimension for this `split_map`. For Array1 in
+                   each of the `split_map`, It satifies
+                   `split_map[i].Dim() == out[i].NumElements()`, and it contains
+                   the element-index within `src`.
+                   `split_map` will be reallocated by this function.
 
   Caution: If `src.NumAxes() == 2`, the output shapes will only have one
            dimension, to make it a RaggedShape, we will add a TrivialShape on
            each of the output tensors.
 
-  Note: The output RaggedShape will contain empty lists on axis `axis`, you can
+  Note: The output RaggedShape may contain empty lists on axis `axis`, you can
         remove them by RemoveEmptyLists if needed.
 
-  The number of output RaggedShapes is decided by the max size of sublists on
-  axis `axis`.
+  Note: The number of output RaggedShape is decided by the size of sublist
+        with max number of elements along axis `axis`, for `axis == 0`, it has
+        only one sublist along `axis == 0`(i.e. the src itself), so the number
+        of output RaggedShape will be equal to `src.Dim0()`.
 
   A small example of unstacking a 3 axes RaggedShape:
 
     src: [ [ [ x x ] [ x ] ] [ [ x ] ] ]
     unstack on axis 0:
-    one sublist on axis 0, its size is 2, will produce 2 RaggedShape.
+    src.Dim0() == 2, will produce 2 RaggedShape.
 
     out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 1, 2]
     out[1] : [ [ x ] ]           split_map[1] : [3]
 
     unstack on axis 1:
-    two sublists on axis 1, the sizes are [2, 1], will produce 2 RaggedShape
+    two sublists along axis 1, the sizes are [2, 1], will produce 2 RaggedShape
 
     out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 1, 3]
     out[1] : [ [ x ] [ ] ]       split_map[1] : [2]
 
     unstack on axis 2:
-    three sublists on axis 2, the sizes are [2, 1, 1], will produce 2
+    three sublists along axis 2, the sizes are [2, 1, 1], will produce 2
     RaggedShape.
 
     out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 2, 3]
@@ -912,36 +918,43 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
     @param [out] out  The container where the output ragged tensors would write
                       to. MUST NOT be a nullptr, will be reallocated.
     @param [out] split_map  If not nullptr will store the indexes mapping from
-                            the splited Raggeds to the original Ragged.
-                            Will be reallocated.
+                   the split Raggeds to the original Ragged, see notes below for
+                   the dimension for this `split_map`. For Array1 in each of the
+                   `split_map`, It satifies
+                   `split_map[i].Dim() == out[i].values.Dim()`, and it contains
+                   the element-index within `src`.
+                   (i.e.`out[i].values[j] == src.values[split_map[i][j]]`)
+                   `split_map` will be reallocated by this function.
 
   Caution: If `src.NumAxes() == 2`, the output shapes will only have one
            dimension, to make it a ragged tensor, we will add a TrivialShape on
            each of the output tensors.
 
-  Note: The output ragged tensors will contain empty lists on axis `axis`,
+  Note: The output ragged tensors may contain empty lists on axis `axis`,
         you can remove them by RemoveEmptyLists if needed.
 
-  The number of output ragged tensors is decided by the max size of sublists on
-  axis `axis`.
+  Note: The number of output ragged tensors is decided by the size of sublist
+        with max number of elements along axis `axis`, for `axis == 0`, it has
+        only one sublist along `axis == 0`(i.e. the src itself), so the number
+        of output ragged will be equal to `src.Dim0()`.
 
   A small example of unstacking a 3 axes Ragged:
 
     src: [ [ [ 1 2 ] [ 3 ] ] [ [ 4 ] ] ]
     unstack on axis 0:
-    one sublist on axis 0, its size is 2, will produce 2 ragged tensors.
+    src.Dim0() == 2, will produce 2 ragged tensors.
 
     out[0] : [ [ 1 2 ] [ 3 ] ]   split_map[0] : [0, 1, 2]
     out[1] : [ [ 4 ] ]           split_map[1] : [3]
 
     unstack on axis 1:
-    two sublists on axis 1, the sizes are [2, 1], will produce 2 ragged tensors
+    two sublists along axis 1, the sizes are [2, 1], will produce 2 ragged tensors
 
     out[0] : [ [ 1 2 ] [ 4 ] ]   split_map[0] : [0, 1, 3]
     out[1] : [ [ 3 ] [ ] ]       split_map[1] : [2]
 
     unstack on axis 2:
-    three sublists on axis 2, the sizes are [2, 1, 1], will produce 2
+    three sublists along axis 2, the sizes are [2, 1, 1], will produce 2
     ragged tensors.
 
     out[0] : [ [ 1 3 ] [ 4 ] ]   split_map[0] : [0, 2, 3]

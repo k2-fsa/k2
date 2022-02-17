@@ -239,13 +239,13 @@ RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
   for (int32_t axis = 1; axis < num_axes; ++axis) {
     tot_size += tot_sizes[axis - 1] + 1 + tot_sizes[axis];
   }
-  Array1<int32_t> splits_ids(c, tot_size);
+  Array1<int32_t> buf(c, tot_size);
   int32_t start = 0;
   for (int32_t axis = 1; axis < num_axes; ++axis) {
-    axes[axis - 1].row_splits = splits_ids.Arange(start,
+    axes[axis - 1].row_splits = buf.Arange(start,
         start + tot_sizes[axis - 1] + 1);
     start += tot_sizes[axis - 1] + 1;
-    axes[axis - 1].row_ids = splits_ids.Arange(start, start + tot_sizes[axis]);
+    axes[axis - 1].row_ids = buf.Arange(start, start + tot_sizes[axis]);
     start += tot_sizes[axis];
     axes[axis - 1].cached_tot_size = tot_sizes[axis];
   }
