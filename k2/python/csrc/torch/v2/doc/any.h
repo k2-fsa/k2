@@ -968,7 +968,7 @@ equivalent to the property ``dim0``.
 )doc";
 
 static constexpr const char *kRaggedAnyGetStateDoc = R"doc(
-__getstate__(self: _k2.ragged.Tensor) -> tuple
+__getstate__(self: k2.RaggedTensor) -> tuple
 
 Requires a tensor with 2 axes or 3 axes. Other number
 of axes are not implemented yet.
@@ -989,7 +989,7 @@ Note:
 )doc";
 
 static constexpr const char *kRaggedAnySetStateDoc = R"doc(
-__setstate__(self: _k2.ragged.Tensor, arg0: tuple) -> None
+__setstate__(self: k2.RaggedTensor, arg0: tuple) -> None
 
 Set the content of this class from ``arg0``.
 

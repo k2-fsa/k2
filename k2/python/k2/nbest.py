@@ -62,7 +62,7 @@ class Nbest(object):
         Returns:
           Return a new Nbest. This new Nbest shares the same shape with `self`,
           while its `fsa` is the 1-best path from intersecting `self.fsa` and
-          `lats.
+          `lats`.
         '''
         assert self.fsa.device == lats.device, \
                 f'{self.fsa.device} vs {lats.device}'

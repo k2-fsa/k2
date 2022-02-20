@@ -25,11 +25,13 @@
 #if defined(K2_USE_PYTORCH)
 
 #include "k2/python/csrc/torch/arc.h"
+#include "k2/python/csrc/torch/array_ops.h"
 #include "k2/python/csrc/torch/discounted_cum_sum.h"
 #include "k2/python/csrc/torch/fsa.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
 #include "k2/python/csrc/torch/index_add.h"
 #include "k2/python/csrc/torch/index_select.h"
+#include "k2/python/csrc/torch/mutual_information.h"
 #include "k2/python/csrc/torch/nbest.h"
 #include "k2/python/csrc/torch/ragged.h"
 #include "k2/python/csrc/torch/ragged_ops.h"
@@ -40,11 +42,13 @@ void PybindTorch(py::module &m) {
   py::module_::import("torch");
 
   PybindArc(m);
+  PybindArrayOps(m);
   PybindDiscountedCumSum(m);
   PybindFsa(m);
   PybindFsaAlgo(m);
   PybindIndexAdd(m);
   PybindIndexSelect(m);
+  PybindMutualInformation(m);
   PybindNbest(m);
   PybindRagged(m);
   PybindRaggedOps(m);

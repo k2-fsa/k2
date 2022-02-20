@@ -1,13 +1,13 @@
 Install using pip (k2-fsa.org)
 ==============================
 
-.. |pip_python_versions| image:: ./images/pip_python-3.6_3.7_3.8-blue.svg
+.. |pip_python_versions| image:: ./images/python_ge_3.6-blue.svg
   :alt: Supported python versions
 
-.. |pip_cuda_versions| image:: ./images/pip_cuda-10.1_10.2_11.0-orange.svg
+.. |pip_cuda_versions| image:: ./images/cuda_ge_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |pip_pytorch_versions| image:: ./images/pip_pytorch-1.7.1-green.svg
+.. |pip_pytorch_versions| image:: ./images/pytorch_ge_1.5.0-green.svg
   :alt: Supported pytorch versions
 
 You can find a list of nightly pre-built
@@ -67,7 +67,7 @@ To install a version for CPU only, please use:
 
 .. Caution::
 
-  We only provide pre-compiled CUDA versions of k2 with torch 1.7.1. If you need
+  We only provide pre-compiled versions of k2 with torch 1.7.1. If you need
   other versions of PyTorch, please consider one of the following alternatives
   to install k2:
 

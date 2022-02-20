@@ -709,7 +709,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
               case 2:  // the arc pointing to the next symbol state
                 arc.label = next_symbol;
                 aux_labels_value = sym_state_idx01 + 1 == sym_final_state ?
-                    0 : next_symbol;
+                    -1 : next_symbol;
                 arc.dest_state = state_idx1 + 2;
                 break;
               default:
@@ -720,8 +720,8 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
           K2_CHECK_LT(arc_idx2, 2);
           arc.label = arc_idx2 == 0 ? 0 : current_symbol;
           arc.dest_state = arc_idx2 == 0 ? state_idx1 : state_idx1 + 1;
-          aux_labels_value = (arc_idx2 == 0 || final_state) ?
-              0 : current_symbol;
+          aux_labels_value = arc_idx2 == 0 ? 0 : current_symbol;
+          if (final_state && arc_idx2 != 0) aux_labels_value = -1;
         }
         arcs_data[arc_idx012] = arc;
         if (aux_labels) aux_labels_data[arc_idx012] = aux_labels_value;
