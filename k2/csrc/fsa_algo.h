@@ -818,24 +818,24 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
                     Array1<int32_t> *arc_map_index = nullptr);
 
 /*
-  This operation reverse an Fsa or FsaVec. If 'src' accepts string 'x' with
+  This operation reverses an Fsa or FsaVec. If 'src' accepts string 'x' with
   weight 'x.weight', then the reverse of 'src' accepts the reverse of string 'x'
   with weight 'x.weight.reverse'.
 
-  Implementation nots:
-  The Fsa in K2 only has one start state 0, and the only final state with
+  Implementation notss:
+  The Fsa in k2 only has one start state 0, and the only final state with
   the largest state number whose in-coming arcs have "-1" as the label.
   So, 1) the start state of 'dest' will correspond to the final state of 'src'.
       2) the penultimate state of 'dest' will correspond to the start state
          of the 'src'
       2) The in-coming arcs with "-1" as the label will be converted to the
          out-going arcs with "eps" as the label.
-      3) All the other states in 'src' will corresponds to the same "state"
+      3) All the other states in 'src' will correspond to the same "state"
          states in 'dest'. And the direction of the arcs will be reversed.
       4) An additional state will be added as the new final state. An arc from
-         'penultimate' state in 'dest' (i.e. the state corresponds to the start
-         state in 'src') will be built with "-1" label.
-  Furthermore, as the Fsas of K2 run on the Log-semiring or Tropical-semiring,
+         'penultimate' state in 'dest' (i.e. the state corresponding to the
+         start state in 'src') will be built with "-1" label.
+  Furthermore, as the Fsas of k2 run on the Log-semiring or Tropical-semiring,
   the "weight.reverse" will equal to the orignal "weight".
 
 

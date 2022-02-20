@@ -27,8 +27,6 @@
 
 namespace k2 {
 
-// Caution: this is really a .cu file.  It contains mixed host and device code.
-
 class Reverser {
  public:
   /*
@@ -38,7 +36,7 @@ class Reverser {
 
       @param [in] fsas    A vector of FSAs; must have 3 axes.
    */
-  explicit Reverse(FsaVec &fsas) : c_(fsas.Context()), fsas_(fsas) {
+  explicit Reverser(FsaVec &fsas) : c_(fsas.Context()), fsas_(fsas) {
     K2_CHECK_EQ(fsas_.NumAxes(), 3);
   }
 
@@ -53,29 +51,31 @@ class Reverser {
   Array1<int32_t> CollectNonEmptyFsas() {
     NVTX_RANGE(K2_FUNC);
     int32_t num_fsas = fsas_.Dim0();
-    const int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).data();
+    const int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
 
     // The "ans" records all the non-empty fsa.
-    Array1<int32_t> ans(c_, num_fsas + 1, 0);
+    Array1<int32_t> ans(c_, num_fsas + 1);
     int32_t *ans_data = ans.Data();
     K2_EVAL(
         c_, num_fsas, lambda_set_has_final_state, (int32_t i)->void {
-          int32_t idx0x = fsa_row_splits1_data[i],
-                  idx0x_next = fsa_row_splits1_data[i + 1],
-                  idx0x_final_state = fsa_row_splits1_data[i + 1] - 1;
+          int32_t idx0x = fsas_row_splits1_data[i],
+                  idx0x_next = fsas_row_splits1_data[i + 1],
+                  idx0x_final_state = idx0x_next - 1;
 
           // If idx0x_next == idx0x, the FSA is an empty FSA.
           if (idx0x_next > idx0x) {
             // If the following fails, it likely means an input FSA was invalid
             // (e.g. had exactly one state, which is not allowed).
-            K2_DCKECK_GT(idx0x_final_state, idx0x);
-            ans[i] = 1;
+            K2_DCHECK_GT(idx0x_final_state, idx0x);
+            ans_data[i] = 1;
+          } else {
+            ans_data[i] = 0;
           }
         });
     return ans;
   }
 
-  
+
   /*
    The returned array is a state-level map from original 'old_state_idx01' to
    reversed 'new_state_idx01'. The mapping rules are as follows:
@@ -88,7 +88,7 @@ class Reverser {
    Note: For each non-empty FSA, we need to add an extra final state to the
    reversed FSA, so an "offset" array is maintained to compute the 'idx01'.
    Bear in mind, the additional final state for each reversed FSA doesn't have
-   a corresponding state in original FSA. 
+   a corresponding state in original FSA.
    */
   Array1<int32_t> ConstructStateMapping() {
     int32_t num_states = fsas_.TotSize(1);
@@ -98,11 +98,11 @@ class Reverser {
     Array1<int32_t> offset_idx01 = ExclusiveSum(non_empty_fsas_);
     const int32_t *offset_idx01_data = offset_idx01.Data(),
                   *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
-                  *fsas_row_splits1_data = fsas_.RowSplits(1).Data(),
+                  *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
 
     K2_EVAL(
         c_, num_states, lambda_set_old2new_map, (int32_t idx01)->void {
-          // The 'idx0' must corresponds to a non-empty FSA as it is computed
+          // The 'idx0' must correspond to a non-empty FSA as it is computed
           // from the row_ids.
           int32_t idx0 = fsas_row_ids1_data[idx01],
                   idx0x = fsas_row_splits1_data[idx0],
@@ -116,12 +116,12 @@ class Reverser {
           } else {
             new_idx01 += idx01;
           }
-          old2new_map_data[idx01] = new_idx01
+          old2new_map_data[idx01] = new_idx01;
         });
     return old2new_map;
   }
 
-  
+
   /*
    Return the RaggedShape of the state-level reversed FsaVec.
    Compared with the original FsaVec, we need to add an extra final state for
@@ -138,8 +138,8 @@ class Reverser {
   /*
    Retrun the RaggedShape of the arc-level reversed FsaVec.
    We generate the RaggedShape by figuring out the number of out-going arcs for
-   each reversed state. As the original source state will become to destination
-   state. So we collect the information by 'incoming_arcs'.
+   each reversed state. As the original source state will become destination
+   state, we collect the information by 'incoming_arcs'.
 
    All cases will be one-to-one mapping, except that we need to add an extra
    'final_arc' to the penultimate state of the reversed FSA (i.e. the
@@ -149,7 +149,7 @@ class Reverser {
                                      RaggedShape &reversed_states_shape) {
     int32_t num_ori_states = fsas_.TotSize(1);
     const int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).Data(),
-                  *fsas_row_ids1_data = fsas_.RowIds(1).Data(), 
+                  *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
                   *incoming_arcs_row_splits2_data =
                     incoming_arcs.RowSplits(2).Data();
 
@@ -160,15 +160,17 @@ class Reverser {
 
     // For each reversed FSA, we just need to add one final state which
     // doesn't have the out-going arcs. So we deal with the each original state.
+    const int32_t *state_old2new_map_data = state_old2new_map_.Data();
     K2_EVAL(
-        c_, num_ori_states, lambda_set_num_arcs_per_reversed_state, 
+        c_, num_ori_states, lambda_set_num_arcs_per_reversed_state,
         (int32_t idx01)->void {
           int32_t idx0 = fsas_row_ids1_data[idx01],
                   idx0x = fsas_row_splits1_data[idx0],
-                  num_arcs = (idx01 == idx0x ? 1 : 0)
+                  num_arcs = (idx01 == idx0x ? 1 : 0);
           num_arcs += incoming_arcs_row_splits2_data[idx01 + 1] -
                       incoming_arcs_row_splits2_data[idx01];
-          num_arcs_per_reversed_state[old2new_map_[idx01]] = num_arcs;
+          num_arcs_per_reversed_state_data[state_old2new_map_data[idx01]] =
+            num_arcs;
         });
     ExclusiveSum(num_arcs_per_reversed_state, &num_arcs_per_reversed_state);
     return RaggedShape2(&num_arcs_per_reversed_state, nullptr, -1);
@@ -186,11 +188,11 @@ class Reverser {
       be the last arc for corresponding FSA.
    */
   Array1<Arc> ReverseArcsAndCreateArcMap(Ragged<int32_t> &incoming_arcs,
-                                         RaggedShape &reversed_shape
+                                         RaggedShape &reversed_shape,
                                          Array1<int32_t> *arc_map) {
     int32_t num_reversed_arcs = reversed_shape.TotSize(2);
     Array1<Arc> reversed_arcs(c_, num_reversed_arcs);
-    Arc *reversed_arcs_data =reversed_arcs.Data();    
+    Arc *reversed_arcs_data = reversed_arcs.Data();
 
     // A map from reversed arcs to original arcs. "-1" means no mapping.
     Array1<int32_t> new2old_arcs_map(c_, num_reversed_arcs);
@@ -208,17 +210,17 @@ class Reverser {
                   *reversed_row_ids1_data = reversed_shape.RowIds(1).Data(),
                   *reversed_row_splits1_data =
                     reversed_shape.RowSplits(1).Data();
-                  
-    const Arc *fsas_data = fsas_.Values.Data();
-    const int32_t *fsas_row_ids2_data = fsas_.RowIds(2).Data(),
+
+    const Arc *fsas_data = fsas_.values.Data();
+    const int32_t *fsas_row_ids2_data = fsas_.RowIds(2).Data();
     // Process all existing arcs in orginial FSAs.
     K2_EVAL(
         c_, num_incoming_arcs, lambda_map_original_arcs,
         (int32_t incoming_arcs_idx012)->void {
           int32_t arcs_idx012 = incoming_arcs_data[incoming_arcs_idx012],
                   // Compute the offset.
-                  incoming_dest_states_idx01 = 
-                    incoming_arcs_row_ids2_data[ori_arcs_idx012],
+                  incoming_dest_states_idx01 =
+                    incoming_arcs_row_ids2_data[incoming_arcs_idx012],
                   incoming_arcs_idx01x =
                     incoming_arcs_row_splits2_data[incoming_dest_states_idx01],
                   incoming_arcs_idx2 =
@@ -227,6 +229,7 @@ class Reverser {
                   // originial dest state.
                   reversed_idx01 =
                     state_old2new_map_data[incoming_dest_states_idx01],
+                  // Get the corresponding arc position.
                   reversed_idx01x = reversed_row_splits2_data[reversed_idx01],
                   reversed_idx012 = reversed_idx01x + incoming_arcs_idx2;
           Arc arc = fsas_data[arcs_idx012];
@@ -263,15 +266,16 @@ class Reverser {
         });
 
 
-    int32_t n = ExclusiveSum(non_empty_fsas_).Back();
+    int32_t num_fsas = fsas_.Dim0();
     const int32_t *non_empty_fsas_data = non_empty_fsas_.Data();
     // Add an 'final_arc' for each non-empty FSA.
     K2_EVAL(
-        c_, n, lambda_add_external_final_arc, (int32_t i)->void{
+        c_, num_fsas, lambda_add_external_final_arc, (int32_t i)->void{
           if (non_empty_fsas_data[i]) {
-            new_arcs_idx0x = reversed_row_splits1_data[i];
-            new_arcs_dest_idx01 = reversed_row_splits1_data[i + 1] - 1;
-            new_arcs_dest_idx1 = new_arcs_dest_idx01 - new_arcs_dest_idx0x;
+            int32_t new_arcs_dest_idx0x = reversed_row_splits1_data[i],
+                    new_arcs_dest_idx01 = reversed_row_splits1_data[i + 1] - 1,
+                    new_arcs_dest_idx1 = new_arcs_dest_idx01 -
+                                         new_arcs_dest_idx0x;
 
             Arc new_arc;
             new_arc.src_state = new_arcs_dest_idx1 - 1;
@@ -281,11 +285,11 @@ class Reverser {
                                 // are both 0.
 
             // This is the last arc for a FSA.
-            new_arcs_idx0x_next = reversed_row_splits1_data[i + 1];
-            new_arcs_idx0xx_next =
-              reversed_row_splits2_data[new_arcs_idx0x_next];
-            new_arcs_idx012 = new_arcs_idx0xx_next - 1;
-            reversed_arcs_map_data[new_arcs_idx012] = new_arc;
+            int32_t new_arcs_idx0x_next = reversed_row_splits1_data[i + 1],
+                    new_arcs_idx0xx_next =
+                      reversed_row_splits2_data[new_arcs_idx0x_next],
+                    new_arcs_idx012 = new_arcs_idx0xx_next - 1;
+            reversed_arcs_data[new_arcs_idx012] = new_arc;
             // Deal with arc mapping.
             new2old_arcs_map_data[new_arcs_idx012] = -1;
           }
@@ -312,16 +316,16 @@ class Reverser {
     // The structure is [fsa][state][list_of_arcs]. It shows the arc_idx012 for
     // each dest-state.
     Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsas_, dest_states_idx01);
-    
+
     // Mark the non-empty FSAs
     non_empty_fsas_ = CollectNonEmptyFsas();
     // Construct a state map from old_state_idx01 to reversed new_state_idx01
     state_old2new_map_ = ConstructStateMapping();
 
     // Construct the reversed shape
-    reversed_states_shape = CreateReversedStateShape();
-    reversed_arcs_shape = CreateReversedArcSahpe(incoming_arcs,
-                                                 reversed_states_shape);
+    RaggedShape reversed_states_shape = CreateReversedStateShape();
+    RaggedShape reversed_arcs_shape = CreateReversedArcSahpe(
+        incoming_arcs, reversed_states_shape);
     RaggedShape reversed_shape = ComposeRaggedShapes(
         reversed_states_shape, reversed_arcs_shape);
     // Reverse the arcs
@@ -338,7 +342,7 @@ class Reverser {
   // Inside each FSA, the index of 
   Array1<int32_t> state_old2new_map_;
 
-  // Act as a flag which indicates whether an FSA is non-empty and legel.
+  // Act as a flag that indicates whether an FSA is non-empty and legal.
   // When reversing, we will add an extra final state and final arc for each
   // non-empty FSA.
   Array1<int32_t> non_empty_fsas_;

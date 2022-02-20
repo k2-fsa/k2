@@ -114,11 +114,50 @@ TEST(Reverse, FsaVec) {
 
     FsaVec ref = FsaVec("[ [ [ 0 1 0 0 ] [ 1 3 1 1 ] [ 2 3 2 2 ] [ 3 4 -1 0 ] "
                         "    [ ] ] "
-                        "  [ [ 0 1 0 0 ] [ 1 3 1 1 1 2 2 2 ] [ 3 4 -1 0 ] "
+                        "  [ [ 0 1 0 0 ] [ 1 3 1 1 1 2 2 2 ] [ ] [ 3 4 -1 0 ] "
                         "    [ ] ] "
-                        "  [ [ 0 1 0 0 ] [ 1 4 1 1 1 2 2 2 1 3 3 3 ] "
-                        "    [ 4 5 -1 0 ] [ ] ] ]").To(c);
-    Array1<int32_t> arc_map_ref(c, "[ 2 0 1 -1 4 3 5 -1 7 6 8 9 -1 ]");
+                        "  [ [ 0 1 0 0 ] [ 1 4 1 1 1 2 2 2 ] [ ] "
+                        "    [ 3 1 3 3 ] [ 4 5 -1 0 ] [ ] ] ]").To(c);
+    Array1<int32_t> arc_map_ref(c, "[ 2 0 1 -1 4 3 5 -1 7 6 9 8 -1 ]");
+
+    K2_CHECK(Equal(reversed, ref));
+    K2_CHECK(Equal(arc_map, arc_map_ref));
+  }
+}
+
+TEST(Reverse, EmptyFsaVec) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    std::string s1 = R"(0 1 1 1
+      0 2 2 2
+      1 3 -1 0
+      3
+    )";
+    auto fsa1 = FsaFromString(s1);
+
+    std::string s2 = R"( )";
+    auto fsa2 = FsaFromString(s2);
+
+    std::string s3 = R"(0 1 1 1
+      1 4 -1 0
+      1 3 3 3
+      2 1 2 2
+      4
+    )";
+    auto fsa3 = FsaFromString(s3);
+
+    Fsa *fsa_array[] = {&fsa1, &fsa2, &fsa3};
+    FsaVec fsa_vec = CreateFsaVec(3, &fsa_array[0]).To(c);
+
+    FsaVec reversed;
+    Array1<int32_t> arc_map;
+    Reverse(fsa_vec, &reversed, &arc_map);
+
+    FsaVec ref = FsaVec("[ [ [ 0 1 0 0 ] [ 1 3 1 1 ] [ 2 3 2 2 ] [ 3 4 -1 0 ] "
+                        "    [ ] ] "
+                        "  [ ]  "
+                        "  [ [ 0 1 0 0 ] [ 1 4 1 1 1 2 2 2 ] [ ] "
+                        "    [ 3 1 3 3 ] [ 4 5 -1 0 ] [ ] ] ]").To(c);
+    Array1<int32_t> arc_map_ref(c, "[ 2 0 1 -1 4 3 6 5 -1 ]");
 
     K2_CHECK(Equal(reversed, ref));
     K2_CHECK(Equal(arc_map, arc_map_ref));
