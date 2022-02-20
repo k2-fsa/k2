@@ -170,6 +170,62 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
 }
 
 template <typename T>
+void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
+             std::vector<Array1<int32_t>> *split_map /* = nullptr */) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK(out != nullptr);
+  ContextPtr &c = src.Context();
+  std::vector<Array1<int32_t>> split_map_tmp;
+  std::vector<Array1<int32_t>> *split_map_ptr =
+      (split_map != nullptr ? split_map : &split_map_tmp);
+  std::vector<RaggedShape> shape_out;
+
+  Unstack(src.shape, axis, &shape_out, split_map_ptr);
+
+  out->resize(shape_out.size());
+  // +1 here because we need to do ExclusiveSum on this Array1 later
+  Array1<int32_t> elem_nums(GetCpuContext(), shape_out.size() + 1);
+  Array1<T *> values_ptr(GetCpuContext(), shape_out.size());
+  Array1<int32_t *> map_ptr(GetCpuContext(), shape_out.size());
+  int32_t *elem_nums_data = elem_nums.Data();
+  T **values_ptr_data = values_ptr.Data();
+  int32_t **map_ptr_data = map_ptr.Data();
+
+  int32_t tot_elems = 0;
+  // Can not avoid this for loop as we want to allocate memory separately.
+  for (size_t i = 0; i < shape_out.size(); ++i) {
+    int32_t elem_num = shape_out[i].NumElements();
+    out->at(i) = Ragged<T>(shape_out[i], Array1<T>(c, elem_num));
+    elem_nums_data[i] = elem_num;
+    tot_elems += elem_num;
+    values_ptr_data[i] = out->at(i).values.Data();
+    map_ptr_data[i] = split_map_ptr->at(i).Data();
+  }
+
+  Array1<int32_t> row_splits(c, shape_out.size() + 1);
+  ExclusiveSum(elem_nums.To(c), &row_splits);
+
+  Array1<int32_t> row_ids(c, tot_elems);
+  RowSplitsToRowIds(row_splits, &row_ids);
+
+  const int32_t *row_splits_data = row_splits.Data(),
+                *row_ids_data = row_ids.Data();
+  const T *src_value_data = src.values.Data();
+  // Transfer to GPU if we are using a GPU
+  map_ptr = map_ptr.To(c);
+  map_ptr_data = map_ptr.Data();
+  values_ptr = values_ptr.To(c);
+  values_ptr_data = values_ptr.Data();
+
+  K2_EVAL(c, tot_elems, lambda_set_values, (int32_t idx01) {
+      int32_t idx0 = row_ids_data[idx01],
+              idx0x = row_splits_data[idx0],
+              idx1 = idx01 - idx0x;
+      values_ptr_data[idx0][idx1] = src_value_data[map_ptr_data[idx0][idx1]];
+  });
+}
+
+template <typename T>
 Ragged<T> Cat(int32_t axis, int32_t num_srcs, Ragged<T> **src,
               Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
