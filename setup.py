@@ -215,7 +215,6 @@ setuptools.setup(
     packages=['k2', 'k2.ragged', 'k2.sparse', 'k2.version'],
     install_requires=install_requires,
     extras_require={'dev': dev_requirements},
-    data_files=[('', ['LICENSE'])],
     ext_modules=[cmake_extension('_k2')],
     cmdclass={
         'build_ext': BuildExtension,

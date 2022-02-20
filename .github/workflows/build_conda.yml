@@ -37,7 +37,7 @@ jobs:
         cuda: ["10.1", "10.2", "11.0", "11.1", "11.3"]
         # from https://download.pytorch.org/whl/torch_stable.html
         #
-        # PyTorch 1.10 supports: 10.2 (default), 11.1, 11.3
+        # PyTorch 1.10.x supports: 10.2 (default), 11.1, 11.3
         # PyTorch 1.9.x supports: 10.2 (default), 11.1
         # PyTorch 1.8.1 supports: cuda 10.1, 10.2 (default), 11.1
         # PyTorch 1.8.0 supports: cuda 10.1, 10.2 (default), 11.1
@@ -56,9 +56,9 @@ jobs:
         #  https://github.com/csukuangfj/k2/runs/2533830771?check_suite_focus=true
         #  and
         #  https://github.com/NVIDIA/apex/issues/805
-        torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0", "1.9.1", "1.10"]
+        torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0", "1.9.1", "1.10.0", "1.10.1", "1.10.2"]
         exclude:
-          # - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10]
+          # - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
           #   torch: "1.5.0"
           # - cuda: "11.0"
           #   torch: "1.5.1"
@@ -73,7 +73,11 @@ jobs:
           - cuda: "11.0"
             torch: "1.9.1"
           - cuda: "11.0"
-            torch: "1.10"
+            torch: "1.10.0"
+          - cuda: "11.0"
+            torch: "1.10.1"
+          - cuda: "11.0"
+            torch: "1.10.2"
           # - cuda: "11.1" # exclude 11.1 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1]
           #   torch: "1.5.0"
           # - cuda: "11.1"
@@ -84,12 +88,16 @@ jobs:
             torch: "1.7.0"
           - cuda: "11.1"
             torch: "1.7.1"
-          - cuda: "10.1" # exclude 10.1 for [1.9.0, 1.9.1, 1.10]
+          - cuda: "10.1" # exclude 10.1 for [1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
             torch: "1.9.0"
           - cuda: "10.1"
             torch: "1.9.1"
           - cuda: "10.1"
-            torch: "1.10"
+            torch: "1.10.0"
+          - cuda: "10.1"
+            torch: "1.10.1"
+          - cuda: "10.1"
+            torch: "1.10.2"
           - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
             torch: "1.5.0"
           - python-version: 3.9

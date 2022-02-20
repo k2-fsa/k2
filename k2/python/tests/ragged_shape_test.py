@@ -121,6 +121,22 @@ class TestRaggedShape(unittest.TestCase):
             prod2 = k2.RaggedTensor(abshape2, b.values)
             assert prod == prod2
 
+    def test_create_ragged_shape2_with_row_splits(self):
+        for device in self.devices:
+            row_splits = torch.tensor([0, 1, 3],
+                                      dtype=torch.int32,
+                                      device=device)
+            shape = k2.ragged.create_ragged_shape2(row_splits=row_splits)
+            expected_shape = k2.RaggedShape('[[x] [x x]]').to(device)
+            assert shape == expected_shape
+
+    def test_create_ragged_shape2_with_row_ids(self):
+        for device in self.devices:
+            row_ids = torch.tensor([0, 1, 1], dtype=torch.int32, device=device)
+            shape = k2.ragged.create_ragged_shape2(row_ids=row_ids)
+            expected_shape = k2.RaggedShape('[[x] [x x]]').to(device)
+            assert shape == expected_shape
+
 
 if __name__ == '__main__':
     unittest.main()

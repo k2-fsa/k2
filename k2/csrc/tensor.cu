@@ -147,7 +147,7 @@ Tensor::Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims)
 }
 
 Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
-               int32_t byte_offset)
+               size_t byte_offset)
     : impl_(std::make_shared<TensorImpl>()) {
   int64_t begin_elem, end_elem;
   shape.GetReachableElems(&begin_elem, &end_elem);

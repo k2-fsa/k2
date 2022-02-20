@@ -34,8 +34,8 @@ namespace intersect_pruned_internal {
 
 /* Information associated with a state active on a particular frame..  */
 struct StateInfo {
-  /* abs_state_id is the state-index in a_fsas_.  Note: the ind0 in here
-     won't necessarily match the ind0 within FrameInfo::state if
+  /* abs_state_id is the state-index in a_fsas_.  Note: the idx0 in here
+     won't necessarily match the idx0 within FrameInfo::state if
      a_fsas_stride_ == 0. */
   int32_t a_fsas_state_idx01;
 
@@ -649,7 +649,7 @@ class MultiGraphDenseIntersectPruned {
     const int32_t *a_fsas_row_splits2 = a_fsas_.shape.RowSplits(2).Data();
 
     const Arc *arcs = a_fsas_.values.Data();
-    // fsa_idx0 to ind0x (into b_fsas_), which gives the 1st row for this
+    // fsa_idx0 to idx0x (into b_fsas_), which gives the 1st row for this
     // sequence.
     const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1).Data();
     const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
@@ -673,7 +673,7 @@ class MultiGraphDenseIntersectPruned {
           Arc arc = arcs[a_fsas_arc_idx012];
 
           int32_t scores_idx0x = b_fsas_row_splits1[ai_fsa_idx0],
-                  scores_idx01 = scores_idx0x + t,  // t == ind1 into 'scores'
+                  scores_idx01 = scores_idx0x + t,  // t == idx1 into 'scores'
               scores_idx2 =
                   arc.label + 1;  // the +1 is so that -1 can be handled
           K2_DCHECK_LT(static_cast<uint32_t>(scores_idx2),
