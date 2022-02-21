@@ -23,7 +23,7 @@ import _k2
 
 VALID = 0x01  # Valid from a formatting perspective
 NONEMPTY = 0x02  # Nonempty as in, has at least one arc.
-TOPSORTED = 0x04,  # FSA is top-sorted, but possibly with
+TOPSORTED = 0x04  # FSA is top-sorted, but possibly with
 # self-loops, dest_state >= src_state
 TOPSORTED_AND_ACYCLIC = 0x08  # Fsa is topsorted, dest_state > src_state
 ARC_SORTED = 0x10  # Fsa is arc-sorted: arcs leaving a state are are sorted by

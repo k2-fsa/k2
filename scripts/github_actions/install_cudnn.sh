@@ -42,6 +42,7 @@ esac
 command -v git-lfs >/dev/null 2>&1 || { echo >&2 "\nPlease install 'git-lfs' first."; exit 2; }
 
 GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/csukuangfj/cudnn
+
 cd cudnn
 git lfs pull --include="$filename"
 

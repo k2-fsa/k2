@@ -795,7 +795,7 @@ void ComputeEpsilonClosure(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
         const Arc &cur_arc = arcs_data[arc_idx012];
         arc_keep_data[arc_idx012] = (cur_arc.src_state != cur_arc.dest_state);
       });
-  *closure_fsa = SubsampleRagged(*closure_fsa, arc_renumbering);
+  *closure_fsa = SubsetRagged(*closure_fsa, arc_renumbering);
   *arc_map = Index(*arc_map, 0, arc_renumbering.New2Old());
 }
 
@@ -1081,7 +1081,7 @@ void RemoveEpsilonDevice(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
       non_epsilon_arc_map, foll_shape, &combined_foll, &combined_foll_arc_map);
 
   FsaVec epsilon_closure_prec =
-      SubsampleRagged(epsilon_closure_mapped, epsilon_prec_renumbering);
+      SubsetRagged(epsilon_closure_mapped, epsilon_prec_renumbering);
   Ragged<int32_t> epsilon_closure_prec_arc_map = Index(
       epsilon_closure_mapped_arc_map, 0, epsilon_prec_renumbering.New2Old());
   // `combined_prec` will be set to an FSA, with the same state numbering as

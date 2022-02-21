@@ -277,6 +277,38 @@ struct DtypeOf {
     }                                                                    \
   } while (0)
 
+#define FOR_REAL_AND_INT_TYPES(DtypeValue, TypeName, ...)                \
+  do {                                                                   \
+    switch (DtypeValue) {                                                \
+      case kFloatDtype: {                                                \
+        using TypeName = float;                                          \
+        __VA_ARGS__;                                                     \
+        break;                                                           \
+      }                                                                  \
+      case kDoubleDtype: {                                               \
+        using TypeName = double;                                         \
+        __VA_ARGS__;                                                     \
+        break;                                                           \
+      }                                                                  \
+      case kInt32Dtype: {                                                \
+        using TypeName = int32_t;                                        \
+        __VA_ARGS__;                                                     \
+        break;                                                           \
+      }                                                                  \
+      case kInt64Dtype: {                                                \
+        using TypeName = int64_t;                                        \
+        __VA_ARGS__;                                                     \
+        break;                                                           \
+      }                                                                  \
+      default:                                                           \
+        K2_LOG(FATAL)                                                    \
+            << "Dtype " << TraitsOf(DtypeValue).Name()                   \
+            << " not covered in switch statement. Op not supported for " \
+               "this type?";                                             \
+        break;                                                           \
+    }                                                                    \
+  } while (0)
+
 #define FOR_REAL_TYPES(DtypeValue, TypeName, ...)                        \
   do {                                                                   \
     switch (DtypeValue) {                                                \

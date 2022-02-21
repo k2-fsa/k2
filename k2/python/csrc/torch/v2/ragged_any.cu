@@ -335,7 +335,7 @@ std::string RaggedAny::ToString(bool compact /*=false*/,
                                 int32_t device_id /*=-1*/) const {
   ContextPtr context = any.Context();
   if (context->GetDeviceType() != kCpu) {
-    return To("cpu").ToString(compact, context->GetDeviceId());
+    return To("cpu").ToString(context->GetDeviceId());
   }
 
   std::ostringstream os;

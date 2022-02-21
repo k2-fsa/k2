@@ -92,6 +92,11 @@ add_library(context ${context_srcs})
 target_compile_definitions(context PUBLIC K2_TORCH_VERSION_MAJOR=${K2_TORCH_VERSION_MAJOR})
 target_compile_definitions(context PUBLIC K2_TORCH_VERSION_MINOR=${K2_TORCH_VERSION_MINOR})
 
+# see https://github.com/NVIDIA/thrust/issues/1401
+# and https://github.com/k2-fsa/k2/pull/917
+target_compile_definitions(context PUBLIC CUB_WRAPPED_NAMESPACE=k2)
+target_compile_definitions(context PUBLIC THRUST_NS_QUALIFIER=thrust)
+
 set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(context PROPERTIES OUTPUT_NAME "k2context")
 

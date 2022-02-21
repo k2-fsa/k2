@@ -1,6 +1,10 @@
 /**
- * Copyright      2021  xiaomi Corporation (authors: Fangjun Kuang)
+ * @brief python wrappers for array_ops.h
  *
+ * @copyright
+ * Copyright      2021  Xiaomi Corp.       (author: Wei Kang)
+ *
+ * @copyright
  * See LICENSE for clarification regarding multiple authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +18,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
-#ifndef K2_CSRC_CUB_H_
-#define K2_CSRC_CUB_H_
+#ifndef K2_PYTHON_CSRC_TORCH_ARRAY_OPS_H_
+#define K2_PYTHON_CSRC_TORCH_ARRAY_OPS_H_
 
+#include "k2/python/csrc/torch.h"
 
-#ifdef K2_WITH_CUDA
-#include "cub/cub.cuh"  // NOLINT
-#endif
+void PybindArrayOps(py::module &m);
 
-#endif  // K2_CSRC_CUB_H_
+#endif  // K2_PYTHON_CSRC_TORCH_ARRAY_OPS_H_

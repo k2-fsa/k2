@@ -176,7 +176,7 @@ class Tensor {
   Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims);
 
   // Create Tensor backed by existing memory.
-  Tensor(Dtype type, const Shape &shape, RegionPtr region, int32_t byte_offset);
+  Tensor(Dtype type, const Shape &shape, RegionPtr region, size_t byte_offset);
 
   Tensor(const Tensor &other) = default;
   Tensor &operator=(const Tensor &other) = default;
