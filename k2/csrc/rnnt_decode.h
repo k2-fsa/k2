@@ -49,8 +49,9 @@ struct RnntDecodingConfig {
   // num_context_states == pow(vocab_size, decoder_history_len).
   int32_t num_context_states;
 
-  // max_symbols_per_frame is the maximum number of symbols that we allow to be decoded per frame.
-  int32_t max_symbols_per_frame;
+  //// max_symbols_per_frame is the maximum number of symbols that we allow to be decoded per frame.
+  // NO: this is just 1.
+  //int32_t max_symbols_per_frame;
 
 
   // `beam` imposes a limit on the score of a state, relative to the best-scoring
@@ -60,7 +61,6 @@ struct RnntDecodingConfig {
   // If > 0, `max_arcs` is a limit on the number of arcs that we allow per
   // sub-frame, per stream; the number of arcs will not be allowed to exceed this limit.
   //??  int32_t max_arcs;
-
 
   // `max_states` is a limit on the number of distinct states that we allow per
   // sub-frame, per stream; the number of states will not be allowed to exceed
@@ -118,12 +118,6 @@ struct ArcInfo {
   int32_t dest_state;
 };
 
-
-struct EpsilonArcInfo {
-  float score;
-  int32_t dest_state;
-
-};
 
 
 
@@ -186,100 +180,7 @@ class RnntDecodingFrame {
 //
 
 
-/*
-  This function creates a Renumbering object that can be used to
-  obtain subsets of ragged arrays via SubsampleRaggedShape().
-  It implements beam pruning as used in pruned Viterbi search
-  and similar algorithms, where there is both a beam and
-  a max-active (`max_elems`) constraint.
-  T will probably be float or double, interpreted as a
-  "positive-is-better" sense, i.e. as scores.
 
-   @param [in] src  The ragged object to be subsampled.
-   @param [in] axis  The axis to be subsampled, must satisfy
-              0 <= axis < src.NumAxes().  The axis before
-              `axis`, if axis < 0, will be interpreted as
-              a "batch" axis.
-   @param [in] beam  The main pruning beam.  The sub-lists
-              or elements on axis `axis` will be removed
-              if their maximum element (or the element itself,
-              if axis + 1 == src.NumAxes()) is less than
-              this_best_elem - beam, where this_best_elem
-              is the maximum element taken over axis
-              `axis-1` (or over the entire array, if axis == 0).
-              Think of axis `axis-1`, if present, as the "batch"
-              axis, and axis `axis` as the axis that we
-              actually remove elements on.  Empty sub-lists
-              on axis `axis` will always be pruned as their
-              score
-   @param [in] max_elems  If max_elems > 0, it is the maximum
-              number of sub-lists
-              or elements that are allowed within any sub-list
-              on axis `axis-1` (or the maximum number of top-level
-              sub-lists after subsampling if axis == 0).
-              We keep the best ones, but behavior in case of ties is
-              undefined (TODO: check whether SortSublists() is a stable sort).
-              If max_elems <= 0, there is no such constraint.
-    @return  Returns the renumbering object to be used to actually
-             prune/subsample the specified axis.
-
-   Example:
-      PruneRagged([ [0 -1 -2 -3], [ -10, -20 ], [ ] ], 1, 5.0, 3)
-    would create a Renumbering object that would prune the
-    ragged tensor to [ [0 -1 -2], [ -10 ], [ ] ]
-
-      PruneRagged([ [0 -1 -2 -3], [ -10, -20 ], [ ] ], 0, 5.0, 0)
-    would create a Renumbering object that would prune the
-    ragged tensor to [ [0 -1 -2 -3] ]
-
-
-  TODO: don't forget to change subsample->subset when we rename
-         SubsampleRaggedShape().
-  IMPLEMENTATION NOTES (please delete later):
-    - We might want/need to treat certain cases specially, e.g.
-      the case when axis == src.NumAxes() - 1, and/or when
-      axis == 0.
-    - If `max_elems` is <= 0, we might want to choose a different
-      implementation, e.g. using max on the sub-lists rather
-      than sorting.
- */
-template <typename T>
-Renumbering PruneRagged(const Ragged<T> &src,
-                        int32_t axis,
-                        T beam,
-                        int32_t max_elems);
-
-
-/*
-  Return ragged shape with only a subset of the elements on the last
-  and one-before-last axes kept.
-
-  Require renumbering_last.NumOldElems() == src.NumElements(), and
-  renumbering_before_last.NumOldElems() == src.TotSize(src.NumAxes() - 2).
-  Note: all dimensions and tot-sizes preceding the last two axes will remain the
-  same, which might give rise to empty lists.
- */
-RaggedShape SubsampleRaggedShape(RaggedShape &src,
-                                 int32_t axis,
-                                 Renumbering &renumbering);
-
-
-
-
-//   - Get map as new2old,
-//     can turn this into an old2new map with -1's for non-kept elements.
-//     How to prune: (1)
-//
-//
-
-//
-// Get pruning map for the double forward_score, as old2new, and apply the same map to
-// the
-//
-//
-//
-//
-//
 
 
 
@@ -514,9 +415,6 @@ void PruneStreams(const RaggedShape &shape,
         - Create epsilon link from each active state, to the same state on
           next frame.
  */
-
-
-
 
 
 
