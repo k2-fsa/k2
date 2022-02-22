@@ -252,7 +252,7 @@ void RnntDecodingStream::Advance(Array2<float> &logprobs) {
 
   Renumbering
   incoming_scores_pruned1 = SubsampleRagged(incoming_scores,
-                                            states_prune, 2,
+                                            states_prune, 2);  // ??
 
 
 
@@ -295,7 +295,9 @@ void RnntDecodingStream::Advance(Array2<float> &logprobs) {
   Ragged<ArcInfo> pruned_arcs(SubsampleRaggedShape(pass1_arcs_shape,
                                                    prune_orig_arcs));
 
-  Ragged<ArcInfo> arcs = Subsample
+
+  /// CAUTION: the code below may just be garbage.  I forget now.
+
 
 
 
@@ -306,16 +308,7 @@ void RnntDecodingStream::Advance(Array2<float> &logprobs) {
   // to the
 
 
-
-
-
-
-
-      ctx2arc_row_splits
-
   RaggedShape state2arc(&state2arc_row_splits, &state2arc_row_ids, -1);
-
-
 
 
   Array1<int32_t> arc2context_row_ids = context_boundaries.Old2New();
@@ -331,19 +324,6 @@ void RnntDecodingStream::Advance(Array2<float> &logprobs) {
     RowIdsToRowSplits(arc2context_row_ids, &arc2context_row_splits);
 
   }
-
-
-
-
-
-
-  // For
-  Array1<int32_t> context_row_ids = context_boundaries.Old2New();
-
-
-
-      state_row_ids = state_
-      state_row_ids = state_boundaries.Old2New(true);
 
 
 
