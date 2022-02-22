@@ -1074,7 +1074,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
     two sublists along axis 1, the sizes are [2, 1], will produce 2 ragged tensors
 
     think about that we first pad src to [ [ [ 1 2 ] [ 3 ] ] [ [ 4 ] [ ] ] ]
-    then select elements along axis 1 into separate ragged shapes
+    then select elements along axis 1 into separate raggeds
 
     out[0] : [ [ 1 2 ] [ 4 ] ]   split_map[0] : [0, 1, 3]
     out[1] : [ [ 3 ] [ ] ]       split_map[1] : [2]
@@ -1092,7 +1092,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
 
     unstack on axis 1:
     think about that we first pad src to [ [ [ 1 2 ] [ 3 ] ] [ [ ] [ 4 ] ] ]
-    then select elements along axis 1 into separate ragged shapes
+    then select elements along axis 1 into separate raggeds
 
     out[0] : [ [ 1 2 ] [ ] ]       split_map[0] : [0, 1]
     out[1] : [ [ 3 ] [ 4 ] ]       split_map[1] : [2, 3]

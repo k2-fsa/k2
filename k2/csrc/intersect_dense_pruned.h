@@ -1,5 +1,5 @@
 /**
- * Copyright (c)  2021  Xiaomi Corporation (authors: Wei Kang)
+ * Copyright (c)  2022  Xiaomi Corporation (authors: Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -16,8 +16,11 @@
  * limitations under the License.
  */
 
-#ifndef K2_CSRC_ONLINE_DENSE_INTERSECTER_H_
-#define K2_CSRC_ONLINE_DENSE_INTERSECTER_H_
+#ifndef K2_CSRC_INTERSECT_DENSE_PRUNED_H_
+#define K2_CSRC_INTERSECT_DENSE_PRUNED_H_
+
+#include <memory>
+#include <vector>
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/ragged_ops.h"
@@ -123,7 +126,7 @@ struct DecodeStateInfo {
   //
   // Note: frame_idx may be larger than the real number of frames decoded, it
   // may contain empty lists as this is normally the output of `Unstack`.
-  Ragged<intersect_pruned_internal::StateInfo> states; // 2 axes: frame, state
+  Ragged<intersect_pruned_internal::StateInfo> states;  // 2 axes: frame, state
 
   // Indexed [frame_idx][state_idx][arc_idx].. the first 2 indexes are
   // the same as those into 'states' (the first 2 levels of the structure
@@ -166,7 +169,7 @@ struct DecodeStateInfo {
                            always succeed.  This determines the hash size.
 */
 class OnlineDenseIntersecter {
-  public:
+ public:
     OnlineDenseIntersecter(FsaVec &a_fsas, int32_t num_seqs, float search_beam,
                       float output_beam, int32_t min_states,
                       int32_t max_states);
@@ -201,12 +204,12 @@ class OnlineDenseIntersecter {
 
     ~OnlineDenseIntersecter();
 
-  private:
+ private:
     ContextPtr c_;
     float search_beam_;
     MultiGraphDenseIntersectPruned *impl_;
 };
 };  // namespace k2
 
-#endif  // K2_CSRC_ONLINE_DENSE_INTERSECTER_H_
+#endif  // K2_CSRC_INTERSECT_DENSE_PRUNED_H_
 
