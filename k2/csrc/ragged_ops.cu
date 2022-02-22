@@ -1317,7 +1317,8 @@ static void SelectAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
   }
 }
 
-void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
+void Unstack(RaggedShape &src, int32_t axis, std::string empty_pos,
+             std::vector<RaggedShape> *out,
              std::vector<Array1<int32_t>> *split_map) {
   ContextPtr &c = src.Context();
   if (axis == 0) {
@@ -1334,23 +1335,18 @@ void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
       out->at(i) = RemoveAxis(out->at(i), 0);
     }
   } else {
+    K2_CHECK(empty_pos == "left" || empty_pos == "right");
+
     int32_t tot_size_axis_minus1 = src.TotSize(axis - 1),
             tot_size_axis = src.TotSize(axis);
     const int32_t *row_splits_axis = src.RowSplits(axis).Data(),
                   *row_ids_axis = src.RowIds(axis).Data();
 
-    // Get the number of elements of current axis on each sublist
-    Array1<int32_t> sublists_size(c, tot_size_axis_minus1);
-    int32_t *sublists_size_data = sublists_size.Data();
-    K2_EVAL(c, tot_size_axis_minus1, lambda_get_sublists_size, (int32_t i) {
-        sublists_size_data[i] = row_splits_axis[i + 1] - row_splits_axis[i];
-    });
-
     // Each sublist contains the elements of axis `axis`, unstack operation will
     // split all these elements in a sublist to different RaggedShapes, so the
     // number of output RaggedShapes is the size of the sublist with max
     // elements.
-    int32_t num_out = MaxValue(sublists_size);
+    int32_t num_out = src.MaxSize(axis);
 
     out->resize(num_out);
     if (split_map != nullptr) split_map->resize(num_out);
@@ -1362,12 +1358,20 @@ void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
     Array1<int32_t> indexes(c, num_out * tot_size_axis_minus1, -1);
     int32_t *indexes_data = indexes.Data();
 
+    bool empty_left = empty_pos == "left" ? true : false;
+
     // Decide the elements of axis `axis` will go to which output RaggedShape
     K2_EVAL(c, tot_size_axis, lambda_set_indexes, (int32_t idx01) {
         int32_t idx0 = row_ids_axis[idx01],
                 idx0x = row_splits_axis[idx0],
-                idx1 = idx01 - idx0x;
-        indexes_data[idx1 * tot_size_axis_minus1 + idx0] = idx01;
+                idx1 = idx01 - idx0x,
+                idx_row = idx1;
+        if (empty_left) {
+          int32_t idx0x_next = row_splits_axis[idx0 + 1],
+                  num_elems = idx0x_next - idx0x;
+          idx_row = num_out - num_elems + idx1;
+        }
+        indexes_data[idx_row * tot_size_axis_minus1 + idx0] = idx01;
     });
 
     // To make `DecomposeRaggedShape` work, we add a RegularRaggedShape
@@ -1410,6 +1414,11 @@ void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
       }
     }
   }
+}
+
+void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
+             std::vector<Array1<int32_t>> *split_map /*= nullptr*/) {
+  Unstack(src, axis, "right", out, split_map);
 }
 
 RaggedShape Merge(int32_t num_srcs, RaggedShape **src,

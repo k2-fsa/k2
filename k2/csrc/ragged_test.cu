@@ -235,13 +235,15 @@ TEST(RaggedShapeOpsTest, UnstackMoreAxes) {
     std::vector<RaggedShape *> out_ptr;
 
     for (int32_t axis = 0; axis < 4; axis++) {
-      Unstack(shape, axis, &out, &out_map);
+      for (auto &empty_pos : {"left", "right"}) {
+        Unstack(shape, axis, empty_pos, &out, &out_map);
 
-      out_ptr.clear();
-      for (size_t i = 0; i < out.size(); ++i) out_ptr.emplace_back(&(out[i]));
-      auto dest = Stack(axis, out.size(), out_ptr.data());
-      dest = RemoveEmptyLists(dest, axis);
-      K2_CHECK(Equal(dest, RemoveEmptyLists(shape, axis)));
+        out_ptr.clear();
+        for (size_t i = 0; i < out.size(); ++i) out_ptr.emplace_back(&(out[i]));
+        auto dest = Stack(axis, out.size(), out_ptr.data());
+        dest = RemoveEmptyLists(dest, axis);
+        K2_CHECK(Equal(dest, RemoveEmptyLists(shape, axis)));
+      }
     }
   }
 }
@@ -258,21 +260,22 @@ TEST(RaggedShapeOpsTest, UnstackRandom) {
     std::vector<RaggedShape *> out_ptr;
     for (int32_t axis = 0; axis < 4; axis++) {
       auto random_shape = RemoveEmptyLists(random_shape0, axis);
+      for (auto &empty_pos : {"left", "right"}) {
+        Unstack(random_shape, axis, empty_pos, &out, nullptr);
 
-      Unstack(random_shape, axis, &out, nullptr);
+        out_ptr.clear();
+        for (size_t i = 0; i < out.size(); ++i) {
+          out_ptr.emplace_back(&(out[i]));
+        }
+        // There is a bug in `Stack` for stacking a shape itself,
+        // not urgent, so skipping here.
+        // TODO: Remove this line when the bug fixed.
+        if (out.size() == 1) continue;
+        auto dest = Stack(axis, out.size(), out_ptr.data());
+        dest = RemoveEmptyLists(dest, axis);
 
-      out_ptr.clear();
-      for (size_t i = 0; i < out.size(); ++i) {
-        out_ptr.emplace_back(&(out[i]));
+        K2_CHECK(Equal(dest, random_shape));
       }
-      // There is a bug in `Stack` for stacking a shape itself,
-      // not urgent, so skipping here.
-      // TODO: Remove this line when the bug fixed.
-      if (out.size() == 1) continue;
-      auto dest = Stack(axis, out.size(), out_ptr.data());
-      dest = RemoveEmptyLists(dest, axis);
-
-      K2_CHECK(Equal(dest, random_shape));
     }
   }
 }

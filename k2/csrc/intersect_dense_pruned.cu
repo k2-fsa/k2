@@ -26,78 +26,11 @@
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/hash.h"
-#include "k2/csrc/online_dense_intersector.h"
+#include "k2/csrc/intersect_dense_pruned.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/thread_pool.h"
 
 namespace k2 {
-
-namespace intersect_pruned_internal {
-
-/* Information associated with a state active on a particular frame..  */
-struct StateInfo {
-  /* abs_state_id is the state-index in a_fsas_.  Note: the idx0 in here
-     won't necessarily match the idx0 within FrameInfo::state if
-     a_fsas_stride_ == 0. */
-  int32_t a_fsas_state_idx01;
-
-  /* Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
-     FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
-     represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
-     use max not log-sum).  You can take the pruned lattice and rescore it if
-     you want log-sum.  */
-  int32_t forward_loglike;
-
-  /* Note: this `backward_loglike` is the best score of any path from here to
-     the end, minus the best path in the overall FSA, i.e. it's the backward
-     score you get if, at the final-state, you set backward_loglike ==
-     -forward_loglike. So backward_loglike + OrderedIntToFloat(forward_loglike)
-     <= 0, and you can treat it somewhat like a posterior (except they don't sum
-     to one as we're using max, not log-add).
-  */
-  float backward_loglike;
-};
-
-struct ArcInfo {              // for an arc that wasn't pruned away...
-  int32_t a_fsas_arc_idx012;  // the arc-index in a_fsas_.
-  float arc_loglike;          // loglike on this arc: equals loglike from data
-  // (nnet output, == b_fsas), plus loglike from
-  // the arc in a_fsas.
-
-  union {
-    // these 2 different ways of storing the index of the destination state
-    // are used at different stages of the algorithm; we give them different
-    // names for clarity.
-    int32_t dest_a_fsas_state_idx01;  // The destination-state as an index
-    // into a_fsas_.
-    int32_t dest_info_state_idx1;  // The destination-state as an idx1 into the
-                                   // next FrameInfo's `arcs` or `states`,
-                                   // omitting the FSA-index which can be worked
-                                   // out from the structure of this frame's
-                                   // ArcInfo.
-  } u;
-  float end_loglike;  // loglike at the end of the arc just before
-  // (conceptually) it joins the destination state.
-};
-
-/*
-static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
-  os << "StateInfo{" << s.a_fsas_state_idx01 << ","
-     << OrderedIntToFloat(s.forward_loglike) << "," << s.backward_loglike
-     << "}";
-  return os;
-}
-
-static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
-  os << "ArcInfo{" << a.a_fsas_arc_idx012 << "," << a.arc_loglike << ","
-     << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike
-     << "[i=" << FloatToOrderedInt(a.end_loglike) << "]"
-     << "}";
-  return os;
-}
-*/
-
-}  // namespace intersect_pruned_internal
 
 using namespace intersect_pruned_internal;  // NOLINT
 
@@ -153,8 +86,7 @@ class MultiGraphDenseIntersectPruned {
         online_decoding_(online_decoding),
         dynamic_beams_(a_fsas.Context(), num_seqs, search_beam),
         forward_semaphore_(1),
-        final_t_(a_fsas.Context(), num_seqs, 0),
-        reach_final_(0) {
+        final_t_(a_fsas.Context(), num_seqs, 0) {
     NVTX_RANGE(K2_FUNC);
     c_ = GetContext(a_fsas.shape);
     T_ = 0;
@@ -201,27 +133,6 @@ class MultiGraphDenseIntersectPruned {
     }
     state_map_ = Hash(c_, num_buckets, num_key_bits);
   }
-
-  // The information we have for each frame of the pruned-intersection (really:
-  // decoding) algorithm.  We keep an array of these, one for each frame, up to
-  // the length of the longest sequence we're decoding plus one.
-  struct FrameInfo {
-    // States that are active at the beginning of this frame.  Indexed
-    // [fsa_idx][state_idx], where fsa_idx indexes b_fsas_ (and a_fsas_, if
-    // a_fsas_stride_ != 0); and state_idx just enumerates the active states
-    // on this frame (as state_idx01's in a_fsas_).
-    Ragged<StateInfo> states;  // 2 axes: fsa, state
-
-    // Indexed [fsa_idx][state_idx][arc_idx].. the first 2 indexes are
-    // the same as those into 'states' (the first 2 levels of the structure
-    // are shared), and the last one enumerates the arcs leaving each of those
-    // states.
-    //
-    // Note: there may be indexes [fsa_idx] that have no states (because that
-    // FSA had fewer frames than the max), and indexes [fsa_idx][state_idx] that
-    // have no arcs due to pruning.
-    Ragged<ArcInfo> arcs;  // 3 axes: fsa, state, arc
-  };
 
   /* Does the main work of intersection/composition, but doesn't produce any
      output; the output is provided when you call FormatOutput().
@@ -330,11 +241,17 @@ class MultiGraphDenseIntersectPruned {
        @param [in] b_fsas  The neural-net output, with each frame containing the
                            log-likes of each phone.  A series of sequences of
                            (in general) different length.
-       @param [in] is_final Whether this is the final chunk of the nnet_output,
-                            After calling this function with is_final is true,
-                            means decoding finished.
+       @param [in] frames  The frames generated for previously decoded chunks.
+       @param [in] beams  Current search beams for each of the sequences, it has
+                     `beams.Dim() == num_seqs_`.
+
+       @return  A pointer to current `frames_`, which would be usefull to
+                generate `DecodeStateInfo` for each sequences.
   */
-  void OnlineIntersect(std::shared_ptr<DenseFsaVec> &b_fsas, bool is_final) {
+  const std::vector<std::unique_ptr<FrameInfo>>* OnlineIntersect(
+      std::shared_ptr<DenseFsaVec> &b_fsas,
+      std::vector<std::unique_ptr<FrameInfo>> &frames,
+      Array1<float> &beams) {
     /*
       T is the largest number of (frames+1) of neural net output currently
       received, or the largest number of frames of log-likelihoods we count the
@@ -344,24 +261,25 @@ class MultiGraphDenseIntersectPruned {
       from state 0 to state 1). So the #states is 2 greater than the actual
       number of frames in the neural-net output.
     */
+
     K2_CHECK(online_decoding_);
     K2_CHECK(c_->IsCompatible(*b_fsas->Context()));
+    K2_CHECK_EQ(a_fsas_.shape.Dim0(), 1);
+    K2_CHECK_EQ(num_seqs_, b_fsas->shape.Dim0());
 
-    K2_CHECK_EQ(reach_final_, 0) << "You can't continue decoding after "
-                                 << "reaching final.";
-    if (is_final) {
-      reach_final_ = 1;
-    }
-
+    // update data members
     b_fsas_ = b_fsas;
-    K2_CHECK_EQ(num_seqs_, b_fsas_->shape.Dim0());
-    int32_t T = T_ + b_fsas_->shape.MaxSize(1);
+    frames_.swap(frames);
+    dynamic_beams_ = beams.To(c_);
+    T_ = frames_.size();
+
+    // -1 here because we already put the initial frame info to frames_
+    int32_t T = T_ + b_fsas_->shape.MaxSize(1) - 1;
 
     // we'll initially populate frames_[0.. T+1], but discard the one at T+1,
     // which has no arcs or states, the ones we use are from 0 to T.
     frames_.reserve(T + 2);
 
-    if (T_ == 0) frames_.push_back(InitialFrameInfo());
     int32_t prune_num_frames = 15, prune_shift = 10;
 
     for (int32_t t = 0; t <= b_fsas_->shape.MaxSize(1); t++) {
@@ -386,15 +304,14 @@ class MultiGraphDenseIntersectPruned {
     // is set up (it has no arcs but we need the shape).
     frames_.pop_back();
 
-    if (is_final) {
-      T_ = T;
-    } else {
-      T_ = T - 1;
-      // partial_final_frame_ is the last frame to generate partial result,
-      // but it should not be the start frame of next chunk decoding.
-      partial_final_frame_ = std::move(frames_.back());
-      frames_.pop_back();
-    }
+    int32_t his_t = T_ - 1;
+
+    T_ = T - 1;
+    // partial_final_frame_ is the last frame to generate partial result,
+    // but it should not be the start frame of next chunk decoding.
+    partial_final_frame_ = std::move(frames_.back());
+    frames_.pop_back();
+
     const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
     int32_t *final_t_data = final_t_.Data();
 
@@ -403,11 +320,9 @@ class MultiGraphDenseIntersectPruned {
         c_, num_seqs_, lambda_set_final_and_final_t, (int32_t i)->void {
           int32_t b_chunk_size =
               b_fsas_row_splits1[i + 1] - b_fsas_row_splits1[i];
-          int32_t final_t = final_t_data[i];
-          final_t =
-              is_final ? final_t + b_chunk_size : final_t + b_chunk_size - 1;
-          final_t_data[i] = final_t;
+          final_t_data[i] = his_t + b_chunk_size - 1;
         });
+    return &frames_;
   }
 
   void BackwardPass() {
@@ -483,7 +398,6 @@ class MultiGraphDenseIntersectPruned {
 
     bool online_decoding = online_decoding_;
     if (online_decoding) {
-      K2_CHECK_EQ(is_final, reach_final_);
       K2_CHECK(arc_map_a);
       K2_CHECK_EQ(arc_map_b, nullptr);
     } else {
@@ -1563,6 +1477,9 @@ class MultiGraphDenseIntersectPruned {
     }
   }
 
+  const Array1<float>& GetBeams() {
+    return dynamic_beams_;
+  }
 
   ContextPtr c_;
   FsaVec &a_fsas_;         // Note: a_fsas_ has 3 axes.
@@ -1585,8 +1502,6 @@ class MultiGraphDenseIntersectPruned {
 
   bool online_decoding_;         // true for online decoding.
   Array1<int32_t> final_t_;      // record the final frame id of each DenseFsa.
-  int32_t reach_final_;          // only for online decoding, indicating whether
-                                 // the last chunk of audio received.
 
   std::unique_ptr<FrameInfo> partial_final_frame_;  // store the final frame for
                                                     // partial results
@@ -1670,6 +1585,8 @@ OnlineDenseIntersecter::OnlineDenseIntersecter(FsaVec &a_fsas,
     int32_t min_active_states, int32_t max_active_states) {
   bool online_decoding = true;
   K2_CHECK_EQ(a_fsas.NumAxes(), 3);
+  c_ = a_fsas.Context();
+  search_beam_ = search_beam;
   impl_ = new MultiGraphDenseIntersectPruned(a_fsas, num_seqs, search_beam,
       output_beam, min_active_states, max_active_states, online_decoding);
 }
@@ -1678,15 +1595,97 @@ OnlineDenseIntersecter::~OnlineDenseIntersecter(){
   delete impl_;
 }
 
-void OnlineDenseIntersecter::Intersect(DenseFsaVec &b_fsas, bool is_final) {
-  auto b_fsas_p = std::make_shared<DenseFsaVec>(b_fsas);
-  impl_->OnlineIntersect(b_fsas_p, is_final);
-}
+void OnlineDenseIntersecter::Decode(DenseFsaVec &b_fsas,
+    std::vector<std::unique_ptr<DecodeStateInfo>> *decode_states,
+    FsaVec *ofsa, Array1<int32_t> *arc_map_a) {
 
-void OnlineDenseIntersecter::FormatOutput(FsaVec *out,
-                                          Array1<int32_t> *arc_map_a,
-                                          bool is_final) {
-  impl_->FormatOutput(out, arc_map_a, nullptr, is_final);
+  auto b_fsas_p = std::make_shared<DenseFsaVec>(b_fsas);
+  int32_t num_seqs = b_fsas_p->shape.Dim0();
+
+  K2_CHECK_EQ(num_seqs, static_cast<int32_t>(decode_states->size()));
+
+  std::vector<Ragged<StateInfo> *> seq_states_ptr_vec(num_seqs);
+  std::vector<Ragged<ArcInfo> *> seq_arcs_ptr_vec(num_seqs);
+
+  Array1<float> beams(GetCpuContext(), num_seqs);
+  float *beams_data = beams.Data();
+
+  for (int32_t i = 0; i < num_seqs; ++i) {
+    // initialization
+    if (!decode_states->at(i)) {
+      DecodeStateInfo info;
+      StateInfo sinfo;
+      // start state of decoding graph
+      sinfo.a_fsas_state_idx01 = 0;
+      sinfo.forward_loglike = FloatToOrderedInt(0.0);
+      info.states = Ragged<StateInfo>(
+          RegularRaggedShape(c_, 1, 1),
+          Array1<StateInfo>(c_, std::vector<StateInfo>{sinfo}));
+
+      info.arcs = Ragged<ArcInfo>(RaggedShape(c_, "[ [ [ x ] ] ]"),
+          Array1<ArcInfo>(c_, std::vector<ArcInfo>{ArcInfo()}));
+
+      info.beam = search_beam_;
+      decode_states->at(i) = std::make_unique<DecodeStateInfo>(info);
+    }
+    seq_states_ptr_vec[i] = &(decode_states->at(i)->states);
+    seq_arcs_ptr_vec[i] = &(decode_states->at(i)->arcs);
+    beams_data[i] = decode_states->at(i)->beam;
+  }
+
+  auto stack_states = Stack(0, num_seqs, seq_states_ptr_vec.data());
+  auto stack_arcs = Stack(0, num_seqs, seq_arcs_ptr_vec.data());
+
+  // Remove empty lists on frame axis, these empty lists come from the
+  // Unstack of the previous chunk
+  stack_states = Ragged<StateInfo>(RemoveEmptyLists(stack_states.shape, 1),
+                                   stack_states.values);
+  stack_arcs = Ragged<ArcInfo>(RemoveEmptyLists(stack_arcs.shape, 1),
+                               stack_arcs.values);
+
+  std::vector<Ragged<StateInfo>> frame_states_vec;
+  std::vector<Ragged<ArcInfo>> frame_arcs_vec;
+  // Put empty list left, we want the latest frames at the tail positions
+  Unstack(stack_states, 1, "left", &frame_states_vec);
+  Unstack(stack_arcs, 1, "left", &frame_arcs_vec);
+
+  std::vector<std::unique_ptr<FrameInfo>> frames(frame_states_vec.size());
+
+  for (size_t i = 0; i < frames.size(); ++i) {
+    FrameInfo info;
+    info.states = frame_states_vec[i];
+    info.arcs = frame_arcs_vec[i];
+    frames[i] = std::make_unique<FrameInfo>(info);
+  }
+
+  const auto new_frames = impl_->OnlineIntersect(b_fsas_p, frames, beams);
+  impl_->FormatOutput(ofsa, arc_map_a, nullptr/*arc_map_b*/, false);
+
+  int32_t frames_num = new_frames->size();
+  std::vector<Ragged<StateInfo> *> frame_states_ptr_vec(frames_num);
+  std::vector<Ragged<ArcInfo> *> frame_arcs_ptr_vec(frames_num);
+  for (int32_t i = 0; i < frames_num; ++i) {
+    frame_states_ptr_vec[i] = &(new_frames->at(i)->states);
+    frame_arcs_ptr_vec[i] = &(new_frames->at(i)->arcs);
+  }
+
+  stack_states = Stack(0, frames_num, frame_states_ptr_vec.data());
+  stack_arcs = Stack(0, frames_num, frame_arcs_ptr_vec.data());
+
+  std::vector<Ragged<StateInfo>> seq_states_vec;
+  std::vector<Ragged<ArcInfo>> seq_arcs_vec;
+  Unstack(stack_states, 1, &seq_states_vec);
+  Unstack(stack_arcs, 1, &seq_arcs_vec);
+
+  beams = impl_->GetBeams().To(GetCpuContext());
+  beams_data = beams.Data();
+  for (int32_t i = 0; i < num_seqs; ++i) {
+    DecodeStateInfo info;
+    info.states = seq_states_vec[i];
+    info.arcs = seq_arcs_vec[i];
+    info.beam = beams_data[i];
+    decode_states->at(i) = std::make_unique<DecodeStateInfo>(info);
+  }
 }
 
 }  // namespace k2

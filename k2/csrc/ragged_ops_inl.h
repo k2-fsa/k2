@@ -170,7 +170,8 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
 }
 
 template <typename T>
-void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
+void Unstack(Ragged<T> src, int32_t axis, std::string empty_pos,
+             std::vector<Ragged<T>> *out,
              std::vector<Array1<int32_t>> *split_map /* = nullptr */) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(out != nullptr);
@@ -180,7 +181,7 @@ void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
       (split_map != nullptr ? split_map : &split_map_tmp);
   std::vector<RaggedShape> shape_out;
 
-  Unstack(src.shape, axis, &shape_out, split_map_ptr);
+  Unstack(src.shape, axis, empty_pos, &shape_out, split_map_ptr);
 
   out->resize(shape_out.size());
   // +1 here because we need to do ExclusiveSum on this Array1 later
