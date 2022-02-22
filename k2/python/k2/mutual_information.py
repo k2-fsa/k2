@@ -53,7 +53,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
 
         ans = _k2.mutual_information_forward(px, py, boundary, p)
 
-        px_grad, py_grad = None, None
+        px_grad, py_grad = torch.Tensor(), torch.Tensor()
         if return_grad or px.requires_grad or py.requires_grad:
             ans_grad = torch.ones(B, device=px.device, dtype=px.dtype)
             (px_grad, py_grad) = _k2.mutual_information_backward(
