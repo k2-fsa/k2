@@ -27,7 +27,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
     sequence-to-sequence tasks where monotonic alignment between pairs of
     sequences is desired.
     """
-    
+
     @staticmethod
     def forward(
         ctx,
@@ -41,13 +41,15 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         Computing mutual information between two sequences of real vectors.
         Args:
           px:
-            A torch.Tensor of some floating point type, with shape ``[B][S][T+1]``,
-            where ``B`` is the batch size, ``S`` is the length of the ``x`` sequence
-            (including representations of ``EOS`` symbols but not ``BOS`` symbols),
-            and ``S`` is the length of the ``y`` sequence (including representations
-            of ``EOS`` symbols but not ``BOS`` symbols).  In the mutual information
-            application, ``px[b][s][t]`` would represent the following log odds
-            ratio; ignoring the b index on the right to make the notation more
+            A torch.Tensor of some floating point type, with shape
+            ``[B][S][T+1]`` where ``B`` is the batch size, ``S`` is the
+            length of the ``x`` sequence (including representations of
+            ``EOS`` symbols but not ``BOS`` symbols), and ``S`` is the
+            length of the ``y`` sequence (including representations of
+            ``EOS`` symbols but not  ``BOS`` symbols).  In the mutual
+            information application, ``px[b][s][t]`` would represent the
+            following log odds ratio; ignoring the b index on the right
+            to make the notation more
             compact::
 
               px[b][s][t] =  log [ p(x_s | x_{0..s-1}, y_{0..t-1}) / p(x_s) ]
@@ -56,14 +58,14 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
             choosing to generate an ``x`` value as opposed to a ``y`` value.  In
             practice it might be computed as ``a + b``, where ``a`` is the log
             probability of choosing to extend the sequence of length ``(s,t)``
-            with an ``x`` as opposed to a ``y`` value; and ``b`` might in practice
-            be of the form::
+            with an ``x`` as opposed to a ``y`` value; and ``b`` might in
+            practice be of the form::
 
                 log(N exp f(x_s, y_{t-1}) / sum_t'  exp f(x_s, y_t'))
 
-            where ``N`` is the number of terms that the sum over ``t'`` included,
-            which might include some or all of the other sequences as well as this
-            one.
+            where ``N`` is the number of terms that the sum over ``t'``
+            included, which might include some or all of the other sequences as
+            well as this one.
 
             Note:
               we don't require ``px`` and py to be contiguous, but the
@@ -71,60 +73,64 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
               stride 1.
 
           py:
-            A torch.Tensor of the same dtype as ``px``, with shape ``[B][S+1][T]``,
-            representing::
+            A torch.Tensor of the same dtype as ``px``, with shape
+            ``[B][S+1][T]``, representing::
 
               py[b][s][t] =  log [ p(y_t | x_{0..s-1}, y_{0..t-1}) / p(y_t) ]
 
             This function does not treat ``x`` and ``y`` differently; the only
             difference is that for optimization purposes we assume the last axis
-            (the ``t`` axis) has stride of 1; this is true if ``px`` and ``py`` are
-            contiguous.
-          
+            (the ``t`` axis) has stride of 1; this is true if ``px`` and ``py``
+            are contiguous.
+
           pxy_grads:
-            A List to store the return grads of ``px`` and ``py`` if return_grad == True.
+            A List to store the return grads of ``px`` and ``py``
+            if return_grad == True.
             Remain unchanged if return_grad == False.
-            
-            See `this PR <https://github.com/k2-fsa/k2/pull/924>` for more information about
-            why we add this parameter.
-            
+
+            See `this PR <https://github.com/k2-fsa/k2/pull/924>` for more
+            information about why we add this parameter.
+
             Note:
-              the length of the list must be 2, where the first element represents the grads
-              of ``px`` and the second one represents the grads of ``py``.
-          
+              the length of the list must be 2, where the first element
+              represents the grads of ``px`` and the second one represents
+              the grads of ``py``.
+
           boundary:
             If supplied, a torch.LongTensor of shape ``[B][4]``, where each
             row contains ``[s_begin, t_begin, s_end, t_end]``,
             with ``0 <= s_begin <= s_end < S`` and ``0 <= t_begin <= t_end < T``
             (this implies that empty sequences are allowed).
             If not supplied, the values ``[0, 0, S, T]`` will be assumed.
-            These are the beginning and one-past-the-last positions in the ``x`` and
-            ``y`` sequences respectively, and can be used if not all sequences are
+            These are the beginning and one-past-the-last positions in the
+            ``x`` and ``y`` sequences respectively, and can be used if not
+            all sequences are
             of the same length.
-            
+
           return_grad:
-            Whether to return grads of ``px`` and ``py``, this grad standing for the
-            occupation probability is the output of the backward with a
+            Whether to return grads of ``px`` and ``py``, this grad standing
+            for the occupation probability is the output of the backward with a
             ``fake gradient`` the ``fake gradient`` is the same as the gradient
-            you'd get if you did ``torch.autograd.grad((scores.sum()), [px, py])``.
+            you'd get if you did
+            ``torch.autograd.grad((scores.sum()), [px, py])``.
             This is useful to implement the pruned version of rnnt loss.
 
         Returns:
-          Returns a torch.Tensor of shape ``[B]``, containing the log of the mutual
-          information between the b'th pair of sequences.  This is defined by
-          the following recursion on ``p[b,s,t]`` (where ``p`` is of shape
-          ``[B,S+1,T+1]``), representing a mutual information between sub-sequences
-          of lengths ``s`` and ``t``::
+          Returns a torch.Tensor of shape ``[B]``, containing the log of
+          the mutual information between the b'th pair of sequences.  This is
+          defined by the following recursion on ``p[b,s,t]`` (where ``p``
+          is of shape ``[B,S+1,T+1]``), representing a mutual information
+          between sub-sequences of lengths ``s`` and ``t``::
 
                  p[b,0,0] = 0.0
                  p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                                     p[b,s,t-1] + py[b,s,t-1])
                            (if s > 0 or t > 0)
 
-          where we handle edge cases by treating quantities with negative indexes
-          as **-infinity**.  The extension to cases where the boundaries are
-          specified should be obvious; it just works on shorter sequences with
-          offsets into ``px`` and ``py``.
+          where we handle edge cases by treating quantities with negative
+          indexes as **-infinity**.  The extension to cases where the
+          boundaries are specified should be obvious; it just works on
+          shorter sequences with offsets into ``px`` and ``py``.
         """
         (B, S, T1) = px.shape
         T = T1 - 1
@@ -153,8 +159,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         if return_grad or px.requires_grad or py.requires_grad:
             ans_grad = torch.ones(B, device=px.device, dtype=px.dtype)
             (px_grad, py_grad) = _k2.mutual_information_backward(
-                px, py, boundary, p, ans_grad
-            )
+                px, py, boundary, p, ans_grad)
             ctx.save_for_backward(px_grad, py_grad)
         assert len(pxy_grads) == 2
         pxy_grads[0] = px_grad
@@ -280,9 +285,8 @@ def mutual_information_recursion(
     assert px.is_contiguous()
     assert py.is_contiguous()
     pxy_grads = [None, None]
-    scores = MutualInformationRecursionFunction.apply(
-        px, py, pxy_grads, boundary, return_grad
-    )
+    scores = MutualInformationRecursionFunction.apply(px, py, pxy_grads,
+                                                      boundary, return_grad)
     px_grad, py_grad = pxy_grads
     return (scores, (px_grad, py_grad)) if return_grad else scores
 
@@ -382,9 +386,9 @@ def joint_mutual_information_recursion(
     # actual derivative w.r.t. the total probs.
     ans_grad = torch.ones(B, device=px_tot.device, dtype=px_tot.dtype)
 
-    (px_grad, py_grad) = _k2.mutual_information_backward(
-        px_tot, py_tot, boundary, p, ans_grad
-    )
+    (px_grad,
+     py_grad) = _k2.mutual_information_backward(px_tot, py_tot, boundary, p,
+                                                ans_grad)
 
     px_grad = px_grad.reshape(1, B, -1)
     py_grad = py_grad.reshape(1, B, -1)
