@@ -27,6 +27,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         ctx,
         px: torch.Tensor,
         py: torch.Tensor,
+        pxy_grads: list,
         boundary: Optional[torch.Tensor] = None,
         return_grad: bool = False,
     ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
@@ -53,25 +54,29 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
 
         ans = _k2.mutual_information_forward(px, py, boundary, p)
 
-        px_grad, py_grad = torch.Tensor(), torch.Tensor()
+        px_grad, py_grad = None, None
         if return_grad or px.requires_grad or py.requires_grad:
             ans_grad = torch.ones(B, device=px.device, dtype=px.dtype)
             (px_grad, py_grad) = _k2.mutual_information_backward(
                 px, py, boundary, p, ans_grad
             )
             ctx.save_for_backward(px_grad, py_grad)
-        return ans, px_grad, py_grad
+        assert len(pxy_grads) == 2
+        pxy_grads[0] = px_grad
+        pxy_grads[1] = py_grad
+
+        return ans
 
     @staticmethod
     def backward(
-        ctx, ans_grad: Tensor, dummy_px_grad: Tensor, dummy_py_grad: Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, None, None]:
+        ctx, ans_grad: Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, None, None, None]:
         (px_grad, py_grad) = ctx.saved_tensors
         (B,) = ans_grad.shape
         ans_grad = ans_grad.reshape(B, 1, 1)  # (B, 1, 1)
         px_grad *= ans_grad
         py_grad *= ans_grad
-        return (px_grad, py_grad, None, None)
+        return (px_grad, py_grad, None, None, None)
 
 
 def mutual_information_recursion(
@@ -179,10 +184,11 @@ def mutual_information_recursion(
     # The following assertions are for efficiency
     assert px.is_contiguous()
     assert py.is_contiguous()
-
-    scores, px_grad, py_grad = MutualInformationRecursionFunction.apply(
-        px, py, boundary, return_grad
+    pxy_grads = [None, None]
+    scores = MutualInformationRecursionFunction.apply(
+        px, py, pxy_grads, boundary, return_grad
     )
+    px_grad, py_grad = pxy_grads
     return (scores, (px_grad, py_grad)) if return_grad else scores
 
 
