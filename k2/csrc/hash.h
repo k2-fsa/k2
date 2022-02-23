@@ -1,5 +1,5 @@
 /**
- * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey, Wei kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -1015,6 +1015,350 @@ class Hash {
 
 
 /*
+  How class Hash64 works:
+
+    - It can function as a map from key=uint64_t to value=uint64_t, you must
+      decide the number of buckets, when you create the hash, but you can resize
+      it (manually).
+
+   Note:
+     Each bucket contains a pair of key/value, each 64bits, key is stored at
+     data[2 * bucket_index] and value is stored at data[2 * bucket_index + 1].
+
+   Some constraints:
+    - You can store any (key,value) pair, except the pair where all the bits of
+      both key and value are set [that is used to mean "nothing here"]
+    - The number of buckets must always be a power of 2.
+    - When deleting values from the hash you must delete them all at
+      once (necessary because there is no concept of a "tombstone".
+
+   Some notes on usage:
+
+   You use it by: constructing it, obtaining its Accessor with GetAccessor();
+   and inside kernels (or host code), calling functions Insert(), Find() or
+   Delete() of the Accessor object.  Resizing is not automatic; it is the
+   user's responsibility to make sure the hash does not get too full
+   (which could cause assertion failures in kernels, and will be very slow).
+
+   Some implementation notes:
+    - When accessing hash[key], we use bucket_index == key % num_buckets,
+      bucket_inc = 1 | (((key * 2) / num_buckets) ^ key).
+    - If the bucket at `bucket_index` is occupied, we look in locations
+      `(bucket_index + n * bucket_inc)%num_buckets` for n = 1, 2, ...;
+      this choice ensures that if multiple keys hash to the same bucket,
+      they don't all access the same sequence of locations; and bucket_inc
+      being odd ensures we eventually try all locations (of course for
+      reasonable hash occupancy levels, we shouldn't ever have to try
+      more than two or three).
+
+*/
+class Hash64 {
+ public:
+  /* Constructor.  Context can be for CPU or GPU.
+
+     @param [in] num_buckets   Number of buckets in the hash; must be
+                a power of 2 and >= 128 (this limit was arbitrarily chosen).
+                The number of items in the hash cannot exceed the number of
+                buckets, or the code will loop infinitely when you try to add
+                items; aim for less than 50% occupancy.
+  */
+  Hash64(ContextPtr c, int64_t num_buckets) {
+    K2_CHECK_GE(num_buckets, 128);
+    data_ = Array1<uint64_t>(c, num_buckets * 2, ~(uint64_t)0);
+    int64_t n = 2;
+    for (buckets_num_bitsm1_ = 0; n < num_buckets;
+         n *= 2, buckets_num_bitsm1_++) {
+    }
+    K2_CHECK_EQ(num_buckets, 2 << buckets_num_bitsm1_)
+        << " num_buckets must be a power of 2.";
+  }
+
+  // Only to be used prior to assignment.
+  Hash64() = default;
+
+  int64_t NumBuckets() const { return data_.Dim() / 2; }
+
+  // Returns data pointer; for testing..
+  uint64_t *Data() { return data_.Data(); }
+
+  // Shallow copy
+  Hash64 &operator=(const Hash64 &src) = default;
+  // Copy constructor (shallow copy)
+  explicit Hash64(const Hash64 &src) = default;
+
+  ContextPtr &Context() const { return data_.Context(); }
+
+  class Accessor {
+   public:
+    Accessor(Hash64 &hash)
+        : data_(hash.data_.Data()),
+          num_buckets_mask_(uint64_t(hash.NumBuckets()) - 1),
+          buckets_num_bitsm1_(hash.buckets_num_bitsm1_) {}
+
+    // Copy constructor
+    Accessor(const Accessor &src) = default;
+
+    /*
+     Try to insert pair (key,value) into hash.
+       @param [in] key  Key into hash, it is an error if ~key == 0, i.e. if all
+                        the allowed bits of `key` are set.
+       @param [in] value  Value to set, it is an error if ~value == 0, i.e. if
+                          all the allowed bits `value` are set.
+       @param [out] old_value  If not nullptr, this location will be set to
+                     the existing value *if this key was already present* in the
+                     hash (or set by another thread in this kernel), i.e. only
+                     if this function returns false.
+       @param [out] key_value_location  If not nullptr, its contents will be
+                     set to the address of the (key,value) pair (either the
+                     existing or newly-written one).
+       @return  Returns true if this (key,value) pair was inserted, false
+     otherwise.
+
+       Note: the const is with respect to the metadata only; it is required, to
+       avoid compilation errors.
+    */
+    __forceinline__ __host__ __device__ bool Insert(
+        uint64_t key, uint64_t value, uint64_t *old_value = nullptr,
+        uint64_t **key_value_location = nullptr) const {
+      uint64_t cur_bucket = key & num_buckets_mask_,
+               bucket_inc = 1 | ((key >> buckets_num_bitsm1_) ^ key);
+
+      while (1) {
+        uint64_t cur_key = data_[2 * cur_bucket];
+        uint64_t cur_value = data_[2 * cur_bucket + 1];
+        if (cur_key == key) {
+          if (old_value) *old_value = cur_value;
+          if (key_value_location) *key_value_location = data_ + 2 * cur_bucket;
+          return false;  // key exists in hash
+        } else if (~cur_key == 0) {
+          // we have a version of AtomicCAS that also works on host.
+          uint64_t old_key = AtomicCAS(
+              (unsigned long long *)(data_ + 2 * cur_bucket), cur_key, key);
+          if (old_key == cur_key) {
+            // set value
+            data_[2 * cur_bucket + 1] = value;
+            if (key_value_location)
+              *key_value_location = data_ + 2 * cur_bucket;
+            return true;  // Successfully inserted.
+          }
+          if (old_key == key) {
+            if (old_value) *old_value = cur_value;
+            if (key_value_location)
+              *key_value_location = data_ + 2 * cur_bucket;
+            return false;  // Another thread inserted this key
+          }
+        }
+        // Rotate bucket index until we find a free location.  This will
+        // eventually visit all bucket indexes before it returns to the same
+        // location, because bucket_inc is odd (so only satisfies
+        // (n * bucket_inc) % num_buckets == 0 for n == num_buckets).
+        // Note: n here is the number of times we went around the loop.
+        cur_bucket = (cur_bucket + bucket_inc) & num_buckets_mask_;
+      }
+    }
+
+    /*
+     Look up this key in this hash; output the value and optionally the
+     location of the (key,value) pair if found.
+
+      @param [in] key    Key to look up;
+      @param [out] value_out  If found, value will be written to here.  This may
+                        seem redundant with key_value_location, but this should
+                        compile to a local variable, and we want to avoid
+                        redundant memory reads.
+      @param [out] key_value_location  (optional) The memory address of the
+                       (key,value) pair, in case the caller wants to overwrite
+                       the value via SetValue(); must be used for no other
+                       purpose.
+      @return          Returns true if an item with this key was found in the
+                       hash, otherwise false.
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+    */
+    __forceinline__ __host__ __device__ bool Find(
+        uint64_t key, uint64_t *value_out,
+        uint64_t **key_value_location = nullptr) const {
+      uint64_t cur_bucket = key & num_buckets_mask_,
+               bucket_inc = 1 | ((key >> buckets_num_bitsm1_) ^ key);
+      while (1) {
+        uint64_t old_key = data_[2 * cur_bucket];
+        uint64_t old_value = data_[2 * cur_bucket + 1];
+        if (~old_key == 0) {
+          return false;
+        } else if (old_key == key) {
+          while (~old_value == 0) old_value = data_[2 * cur_bucket + 1];
+          *value_out = old_value;
+          if (key_value_location) *key_value_location = data_ + 2 * cur_bucket;
+          return true;
+        } else {
+          cur_bucket = (cur_bucket + bucket_inc) & num_buckets_mask_;
+        }
+      }
+    }
+
+    /*
+      Overwrite a value in a (key,value) pair whose location was obtained using
+      Find().
+          @param [in] key_value_location   Location that was obtained from
+                         a successful call to Find().
+          @param [in] value  Value to write;
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+     */
+    __forceinline__ __host__ __device__ void SetValue(
+        uint64_t *key_value_location, uint64_t value) const {
+      *(key_value_location + 1) = value;
+    }
+
+    /* Deletes a key from a hash.  Caution: this cannot be combined with other
+       operations on a hash; after you delete a key you cannot do Insert() or
+       Find() until you have deleted all keys.  This is an open-addressing hash
+       table with no tombstones, which is why this limitation exists).
+
+       @param [in] key   Key to be deleted.   Each key present in the hash must
+                         be deleted  by exactly one thread, or it will loop
+                         forever!
+
+      Note: the const is with respect to the metadata only; required, to avoid
+      compilation errors.
+    */
+    __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
+      uint64_t cur_bucket = key & num_buckets_mask_,
+               bucket_inc = 1 | ((key >> buckets_num_bitsm1_) ^ key);
+      while (1) {
+        uint64_t old_key = data_[2 * cur_bucket];
+        if (old_key == key) {
+          data_[2 * cur_bucket] = ~((uint64_t)0);
+          data_[2 * cur_bucket + 1] = ~((uint64_t)0);
+          return;
+        } else {
+          cur_bucket = (cur_bucket + bucket_inc) & num_buckets_mask_;
+        }
+      }
+    }
+
+   private:
+    // pointer to data
+    uint64_t *data_;
+    // num_buckets_mask is num_buckets (i.e. size of `data_` array) minus one;
+    // num_buckets is a power of 2 so this can be used as a mask to get a number
+    // modulo num_buckets.
+    uint64_t num_buckets_mask_;
+    // A number satisfying num_buckets == 1 << (1+buckets_num_bitsm1_)
+    // the number of bits in `num_buckets` minus one.
+    uint64_t buckets_num_bitsm1_;
+  };
+
+  /*
+    Return an Accessor object which can be used in kernel code (or on CPU if the
+    context is a CPU context).
+  */
+  Accessor GetAccessor() { return Accessor(*this); }
+
+  // You should call this before the destructor is called if the hash will still
+  // contain values when it is destroyed, to bypass a check.
+  void Destroy() { data_ = Array1<uint64_t>(); }
+
+  void CheckEmpty() const {
+    if (data_.Dim() == 0) return;
+    ContextPtr c = Context();
+    Array1<int64_t> error(c, 1, -1);
+    int64_t *error_data = error.Data();
+    const uint64_t *hash_data = data_.Data();
+
+    K2_EVAL(
+        Context(), data_.Dim(), lambda_check_data, (int64_t i)->void {
+          if (~(hash_data[i]) != 0) error_data[0] = i;
+        });
+    int64_t i = error[0];
+    if (i >= 0) {  // there was an error; i is the index into the hash where
+      // there was an element.
+      int64_t elem = data_[i];
+      // We don't know the number of bits the user was using for the key vs.
+      // value, so print in hex, maybe they can figure it out.
+      K2_LOG(FATAL) << "Destroying hash: still contains values: position " << i
+                    << ", content = " << std::hex << elem;
+    }
+  }
+
+  /* Resize the hash to a new number of buckets.
+
+       @param [in] new_num_buckets   New number of buckets; must be a power of 2,
+                  and must be large enough to accommodate all values in the hash
+                  (we assume the caller is keeping track of the number of elements
+                  in the hash somehow).
+
+     CAUTION: Resizing will invalidate any accessor objects you have; you need
+     to re-get the accessors before accessing the hash again.
+  */
+  void Resize(int64_t new_num_buckets, bool copy_data = true) {
+    NVTX_RANGE(K2_FUNC);
+
+    K2_CHECK_GT(new_num_buckets, 0);
+    K2_CHECK_EQ(new_num_buckets & (new_num_buckets - 1), 0);  // power of 2.
+
+    ContextPtr c = data_.Context();
+    Hash64 new_hash(c, new_num_buckets);
+
+    if (copy_data) {
+      new_hash.CopyDataFromSimple(*this);
+    }
+
+    *this = new_hash;
+    new_hash.Destroy();  // avoid failed check in destructor (it would otherwise
+                       // expect the hash to be empty when destroyed).
+  }
+
+  /*
+    Copies all data elements from `src` to `*this`.
+   */
+  void CopyDataFromSimple(Hash64 &src) {
+    NVTX_RANGE(K2_FUNC);
+    int64_t num_buckets = data_.Dim() / 2,
+        src_num_buckets = src.data_.Dim() / 2;
+    const uint64_t *src_data = src.data_.Data();
+    uint64_t *data = data_.Data();
+    uint64_t new_num_buckets_mask = static_cast<uint64_t>(num_buckets) - 1,
+        new_buckets_num_bitsm1 = buckets_num_bitsm1_;
+    ContextPtr c = data_.Context();
+    K2_EVAL(c, src_num_buckets, lambda_copy_data, (uint64_t i) -> void {
+        uint64_t key = src_data[2 * i];
+        uint64_t value = src_data[2 * i + 1];
+        if (~key == 0) return;  // equals -1.. nothing there.
+        uint64_t bucket_inc = 1 | ((key >> new_buckets_num_bitsm1) ^ key);
+        uint64_t cur_bucket = key & new_num_buckets_mask;
+        while (1) {
+          uint64_t assumed = ~((uint64_t)0),
+              old_elem = AtomicCAS((unsigned long long*)(data + 2 * cur_bucket),
+                                   assumed, key);
+          if (old_elem == assumed) {
+            *(data + 2 * cur_bucket + 1) = value;
+            return;
+          }
+          cur_bucket = (cur_bucket + bucket_inc) & new_num_buckets_mask;
+          // Keep iterating until we find a free spot in the new hash...
+        }
+      });
+  }
+
+  // The destructor checks that the hash is empty, if we are in debug mode.
+  // If you don't want this, call Destroy() before the destructor is called.
+  ~Hash64() {
+#ifndef NDEBUG
+    if (data_.Dim() != 0) CheckEmpty();
+#endif
+  }
+
+ private:
+  Array1<uint64_t> data_;
+
+  // number satisfying data_.Dim() == 1 << (1+buckets_num_bitsm1_)
+  uint64_t buckets_num_bitsm1_;
+};
+
+/*
   Returns the number of bits needed for an unsigned integer sufficient to
   store the nonnegative value `size`.
 
@@ -1028,7 +1372,6 @@ class Hash {
 inline int32_t NumBitsNeededFor(int64_t size) {
   return 1 + HighestBitSet(size);
 }
-
 
 }  // namespace k2
 
