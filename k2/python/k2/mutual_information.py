@@ -18,7 +18,7 @@ import os
 import torch
 import _k2
 from torch import Tensor
-from typing import Tuple, Optional, Sequence, Union
+from typing import Tuple, Optional, Sequence, Union, List
 
 
 class MutualInformationRecursionFunction(torch.autograd.Function):
@@ -27,10 +27,10 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         ctx,
         px: torch.Tensor,
         py: torch.Tensor,
-        pxy_grads: list,
+        pxy_grads: List[Optional[torch.Tensor]],
         boundary: Optional[torch.Tensor] = None,
         return_grad: bool = False,
-    ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+    ) -> torch.Tensor:
         (B, S, T1) = px.shape
         T = T1 - 1
         assert py.shape == (B, S + 1, T)
