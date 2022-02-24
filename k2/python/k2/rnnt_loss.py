@@ -1019,7 +1019,7 @@ def rnnt_loss_smoothed(
     boundary: Optional[Tensor] = None,
     reduction: Optional[str] = "mean",
     return_grad: bool = False,
-) -> Tensor:
+) -> Union[Tuple[Tensor, Tuple[Tensor, Tensor]], Tensor]:
     """A simple case of the RNN-T loss, where the 'joiner' network is just
     addition.
 
