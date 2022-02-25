@@ -866,7 +866,7 @@ input <cite>fsa</cite> is NOT modified.</p>
 <h2>do_rnnt_pruning<a class="headerlink" href="#do-rnnt-pruning" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.do_rnnt_pruning">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">do_rnnt_pruning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">am</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ranges</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L551-L589"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.do_rnnt_pruning" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">do_rnnt_pruning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">am</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ranges</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L587-L625"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.do_rnnt_pruning" title="Permalink to this definition"></a></dt>
 <dd><p>Prune the output of encoder(am) output and prediction network(lm)
 output of RNNT.</p>
 <dl class="field-list simple">
@@ -1032,7 +1032,7 @@ the way to the beginning of a sentence.</p>
 <h2>get_rnnt_logprobs<a class="headerlink" href="#get-rnnt-logprobs" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.get_rnnt_logprobs">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_rnnt_logprobs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L45-L179"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_rnnt_logprobs" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_rnnt_logprobs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L47-L193"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_rnnt_logprobs" title="Permalink to this definition"></a></dt>
 <dd><p>Reduces RNN-T problem (the simple case, where joiner network is just
 addition), to a compact, standard form that can then be given
 (with boundaries) to mutual_information_recursion().
@@ -1070,38 +1070,51 @@ next on this frame.</p>
 <li><p><strong>symbols</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – A LongTensor of shape [B][S], containing the symbols at each position
 of the sequence.</p></li>
 <li><p><strong>termination_symbol</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The identity of the termination symbol, must be in {0..C-1}</p></li>
-<li><p><strong>boundary</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – a LongTensor of shape [B, 4] with elements interpreted as
-[begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
+<li><p><strong>boundary</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – <dl class="simple">
+<dt>a optional LongTensor of shape [B, 4] with elements interpreted as</dt><dd><p>[begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
 [0, 0, S, T]
 if boundary is not supplied.
-Most likely you will want begin_symbol and begin_frame to be zero.</p></li>
+Most likely you will want begin_symbol and begin_frame to be zero.</p>
+</dd>
+<dt>modified: if True, each time a real symbol is consumed a frame will</dt><dd><p>also be consumed, so at most 1 symbol can appear per frame.</p>
+</dd>
+</dl>
+</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]</p>
 </dd>
 <dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p><p>(px, py) (the names are quite arbitrary):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">px</span><span class="p">:</span> <span class="n">logprobs</span><span class="p">,</span> <span class="n">of</span> <span class="n">shape</span> <span class="p">[</span><span class="n">B</span><span class="p">][</span><span class="n">S</span><span class="p">][</span><span class="n">T</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
-<span class="n">py</span><span class="p">:</span> <span class="n">logprobs</span><span class="p">,</span> <span class="n">of</span> <span class="n">shape</span> <span class="p">[</span><span class="n">B</span><span class="p">][</span><span class="n">S</span><span class="o">+</span><span class="mi">1</span><span class="p">][</span><span class="n">T</span><span class="p">]</span>
-</pre></div>
-</div>
+<dd class="field-odd"><p><blockquote>
+<div><dl class="simple">
+<dt>(px, py) (the names are quite arbitrary).</dt><dd><p>px: logprobs, of shape [B][S][T+1] if !modified, [B][S][T] if modified.
+py: logprobs, of shape [B][S+1][T]</p>
+</dd>
+</dl>
+</div></blockquote>
 <p>in the recursion:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-<span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">log_add</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">t</span><span class="p">]</span> <span class="o">+</span> <span class="n">px</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">t</span><span class="p">],</span>
-                   <span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">py</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-</pre></div>
-</div>
-<p>where p[b][s][t] is the “joint score” of the pair of subsequences
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>p[b,0,0] = 0.0
+if !modified:
+   p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
+                      p[b,s,t-1] + py[b,s,t-1])
+if modified:
+   p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
+                      p[b,s,t-1] + py[b,s,t-1])
+.. where p[b][s][t] is the &quot;joint score&quot; of the pair of subsequences
 of length s and t respectively.  px[b][s][t] represents the
 probability of extending the subsequences of length (s,t) by one in
 the s direction, given the particular symbol, and py[b][s][t]
 represents the probability of extending the subsequences of length
 (s,t) by one in the t direction,
-i.e. of emitting the termination/next-frame symbol.</p>
-<p>px[:,:,T] equals -infinity, meaning on the “one-past-the-last” frame
-we cannot emit any symbols.  This is simply a way of incorporating
-the probability of the termination symbol on the last frame.</p>
+i.e. of emitting the termination/next-frame symbol.
+
+if !modified, px[:,:,T] equals -infinity, meaning on the
+&quot;one-past-the-last&quot; frame we cannot emit any symbols.
+This is simply a way of incorporating
+the probability of the termination symbol on the last frame.
+</pre></div>
+</div>
 </p>
 </dd>
 </dl>
@@ -1112,7 +1125,7 @@ the probability of the termination symbol on the last frame.</p>
 <h2>get_rnnt_logprobs_joint<a class="headerlink" href="#get-rnnt-logprobs-joint" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.get_rnnt_logprobs_joint">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_rnnt_logprobs_joint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L257-L337"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_rnnt_logprobs_joint" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_rnnt_logprobs_joint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L275-L366"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_rnnt_logprobs_joint" title="Permalink to this definition"></a></dt>
 <dd><p>Reduces RNN-T problem to a compact, standard form that can then be given
 (with boundaries) to mutual_information_recursion().
 This function is called from rnnt_loss().</p>
@@ -1124,11 +1137,13 @@ i.e. batch, time_seq_len, symbol_seq_len+1, num_classes</p></li>
 <li><p><strong>symbols</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – A LongTensor of shape [B][S], containing the symbols at each position
 of the sequence.</p></li>
 <li><p><strong>termination_symbol</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The identity of the termination symbol, must be in {0..C-1}</p></li>
-<li><p><strong>boundary</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – a LongTensor of shape [B, 4] with elements interpreted as
+<li><p><strong>boundary</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – a optional LongTensor of shape [B, 4] with elements interpreted as
 [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
 [0, 0, S, T]
 if boundary is not supplied.
 Most likely you will want begin_symbol and begin_frame to be zero.</p></li>
+<li><p><strong>modified</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, each time a real symbol is consumed a frame will
+also be consumed, so at most 1 symbol can appear per frame.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
@@ -1141,19 +1156,23 @@ Most likely you will want begin_symbol and begin_frame to be zero.</p></li>
 </pre></div>
 </div>
 <p>in the recursion:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-<span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">log_add</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">t</span><span class="p">]</span> <span class="o">+</span> <span class="n">px</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">t</span><span class="p">],</span>
-                   <span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">py</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>p[b,0,0] = 0.0
+if !modified:
+   p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
+                      p[b,s,t-1] + py[b,s,t-1])
+if modified:
+   p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
+                      p[b,s,t-1] + py[b,s,t-1])
 </pre></div>
 </div>
-<p>where p[b][s][t] is the “joint score” of the pair of subsequences of
-length s and t respectively.  px[b][s][t] represents the probability of
+<p>length s and t respectively.  px[b][s][t] represents the probability of
 extending the subsequences of length (s,t) by one in the s direction,
 given the particular symbol, and py[b][s][t] represents the probability
 of extending the subsequences of length (s,t) by one in the t direction,
 i.e. of emitting the termination/next-frame symbol.</p>
-<p>px[:,:,T] equals -infinity, meaning on the “one-past-the-last” frame
-we cannot emit any symbols.  This is simply a way of incorporating
+<p>if !modified, px[:,:,T] equals -infinity, meaning on the
+“one-past-the-last” frame we cannot emit any symbols.
+This is simply a way of incorporating
 the probability of the termination symbol on the last frame.</p>
 </p>
 </dd>
@@ -1165,7 +1184,7 @@ the probability of the termination symbol on the last frame.</p>
 <h2>get_rnnt_logprobs_pruned<a class="headerlink" href="#get-rnnt-logprobs-pruned" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.get_rnnt_logprobs_pruned">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_rnnt_logprobs_pruned</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ranges</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L627-L745"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_rnnt_logprobs_pruned" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_rnnt_logprobs_pruned</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ranges</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L663-L788"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_rnnt_logprobs_pruned" title="Permalink to this definition"></a></dt>
 <dd><p>Construct px, py for mutual_information_recursion with pruned output.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -1175,19 +1194,21 @@ the probability of the termination symbol on the last frame.</p>
 {0..C-1}.</p></li>
 <li><p><strong>ranges</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – A tensor containing the symbol ids for each frame that we want to keep.</p></li>
 <li><p><strong>termination_symbol</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – the termination symbol, with 0 &lt;= termination_symbol &lt; C</p></li>
-<li><p><strong>boundary</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – a LongTensor of shape [B, 4] with elements interpreted as
+<li><p><strong>boundary</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – a optional LongTensor of shape [B, 4] with elements interpreted as
 [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
 [0, 0, S, T]
 if boundary is not supplied.
 Most likely you will want begin_symbol and begin_frame to be zero.</p></li>
+<li><p><strong>modified</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, each time a real symbol is consumed a frame will
+also be consumed, so at most 1 symbol can appear per frame.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]</p>
 </dd>
 <dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>Return the px (B, S, T + 1) and py (B, S + 1, T) needed by
-mutual_information_recursion.</p>
+<dd class="field-odd"><p>Return the px (B, S, T) if modified else (B, S, T + 1) and
+py (B, S + 1, T) needed by mutual_information_recursion.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1197,7 +1218,7 @@ mutual_information_recursion.</p>
 <h2>get_rnnt_logprobs_smoothed<a class="headerlink" href="#get-rnnt-logprobs-smoothed" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.get_rnnt_logprobs_smoothed">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_rnnt_logprobs_smoothed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lm_only_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am_only_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L807-L1009"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_rnnt_logprobs_smoothed" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_rnnt_logprobs_smoothed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lm_only_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am_only_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L854-L1071"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_rnnt_logprobs_smoothed" title="Permalink to this definition"></a></dt>
 <dd><p>Reduces RNN-T problem (the simple case, where joiner network is just
 addition), to a compact, standard form that can then be given
 (with boundaries) to mutual_information_recursion().
@@ -1246,38 +1267,45 @@ of the sequence.</p></li>
 <li><p><strong>lm_only_scale</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – the scale on the “LM-only” part of the loss.</p></li>
 <li><p><strong>am_only_scale</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – the scale on the “AM-only” part of the loss, for which we use
 an “averaged” LM (averaged over all histories, so effectively unigram).</p></li>
-<li><p><strong>boundary</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – a LongTensor of shape [B, 4] with elements interpreted as
+<li><p><strong>boundary</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – a optional LongTensor of shape [B, 4] with elements interpreted as
 [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
 [0, 0, S, T]
 if boundary is not supplied.
 Most likely you will want begin_symbol and begin_frame to be zero.</p></li>
+<li><p><strong>modified</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, each time a real symbol is consumed a frame will
+also be consumed, so at most 1 symbol can appear per frame.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]</p>
 </dd>
 <dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p><p>(px, py) (the names are quite arbitrary):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">px</span><span class="p">:</span> <span class="n">logprobs</span><span class="p">,</span> <span class="n">of</span> <span class="n">shape</span> <span class="p">[</span><span class="n">B</span><span class="p">][</span><span class="n">S</span><span class="p">][</span><span class="n">T</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
-<span class="n">py</span><span class="p">:</span> <span class="n">logprobs</span><span class="p">,</span> <span class="n">of</span> <span class="n">shape</span> <span class="p">[</span><span class="n">B</span><span class="p">][</span><span class="n">S</span><span class="o">+</span><span class="mi">1</span><span class="p">][</span><span class="n">T</span><span class="p">]</span>
-</pre></div>
-</div>
+<dd class="field-odd"><p><dl class="simple">
+<dt>(px, py) (the names are quite arbitrary).</dt><dd><p>px: logprobs, of shape [B][S][T+1] if !modified, [B][S][T] if modified.
+py: logprobs, of shape [B][S+1][T]</p>
+</dd>
+</dl>
 <p>in the recursion:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-<span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">log_add</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">t</span><span class="p">]</span> <span class="o">+</span> <span class="n">px</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">t</span><span class="p">],</span>
-                   <span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">py</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-</pre></div>
-</div>
-<p>where p[b][s][t] is the “joint score” of the pair of subsequences
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>p[b,0,0] = 0.0
+if !modified:
+   p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
+                      p[b,s,t-1] + py[b,s,t-1])
+if modified:
+   p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
+                      p[b,s,t-1] + py[b,s,t-1])
+.. where p[b][s][t] is the &quot;joint score&quot; of the pair of subsequences
 of length s and t respectively.  px[b][s][t] represents the
 probability of extending the subsequences of length (s,t) by one in
 the s direction, given the particular symbol, and py[b][s][t]
 represents the probability of extending the subsequences of length
 (s,t) by one in the t direction,
-i.e. of emitting the termination/next-frame symbol.</p>
-<p>px[:,:,T] equals -infinity, meaning on the “one-past-the-last” frame
+i.e. of emitting the termination/next-frame symbol.
+
+px[:,:,T] equals -infinity, meaning on the &quot;one-past-the-last&quot; frame
 we cannot emit any symbols.  This is simply a way of incorporating
-the probability of the termination symbol on the last frame.</p>
+the probability of the termination symbol on the last frame.
+</pre></div>
+</div>
 </p>
 </dd>
 </dl>
@@ -1288,7 +1316,7 @@ the probability of the termination symbol on the last frame.</p>
 <h2>get_rnnt_prune_ranges<a class="headerlink" href="#get-rnnt-prune-ranges" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.get_rnnt_prune_ranges">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_rnnt_prune_ranges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">px_grad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">py_grad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_range</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L449-L548"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_rnnt_prune_ranges" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_rnnt_prune_ranges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">px_grad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">py_grad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_range</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L482-L584"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_rnnt_prune_ranges" title="Permalink to this definition"></a></dt>
 <dd><p>Get the pruning ranges of normal rnnt loss according to the grads
 of px and py returned by mutual_information_recursion.</p>
 <p>For each sequence with T frames, we will generate a tensor with the shape of
@@ -1784,7 +1812,7 @@ sequence is the same in both FSAs.</p>
 <h2>joint_mutual_information_recursion<a class="headerlink" href="#joint-mutual-information-recursion" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.joint_mutual_information_recursion">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">joint_mutual_information_recursion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">px</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">py</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/mutual_information.py#L202-L307"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.joint_mutual_information_recursion" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">joint_mutual_information_recursion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">px</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">py</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/mutual_information.py#L206-L314"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.joint_mutual_information_recursion" title="Permalink to this definition"></a></dt>
 <dd><p>A recursion that is useful for modifications of RNN-T and similar loss
 functions, where the recursion probabilities have a number of terms and you
 want them reported separately.  See mutual_information_recursion() for more
@@ -2092,7 +2120,7 @@ tensor if inplace is True.</p>
 <h2>mutual_information_recursion<a class="headerlink" href="#mutual-information-recursion" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.mutual_information_recursion">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">mutual_information_recursion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">px</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">py</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/mutual_information.py#L77-L186"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.mutual_information_recursion" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">mutual_information_recursion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">px</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">py</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/mutual_information.py#L78-L190"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.mutual_information_recursion" title="Permalink to this definition"></a></dt>
 <dd><p>A recursion that is useful in computing mutual information between two
 sequences of real vectors, but may be useful more generally in
 sequence-to-sequence tasks where monotonic alignment between pairs of
@@ -2167,10 +2195,13 @@ information between the b’th pair of sequences.  This is defined by
 the following recursion on <code class="docutils literal notranslate"><span class="pre">p[b,s,t]</span></code> (where <code class="docutils literal notranslate"><span class="pre">p</span></code> is of shape
 <code class="docutils literal notranslate"><span class="pre">[B,S+1,T+1]</span></code>), representing a mutual information between sub-sequences
 of lengths <code class="docutils literal notranslate"><span class="pre">s</span></code> and <code class="docutils literal notranslate"><span class="pre">t</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-<span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">log_add</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">t</span><span class="p">]</span> <span class="o">+</span> <span class="n">px</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">t</span><span class="p">],</span>
-                   <span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">py</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-          <span class="p">(</span><span class="k">if</span> <span class="n">s</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>     p[b,0,0] = 0.0
+if !modified:
+     p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
+                        p[b,s,t-1] + py[b,s,t-1])
+if modified:
+     p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
+                        p[b,s,t-1] + py[b,s,t-1])
 </pre></div>
 </div>
 <p>where we handle edge cases by treating quantities with negative indexes
@@ -2460,7 +2491,7 @@ If false, just returns new_fsas.</p></li>
 <h2>rnnt_loss<a class="headerlink" href="#rnnt-loss" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.rnnt_loss">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">rnnt_loss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L340-L392"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.rnnt_loss" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">rnnt_loss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L369-L425"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.rnnt_loss" title="Permalink to this definition"></a></dt>
 <dd><p>A normal RNN-T loss, which uses a ‘joiner’ network output as input,
 i.e. a 4 dimensions tensor.</p>
 <dl class="field-list simple">
@@ -2471,10 +2502,12 @@ i.e. batch, time_seq_len, symbol_seq_len+1, num_classes</p></li>
 <li><p><strong>symbols</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – The symbol sequences, a LongTensor of shape [B][S], and elements
 in {0..C-1}.</p></li>
 <li><p><strong>termination_symbol</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – the termination symbol, with 0 &lt;= termination_symbol &lt; C</p></li>
-<li><p><strong>boundary</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – a LongTensor of shape [B, 4] with elements interpreted as
+<li><p><strong>boundary</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – a optional LongTensor of shape [B, 4] with elements interpreted as
 [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
 [0, 0, S, T] if boundary is not supplied.
 Most likely you will want begin_symbol and begin_frame to be zero.</p></li>
+<li><p><strong>modified</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, each time a real symbol is consumed a frame will
+also be consumed, so at most 1 symbol can appear per frame.</p></li>
 <li><p><strong>reduction</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – Specifies the reduction to apply to the output: <cite>none</cite>, <cite>mean</cite> or <cite>sum</cite>.
 <cite>none</cite>: no reduction will be applied.
 <cite>mean</cite>: apply <cite>torch.mean</cite> over the batches.
@@ -2498,7 +2531,7 @@ with the reduction applied.</p>
 <h2>rnnt_loss_pruned<a class="headerlink" href="#rnnt-loss-pruned" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.rnnt_loss_pruned">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">rnnt_loss_pruned</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ranges</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L748-L804"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.rnnt_loss_pruned" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">rnnt_loss_pruned</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ranges</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L791-L851"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.rnnt_loss_pruned" title="Permalink to this definition"></a></dt>
 <dd><p>A RNN-T loss with pruning, which uses a pruned ‘joiner’ network output
 as input, i.e. a 4 dimensions tensor with shape (B, T, s_range, C),
 s_range means the symbols number kept for each frame.</p>
@@ -2515,6 +2548,8 @@ of the sequence.</p></li>
 [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
 [0, 0, S, T] if boundary is not supplied.
 Most likely you will want begin_symbol and begin_frame to be zero.</p></li>
+<li><p><strong>modified</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, each time a real symbol is consumed a frame will
+also be consumed, so at most 1 symbol can appear per frame.</p></li>
 <li><p><strong>reduction</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – Specifies the reduction to apply to the output: <cite>none</cite>, <cite>mean</cite> or <cite>sum</cite>.
 <cite>none</cite>: no reduction will be applied.
 <cite>mean</cite>: apply <cite>torch.mean</cite> over the batches.
@@ -2538,7 +2573,7 @@ with the reduction applied.</p>
 <h2>rnnt_loss_simple<a class="headerlink" href="#rnnt-loss-simple" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.rnnt_loss_simple">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">rnnt_loss_simple</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L182-L254"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.rnnt_loss_simple" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">rnnt_loss_simple</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L196-L272"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.rnnt_loss_simple" title="Permalink to this definition"></a></dt>
 <dd><p>A simple case of the RNN-T loss, where the ‘joiner’ network is just
 addition.</p>
 <dl class="field-list simple">
@@ -2551,11 +2586,13 @@ addition.</p>
 <li><p><strong>symbols</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – the symbol sequences, a LongTensor of shape [B][S], and elements in
 {0..C-1}.</p></li>
 <li><p><strong>termination_symbol</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – the termination symbol, with 0 &lt;= termination_symbol &lt; C</p></li>
-<li><p><strong>boundary</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – a LongTensor of shape [B, 4] with elements interpreted as
+<li><p><strong>boundary</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – a optional LongTensor of shape [B, 4] with elements interpreted as
 [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
 [0, 0, S, T]
 if boundary is not supplied.
 Most likely you will want begin_symbol and begin_frame to be zero.</p></li>
+<li><p><strong>modified</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, each time a real symbol is consumed a frame will
+also be consumed, so at most 1 symbol can appear per frame.</p></li>
 <li><p><strong>reduction</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – Specifies the reduction to apply to the output: <cite>none</cite>, <cite>mean</cite> or <cite>sum</cite>.
 <cite>none</cite>: no reduction will be applied.
 <cite>mean</cite>: apply <cite>torch.mean</cite> over the batches.
@@ -2588,7 +2625,7 @@ returned value will be a tuple like (loss, (px_grad, py_grad)).</p>
 <h2>rnnt_loss_smoothed<a class="headerlink" href="#rnnt-loss-smoothed" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.rnnt_loss_smoothed">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">rnnt_loss_smoothed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lm_only_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am_only_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L1012-L1096"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.rnnt_loss_smoothed" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">rnnt_loss_smoothed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination_symbol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lm_only_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">am_only_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_loss.py#L1074-L1162"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.rnnt_loss_smoothed" title="Permalink to this definition"></a></dt>
 <dd><p>A simple case of the RNN-T loss, where the ‘joiner’ network is just
 addition.</p>
 <dl class="field-list simple">
@@ -2611,6 +2648,8 @@ an “averaged” LM (averaged over all histories, so effectively unigram).</p><
 [0, 0, S, T]
 if boundary is not supplied.
 Most likely you will want begin_symbol and begin_frame to be zero.</p></li>
+<li><p><strong>modified</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – if True, each time a real symbol is consumed a frame will
+also be consumed, so at most 1 symbol can appear per frame.</p></li>
 <li><p><strong>reduction</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – Specifies the reduction to apply to the output: <cite>none</cite>, <cite>mean</cite> or <cite>sum</cite>.
 <cite>none</cite>: no reduction will be applied.
 <cite>mean</cite>: apply <cite>torch.mean</cite> over the batches.
