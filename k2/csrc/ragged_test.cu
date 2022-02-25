@@ -265,10 +265,7 @@ TEST(RaggedShapeOpsTest, UnstackRandom) {
       for (size_t i = 0; i < out.size(); ++i) {
         out_ptr.emplace_back(&(out[i]));
       }
-      // There is a bug in `Stack` for stacking a shape itself,
-      // not urgent, so skipping here.
-      // TODO: Remove this line when the bug fixed.
-      if (out.size() == 1) continue;
+
       auto dest = Stack(axis, out.size(), out_ptr.data());
       dest = RemoveEmptyLists(dest, axis);
 
