@@ -339,7 +339,6 @@ class Reverser {
   FsaVec &fsas_;
 
   // The map from old_state_idx01 to reversed new_state_idx01.
-  // Inside each FSA, the index of 
   Array1<int32_t> state_old2new_map_;
 
   // Act as a flag that indicates whether an FSA is non-empty and legal.

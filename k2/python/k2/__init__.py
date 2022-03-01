@@ -48,6 +48,7 @@ from .fsa_algo import remove_epsilon
 from .fsa_algo import remove_epsilon_and_add_self_loops
 from .fsa_algo import remove_epsilon_self_loops
 from .fsa_algo import replace_fsa
+from .fsa_algo import reverse
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_algo import union

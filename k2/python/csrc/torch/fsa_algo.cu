@@ -767,6 +767,24 @@ static void PybindLevenshteinGraph(py::module &m) {
       py::arg("need_score_offset") = true);
 }
 
+static void PybindReverse(py::module &m) {
+  // if need arc_map is true, it returns (reversed_fsa_vec, arc_map);
+  // otherwise, it returns (reversed_fsa_vec, None).
+  m.def(
+      "reverse",
+      [](FsaVec &src, bool need_arc_map = true)
+          -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
+        Array1<int32_t> arc_map;
+        FsaVec reversed;
+        Reverse(src, &reversed, need_arc_map ? &arc_map : nullptr);
+        torch::optional<torch::Tensor> tensor;
+        if (need_arc_map) tensor = ToTorch(arc_map);
+        return std::make_pair(reversed, tensor);
+      },
+      py::arg("src"), py::arg("need_arc_map") = true);
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -789,6 +807,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindRemoveEpsilon(m);
   k2::PybindRemoveEpsilonSelfLoops(m);
   k2::PybindReplaceFsa(m);
+  k2::PybindReverse(m);
   k2::PybindShortestPath(m);
   k2::PybindTopSort(m);
   k2::PybindUnion(m);

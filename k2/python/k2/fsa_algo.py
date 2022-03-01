@@ -528,6 +528,26 @@ def remove_epsilon_self_loops(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
+def reverse(fsa: Fsa) -> Fsa:
+    '''Reverse the input Fsa.  If the input Fsa accepts string 'x' with weight
+    'x.weight', then the reversed Fsa accepts the reverse of string 'x' with
+    weight 'x.weight.reverse'. As the Fsas of k2 run on the Log-semiring or
+    Tropical-semiring, the 'weight.reverse' will equal to the orignal 'weight'.
+
+    Args:
+      fsa:
+        The input FSA. It can be either a single FSA or an FsaVec.
+
+    Returns:
+      An instance of :class:`Fsa` which has been reversed.
+    '''
+    need_arc_map = True
+    ragged_arc, arc_map = _k2.reverse(fsa.arcs, need_arc_map)
+
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
+    return out_fsa
+
+
 def remove_epsilon(fsa: Fsa) -> Fsa:
     '''Remove epsilons (symbol zero) in the input Fsa.
 
