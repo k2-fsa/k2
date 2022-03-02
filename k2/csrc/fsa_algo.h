@@ -579,6 +579,8 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
 Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
             Array1<int32_t> *aux_labels);
 
+Fsa TrivialGraph(const ContextPtr &c, int32_t max_token);
+
 /* Compute the forward shortest path in the tropical semiring.
 
    @param [in] fsas  Input FsaVec (must have 3 axes).  Must be

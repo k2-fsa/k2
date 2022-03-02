@@ -46,6 +46,7 @@ add_subdirectory(host)
 set(context_srcs
   algorithms.cu
   array_ops.cu
+  array_of_ragged.cu
   connect.cu
   context.cu
   dtype.cu
@@ -65,6 +66,7 @@ set(context_srcs
   ragged_utils.cu
   rand.cu
   rm_epsilon.cu
+  rnnt_decode.cu
   tensor.cu
   tensor_ops.cu
   thread_pool.cu
@@ -142,6 +144,7 @@ target_link_libraries(test_utils PUBLIC context gtest)
 # please sort the source files alphabetically
 set(cuda_test_srcs
   algorithms_test.cu
+  array_of_ragged_test.cu
   array_ops_test.cu
   array_test.cu
   connect_test.cu
@@ -163,6 +166,7 @@ set(cuda_test_srcs
   ragged_utils_test.cu
   rand_test.cu
   rm_epsilon_test.cu
+  rnnt_decode_test.cu
   tensor_ops_test.cu
   tensor_test.cu
   thread_pool_test.cu
