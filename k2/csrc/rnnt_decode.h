@@ -95,6 +95,11 @@ struct ArcInfo {
   // The score on the arc; contains both the graph score (if any) and the score
   // from the RNN-T joiner.
   float score;
+
+  // dest_state is the state index within the array of states on the next frame;
+  // it would be an (idx1 or idx2) depending whether this is part of an
+  // RnntDecodingStream or RnntDecodingStreams object.
+  int32_t dest_state;
 };
 
 struct RnntDecodingStream {
@@ -102,10 +107,6 @@ struct RnntDecodingStream {
   // stream with.  Different streams might have different graphs.  This must
   // be an Fsa, not FsaVec (i.e. 2 axes).
   std::shared_ptr<Fsa> graph;
-
-  // The frame to which `states` corresponds, and which is the most recent
-  // frame on which we have states, and have arcs leading to it.
-  int32_t cur_frame;
 
   // The states number of the graph, equals to graph->shape.Dim0().
   int32_t num_graph_states;
@@ -120,9 +121,6 @@ struct RnntDecodingStream {
   // `scores` contains the forward scores of the states in `states`;
   // it has the same shape as `states`.
   Ragged<double> scores;
-
-  // The best score for this stream, used for pruning.
-  double max_score;
 
   // frames contains the arc information, for previously decoded
   // frames, that we can later use to create a lattice.
@@ -194,10 +192,6 @@ class RnntDecodingStreams {
   // number of streams. All the graphs might actually be the same.
   Array1OfRagged<Arc> graphs_;
 
-  // per stream, contains the frame to which `states` corresponds, which is the
-  // most recent frame on which we have states.
-  Array1<int32_t> cur_frames_;
-
   // Number of graph states, per graph; this is used in constructing:
   //   state_idx = context_state * num_graph_states + graph_state.
   // for elements of `states`.
@@ -216,9 +210,6 @@ class RnntDecodingStreams {
   // `scores` contains the forward scores of the states in `states`;
   // it has the same shape as `states`.
   Ragged<double> scores_;
-
-  // max_scores contains the best scores per stream, used for pruning.
-  Array1<double> max_scores_;
 
   // frames contains the arc information for previously decoded
   // frames, to be split and appended to the prev_frames of the

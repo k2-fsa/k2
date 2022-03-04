@@ -80,6 +80,14 @@ TEST(RnntDecodingStreams, Basic) {
       K2_LOG(INFO) << "states : " << streams.states_;
       K2_LOG(INFO) << "scores : " << streams.scores_;
     }
+    Array1<int32_t> out_map;
+    FsaVec ofsa;
+    streams.FormatOutput(&ofsa, &out_map);
+    K2_LOG(INFO) << "ofsa : " << ofsa;
+    K2_LOG(INFO) << "out map : " << out_map;
+    std::vector<Fsa> fsas;
+    Unstack(ofsa, 0, &fsas);
+    K2_LOG(INFO) << FsaToString(fsas[0]);
   }
 }
 

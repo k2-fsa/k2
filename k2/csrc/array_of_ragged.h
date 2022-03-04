@@ -1,5 +1,5 @@
 /**
- * Copyright      2022  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright      2022  Xiaomi Corporation (authors: Daniel Povey, Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
