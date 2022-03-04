@@ -23,9 +23,30 @@
 
 namespace k2 {
 
-// forward of mutual_information.  See also comment of `mutual_information`
+// forward of mutual_information.  See """... """ comment of
+// `mutual_information_recursion` in
 // in k2/python/k2/mutual_information.py for documentation of the
 // behavior of this function.
+
+// px: of shape [B, S, T+1] if !modified, else [B, S, T]  <-- work out
+// `modified` from this.
+// py: of shape [B, S+1, T]
+// boundary: of shape [B, 4], containing (s_begin, t_begin, s_end, t_end)
+//  defaulting to (0, 0, S, T).
+// p: of shape (S+1, T+1)
+// Computes the recursion:
+// if !modified:
+//             p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
+//                                p[b,s,t-1] + py[b,s,t-1])
+// if modified:
+//             p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
+//                                p[b,s,t-1] + py[b,s,t-1])
+
+// .. treating out-of-range elements as -infinity and with special cases:
+// p[b, s_begin, t_begin] = 0.0
+//
+// and this function returns a tensor of shape (B,) consisting of elements
+//  p[b, s_end, t_end]
 torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
                                    torch::optional<torch::Tensor> opt_boundary,
                                    torch::Tensor p) {
@@ -36,10 +57,13 @@ torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
       px.device().is_cpu() && py.device().is_cpu() && p.device().is_cpu(),
       "inputs must be CPU tensors");
 
+  bool modified = (px.size(2) == py.size(2));
+
   auto scalar_t = px.scalar_type();
   auto opts = torch::TensorOptions().dtype(scalar_t).device(px.device());
 
-  const int B = px.size(0), S = px.size(1), T = px.size(2) - 1;
+  const int B = px.size(0), S = px.size(1), T = py.size(2);
+  TORCH_CHECK(px.size(2) == (modified ? T : T + 1));
   TORCH_CHECK(py.size(0) == B && py.size(1) == S + 1 && py.size(2) == T);
   TORCH_CHECK(p.size(0) == B && p.size(1) == S + 1 && p.size(2) == T + 1);
 
@@ -61,15 +85,22 @@ torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
         auto boundary_a = boundary.accessor<int64_t, 2>();
         auto ans_a = ans.accessor<scalar_t, 1>();
 
+        int t_offset = (modified ? -1 : 0);
         for (int b = 0; b < B; b++) {
           int s_begin = boundary_a[b][0];
           int t_begin = boundary_a[b][1];
           int s_end = boundary_a[b][2];
           int t_end = boundary_a[b][3];
           p_a[b][s_begin][t_begin] = 0.0;
-          for (int s = s_begin + 1; s <= s_end; ++s)
-            p_a[b][s][t_begin] =
-                p_a[b][s - 1][t_begin] + px_a[b][s - 1][t_begin];
+          if (modified) {
+            for (int s = s_begin + 1; s <= s_end; ++s)
+              p_a[b][s][t_begin] = -std::numeric_limits<scalar_t>::infinity();
+          } else {
+            // note: t_offset = 0 so don't need t_begin + t_offset below.
+            for (int s = s_begin + 1; s <= s_end; ++s)
+              p_a[b][s][t_begin] =
+                  p_a[b][s - 1][t_begin] + px_a[b][s - 1][t_begin];
+          }
           for (int t = t_begin + 1; t <= t_end; ++t)
             p_a[b][s_begin][t] =
                 p_a[b][s_begin][t - 1] + py_a[b][s_begin][t - 1];
@@ -77,12 +108,13 @@ torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
             scalar_t p_s_t1 = p_a[b][s][t_begin];
             for (int t = t_begin + 1; t <= t_end; ++t) {
               // The following statement is a small optimization of:
-              // p_a[b][s][t] = LogAdd(p_a[b][s - 1][t] + px_a[b][s - 1][t],
-              //                       p_a[b][s][t - 1] + py_a[b][s][t - 1]);
+              // p_a[b][s][t] = LogAdd(
+              //    p_a[b][s - 1][t + t_offset] + px_a[b][s -1][t + t_offset],
+              //    p_a[b][s][t - 1] + py_a[b][s][t - 1]);
               // .. which obtains p_a[b][s][t - 1] from a register.
-              p_a[b][s][t] = p_s_t1 =
-                  LogAdd<scalar_t>()(p_a[b][s - 1][t] + px_a[b][s - 1][t],
-                                     p_s_t1 + py_a[b][s][t - 1]);
+              p_a[b][s][t] = p_s_t1 = LogAdd<scalar_t>()(
+                  p_a[b][s - 1][t + t_offset] + px_a[b][s - 1][t + t_offset],
+                  p_s_t1 + py_a[b][s][t - 1]);
             }
           }
           ans_a[b] = p_a[b][s_end][t_end];
@@ -102,6 +134,8 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
   TORCH_CHECK(p.dim() == 3, "p must be 3-dimensional.");
   TORCH_CHECK(ans_grad.dim() == 1, "ans_grad must be 1-dimensional.");
 
+  bool modified = (px.size(2) == py.size(2));
+
   TORCH_CHECK(px.device().is_cpu() && py.device().is_cpu() &&
                   p.device().is_cpu() && ans_grad.device().is_cpu(),
               "inputs must be CPU tensors");
@@ -109,8 +143,9 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
   auto scalar_t = px.scalar_type();
   auto opts = torch::TensorOptions().dtype(scalar_t).device(px.device());
 
-  const int B = px.size(0), S = px.size(1), T = px.size(2) - 1;
-  TORCH_CHECK(py.size(0) == B && py.size(1) == S + 1 && py.size(2) == T);
+  const int B = px.size(0), S = px.size(1), T = py.size(2);
+  TORCH_CHECK(px.size(2) == (modified ? T : T + 1));
+  TORCH_CHECK(py.size(0) == B && py.size(1) == S + 1);
   TORCH_CHECK(p.size(0) == B && p.size(1) == S + 1 && p.size(2) == T + 1);
 
   auto boundary = opt_boundary.value_or(
@@ -123,9 +158,10 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
   TORCH_CHECK(boundary.device().is_cpu() && boundary.dtype() == torch::kInt64);
 
   bool has_boundary = opt_boundary.has_value();
+  int T1 = T + (modified ? 0 : 1);
   torch::Tensor p_grad = torch::zeros({B, S + 1, T + 1}, opts),
-                px_grad = (has_boundary ? torch::zeros({B, S, T + 1}, opts)
-                                        : torch::empty({B, S, T + 1}, opts)),
+                px_grad = (has_boundary ? torch::zeros({B, S, T1}, opts)
+                                        : torch::empty({B, S, T1}, opts)),
                 py_grad = (has_boundary ? torch::zeros({B, S + 1, T}, opts)
                                         : torch::empty({B, S + 1, T}, opts));
 
@@ -138,6 +174,7 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
 
         auto ans_grad_a = ans_grad.accessor<scalar_t, 1>();
         auto boundary_a = boundary.accessor<int64_t, 2>();
+        int t_offset = (modified ? -1 : 0);
 
         for (int b = 0; b < B; b++) {
           int s_begin = boundary_a[b][0];
@@ -151,10 +188,12 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
             for (int t = t_end; t > t_begin; --t) {
               // The s,t indexes correspond to
               // The statement we are backpropagating here is:
-              // p_a[b][s][t] = LogAdd(p_a[b][s - 1][t] + px_a[b][s - 1][t],
-              //                       p_a[b][s][t - 1] + py_a[b][s][t - 1]);
+              // p_a[b][s][t] = LogAdd(
+              //    p_a[b][s - 1][t + t_offset] + px_a[b][s - 1][t + t_offset],
+              //    p_a[b][s][t - 1] + py_a[b][s][t - 1]);
               // .. which obtains p_a[b][s][t - 1] from a register.
-              scalar_t term1 = p_a[b][s - 1][t] + px_a[b][s - 1][t],
+              scalar_t term1 = p_a[b][s - 1][t + t_offset] +
+                               px_a[b][s - 1][t + t_offset],
                        // term2 = p_a[b][s][t - 1] + py_a[b][s][t - 1], <-- not
                        // actually needed..
                   total = p_a[b][s][t];
@@ -170,8 +209,8 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
                 // could happen if total == -inf
                 term1_grad = term2_grad = 0.0;
               }
-              px_grad_a[b][s - 1][t] = term1_grad;
-              p_grad_a[b][s - 1][t] = term1_grad;
+              px_grad_a[b][s - 1][t + t_offset] = term1_grad;
+              p_grad_a[b][s - 1][t + t_offset] = term1_grad;
               py_grad_a[b][s][t - 1] = term2_grad;
               p_grad_a[b][s][t - 1] += term2_grad;
             }
@@ -184,14 +223,17 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
             p_grad_a[b][s_begin][t - 1] += this_p_grad;
             py_grad_a[b][s_begin][t - 1] = this_p_grad;
           }
-          for (int s = s_end; s > s_begin; --s) {
-            // Backprop for:
-            // p_a[b][s][t_begin] =
-            //    p_a[b][s - 1][t_begin] + px_a[b][s - 1][t_begin];
-            scalar_t this_p_grad = p_grad_a[b][s][t_begin];
-            p_grad_a[b][s - 1][t_begin] += this_p_grad;
-            px_grad_a[b][s - 1][t_begin] = this_p_grad;
-          }
+          if (!modified) {
+            for (int s = s_end; s > s_begin; --s) {
+              // Backprop for:
+              // p_a[b][s][t_begin] =
+              //    p_a[b][s - 1][t_begin] + px_a[b][s - 1][t_begin];
+              scalar_t this_p_grad = p_grad_a[b][s][t_begin];
+              p_grad_a[b][s - 1][t_begin] += this_p_grad;
+              px_grad_a[b][s - 1][t_begin] = this_p_grad;
+            }
+          }  // else these were all -infinity's and there is nothing to
+             // backprop.
           // There is no backprop for:
           // p_a[b][s_begin][t_begin] = 0.0;
           // .. but we can use this for a check, that the grad at the beginning
