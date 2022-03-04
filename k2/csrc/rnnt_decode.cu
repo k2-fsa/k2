@@ -17,6 +17,8 @@
  */
 
 #include <cmath>
+#include <limits>
+#include <memory>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
@@ -26,12 +28,6 @@
 
 namespace k2 {
 namespace rnnt_decoding {
-
-static std::ostream &operator<<(std::ostream &os, const ArcInfo &s) {
-  os << " { " << s.graph_arc_idx01 << " , " << s.dest_state << " , " << s.score
-     << " } ";
-  return os;
-}
 
 std::shared_ptr<RnntDecodingStream> CreateStream(
     const std::shared_ptr<Fsa> &graph) {
@@ -50,7 +46,7 @@ std::shared_ptr<RnntDecodingStream> CreateStream(
 RnntDecodingStreams::RnntDecodingStreams(
     std::vector<std::shared_ptr<RnntDecodingStream>> &srcs,
     const RnntDecodingConfig &config)
-    : srcs_(srcs), num_streams_(srcs.size()), config_(config) {
+    : attached_(true), srcs_(srcs), num_streams_(srcs.size()), config_(config) {
   K2_CHECK_GE(num_streams_, 1);
   c_ = srcs_[0]->graph->shape.Context();
 
@@ -80,7 +76,7 @@ RnntDecodingStreams::RnntDecodingStreams(
 }
 
 void RnntDecodingStreams::Detach() {
-  if (prev_frames_.empty()) return;
+  if (!attached_ || prev_frames_.empty()) return;
   std::vector<Ragged<int64_t>> states;
   std::vector<Ragged<double>> scores;
   Unstack(states_, 0, &states);
@@ -88,11 +84,35 @@ void RnntDecodingStreams::Detach() {
   K2_CHECK_EQ(static_cast<int32_t>(states.size()), num_streams_);
   K2_CHECK_EQ(static_cast<int32_t>(scores.size()), num_streams_);
 
-  // TODO: Update prev_frames_
   for (int32_t i = 0; i < num_streams_; ++i) {
     srcs_[i]->states = states[i];
     srcs_[i]->scores = scores[i];
   }
+
+  // detatch prev_frames_
+  std::vector<Ragged<ArcInfo> *> frames_ptr;
+  for (size_t i = 0; i < prev_frames_.size(); ++i) {
+    frames_ptr.emplace_back(prev_frames_[i].get());
+  }
+  // statck_frames has a shape of [t][stream][state][arc]
+  auto stack_frames = Stack(0, prev_frames_.size(), frames_ptr.data());
+  // stack_frames now has a shape of [strams][state][arc]
+  // its Dim0(0) equals to `num_streams_ * prev_frames_.size()`
+  stack_frames = stack_frames.RemoveAxis(0);
+
+  std::vector<Ragged<ArcInfo>> frames;
+  Unstack(stack_frames, 0, &frames);
+
+  K2_CHECK_EQ(num_streams_ * prev_frames_.size(), frames.size());
+
+  for (size_t i = 0; i < prev_frames_.size(); ++i) {
+    for (int32_t j = 0; j < num_streams_; ++j) {
+      srcs_[j]->prev_frames.emplace_back(
+          std::make_shared<Ragged<ArcInfo>>(frames[i * num_streams_ + j]));
+    }
+  }
+  attached_ = false;
+  prev_frames_.clear();
 }
 
 void RnntDecodingStreams::GetContexts(RaggedShape *shape,
@@ -159,6 +179,7 @@ Ragged<double> RnntDecodingStreams::PruneTwice(Ragged<double> &incoming_scores,
 }
 
 void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
+  K2_CHECK(attached_) << "Streams detached.";
   ContextPtr c = logprobs.Context();
   K2_CHECK(c_->IsCompatible(*c));
 
@@ -465,8 +486,6 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   K2_EVAL(
       c_, arcs_new2old.Dim(), lambda_renumber_arcs, (int32_t idx) {
         int32_t arc_idx0123 = arcs_new2old_data[idx];
-        ArcInfo info = arcs_data[arc_idx0123];
-        // if (info.graph_arc_idx01 != -1)
         renumber_arcs_keep_data[arc_idx0123] = 1;
       });
 
@@ -535,11 +554,52 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
       std::make_shared<Ragged<ArcInfo>>(pruned_arcs.RemoveAxis(1)));
 }
 
-void RnntDecodingStreams::FormatOutput(FsaVec *ofsa, Array1<int32_t> *out_map) {
+void RnntDecodingStreams::UpdatePrevFrames(std::vector<int32_t> &num_frames) {
+  K2_CHECK(!attached_) << "Please call Detach() first.";
+  K2_CHECK_EQ(num_streams_, static_cast<int32_t>(num_frames.size()));
+  std::vector<Ragged<ArcInfo> *> frames_ptr;
+  Array1<int32_t> stream2t_row_splits(GetCpuContext(), num_frames.size() + 1);
+
+  for (size_t i = 0; i < num_frames.size(); ++i) {
+    stream2t_row_splits.Data()[i] = num_frames[i];
+    K2_CHECK_LE(num_frames[i],
+                static_cast<int32_t>(srcs_[i]->prev_frames.size()));
+    for (int32_t j = 0; j < num_frames[i]; ++j) {
+      frames_ptr.push_back(srcs_[i]->prev_frames[j].get());
+    }
+  }
+
+  // frames has a shape of [t][state][arc],
+  // its Dim0() equals std::sum(num_frames)
+  auto frames = Stack(0, frames_ptr.size(), frames_ptr.data());
+
+  stream2t_row_splits = stream2t_row_splits.To(c_);
+  ExclusiveSum(stream2t_row_splits, &stream2t_row_splits);
+  auto stream2t_shape = RaggedShape2(&stream2t_row_splits, nullptr, -1);
+
+  // now frames has a shape of [stream][t][state][arc]
+  frames = Ragged<ArcInfo>(ComposeRaggedShapes(stream2t_shape, frames.shape),
+                           frames.values);
+
+  std::vector<Ragged<ArcInfo>> prev_frames;
+  Unstack(frames, 1, "left", &prev_frames);
+
+  prev_frames_.resize(prev_frames.size());
+  for (size_t i = 0; i < prev_frames.size(); ++i) {
+    prev_frames_[i] = std::make_shared<Ragged<ArcInfo>>(prev_frames[i]);
+  }
+}
+
+void RnntDecodingStreams::FormatOutput(std::vector<int32_t> &num_frames,
+                                       FsaVec *ofsa, Array1<int32_t> *out_map) {
   NVTX_RANGE("FormatOutput");
+
+  K2_CHECK(!attached_) << "You can only get outputs after calling Detach()";
 
   K2_CHECK(ofsa);
   K2_CHECK(out_map);
+
+  UpdatePrevFrames(num_frames);
 
   int32_t frames = prev_frames_.size();
 

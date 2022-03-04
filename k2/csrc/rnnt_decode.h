@@ -20,6 +20,7 @@
 #define K2_CSRC_RNNT_DECODE_H_
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "k2/csrc/array.h"
@@ -158,6 +159,16 @@ class RnntDecodingStreams {
    */
   void Advance(Array2<float> &logprobs);
 
+  void FormatOutput(std::vector<int32_t> &num_frames, FsaVec *ofsa,
+                    Array1<int32_t> *out_map);
+
+  void Detach();
+
+  const Ragged<int64_t> &States() const { return states_; }
+  const Ragged<double> &Scores() const { return scores_; }
+  const Array1<int32_t> &NumGraphStates() const { return num_graph_states_; }
+
+ private:
   /*
   Prune the incoming scores based on beam, max-states and max-contexts.
   Actually the beam part is not realy necessary, as we already pruned
@@ -176,11 +187,11 @@ class RnntDecodingStreams {
   Ragged<double> PruneTwice(Ragged<double> &incoming_scores,
                             Array1<int32_t> *arcs_new2old);
 
-  void FormatOutput(FsaVec *ofst, Array1<int32_t> *out_map);
-
-  void Detach();
+  void UpdatePrevFrames(std::vector<int32_t> &frames);
 
   ContextPtr c_;
+
+  bool attached_;
 
   int32_t num_streams_;
 

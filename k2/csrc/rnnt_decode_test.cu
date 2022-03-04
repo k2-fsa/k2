@@ -55,13 +55,13 @@ TEST(RnntDecodingStreams, Basic) {
     int32_t num_streams = 3;
     std::vector<std::shared_ptr<RnntDecodingStream>> streams_vec(num_streams);
     for (int32_t i = 0; i < num_streams; ++i) {
-      streams_vec[i] = CreateStream(graphs[RandInt(0,2)]);
+      streams_vec[i] = CreateStream(graphs[RandInt(0, 2)]);
     }
     auto streams = RnntDecodingStreams(streams_vec, config);
 
-    K2_LOG(INFO) << "states : " << streams.states_;
-    K2_LOG(INFO) << "scores : " << streams.scores_;
-    K2_LOG(INFO) << "num_graph_states : " << streams.num_graph_states_;
+    K2_LOG(INFO) << "states : " << streams.States();
+    K2_LOG(INFO) << "scores : " << streams.Scores();
+    K2_LOG(INFO) << "num_graph_states : " << streams.NumGraphStates();
 
     float mean = 5, std = 3;
     RaggedShape context_shape;
@@ -77,15 +77,25 @@ TEST(RnntDecodingStreams, Basic) {
                                                 vocab_size, mean, std);
       K2_LOG(INFO) << "logprobs : " << logprobs;
       streams.Advance(logprobs);
-      K2_LOG(INFO) << "states : " << streams.states_;
-      K2_LOG(INFO) << "scores : " << streams.scores_;
+      K2_LOG(INFO) << "states : " << streams.States();
+      K2_LOG(INFO) << "scores : " << streams.Scores();
     }
+    streams.Detach();
+    std::vector<int32_t> num_frames(num_streams, steps);
     Array1<int32_t> out_map;
     FsaVec ofsa;
-    streams.FormatOutput(&ofsa, &out_map);
+    streams.FormatOutput(num_frames, &ofsa, &out_map);
     K2_LOG(INFO) << "ofsa : " << ofsa;
     K2_LOG(INFO) << "out map : " << out_map;
     std::vector<Fsa> fsas;
+    Unstack(ofsa, 0, &fsas);
+    K2_LOG(INFO) << FsaToString(fsas[0]);
+
+    // different num frames
+    num_frames = std::vector<int32_t>({2, 5, 4});
+    streams.FormatOutput(num_frames, &ofsa, &out_map);
+    K2_LOG(INFO) << "ofsa : " << ofsa;
+    K2_LOG(INFO) << "out map : " << out_map;
     Unstack(ofsa, 0, &fsas);
     K2_LOG(INFO) << FsaToString(fsas[0]);
   }
