@@ -39,8 +39,8 @@ class Array1OfRaggedShape {
     Constructor.
     Args:
        srcs: pointers to the source shapes, a CPU pointer
-      num_srcs: the number of source shapes.  All shapes must have the
-              same NumAxes() and must be on the same device.
+       num_srcs: the number of source shapes.  All shapes must have the
+                 same NumAxes() and must be on the same device.
 
    TODO: we'll likely, later, add optional args which dictate which of
    the MetaRowSplits() and MetaRowIds() are to be pre-populated; this should
@@ -53,7 +53,7 @@ class Array1OfRaggedShape {
   int32_t NumSrcs() const { return num_srcs_; }
   int32_t NumAxes() const { return num_axes_; }
 
-  ContextPtr Context() const { return c_; }
+  ContextPtr &Context() { return c_; }
 
   // Returns device-accessible array of row-splits for the individual shapes,
   // indexed [axis-1][src], with 0 <= src < num_srcs.  The shape of this
@@ -77,9 +77,7 @@ class Array1OfRaggedShape {
      the individual shapes.  Requires 0 <= axis < NumAxes() and
      for axis=0 the returned value is the same as Dim0().
   */
-  int32_t TotSize(int32_t axis) const {
-    return tot_sizes_[axis];
-  }
+  int32_t TotSize(int32_t axis) const { return tot_sizes_[axis]; }
 
   // equivalent to TotSize(0).
   int32_t Dim0() const { return TotSize(0); }
@@ -99,12 +97,14 @@ class Array1OfRaggedShape {
      to GPU, this will be faster than invoking an extra kernel in normal cases
      when the NumSrcs() is small.  [Also: see GetRowInfoMulti()].
    */
+  // TODO: implement it...
   Array2<int32_t> MetaRowSplits();
 
   // could POSSIBLY add this so this code could be used in functions like
   // Stack(). would be like MetaRowSplits but with an extra 1st row containing
   // 0,1,2,... We could perhaps create it with 1 extra initial row so this is
   // always convenient to output.
+  // TODO: implement it...
   Array2<int32_t> Offsets();
 
   /*
@@ -114,6 +114,7 @@ class Array1OfRaggedShape {
 
     Note: in ragged_ops.cu we refer to this as composed_row_splits
   */
+  // TODO: implement it...
   Array1<int32_t> MetaRowSplits(int32_t axis);
 
   /* Return the device-accessible meta-row-ids, which are the row-ids
@@ -126,6 +127,7 @@ class Array1OfRaggedShape {
 
      Note: in ragged_ops.cu we refer to this as composed_row_ids.
   */
+  // TODO: implement it...
   Array1<int32_t *> MetaRowIds();
 
   /*
@@ -136,6 +138,7 @@ class Array1OfRaggedShape {
     would tell us which source an idx012 with value 100 into axis 2 of
     concatenated array would come from.
   */
+  // TODO: implement it...
   Array1<int32_t> MetaRowIds(int32_t axis);
 
  private:
@@ -143,8 +146,8 @@ class Array1OfRaggedShape {
   int32_t num_srcs_;
   int32_t num_axes_;
   Array2<int32_t *> row_splits_;  // shape [num_axes_ - 1][num_srcs_]
-  Array2<int32_t *> row_ids_;    // shape [num_axes_ - 1][num_srcs_]
-  Array1<int32_t> tot_sizes_;   // dim num_axes_, this is on CPU
+  Array2<int32_t *> row_ids_;     // shape [num_axes_ - 1][num_srcs_]
+  Array1<int32_t> tot_sizes_;     // dim num_axes_, this is on CPU
 };
 
 /*
@@ -164,12 +167,13 @@ struct Array1OfRagged {
   Array1<T *> values;
 
   int32_t NumSrcs() { return values.Dim(); }
-  ContextPtr Context() const {return shape.Context();}
+  ContextPtr &Context() { return shape.Context(); }
 
   Array1OfRagged() = default;
 
   Array1OfRagged(Ragged<T> *srcs, int32_t num_srcs) {
     K2_CHECK_GE(num_srcs, 1);
+    K2_CHECK(srcs);
     values = Array1<T *>(GetCpuContext(), num_srcs);
     T **values_data = values.Data();
     std::vector<RaggedShape> shapes(num_srcs);

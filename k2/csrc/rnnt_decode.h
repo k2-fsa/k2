@@ -153,15 +153,43 @@ class RnntDecodingStreams {
 
   /*
     Advance decoding streams by one frame.  Args:
-      logprobs [in]   Array of shape [tot_contexts][num_symbols], containing
-    log-probs of symbols given the contexts output by `GetContexts()`.  Will
-                  satisfy logprobs.Dim0() == states.TotSize(1).
+
+      @param [in] logprobs  Array of shape [tot_contexts][num_symbols],
+                    containing log-probs of symbols given the contexts output
+                    by `GetContexts()`. Will satisfy
+                    logprobs.Dim0() == states.TotSize(1).
    */
   void Advance(Array2<float> &logprobs);
 
+  /*
+    Generate the lattice.
+
+    Note: The prev_frames_ only contains decoded by current object, in order to
+          generate the lattice we will fisrt gather all the previous frames from
+          individual streams.
+
+      @param [in] num_frames  A vector containing the number of frames we want
+                    to gather for each stream.
+                    It MUST satisfy `num_frames.size() == num_streams_`, and
+                    `num_frames[i] < srcs_[i].prev_frames.size()`.
+      @param [out] ofsa  The output lattice will write to here, its num_axes
+                         equals to 3, will be re-allocated.
+      @param [out] out_map  It it a Array1 with Dim() equals to
+                     ofsa.NumElements() containing the idx01 into the graph of
+                     each individual streams, mapping current arc in ofsa to
+                     original decoding graphs. It may contains -1 which means
+                     this arc is a "termination symbol".
+   */
   void FormatOutput(std::vector<int32_t> &num_frames, FsaVec *ofsa,
                     Array1<int32_t> *out_map);
 
+  /*
+    Detach the RnntDecodingStreams, it will update the states & scoers of each
+    individual streams and split & appended the prev_frames_ in current object
+    to the prev_frames of the individual streams.
+
+    Note: We can not decode with the object after call Detach().
+   */
   void Detach();
 
   const Ragged<int64_t> &States() const { return states_; }
@@ -187,16 +215,34 @@ class RnntDecodingStreams {
   Ragged<double> PruneTwice(Ragged<double> &incoming_scores,
                             Array1<int32_t> *arcs_new2old);
 
-  void UpdatePrevFrames(std::vector<int32_t> &frames);
+  /*
+    Gather all previously decoded frames util now, we need all the previous
+    frames to generate lattice.
+
+    Note: The prev_frames_ in current object only contains the frames from the
+          point we created this object to the frame we called `Detach()`
+          (i.e. prev_frames_.size() equals to the times we called `Advance()`.
+
+      @param [in] num_frames  A vector containing the number of frames we want
+                    to gather for each stream.
+                    It MUST satisfy `num_frames.size() == num_streams_`, and
+                    `num_frames[i] < srcs_[i].prev_frames.size()`.
+   */
+  void GatherPrevFrames(std::vector<int32_t> &num_frames);
 
   ContextPtr c_;
 
-  bool attached_;
+  bool attached_;  // A flag indicating whether this streams is still attached,
+                   // initialized with true, only if the Detach() being called
+                   // `attached_` will set to false, that means we can not do
+                   // decoding any more.
 
-  int32_t num_streams_;
+  int32_t num_streams_;  // The number of RnntDecodingStream
 
+  // A reference to the original RnntDecodingStream.
   std::vector<std::shared_ptr<RnntDecodingStream>> &srcs_;
 
+  // A reference to the configuration object.
   const RnntDecodingConfig &config_;
 
   // array of the individual graphs of the streams, with graphs.NumSrcs() ==

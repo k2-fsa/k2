@@ -36,6 +36,7 @@ std::shared_ptr<RnntDecodingStream> CreateStream(
   RnntDecodingStream stream;
   stream.graph = graph;
   stream.num_graph_states = graph->shape.Dim0();
+  // initialize to start state
   stream.states = Ragged<int64_t>(RegularRaggedShape(c, 1, 1),
                                   Array1<int64_t>(c, std::vector<int64_t>{0}));
   stream.scores = Ragged<double>(RegularRaggedShape(c, 1, 1),
@@ -76,6 +77,8 @@ RnntDecodingStreams::RnntDecodingStreams(
 }
 
 void RnntDecodingStreams::Detach() {
+  NVTX_RANGE(K2_FUNC);
+  // return directlly if already detached or no frames decoded.
   if (!attached_ || prev_frames_.empty()) return;
   std::vector<Ragged<int64_t>> states;
   std::vector<Ragged<double>> scores;
@@ -83,11 +86,6 @@ void RnntDecodingStreams::Detach() {
   Unstack(scores_, 0, &scores);
   K2_CHECK_EQ(static_cast<int32_t>(states.size()), num_streams_);
   K2_CHECK_EQ(static_cast<int32_t>(scores.size()), num_streams_);
-
-  for (int32_t i = 0; i < num_streams_; ++i) {
-    srcs_[i]->states = states[i];
-    srcs_[i]->scores = scores[i];
-  }
 
   // detatch prev_frames_
   std::vector<Ragged<ArcInfo> *> frames_ptr;
@@ -105,25 +103,33 @@ void RnntDecodingStreams::Detach() {
 
   K2_CHECK_EQ(num_streams_ * prev_frames_.size(), frames.size());
 
-  for (size_t i = 0; i < prev_frames_.size(); ++i) {
-    for (int32_t j = 0; j < num_streams_; ++j) {
-      srcs_[j]->prev_frames.emplace_back(
-          std::make_shared<Ragged<ArcInfo>>(frames[i * num_streams_ + j]));
+  for (int32_t i = 0; i < num_streams_; ++i) {
+    for (size_t j = 0; j < prev_frames_.size(); ++j) {
+      srcs_[i]->prev_frames.emplace_back(
+          std::make_shared<Ragged<ArcInfo>>(frames[j * num_streams_ + i]));
     }
+    srcs_[i]->states = states[i];
+    srcs_[i]->scores = scores[i];
   }
+
   attached_ = false;
   prev_frames_.clear();
 }
 
 void RnntDecodingStreams::GetContexts(RaggedShape *shape,
                                       Array2<int32_t> *contexts) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(shape);
   K2_CHECK(contexts);
   K2_CHECK_EQ(states_.NumAxes(), 3);
+
+  // shape has a shape of [stream][context]
   *shape = RemoveAxis(states_.shape, 2);
   int32_t num_contexts = shape->TotSize(1),
           decoder_history_len = config_.decoder_history_len,
           vocab_size = config_.vocab_size;
+
+  // contexts has a shape of [num_contexts][decoder_history_len]
   *contexts = Array2<int32_t>(c_, num_contexts, decoder_history_len);
   const int32_t *shape_row_ids1_data = shape->RowIds(1).Data(),
                 *states_row_splits2_data = states_.RowSplits(2).Data();
@@ -149,6 +155,7 @@ void RnntDecodingStreams::GetContexts(RaggedShape *shape,
 
 Ragged<double> RnntDecodingStreams::PruneTwice(Ragged<double> &incoming_scores,
                                                Array1<int32_t> *arcs_new2old) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(incoming_scores.NumAxes(), 4);
   K2_CHECK_EQ(incoming_scores.Dim0(), num_streams_);
   // TODO: could introduce a max-arcs per stream to prune on... this would
@@ -179,7 +186,11 @@ Ragged<double> RnntDecodingStreams::PruneTwice(Ragged<double> &incoming_scores,
 }
 
 void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(attached_) << "Streams detached.";
+  K2_CHECK_EQ(logprobs.Dim0(), states_.TotSize(1));
+  K2_CHECK_EQ(logprobs.Dim1(), config_.vocab_size);
+
   ContextPtr c = logprobs.Context();
   K2_CHECK(c_->IsCompatible(*c));
 
@@ -260,6 +271,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
           pass1_keep_data[idx0123] = 1;
           return;
         }
+
         int32_t idx01 = uas_row_ids2_data[idx012],
                 idx0 = uas_row_ids1_data[idx01],
                 num_graph_states = num_graph_states_data[idx0];
@@ -279,6 +291,8 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
           pass1_keep_data[idx0123] = 1;
           return;
         }
+
+        // prune the arcs pointting final state.
         if (arc.label == -1) {
           pass1_keep_data[idx0123] = 0;
           return;
@@ -305,8 +319,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   RaggedShape stream_arc_shape = RemoveAxis(pass1_arcs_shape, 2);
   stream_arc_shape = RemoveAxis(stream_arc_shape, 1);
 
-  // arcs, indexed [stream][context][state][arc].  Might eventually make this
-  // non-materialized.
+  // arcs, indexed [stream][context][state][arc].
   Ragged<ArcInfo> arcs(pass1_arcs_shape);
   // dest-states of arcs, incexed [stream][arc]
   Ragged<int64_t> states(stream_arc_shape);
@@ -315,7 +328,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
 
   int32_t cur_num_arcs = arcs.NumElements();
   // This renumber will be used for renumbering the arcs after we fiishing
-  // pruning.
+  // the pruning.
   Renumbering renumber_arcs(c_, cur_num_arcs);
   char *renumber_arcs_keep_data = renumber_arcs.Keep().Data();
 
@@ -497,6 +510,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   // 0..num_pruned_arcs-1.
   Array1<int32_t> arcs_dest2src = renumber_arcs.Old2New()[arcs_new2old];
 
+  // reduce_pruned_dest_states has a shape of [stream][state][arc]
   auto reduce_pruned_dest_states = RemoveAxis(pruned_dest_states, 1);
   // "rpds" is short for reduce_pruned_dest_states
   const int32_t *rpds_row_ids2_data =
@@ -510,14 +524,12 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
 
   // Set the dest_state of the arcs in pruned_arcs.
   // It works as follows:
-  //  For each arc_idx0123 in `pruned_dest_states`:
-  //    work out the state_idx2, which will be the `dest_state`
+  //  For each arc_idx012 in `reduce_pruned_dest_states`:
+  //    work out the state_idx1, which will be the `dest_state`
   //    for the corresponding ArcInfo.
   //  Work out the arc-index (arc_idx0123) in `pruned_arcs`, which
-  //  is just arcs_dest2src[arc_idx0123], and then set the dest_state
+  //  is just arcs_dest2src[arc_idx012], and then set the dest_state
   //  in `pruned_arcs`.
-
-  // reduce_pruned_dest_states has a shape of [stream][state][arc]
   K2_EVAL(
       c_, reduce_pruned_dest_states.NumElements(), lambda_set_dest_states,
       (int32_t idx012) {
@@ -554,7 +566,8 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
       std::make_shared<Ragged<ArcInfo>>(pruned_arcs.RemoveAxis(1)));
 }
 
-void RnntDecodingStreams::UpdatePrevFrames(std::vector<int32_t> &num_frames) {
+void RnntDecodingStreams::GatherPrevFrames(std::vector<int32_t> &num_frames) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(!attached_) << "Please call Detach() first.";
   K2_CHECK_EQ(num_streams_, static_cast<int32_t>(num_frames.size()));
   std::vector<Ragged<ArcInfo> *> frames_ptr;
@@ -592,18 +605,18 @@ void RnntDecodingStreams::UpdatePrevFrames(std::vector<int32_t> &num_frames) {
 
 void RnntDecodingStreams::FormatOutput(std::vector<int32_t> &num_frames,
                                        FsaVec *ofsa, Array1<int32_t> *out_map) {
-  NVTX_RANGE("FormatOutput");
-
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(!attached_) << "You can only get outputs after calling Detach()";
-
   K2_CHECK(ofsa);
   K2_CHECK(out_map);
+  K2_CHECK_EQ(static_cast<int32_t>(num_frames.size()), num_streams_);
 
-  UpdatePrevFrames(num_frames);
+  GatherPrevFrames(num_frames);
 
   int32_t frames = prev_frames_.size();
 
   auto last_frame_shape = prev_frames_[frames - 1]->shape;
+
   auto pre_final_arcs_shape = ComposeRaggedShapes(
       RemoveAxis(last_frame_shape, 1),
       RegularRaggedShape(c_, last_frame_shape.NumElements(), 1));

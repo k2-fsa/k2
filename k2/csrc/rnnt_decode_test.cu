@@ -27,7 +27,8 @@ namespace k2 {
 namespace rnnt_decoding {
 TEST(RnntDecodeStream, CreateRnntDecodeStream) {
   for (const auto &c : {GetCpuContext(), GetCudaContext()}) {
-    auto graph = std::make_shared<Fsa>(TrivialGraph(c, 5));
+    Array1<int32_t> aux_labels;
+    auto graph = std::make_shared<Fsa>(TrivialGraph(c, 5, &aux_labels));
     auto stream = CreateStream(graph);
     K2_CHECK(Equal(*graph, *(stream->graph)));
     K2_CHECK(Equal(stream->states, Ragged<int64_t>(c, "[[0]]")));
@@ -44,11 +45,11 @@ TEST(RnntDecodingStreams, Basic) {
         RnntDecodingConfig(vocab_size, 2 /*decoder_history_len*/, 8.0f /*beam*/,
                            2 /*max_states*/, 3 /*max_contexts*/);
 
-    auto trivial_graph = std::make_shared<Fsa>(TrivialGraph(c, 5));
-    Array1<int32_t> aux_label;
-    auto ctc_topo = std::make_shared<Fsa>(CtcTopo(c, 5, false, &aux_label));
+    Array1<int32_t> aux_labels;
+    auto trivial_graph = std::make_shared<Fsa>(TrivialGraph(c, 5, &aux_labels));
+    auto ctc_topo = std::make_shared<Fsa>(CtcTopo(c, 5, false, &aux_labels));
     auto ctc_topo_modified =
-        std::make_shared<Fsa>(CtcTopo(c, 5, true, &aux_label));
+        std::make_shared<Fsa>(CtcTopo(c, 5, true, &aux_labels));
     std::vector<std::shared_ptr<Fsa>> graphs(
         {trivial_graph, ctc_topo, ctc_topo_modified});
 
@@ -81,6 +82,7 @@ TEST(RnntDecodingStreams, Basic) {
       K2_LOG(INFO) << "scores : " << streams.Scores();
     }
     streams.Detach();
+
     std::vector<int32_t> num_frames(num_streams, steps);
     Array1<int32_t> out_map;
     FsaVec ofsa;
@@ -89,7 +91,9 @@ TEST(RnntDecodingStreams, Basic) {
     K2_LOG(INFO) << "out map : " << out_map;
     std::vector<Fsa> fsas;
     Unstack(ofsa, 0, &fsas);
-    K2_LOG(INFO) << FsaToString(fsas[0]);
+    for (size_t i = 0; i < fsas.size(); ++i) {
+      K2_LOG(INFO) << FsaToString(fsas[i]);
+    }
 
     // different num frames
     num_frames = std::vector<int32_t>({2, 5, 4});
@@ -97,7 +101,9 @@ TEST(RnntDecodingStreams, Basic) {
     K2_LOG(INFO) << "ofsa : " << ofsa;
     K2_LOG(INFO) << "out map : " << out_map;
     Unstack(ofsa, 0, &fsas);
-    K2_LOG(INFO) << FsaToString(fsas[0]);
+    for (size_t i = 0; i < fsas.size(); ++i) {
+      K2_LOG(INFO) << FsaToString(fsas[i]);
+    }
   }
 }
 

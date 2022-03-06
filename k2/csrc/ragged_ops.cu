@@ -1320,6 +1320,7 @@ static void SelectAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
 void Unstack(RaggedShape &src, int32_t axis, const std::string &empty_pos,
              std::vector<RaggedShape> *out,
              std::vector<Array1<int32_t>> *split_map) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   if (axis == 0) {
     if (src.NumAxes() == 2) {

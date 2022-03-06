@@ -579,7 +579,25 @@ FsaVec LevenshteinGraphs(const Ragged<int32_t> &symbols,
 Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
             Array1<int32_t> *aux_labels);
 
-Fsa TrivialGraph(const ContextPtr &c, int32_t max_token);
+/*
+  Creat a "trivial" graph with one state with a self-loop for each symbol.
+
+    @param [in] c  The context with which we'll allocate memory for
+                   ctc topopogy.
+    @param [in] max_token  The maximum token ID (inclusive). We assume that
+                           token IDs are contiguous (from 1 to `max_token`).
+                           0 represents blank.
+    @param [out] aux_labels The output labels of graph will write to this
+                            array, will be reallocated. The label and aux_label
+                            on each arc are equal
+                            (i.e. aux_labels = Arange(0, max_token + 1);
+
+    @return    Returns a trivial graph with only two states, on state 0, there
+               are `max_token + 1` self loops(i.e. a loop for each symbol,
+               including blank), and state 1 is the final state.
+ */
+Fsa TrivialGraph(const ContextPtr &c, int32_t max_token,
+                 Array1<int32_t> *aux_labels);
 
 /* Compute the forward shortest path in the tropical semiring.
 
