@@ -42,10 +42,10 @@ namespace rnnt_decoding {
   RnntDecodingConfig::decoder_history_len. conceptuatly they represent a list of
   `decoder_history_len` symbols; they are represented numerically as, for
   example in the length-2-history case: symbol_{t-1} +  symbol_{t-2} *
-  num_symbols.
+  vocab_size.
 
-  - frames come from the predictor network, they are derived from sub-sampling
-  of acoustic frames or samples.
+  - frames come from the transcription network, they are derived from
+  sub-sampling of acoustic frames or samples.
  */
 
 struct RnntDecodingConfig {
@@ -70,6 +70,10 @@ struct RnntDecodingConfig {
   int32_t decoder_history_len;
 
   // num_context_states == pow(vocab_size, decoder_history_len).
+  // We need an unique id for each context state, think about that if vocab_size
+  // equals to 10, we need 0 ~ 9 to distinguish each context state when
+  // decoder_history_len is 1, and 0 ~ 99 (10 ^ 2 ids) for decoder_history_len
+  // equals to 2, 0 ~ 999 (10 ^ 3 ids) for decoder_history_len equals to 3.
   int32_t num_context_states;
 
   // `beam` imposes a limit on the score of a state, relative to the
@@ -147,7 +151,8 @@ class RnntDecodingStreams {
                       here, where tot_contexts == shape->TotSize(1) and
                       decoder_history_len comes from the config, it represents
                       the number of symbols in the context of the decode
-                      network (assumed to be finite).
+                      network (assumed to be finite). It contains the token ids
+                      into the vocabulary(i.e. `0 <= value < vocab_size`).
   */
   void GetContexts(RaggedShape *shape, Array2<int32_t> *contexts);
 
@@ -169,7 +174,8 @@ class RnntDecodingStreams {
           individual streams.
 
       @param [in] num_frames  A vector containing the number of frames we want
-                    to gather for each stream.
+                    to gather for each stream (note: the frames we have
+                    ever received).
                     It MUST satisfy `num_frames.size() == num_streams_`, and
                     `num_frames[i] < srcs_[i].prev_frames.size()`.
       @param [out] ofsa  The output lattice will write to here, its num_axes
@@ -195,6 +201,89 @@ class RnntDecodingStreams {
   const Ragged<int64_t> &States() const { return states_; }
   const Ragged<double> &Scores() const { return scores_; }
   const Array1<int32_t> &NumGraphStates() const { return num_graph_states_; }
+
+  // Note: The following three functions should be private members, they are not
+  // expected to be called outsize this class. We make it public because of the
+  // extended lambda restrictions, see
+  // https://docs.nvidia.com/cuda/cuda-c-programming-guide/#extended-lambda-restrictions
+  // for more details.
+
+  /* Expand arcs according to states_.
+
+     `states_` has a shape of [stream][context][state], each of its values is a
+     combinatioin of context_state and graph_state, this is:
+     `state = context_state * num_graph_states + graph_state`. The graph_state
+     is the idx0 of corresponding individual graph(has shape [state][arc]).
+     This function will expand each of these states into several
+     arcs(i.e. the out-going arcs of state idx0), so that we can get a new
+     shape of [stream][context][state][arc].
+
+     Caution: This function intends to be used in `Advance()` only. 
+
+     @return Return the expected 4 axes shape
+     (i.e.[stream][context][state][arc]).
+   */
+  RaggedShape ExpandArcs();
+
+  /*
+     Do initial pruning pass on the arcs (because it will be quite a large
+     array), populating the `keep` array of a Renumbering object. The pruning
+     rule is:
+       (1) keep all epsilon transitions to the next frame, to ensure there is
+           no way we can have no states surviving.
+       (2) for all other arcs, keep the it if the forward scores after the
+           arc would be >= the max_scores_per_stream entry for this stream
+           minus the beam from the config.
+
+     Caution: This function intends to be used in `Advance()` only. 
+
+      @param [in] unprund_arcs_shape   The RaggedShape return by `ExpandArcs()`.
+      @param [in] logprobs  Array of shape [tot_contexts][num_symbols],
+                    containing log-probs of symbols given the contexts output
+                    by `GetContexts()`. Will satisfy
+                    logprobs.Dim0() == states_.TotSize(1).
+                    (Note: states_.ToSize(1) == unprund_arcs_shape.Tosize(1)).
+
+      @return Return the renumbering object indicating which arc will be kept.
+   */
+  Renumbering DoFisrtPassPruning(RaggedShape &unprund_arcs_shape,
+                                 Array2<float> &logprobs);
+  /*
+     Group states by contexts.
+
+     `states` has a shape of [stream][arc], it contains the sorted values
+     (per stream) which is:
+     `state = context_state * num_graph_states + graph_state`, this guarantees
+     the context_states of the states are sorted too. So that we can easily
+     separate these states by finding the boundaries of context_states.
+
+     Note: Actually we will group the states by contexts and states, because
+           we need a shape of [stream][context][state][arc], obviously the
+           sub-lists along axis -1 contains same values.
+
+     Here is a example: suppose vocab_size=10, num_graph_states=10,
+     decoder_history_len=2, we have a states like:
+
+     [ [ 112 120 123 125 345 345 ] [ 123 124 567 568 670 ] ]
+
+     the context_states are (context_state = state / num_graph_states):
+
+     [ [ 11 12 12 12 34 34 ] [ 12 12 56 56 67 ] ]
+
+     It will finally be grouped into ([stream][context][state][arc]):
+
+     [ [ [ [ 112 ] ] [ [ 120 ] [ 123 ] [ 125 ] ] [ [ 345 345 ] ] ]
+       [ [ [ 123 ] [ 124 ] ] [ [ 567 ] [ 568 ] ] [ [ 670 ] ] ] ]
+
+     Caution: This function intends to be used in `Advance()` only. 
+
+     @param [in] states  A two axes ragged tensor with each sub-list **sorted**.
+
+     @return  Return RaggedShape with 4 axes (i.e.[stream][context][state][arc])
+              it satisfies `ans.NumElements() == states.NumElements()` and
+              `ans.Dim0() == states.Dim0()`.
+   */
+  RaggedShape GroupStatesByContexts(Ragged<int64_t> &states);
 
  private:
   /*
@@ -242,8 +331,8 @@ class RnntDecodingStreams {
   // A reference to the original RnntDecodingStream.
   std::vector<std::shared_ptr<RnntDecodingStream>> &srcs_;
 
-  // A reference to the configuration object.
-  const RnntDecodingConfig &config_;
+  // The configuration object.
+  const RnntDecodingConfig config_;
 
   // array of the individual graphs of the streams, with graphs.NumSrcs() ==
   // number of streams. All the graphs might actually be the same.
@@ -275,7 +364,18 @@ class RnntDecodingStreams {
   std::vector<std::shared_ptr<Ragged<ArcInfo>>> prev_frames_;
 };
 
-// Create a new decoding stream.
+/* Create a new decoding stream.
+
+   Every sequence(wave data) need a decoding stream, this function is expected
+   to be called when a new sequence comes. We support different decoding graphs
+   for different streams.
+
+   @param [in] graph  The decoding graph used in this stream.
+
+   @return  The pointer to this decoding stream, which will be combined into
+            `RnntDecodingStreams` to do decoding together with other
+            sequences in parallel.
+ */
 std::shared_ptr<RnntDecodingStream> CreateStream(
     const std::shared_ptr<Fsa> &graph);
 

@@ -30,7 +30,7 @@
 
 namespace k2 {
 /*
-  ArrayOfRaggedShape is a convenience function that gives you easy access
+  Array1OfRaggedShape is a convenience function that gives you easy access
   to pointers-of-pointers for an array of ragged shapes.
  */
 class Array1OfRaggedShape {
@@ -47,7 +47,7 @@ class Array1OfRaggedShape {
    enable us to save kernels by combining certain operations across the
    axes.
   */
-  Array1OfRaggedShape(RaggedShape *src, int32_t num_srcs);
+  Array1OfRaggedShape(RaggedShape *srcs, int32_t num_srcs);
   Array1OfRaggedShape() = default;
 
   int32_t NumSrcs() const { return num_srcs_; }
@@ -58,20 +58,22 @@ class Array1OfRaggedShape {
   // Returns device-accessible array of row-splits for the individual shapes,
   // indexed [axis-1][src], with 0 <= src < num_srcs.  The shape of this
   // Array2 is [NumAxes() - 1][NumSrcs()].
-  Array2<int32_t *> *RowSplits() { return &row_splits_; }
+  const Array2<const int32_t *> *RowSplits() const { return &row_splits_; }
 
   // Returns device-accessible vector of row-splits for a particular
   // axis, indexed by 0 <= src < num_srcs.
-  int32_t **RowSplits(int32_t axis) { return row_splits_.Row(axis - 1).Data(); }
+  const int32_t **RowSplits(int32_t axis) {
+    return row_splits_.Row(axis - 1).Data();
+  }
 
   // Returns device-accessible array of row-ids for the individual shapes
   // indexed [axis-1][src], with 0 <= src < num_srcs.  The shape of this
   // Array2 is [NumAxes() - 1][NumSrcs()].
-  Array2<int32_t *> *RowIds() { return &row_ids_; }
+  const Array2<const int32_t *> *RowIds() const { return &row_ids_; }
 
   // Returns device-accessible vector of row-splits for a particular
   // axis, indexed by 0 <= src < num_srcs.
-  int32_t **RowIds(int32_t axis) { return row_ids_.Row(axis - 1).Data(); }
+  const int32_t **RowIds(int32_t axis) { return row_ids_.Row(axis - 1).Data(); }
 
   /* Return the  total size on this axis, which is the sum of the TotSize() of
      the individual shapes.  Requires 0 <= axis < NumAxes() and
@@ -145,13 +147,13 @@ class Array1OfRaggedShape {
   ContextPtr c_;
   int32_t num_srcs_;
   int32_t num_axes_;
-  Array2<int32_t *> row_splits_;  // shape [num_axes_ - 1][num_srcs_]
-  Array2<int32_t *> row_ids_;     // shape [num_axes_ - 1][num_srcs_]
-  Array1<int32_t> tot_sizes_;     // dim num_axes_, this is on CPU
+  Array2<const int32_t *> row_splits_;  // shape [num_axes_ - 1][num_srcs_]
+  Array2<const int32_t *> row_ids_;     // shape [num_axes_ - 1][num_srcs_]
+  Array1<int32_t> tot_sizes_;           // dim num_axes_, this is on CPU
 };
 
 /*
-  ArrayOfRagged<T> is a 1-dimensional array of Ragged<T>.
+  Array1OfRagged<T> is a 1-dimensional array of Ragged<T>.
   It is intended for situations where you want to do some operations on
   arrays of ragged arrays, without explicitly concatenating them (e.g. to
   save time).   This is a fairly low-level interface, intended to
@@ -166,11 +168,18 @@ struct Array1OfRagged {
   // shape
   Array1<T *> values;
 
-  int32_t NumSrcs() { return values.Dim(); }
+  int32_t NumSrcs() const { return values.Dim(); }
   ContextPtr &Context() { return shape.Context(); }
 
   Array1OfRagged() = default;
 
+  /*
+      Constructor.
+      Args:
+         srcs: pointers to the source ragged tensors, a CPU pointer
+         num_srcs: the number of source ragged tensors.  All ragged tensors must
+                   have the same NumAxes() and must be on the same device.
+  */
   Array1OfRagged(Ragged<T> *srcs, int32_t num_srcs) {
     K2_CHECK_GE(num_srcs, 1);
     K2_CHECK(srcs);

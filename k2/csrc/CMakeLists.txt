@@ -45,8 +45,8 @@ add_subdirectory(host)
 # please keep it sorted
 set(context_srcs
   algorithms.cu
-  array_ops.cu
   array_of_ragged.cu
+  array_ops.cu
   connect.cu
   context.cu
   dtype.cu

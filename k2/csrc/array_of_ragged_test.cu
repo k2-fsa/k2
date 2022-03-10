@@ -16,8 +16,7 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
+#include "gtest/gtest.h"
 #include "k2/csrc/array_of_ragged.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
@@ -42,26 +41,26 @@ void TestArray1OfRaggedConstruct() {
     }
     auto array_of_ragged = Array1OfRagged<T>(raggeds.data(), num_srcs);
     for (int32_t j = 1; j < num_axes; ++j) {
-      int32_t **row_splits = array_of_ragged.shape.RowSplits(j);
-      int32_t **row_ids = array_of_ragged.shape.RowIds(j);
-      Array1<int32_t *> except_row_splits(GetCpuContext(), num_srcs);
-      Array1<int32_t *> except_row_ids(GetCpuContext(), num_srcs);
-      int32_t **except_row_splits_data = except_row_splits.Data();
-      int32_t **except_row_ids_data = except_row_ids.Data();
+      const int32_t **row_splits = array_of_ragged.shape.RowSplits(j);
+      const int32_t **row_ids = array_of_ragged.shape.RowIds(j);
+      Array1<int32_t *> excepted_row_splits(GetCpuContext(), num_srcs);
+      Array1<int32_t *> excepted_row_ids(GetCpuContext(), num_srcs);
+      int32_t **excepted_row_splits_data = excepted_row_splits.Data();
+      int32_t **excepted_row_ids_data = excepted_row_ids.Data();
       for (int32_t i = 0; i < num_srcs; ++i) {
-        except_row_splits_data[i] = raggeds[i].RowSplits(j).Data();
-        except_row_ids_data[i] = raggeds[i].RowIds(j).Data();
+        excepted_row_splits_data[i] = raggeds[i].RowSplits(j).Data();
+        excepted_row_ids_data[i] = raggeds[i].RowIds(j).Data();
       }
-      except_row_splits = except_row_splits.To(c);
-      except_row_ids = except_row_ids.To(c);
-      except_row_splits_data = except_row_splits.Data();
-      except_row_ids_data = except_row_ids.Data();
+      excepted_row_splits = excepted_row_splits.To(c);
+      excepted_row_ids = excepted_row_ids.To(c);
+      excepted_row_splits_data = excepted_row_splits.Data();
+      excepted_row_ids_data = excepted_row_ids.Data();
       Array1<int32_t> flags(c, 2, 1);
       int32_t *flags_data = flags.Data();
       K2_EVAL(
           c, num_srcs, lambda_check_pointer, (int32_t i) {
-            if (row_splits[i] != except_row_splits_data[i]) flags_data[0] = 0;
-            if (row_ids[i] != except_row_ids_data[i]) flags_data[1] = 0;
+            if (row_splits[i] != excepted_row_splits_data[i]) flags_data[0] = 0;
+            if (row_ids[i] != excepted_row_ids_data[i]) flags_data[1] = 0;
           });
       K2_CHECK(Equal(flags, Array1<int32_t>(c, std::vector<int32_t>{1, 1})));
     }

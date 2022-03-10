@@ -39,7 +39,7 @@ std::shared_ptr<RnntDecodingStream> CreateStream(
   // initialize to start state
   stream.states = Ragged<int64_t>(RegularRaggedShape(c, 1, 1),
                                   Array1<int64_t>(c, std::vector<int64_t>{0}));
-  stream.scores = Ragged<double>(RegularRaggedShape(c, 1, 1),
+  stream.scores = Ragged<double>(stream.states.shape,
                                  Array1<double>(c, std::vector<double>{0.0}));
   return std::make_shared<RnntDecodingStream>(stream);
 }
@@ -47,7 +47,7 @@ std::shared_ptr<RnntDecodingStream> CreateStream(
 RnntDecodingStreams::RnntDecodingStreams(
     std::vector<std::shared_ptr<RnntDecodingStream>> &srcs,
     const RnntDecodingConfig &config)
-    : attached_(true), srcs_(srcs), num_streams_(srcs.size()), config_(config) {
+    : attached_(true), num_streams_(srcs.size()), srcs_(srcs), config_(config) {
   K2_CHECK_GE(num_streams_, 1);
   c_ = srcs_[0]->graph->shape.Context();
 
@@ -144,11 +144,18 @@ void RnntDecodingStreams::GetContexts(RaggedShape *shape,
         int32_t idx0 = shape_row_ids1_data[row],
                 num_graph_states = num_graph_states_data[idx0],
                 state_idx01x = states_row_splits2_data[row];
-        int64_t state_value = states_values_data[state_idx01x];
-        int32_t exp_v = decoder_history_len - col;
-        int64_t context_state = state_value / num_graph_states,
-                state = context_state % (int64_t)pow(vocab_size, exp_v);
-        state = state / pow(vocab_size, exp_v - 1);
+        // state_value = context_state * num_graph_states + graph_state
+        // We want to extract token ids from context_state below.
+        // Think about that the vocab_size=10 & decoder_history_len=3, and we
+        // have a context_state of "284" and want to extract it into [2, 8, 4].
+        // For col=0(to get 2), it performs like `(284 % 10^3) / 10^2`,
+        // for col=1(to get 8), it problems like `(284 % 10^2) / 10^1`,
+        // for col=2(to get 4), it performs like `(284 % 10^1) / 10^0`.
+        int64_t state_value = states_values_data[state_idx01x],
+                context_state = state_value / num_graph_states,
+                exp = decoder_history_len - col,
+                state = context_state % (int64_t)pow(vocab_size, exp);
+        state = state / (int64_t)pow(vocab_size, exp - 1);
         contexts_acc(row, col) = state;
       });
 }
@@ -185,36 +192,28 @@ Ragged<double> RnntDecodingStreams::PruneTwice(Ragged<double> &incoming_scores,
   return ans_scores;
 }
 
-void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
+RaggedShape RnntDecodingStreams::ExpandArcs() {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(attached_) << "Streams detached.";
-  K2_CHECK_EQ(logprobs.Dim0(), states_.TotSize(1));
-  K2_CHECK_EQ(logprobs.Dim1(), config_.vocab_size);
-
-  ContextPtr c = logprobs.Context();
-  K2_CHECK(c_->IsCompatible(*c));
-
-  int32_t num_streams = states_.Dim0(), num_states = states_.NumElements();
+  int32_t num_states = states_.NumElements();
 
   Array1<int32_t> num_arcs(c_, num_states + 1);
   // populate array of num-arcs, indexed by idx012 into `states`.
   // These num-arcs are the num-arcs leaving the state in the corresponding
   // graph, plus one for the implicit epsilon self-loop.
-  const int32_t *this_states_row_ids2_data = states_.RowIds(2).Data(),
-                *this_states_row_ids1_data = states_.RowIds(1).Data(),
+  const int32_t *states_row_ids2_data = states_.RowIds(2).Data(),
+                *states_row_ids1_data = states_.RowIds(1).Data(),
                 *num_graph_states_data = num_graph_states_.Data();
 
-  const int64_t *this_states_values_data = states_.values.Data();
-  int32_t **graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
+  const int64_t *states_values_data = states_.values.Data();
+  const int32_t **graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
   int32_t *num_arcs_data = num_arcs.Data();
 
   K2_EVAL(
       c_, num_states, lambda_set_num_arcs, (int32_t idx012) {
-        int64_t state_value = this_states_values_data[idx012];
-        int32_t
-            idx0 = this_states_row_ids1_data[this_states_row_ids2_data[idx012]],
-            num_graph_states = num_graph_states_data[idx0],
-            graph_state = state_value % num_graph_states;
+        int64_t state_value = states_values_data[idx012];
+        int32_t idx0 = states_row_ids1_data[states_row_ids2_data[idx012]],
+                num_graph_states = num_graph_states_data[idx0],
+                graph_state = state_value % num_graph_states;
 
         const int32_t *graph_row_split1_data = graph_row_splits1_ptr_data[idx0];
         // plus one for the implicit epsilon self-loop
@@ -229,14 +228,13 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   // unpruned_arcs_shape has 4 axes: [stream][context][state][arc]
   RaggedShape unpruned_arcs_shape =
       ComposeRaggedShapes(states_.shape, states2arcs_shape);
+  return unpruned_arcs_shape;
+}
 
-  Array1<double> max_scores_per_stream(c_, num_streams);
-  double minus_inf = -std::numeric_limits<double>::infinity();
-  {
-    // scores_ has 3 axes: [stream][context][score]
-    Ragged<double> scores_per_stream = scores_.RemoveAxis(1);
-    MaxPerSublist<double>(scores_per_stream, minus_inf, &max_scores_per_stream);
-  }
+Renumbering RnntDecodingStreams::DoFisrtPassPruning(
+    RaggedShape &unpruned_arcs_shape, Array2<float> &logprobs) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(unpruned_arcs_shape.NumAxes(), 4);
 
   // Do initial pruning pass on the arcs (because it will be quite a large
   // array), populating the `keep` array of a Renumbering object.. The pruning
@@ -246,17 +244,27 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   //   (2) for all other arcs, keep the it if the forward scores after the
   //       arc would be >= the max_scores_per_stream entry for this stream,
   //       minus the beam from the config.
+  Array1<double> max_scores_per_stream(c_, num_streams_);
+  double minus_inf = -std::numeric_limits<double>::infinity();
+  {
+    // scores_ has 3 axes: [stream][context][score]
+    Ragged<double> scores_per_stream = scores_.RemoveAxis(1);
+    MaxPerSublist<double>(scores_per_stream, minus_inf, &max_scores_per_stream);
+  }
   Renumbering pass1_renumbering(c_, unpruned_arcs_shape.NumElements());
   char *pass1_keep_data = pass1_renumbering.Keep().Data();
   const auto logprobs_acc = logprobs.Accessor();
-  const double *this_scores_data = scores_.values.Data(),
+  const double *scores_data = scores_.values.Data(),
                *max_scores_per_stream_data = max_scores_per_stream.Data();
   double beam = config_.beam;
   // "uas" is short for unpruned_arcs_shape
   const int32_t *uas_row_ids3_data = unpruned_arcs_shape.RowIds(3).Data(),
                 *uas_row_splits3_data = unpruned_arcs_shape.RowSplits(3).Data(),
                 *uas_row_ids2_data = unpruned_arcs_shape.RowIds(2).Data(),
-                *uas_row_ids1_data = unpruned_arcs_shape.RowIds(1).Data();
+                *uas_row_ids1_data = unpruned_arcs_shape.RowIds(1).Data(),
+                *num_graph_states_data = num_graph_states_.Data();
+  const int32_t **graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
+  const int64_t *states_values_data = states_.values.Data();
 
   Arc **graphs_arcs_data = graphs_.values.Data();
 
@@ -278,8 +286,8 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
 
         const Arc *graph_arcs_data = graphs_arcs_data[idx0];
         const int32_t *graph_row_split1_data = graph_row_splits1_ptr_data[idx0];
-        int64_t this_state = this_states_values_data[idx012];
-        int32_t graph_state = this_state % num_graph_states,
+        int64_t state = states_values_data[idx012];
+        int32_t graph_state = state % num_graph_states,
                 graph_idx0x = graph_row_split1_data[graph_state],
                 graph_idx01 =
                     graph_idx0x + idx3 - 1;  // minus 1 as the implicit epsilon
@@ -298,7 +306,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
           return;
         }
 
-        double this_score = this_scores_data[idx012], arc_score = arc.score,
+        double this_score = scores_data[idx012], arc_score = arc.score,
                log_prob = logprobs_acc(idx01, arc.label),
                score = this_score + arc_score + log_prob,
                max_score = max_scores_per_stream_data[idx0];
@@ -309,104 +317,14 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
           pass1_keep_data[idx0123] = 0;
         }
       });
+  return pass1_renumbering;
+}
 
-  RaggedShape pass1_arcs_shape =
-      SubsetRaggedShape(unpruned_arcs_shape,
-                        pass1_renumbering);  // [stream][context][state][arc]
-
-  // stream_arc_shape is pass1_arcs indexed [stream][arc].
-  // We need to rearrange so it's by destination context and state, not source.
-  RaggedShape stream_arc_shape = RemoveAxis(pass1_arcs_shape, 2);
-  stream_arc_shape = RemoveAxis(stream_arc_shape, 1);
-
-  // arcs, indexed [stream][context][state][arc].
-  Ragged<ArcInfo> arcs(pass1_arcs_shape);
-  // dest-states of arcs, incexed [stream][arc]
-  Ragged<int64_t> states(stream_arc_shape);
-  // final-scores after arcs, indexed [stream][arc]
-  Ragged<double> scores(stream_arc_shape);
-
-  int32_t cur_num_arcs = arcs.NumElements();
-  // This renumber will be used for renumbering the arcs after we fiishing
-  // the pruning.
-  Renumbering renumber_arcs(c_, cur_num_arcs);
-  char *renumber_arcs_keep_data = renumber_arcs.Keep().Data();
-
-  const int32_t *pass1_new2old_data = pass1_renumbering.New2Old().Data();
-  int64_t *states_data = states.values.Data();
-  double *scores_data = scores.values.Data();
-  ArcInfo *arcs_data = arcs.values.Data();
-  int32_t vocab_size = config_.vocab_size,
-          decoder_history_len = config_.decoder_history_len;
-
-  // Populate arcs, states and scores; it computes
-  // the destination state for each arc and puts its in 'states',
-  // and the after-the-arc scores for each arc and puts them in
-  // 'scores'.
-  K2_EVAL(
-      c_, cur_num_arcs, lambda_populate_arcs_states_scores, (int32_t arc_idx) {
-        // Init renumber_arcs to 0, place here to save one kernel.
-        renumber_arcs_keep_data[arc_idx] = 0;
-        int32_t idx0123 = pass1_new2old_data[arc_idx],
-                idx012 = uas_row_ids3_data[idx0123],
-                idx012x = uas_row_splits3_data[idx012],
-                idx3 = idx0123 - idx012x, idx01 = uas_row_ids2_data[idx012],
-                idx0 = uas_row_ids1_data[idx01],
-                num_graph_states = num_graph_states_data[idx0];
-        int64_t this_state = this_states_values_data[idx012];
-        double this_score = this_scores_data[idx012];
-
-        // handle the implicit epsilon self-loop
-        if (idx3 == 0) {
-          states_data[arc_idx] = this_state;
-          scores_data[arc_idx] = this_score + logprobs_acc(idx01, 0);
-          ArcInfo ai;
-          ai.graph_arc_idx01 = -1;
-          ai.score = logprobs_acc(idx01, 0);
-          arcs_data[arc_idx] = ai;
-          return;
-        }
-
-        const Arc *graph_arcs_data = graphs_arcs_data[idx0];
-        const int32_t *graph_row_split1_data = graph_row_splits1_ptr_data[idx0];
-
-        int64_t this_context_state = this_state / num_graph_states;
-        int32_t graph_state = this_state % num_graph_states,
-                graph_idx0x = graph_row_split1_data[graph_state],
-                graph_idx01 = graph_idx0x + idx3 - 1;  // minus 1 here as
-                                                       // epsilon self-loop
-                                                       // takes the position 0.
-
-        Arc arc = graph_arcs_data[graph_idx01];
-        int64_t context_state = this_context_state;
-
-        // non epsilon transitions, update context_state
-        if (arc.label != 0) {
-          context_state = this_context_state %
-                          (int64_t)pow(vocab_size, decoder_history_len - 1);
-          context_state = context_state * vocab_size + arc.label;
-        }
-
-        // next state is the state current arc pointting to.
-        int64_t state = context_state * num_graph_states + arc.dest_state;
-        states_data[arc_idx] = state;
-
-        double arc_score = arc.score, log_prob = logprobs_acc(idx01, arc.label),
-               score = this_score + arc_score + log_prob;
-        scores_data[arc_idx] = score;
-
-        ArcInfo ai;
-        ai.graph_arc_idx01 = graph_idx01;
-        ai.score = arc_score + log_prob;
-        arcs_data[arc_idx] = ai;
-      });
-
-  // sort states so that we can group states by context-state
-  Array1<int32_t> dest_state_sort_new2old(c, states.NumElements());
-  SortSublists(&states, &dest_state_sort_new2old);
-
-  scores.values = scores.values[dest_state_sort_new2old];
-
+RaggedShape RnntDecodingStreams::GroupStatesByContexts(
+    Ragged<int64_t> &states) {
+  NVTX_RANGE(K2_FUNC);
+  // states has a shape of [stream][state]
+  K2_CHECK_EQ(states.NumAxes(), 2);
   // state_boundaries and context_boundaries are Renumbering objects
   // that we use in a slightly different way from normal.
   // We populate their Keep() arrays with:
@@ -414,11 +332,14 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   //     or next_context != this_context.
   //  for state_boundaries: a 1 if next_stream != this_stream or
   //     next_state (i.e. the 64-bit state index) != this_state.
+  int32_t cur_num_arcs = states.NumElements();
   Renumbering context_boundaries(c_, cur_num_arcs);
   Renumbering state_boundaries(c_, cur_num_arcs);
-  const int32_t *states_row_ids1_data = states.RowIds(1).Data();
+  const int32_t *states_row_ids1_data = states.RowIds(1).Data(),
+                *num_graph_states_data = num_graph_states_.Data();
   char *context_boundaries_keep_data = context_boundaries.Keep().Data(),
        *state_boundaries_keep_data = state_boundaries.Keep().Data();
+  const int64_t *states_data = states.values.Data();
 
   K2_EVAL(
       c_, cur_num_arcs, lambda_set_boundaries, (int32_t idx01) {
@@ -462,6 +383,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   RaggedShape ctx_state_shape =
       RaggedShape2(nullptr, &state2ctx_row_ids, state2ctx_row_ids.Dim());
 
+  RaggedShape &stream_arc_shape = states.shape;
   Array1<int32_t> &arc2stream_row_ids = stream_arc_shape.RowIds(1),
                   &stream2arc_row_splits = stream_arc_shape.RowSplits(1);
 
@@ -473,13 +395,168 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   RaggedShape stream_ctx_shape = RaggedShape2(
       &stream2ctx_row_splits, &ctx2stream_row_ids, ctx2stream_row_ids.Dim());
 
-  // incoming_arcs_shape has indexes [stream][context][state][arc].
+  // grouped_arcs_shape has indexes [stream][context][state][arc].
   // It represents the incoming arcs sorted by destination state.
-  RaggedShape incoming_arcs_shape =
+  RaggedShape grouped_arcs_shape =
       ComposeRaggedShapes3(stream_ctx_shape, ctx_state_shape, state_arc_shape);
+  return grouped_arcs_shape;
+}
 
+/*
+   There are several steps to finish this `Advance()` procedure.
+     (1) Expand arcs based on source states(i.e. the states_ member).
+     (2) Do initial pruning(beam pruning with some special rules) to reduce the
+         the number of arcs.
+     (3) Figure out the dest-states and corresponding scores.
+     (4) Re-arange dest-states by contexts and states.
+     (5) Second pass pruning (prune on context axis and state axis).
+     (6) Update states_, scores_ and prev_frames_.
+ */
+void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK(attached_) << "Streams detached.";
+  K2_CHECK_EQ(logprobs.Dim0(), states_.TotSize(1));
+  K2_CHECK_EQ(logprobs.Dim1(), config_.vocab_size);
+
+  ContextPtr c = logprobs.Context();
+  K2_CHECK(c_->IsCompatible(*c));
+
+  // (1) Expand arcs.
+  // unpruned_arcs_shape has a shape of [stream][context][state][arc]
+  auto unpruned_arcs_shape = ExpandArcs();
+
+  // (2) Do initial pruning.
+  auto pass1_renumbering = DoFisrtPassPruning(unpruned_arcs_shape, logprobs);
+
+  // pass1_arcs_shape has a shape of [stream][context][state][arc]
+  auto pass1_arcs_shape =
+      SubsetRaggedShape(unpruned_arcs_shape, pass1_renumbering);
+
+  // (3) Figure out the dest-states and corresponding scores.
+  // stream_arc_shape is pass1_arcs indexed [stream][arc].
+  // We need to rearrange so it's by destination context and state, not source.
+  RaggedShape stream_arc_shape = RemoveAxis(pass1_arcs_shape, 2);
+  stream_arc_shape = RemoveAxis(stream_arc_shape, 1);
+
+  // arcs, indexed [stream][context][state][arc].
+  Ragged<ArcInfo> arcs(pass1_arcs_shape);
+  // dest-states of arcs, incexed [stream][arc]
+  Ragged<int64_t> states(stream_arc_shape);
+  // final-scores after arcs, indexed [stream][arc]
+  Ragged<double> scores(stream_arc_shape);
+
+  // We will populate arcs, states and scores below, it computes
+  // the destination state for each arc and puts its in 'states',
+  // and the after-the-arc scores for each arc and puts them in
+  // 'scores'.
+  int32_t cur_num_arcs = arcs.NumElements();
+  // This renumbering object will be used for renumbering the arcs after we
+  // fiishing the pruning.
+  Renumbering renumber_arcs(c_, cur_num_arcs);
+  char *renumber_arcs_keep_data = renumber_arcs.Keep().Data();
+
+  const int64_t *this_states_values_data = states_.values.Data();
+  int64_t *states_data = states.values.Data();
+  const double *this_scores_data = scores_.values.Data();
+  double *scores_data = scores.values.Data();
+  ArcInfo *arcs_data = arcs.values.Data();
+  int32_t vocab_size = config_.vocab_size,
+          decoder_history_len = config_.decoder_history_len;
+  // "uas" is short for unpruned_arcs_shape, see above, it is the output of
+  // `ExpandArcs()`.
+  const int32_t *num_graph_states_data = num_graph_states_.Data(),
+                *uas_row_ids3_data = unpruned_arcs_shape.RowIds(3).Data(),
+                *uas_row_splits3_data = unpruned_arcs_shape.RowSplits(3).Data(),
+                *uas_row_ids2_data = unpruned_arcs_shape.RowIds(2).Data(),
+                *uas_row_ids1_data = unpruned_arcs_shape.RowIds(1).Data(),
+                *pass1_new2old_data = pass1_renumbering.New2Old().Data();
+  const int32_t **graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
+  const auto logprobs_acc = logprobs.Accessor();
+  Arc **graphs_arcs_data = graphs_.values.Data();
+
+  K2_EVAL(
+      c_, cur_num_arcs, lambda_populate_arcs_states_scores, (int32_t arc_idx) {
+        // Init renumber_arcs to 0, place here to save one kernel.
+        renumber_arcs_keep_data[arc_idx] = 0;
+        // The idx below is the index into unpruned_arcs_shape, which has a
+        // shape of [stream][context][state][arc]
+        // Note: states_.shape == unpruned_arcs_shape.RemoveAxis(-1).
+        int32_t idx0123 = pass1_new2old_data[arc_idx],
+                idx012 = uas_row_ids3_data[idx0123],
+                idx012x = uas_row_splits3_data[idx012],
+                idx3 = idx0123 - idx012x,  // `idx3 - 1` can be interpreted as
+                                           // idx1 into the corresponding
+                                           // decoding graph, minus 1 here
+                                           // because we add a implicit
+                                           // self-loop for each state, see
+                                           // `ExpandArcs()`.
+            idx01 = uas_row_ids2_data[idx012], idx0 = uas_row_ids1_data[idx01],
+                num_graph_states = num_graph_states_data[idx0];
+        int64_t this_state = this_states_values_data[idx012];
+        double this_score = this_scores_data[idx012];
+
+        // handle the implicit epsilon self-loop
+        if (idx3 == 0) {
+          states_data[arc_idx] = this_state;
+          // we assume termination symbol to be 0 here.
+          scores_data[arc_idx] = this_score + logprobs_acc(idx01, 0);
+          ArcInfo ai;
+          ai.graph_arc_idx01 = -1;
+          ai.score = logprobs_acc(idx01, 0);
+          arcs_data[arc_idx] = ai;
+          return;
+        }
+
+        const Arc *graph_arcs_data = graphs_arcs_data[idx0];
+        const int32_t *graph_row_split1_data = graph_row_splits1_ptr_data[idx0];
+
+        int64_t this_context_state = this_state / num_graph_states;
+        int32_t this_graph_state = this_state % num_graph_states,
+                graph_idx0x = graph_row_split1_data[this_graph_state],
+                graph_idx01 = graph_idx0x + idx3 - 1;  // minus 1 here as
+                                                       // epsilon self-loop
+                                                       // takes the position 0.
+        Arc arc = graph_arcs_data[graph_idx01];
+        int64_t context_state = this_context_state;
+
+        // non epsilon transitions, update context_state
+        if (arc.label != 0) {
+          // Think about that vocab_size=10, decoder_history_len=3,
+          // this_context_state=358, arc.label=6, we need to update
+          // context_state to 586. First, we need to extract 58 from 358, that
+          // can be done with `358 % 10^2`, then we append 6 to 58, that can be
+          // done with `58 * 10 + 6`.
+          context_state = this_context_state %
+                          (int64_t)pow(vocab_size, decoder_history_len - 1);
+          context_state = context_state * vocab_size + arc.label;
+        }
+
+        // next state is the state current arc pointting to.
+        int64_t state = context_state * num_graph_states + arc.dest_state;
+        states_data[arc_idx] = state;
+
+        double arc_score = arc.score, log_prob = logprobs_acc(idx01, arc.label);
+
+        scores_data[arc_idx] = this_score + arc_score + log_prob;
+
+        ArcInfo ai;
+        ai.graph_arc_idx01 = graph_idx01;
+        ai.score = arc_score + log_prob;
+        arcs_data[arc_idx] = ai;
+      });
+
+  // (4) Re-arange dest-states by contexts and states.
+  // sort states so that we can group states by context-state
+  Array1<int32_t> dest_state_sort_new2old(c, states.NumElements());
+  SortSublists(&states, &dest_state_sort_new2old);
+
+  auto incoming_arcs_shape = GroupStatesByContexts(states);
+
+  scores.values = scores.values[dest_state_sort_new2old];
   Ragged<double> incoming_scores(incoming_arcs_shape, scores.values);
 
+  // (5) Second pass pruning (prune on context axis and state axis).
+  // The scores has been re-arange by destination context and state.
   Array1<int32_t> arcs_prune2_new2old;
   Ragged<double> pruned_incoming_scores =
       PruneTwice(incoming_scores, &arcs_prune2_new2old);
@@ -487,6 +564,31 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   Ragged<int64_t> pruned_dest_states(pruned_incoming_scores.shape,
                                      states.values[arcs_prune2_new2old]);
 
+  // (6) Update states_, scores_ and prev_frames_.
+  // Here, use MaxPerSublist to reduce `pruned_incoming_scores` to be per
+  // state not per arc.  (Need to remove last axis from the shape)
+  int32_t num_dest_states = pruned_incoming_scores.TotSize(2);
+  Array1<double> dest_state_scores_values(c_, num_dest_states);
+  double minus_inf = -std::numeric_limits<double>::infinity();
+  MaxPerSublist(pruned_incoming_scores, minus_inf, &dest_state_scores_values);
+
+  // dest_state_scores will be the 'scores' held by this object on the next
+  // frame
+  Ragged<double> dest_state_scores(RemoveAxis(pruned_incoming_scores.shape, 3),
+                                   dest_state_scores_values);
+  scores_ = dest_state_scores;
+
+  // dest_states will be the `states` held by this object on the next frame.
+  // sub-lists along last axis has same values, so we just pick the first one,
+  // see `GroupStatesByContexts()` for more details.
+  auto pruned_row_split3 = pruned_dest_states.RowSplits(3);
+  Ragged<int64_t> dest_states(
+      dest_state_scores.shape,
+      pruned_dest_states
+          .values[pruned_row_split3.Arange(0, pruned_row_split3.Dim() - 1)]);
+  states_ = dest_states;
+
+  // Update prev_frames_.
   // arcs_new2old is new2old map from indexes in `incoming_scores` or
   // `pruned_dest_states`, to indexes into `arcs` (remember, we did not renumber
   // arcs, it is in the original order after pass1 pruning).
@@ -505,12 +607,13 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   // pruned_arcs is indexed [stream][context][src_state][arc].
   Ragged<ArcInfo> pruned_arcs = SubsetRagged(arcs, renumber_arcs);
 
-  // arcs_dest2src maps from an arc-index in `pruned_incoming_scores` to an
+  // arcs_dest2src maps from an arc-index in `pruned_dest_states` to an
   // arc-index in `pruned_arcs`.  This is a permutation of integers
   // 0..num_pruned_arcs-1.
   Array1<int32_t> arcs_dest2src = renumber_arcs.Old2New()[arcs_new2old];
 
   // reduce_pruned_dest_states has a shape of [stream][state][arc]
+  // we don't need context axis in prev_frames_.
   auto reduce_pruned_dest_states = RemoveAxis(pruned_dest_states, 1);
   // "rpds" is short for reduce_pruned_dest_states
   const int32_t *rpds_row_ids2_data =
@@ -543,25 +646,6 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
         pruned_arcs_data[pruned_arc_idx0123] = info;
       });
 
-  // Here, use MaxPerSublist to reduce `pruned_incoming_scores` to be per
-  // state not per arc.  (Need to remove last axis from the shape)
-  int32_t num_dest_states = pruned_incoming_scores.TotSize(2);
-  Array1<double> dest_state_scores_values(c_, num_dest_states);
-  MaxPerSublist(pruned_incoming_scores, minus_inf, &dest_state_scores_values);
-
-  // dest_state_scores will be the 'scores' held by this object on the next
-  // frame
-  Ragged<double> dest_state_scores(RemoveAxis(pruned_incoming_scores.shape, 3),
-                                   dest_state_scores_values);
-  // dest_states will be the `states` held by this object on the next frame.
-  auto pruned_row_split3 = pruned_dest_states.RowSplits(3);
-  Ragged<int64_t> dest_states(
-      dest_state_scores.shape,
-      pruned_dest_states
-          .values[pruned_row_split3.Arange(0, pruned_row_split3.Dim() - 1)]);
-
-  states_ = dest_states;
-  scores_ = dest_state_scores;
   prev_frames_.emplace_back(
       std::make_shared<Ragged<ArcInfo>>(pruned_arcs.RemoveAxis(1)));
 }

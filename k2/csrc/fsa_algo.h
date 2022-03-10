@@ -580,10 +580,12 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
             Array1<int32_t> *aux_labels);
 
 /*
-  Creat a "trivial" graph with one state with a self-loop for each symbol.
+  Creat a trivial graph which has only two states, on state 0, there are
+  `max-token + 1` self loops(i.e. a loop for each symbol, including blank), and
+  state 1 is the final state.
 
     @param [in] c  The context with which we'll allocate memory for
-                   ctc topopogy.
+                   the trivial graph.
     @param [in] max_token  The maximum token ID (inclusive). We assume that
                            token IDs are contiguous (from 1 to `max_token`).
                            0 represents blank.
@@ -592,9 +594,7 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
                             on each arc are equal
                             (i.e. aux_labels = Arange(0, max_token + 1);
 
-    @return    Returns a trivial graph with only two states, on state 0, there
-               are `max_token + 1` self loops(i.e. a loop for each symbol,
-               including blank), and state 1 is the final state.
+    @return    Returns the expected trivial graph on the given device.
  */
 Fsa TrivialGraph(const ContextPtr &c, int32_t max_token,
                  Array1<int32_t> *aux_labels);

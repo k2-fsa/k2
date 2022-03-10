@@ -27,8 +27,9 @@ Array1OfRaggedShape::Array1OfRaggedShape(RaggedShape *src, int32_t num_srcs)
   num_axes_ = src[0].NumAxes();
   c_ = src[0].Context();
 
-  row_splits_ = Array2<int32_t *>(GetCpuContext(), num_axes_ - 1, num_srcs_);
-  row_ids_ = Array2<int32_t *>(GetCpuContext(), num_axes_ - 1, num_srcs_);
+  row_splits_ =
+      Array2<const int32_t *>(GetCpuContext(), num_axes_ - 1, num_srcs_);
+  row_ids_ = Array2<const int32_t *>(GetCpuContext(), num_axes_ - 1, num_srcs_);
   tot_sizes_ = Array1<int32_t>(GetCpuContext(), num_axes_, 0);
 
   auto row_splits_acc = row_splits_.Accessor(),
