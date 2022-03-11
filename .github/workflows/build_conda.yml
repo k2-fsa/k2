@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04]
-        python-version: [3.6, 3.7, 3.8, 3.9, 3.10]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
         cuda: ["10.1", "10.2", "11.0", "11.1", "11.3", "11.5"]
         # from https://download.pytorch.org/whl/torch_stable.html
         # Note: There are no torch versions for CUDA 11.2
@@ -134,39 +134,39 @@ jobs:
             torch: "1.10.2"
           - cuda: "10.1"
             torch: "1.11.0"
-          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
+          - python-version: "3.9" # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
             torch: "1.5.0"
-          - python-version: 3.9
+          - python-version: "3.9"
             torch: "1.5.1"
-          - python-version: 3.9
+          - python-version: "3.9"
             torch: "1.6.0"
-          - python-version: 3.9
+          - python-version: "3.9"
             torch: "1.7.0"
-          - python-version: 3.10 # exclude Python 3.10 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
+          - python-version: "3.10" # exclude Python 3.10 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
             torch: "1.5.0"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.5.1"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.6.0"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.7.0"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.7.1"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.8.0"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.8.1"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.9.0"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.9.1"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.10.0"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.10.1"
-          - python-version: 3.10
+          - python-version: "3.10"
             torch: "1.10.2"
-          - python-version: 3.6 # exclude Python 3.6 for [1.11.0]
+          - python-version: "3.6" # exclude Python 3.6 for [1.11.0]
             torch: "1.11.0"
 
     steps:
