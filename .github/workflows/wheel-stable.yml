@@ -5,8 +5,10 @@ name: Publish to PyPI - stable
 on:
   push:
     branches:
-      - master
       - wheel-stable
+  pull_request:
+    branches:
+      - master
 
 env:
   BUILD_TYPE: Release

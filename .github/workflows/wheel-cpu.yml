@@ -5,7 +5,6 @@ name: Publish to PyPI macOS
 on:
   push:
     branches:
-      - master
       - wheel
 
 env:
