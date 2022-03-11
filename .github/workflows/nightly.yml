@@ -3,6 +3,7 @@ name: nightly
 on:
   push:
     branches:
+      - master
       - nightly
   schedule:
     # minute (0-59)

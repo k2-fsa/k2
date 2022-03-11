@@ -21,6 +21,7 @@ name: build_conda_cuda
 on:
   push:
     branches:
+      - master
       - conda-cuda
 
 env:
@@ -33,10 +34,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04]
-        python-version: [3.6, 3.7, 3.8, 3.9]
-        cuda: ["10.1", "10.2", "11.0", "11.1", "11.3"]
+        python-version: [3.6, 3.7, 3.8, 3.9, 3.10]
+        cuda: ["10.1", "10.2", "11.0", "11.1", "11.3", "11.5"]
         # from https://download.pytorch.org/whl/torch_stable.html
+        # Note: There are no torch versions for CUDA 11.2
         #
+        # 1.11.x supports: cuda10.2 (default), 11.3, 11.5
         # PyTorch 1.10.x supports: 10.2 (default), 11.1, 11.3
         # PyTorch 1.9.x supports: 10.2 (default), 11.1
         # PyTorch 1.8.1 supports: cuda 10.1, 10.2 (default), 11.1
@@ -45,7 +48,8 @@ jobs:
         # PyTorch 1.6.0 supports: cuda 10.1, 10.2 (default), 9.2 (not included in this setup)
         # PyTorch 1.5.x supports: cuda 10.1, 10.2 (default), 9.2 (not included in this setup)
         #
-        # PyTorch 1.7.1, 1.8.x, 1.9.x, and 1.10 support 3.6, 3.7, 3.8, 3.9
+        # PyTorch 1.11.x supports Python 3.10
+        # PyTorch 1.7.1, 1.8.x, 1.9.x, 1.10.x, and 1.11.x support 3.6, 3.7, 3.8, 3.9
         # PyTorch 1.7.0, 1.6.0, and 1.5.x support 3.6, 3.7, 3.8
         #
         # Other PyTorch versions are not tested
@@ -56,9 +60,33 @@ jobs:
         #  https://github.com/csukuangfj/k2/runs/2533830771?check_suite_focus=true
         #  and
         #  https://github.com/NVIDIA/apex/issues/805
-        torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0", "1.9.1", "1.10.0", "1.10.1", "1.10.2"]
+        torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0", "1.9.1", "1.10.0", "1.10.1", "1.10.2", "1.11.0"]
         exclude:
-          # - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
+          - cuda: "11.5" # exclude cuda 11.5 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
+            torch: "1.5.0"
+          - cuda: "11.5"
+            torch: "1.5.1"
+          - cuda: "11.5"
+            torch: "1.6.0"
+          - cuda: "11.5"
+            torch: "1.7.0"
+          - cuda: "11.5"
+            torch: "1.7.1"
+          - cuda: "11.5"
+            torch: "1.8.0"
+          - cuda: "11.5"
+            torch: "1.8.1"
+          - cuda: "11.5"
+            torch: "1.9.0"
+          - cuda: "11.5"
+            torch: "1.9.1"
+          - cuda: "11.5"
+            torch: "1.10.0"
+          - cuda: "11.5"
+            torch: "1.10.1"
+          - cuda: "11.5"
+            torch: "1.10.2"
+          # - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2, 1.11.0]
           #   torch: "1.5.0"
           # - cuda: "11.0"
           #   torch: "1.5.1"
@@ -78,7 +106,9 @@ jobs:
             torch: "1.10.1"
           - cuda: "11.0"
             torch: "1.10.2"
-          # - cuda: "11.1" # exclude 11.1 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1]
+          - cuda: "11.0"
+            torch: "1.11.0"
+          # - cuda: "11.1" # exclude 11.1 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1, 1.11.0]
           #   torch: "1.5.0"
           # - cuda: "11.1"
           #   torch: "1.5.1"
@@ -88,7 +118,9 @@ jobs:
             torch: "1.7.0"
           - cuda: "11.1"
             torch: "1.7.1"
-          - cuda: "10.1" # exclude 10.1 for [1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
+          - cuda: "11.1"
+            torch: "1.11.0"
+          - cuda: "10.1" # exclude 10.1 for [1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2, 1.11.0]
             torch: "1.9.0"
           - cuda: "10.1"
             torch: "1.9.1"
@@ -98,6 +130,8 @@ jobs:
             torch: "1.10.1"
           - cuda: "10.1"
             torch: "1.10.2"
+          - cuda: "10.1"
+            torch: "1.11.0"
           - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
             torch: "1.5.0"
           - python-version: 3.9
@@ -106,6 +140,32 @@ jobs:
             torch: "1.6.0"
           - python-version: 3.9
             torch: "1.7.0"
+          - python-version: 3.10 # exclude Python 3.10 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
+            torch: "1.5.0"
+          - python-version: 3.10
+            torch: "1.5.1"
+          - python-version: 3.10
+            torch: "1.6.0"
+          - python-version: 3.10
+            torch: "1.7.0"
+          - python-version: 3.10
+            torch: "1.7.1"
+          - python-version: 3.10
+            torch: "1.8.0"
+          - python-version: 3.10
+            torch: "1.8.1"
+          - python-version: 3.10
+            torch: "1.9.0"
+          - python-version: 3.10
+            torch: "1.9.1"
+          - python-version: 3.10
+            torch: "1.10.0"
+          - python-version: 3.10
+            torch: "1.10.1"
+          - python-version: 3.10
+            torch: "1.10.2"
+          - python-version: 3.6 # exclude Python 3.6 for [1.11.0]
+            torch: "1.11.0"
 
     steps:
       # refer to https://github.com/actions/checkout
