@@ -283,8 +283,7 @@ class Fsa(object):
                 ans += 'FsaVec[' + str(i) + ']: ' + _k2.fsa_to_str(
                     ragged_arc, openfst=openfst,
                     extra_labels=[x[start:end] for x in extra_labels],
-                    ragged_labels=[_k2.ragged_int_arange(x, 0, start, end)
-                                   for x in ragged_labels])
+                    ragged_labels=[x[start:end] for x in ragged_labels])
         ans += 'properties_str = ' + _k2.fsa_properties_as_str(
             self._properties) + '.'
         for name, value in self.named_tensor_attr(include_scores=False):

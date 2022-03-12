@@ -198,9 +198,12 @@ class RnntDecodingStreams {
    */
   void Detach();
 
+  const ContextPtr &Context() const {return c_;}
   const Ragged<int64_t> &States() const { return states_; }
   const Ragged<double> &Scores() const { return scores_; }
   const Array1<int32_t> &NumGraphStates() const { return num_graph_states_; }
+  int32_t NumStreams() const {return num_streams_; }
+
 
   // Note: The following three functions should be private members, they are not
   // expected to be called outsize this class. We make it public because of the
@@ -285,6 +288,7 @@ class RnntDecodingStreams {
    */
   RaggedShape GroupStatesByContexts(Ragged<int64_t> &states);
 
+
  private:
   /*
   Prune the incoming scores based on beam, max-states and max-contexts.
@@ -328,8 +332,8 @@ class RnntDecodingStreams {
 
   int32_t num_streams_;  // The number of RnntDecodingStream
 
-  // A reference to the original RnntDecodingStream.
-  std::vector<std::shared_ptr<RnntDecodingStream>> &srcs_;
+  // RnntDecodingStream pointers.
+  std::vector<std::shared_ptr<RnntDecodingStream>> srcs_;
 
   // The configuration object.
   const RnntDecodingConfig config_;

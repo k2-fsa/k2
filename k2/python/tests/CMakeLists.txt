@@ -64,6 +64,7 @@ set(py_test_files
   random_paths_test.py
   remove_epsilon_self_loops_test.py
   remove_epsilon_test.py
+  rnnt_decode_test.py
   rnnt_loss_test.py
   shortest_path_test.py
   sparse_abs_test.py
