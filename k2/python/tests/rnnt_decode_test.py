@@ -26,7 +26,7 @@ import k2
 import torch
 
 
-class TestCtcGraph(unittest.TestCase):
+class TestRnntDecode(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device("cpu")]
