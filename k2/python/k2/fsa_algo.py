@@ -1063,7 +1063,10 @@ def ctc_topo(max_token: int,
 
 def trivial_graph(max_token: int,
                   device: Optional[Union[torch.device, str]] = None) -> k2.Fsa:
-    '''Create a Trivial Graph.
+    '''
+    Creat a trivial graph which has only two states, on state 0, there are
+    `max-token + 1` self loops(i.e. a loop for each symbol, including blank),
+    and state 1 is the final state.
 
     Args:
       max_token:
@@ -1073,7 +1076,8 @@ def trivial_graph(max_token: int,
         Optional. It can be either a string (e.g., 'cpu',
         'cuda:0') or a torch.device.
         If it is None, then the returned FSA is on CPU.
-    Returns:
+
+    Returns:  Returns the expected trivial graph on the given device.
     '''
     ragged_arc, aux_labels = _k2.trivial_graph(max_token, device)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)

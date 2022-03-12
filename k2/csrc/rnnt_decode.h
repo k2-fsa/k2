@@ -135,7 +135,7 @@ struct RnntDecodingStream {
 
 class RnntDecodingStreams {
  public:
-  /* Constructor.  Combines multiple RnntDecodingStream objects to create a
+  /* Constructor. Combines multiple RnntDecodingStream objects to create a
      RnntDecodingStreams object */
   RnntDecodingStreams(std::vector<std::shared_ptr<RnntDecodingStream>> &srcs,
                       const RnntDecodingConfig &config);
@@ -157,7 +157,7 @@ class RnntDecodingStreams {
   void GetContexts(RaggedShape *shape, Array2<int32_t> *contexts);
 
   /*
-    Advance decoding streams by one frame.  Args:
+    Advance decoding streams by one frame.
 
       @param [in] logprobs  Array of shape [tot_contexts][num_symbols],
                     containing log-probs of symbols given the contexts output
@@ -194,7 +194,7 @@ class RnntDecodingStreams {
     individual streams and split & appended the prev_frames_ in current object
     to the prev_frames of the individual streams.
 
-    Note: We can not decode with the object after call Detach().
+    Note: We can not decode with this object anymore after calling Detach().
    */
   void Detach();
 

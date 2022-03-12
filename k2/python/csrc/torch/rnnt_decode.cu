@@ -38,7 +38,32 @@ static void PybindRnntDecodingConfig(py::module &m) {
   py::class_<PyClass> config(m, "RnntDecodingConfig");
   config.def(py::init<int32_t, int32_t, double, int32_t, int32_t>(),
              py::arg("vocab_size"), py::arg("decoder_history_len"),
-             py::arg("beam"), py::arg("max_states"), py::arg("max_contexts"));
+             py::arg("beam"), py::arg("max_states"), py::arg("max_contexts"),
+             R"(
+             Construct a RnntDecodingConfig object, it contains the parameters
+             needed by rnnt decoding.
+
+             Args:
+               vocab_size:
+                 It indicates how many symbols we are using, euqals the
+                 largest-symbol plus one.
+               decoder_history_len:
+                 `decoder_history_len` is the number of symbols of history the
+                 decoder takes; will normally be one or two
+                 ("stateless decoder"), our RNN-T decoding setup does not
+                 support unlimited decoder context such as with LSTMs.
+               beam:
+                 `beam` imposes a limit on the score of a state, relative to the
+                 best-scoring state on the same frame.  E.g. 10.
+               max_states:
+                 `max_states` is a limit on the number of distinct states that
+                 we allow per frame, per stream; the number of states will not
+                 be allowed to exceed this limit.
+               max_contexts:
+                 `max_contexts` is a limit on the number of distinct contexts
+                 that we allow per frame, per stream; the number of contexts
+                 will not be allowed to exceed this limit.
+             )");
 
   config.def_readwrite("vocab_size", &PyClass::vocab_size)
       .def_readwrite("decoder_history_len", &PyClass::decoder_history_len)
