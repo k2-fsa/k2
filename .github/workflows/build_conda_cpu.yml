@@ -32,9 +32,6 @@ on:
   push:
     branches:
       - conda-cpu
-  pull_request:
-    branches:
-      - master
 
 env:
   K2_BUILD_TYPE: Release

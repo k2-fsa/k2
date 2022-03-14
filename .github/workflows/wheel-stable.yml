@@ -6,9 +6,6 @@ on:
   push:
     branches:
       - wheel-stable
-  pull_request:
-    branches:
-      - master
 
 env:
   BUILD_TYPE: Release

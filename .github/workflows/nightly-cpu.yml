@@ -20,9 +20,6 @@ on:
   push:
     branches:
       - nightly-cpu
-  pull_request:
-    branches:
-      - master
   schedule:
     # minute (0-59)
     # hour (0-23)
