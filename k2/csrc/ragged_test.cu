@@ -235,8 +235,8 @@ TEST(RaggedShapeOpsTest, UnstackMoreAxes) {
     std::vector<RaggedShape *> out_ptr;
 
     for (int32_t axis = 0; axis < 4; axis++) {
-      for (auto &empty_pos : {"left", "right"}) {
-        Unstack(shape, axis, empty_pos, &out, &out_map);
+      for (bool pad_right : {true, false}) {
+        Unstack(shape, axis, pad_right, &out, &out_map);
 
         out_ptr.clear();
         for (size_t i = 0; i < out.size(); ++i) out_ptr.emplace_back(&(out[i]));
@@ -260,8 +260,8 @@ TEST(RaggedShapeOpsTest, UnstackRandom) {
     std::vector<RaggedShape *> out_ptr;
     for (int32_t axis = 0; axis < 4; axis++) {
       auto random_shape = RemoveEmptyLists(random_shape0, axis);
-      for (auto &empty_pos : {"left", "right"}) {
-        Unstack(random_shape, axis, &out, nullptr);
+      for (bool pad_right : {true, false}) {
+        Unstack(random_shape, axis, pad_right, &out, nullptr);
 
         out_ptr.clear();
         for (size_t i = 0; i < out.size(); ++i) {

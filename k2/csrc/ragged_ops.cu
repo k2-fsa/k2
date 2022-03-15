@@ -1317,7 +1317,7 @@ static void SelectAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
   }
 }
 
-void Unstack(RaggedShape &src, int32_t axis, const std::string &empty_pos,
+void Unstack(RaggedShape &src, int32_t axis, bool pad_right,
              std::vector<RaggedShape> *out,
              std::vector<Array1<int32_t>> *split_map) {
   NVTX_RANGE(K2_FUNC);
@@ -1326,7 +1326,7 @@ void Unstack(RaggedShape &src, int32_t axis, const std::string &empty_pos,
     if (src.NumAxes() == 2) {
         auto new_src = ComposeRaggedShapes(
             TrivialShape(c, src.TotSize(0)), src);
-        return Unstack(new_src, 1, empty_pos, out, split_map);
+        return Unstack(new_src, 1, pad_right, out, split_map);
     }
     auto indexes = Ragged<int32_t>(RegularRaggedShape(c, src.Dim0(), 1),
         Arange(c, 0, src.Dim0()));
@@ -1336,8 +1336,6 @@ void Unstack(RaggedShape &src, int32_t axis, const std::string &empty_pos,
       out->at(i) = RemoveAxis(out->at(i), 0);
     }
   } else {
-    K2_CHECK(empty_pos == "left" || empty_pos == "right");
-
     int32_t tot_size_axis_minus1 = src.TotSize(axis - 1),
             tot_size_axis = src.TotSize(axis);
     const int32_t *row_splits_axis = src.RowSplits(axis).Data(),
@@ -1359,14 +1357,13 @@ void Unstack(RaggedShape &src, int32_t axis, const std::string &empty_pos,
     Array1<int32_t> indexes(c, num_out * tot_size_axis_minus1, -1);
     int32_t *indexes_data = indexes.Data();
 
-    bool empty_left = empty_pos == "left" ? true : false;
     // Decide the elements of axis `axis` will go to which output RaggedShape
     K2_EVAL(c, tot_size_axis, lambda_set_indexes, (int32_t idx01) {
         int32_t idx0 = row_ids_axis[idx01],
                 idx0x = row_splits_axis[idx0],
                 idx1 = idx01 - idx0x,
                 idx_row = idx1;
-        if (empty_left) {
+        if (!pad_right) {
           int32_t idx0x_next = row_splits_axis[idx0 + 1],
                   num_elems = idx0x_next - idx0x;
           idx_row = num_out - num_elems + idx1;
@@ -1418,7 +1415,7 @@ void Unstack(RaggedShape &src, int32_t axis, const std::string &empty_pos,
 
 void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
              std::vector<Array1<int32_t>> *split_map /*= nullptr*/) {
-  Unstack(src, axis, "right", out, split_map);
+  Unstack(src, axis, true/*pad_right*/, out, split_map);
 }
 
 RaggedShape Merge(int32_t num_srcs, RaggedShape **src,

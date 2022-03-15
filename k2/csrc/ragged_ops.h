@@ -200,11 +200,11 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
                       be rearranged into output RaggedShapes.
     @param [out] out  The container where the output RaggedShapes would write
                       to. MUST NOT be a nullptr, will be reallocated.
-    @param [in] empty_pos  Before unstack, we will pad the sublists along axis
-                  `axis` to the same size with empty lists(we don't actually do
-                  that, but think about it), `empty_pos` tells where to put
-                  the padding empty lists, either "left" or "right".
-                  Note, `empty_pos` makes no difference when `axis == 0` and
+    @param [in] pad_right  Before unstack, we will (conceptually) pad the
+                  sublists along axis `axis` to the same size with empty lists
+                  `pad_right` tells where to put the padding empty lists, see
+                  the example for more details.
+                  Note, `pad_right` makes no difference when `axis == 0` or
                   `axis == src.NumAxes() - 1`.
     @param [out] split_map  If not nullptr will store the element-index within
                    `src` telling where the elements of each split RaggedShapes
@@ -227,7 +227,7 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
         only one sublist along `axis == 0`(i.e. the src itself), so the number
         of output RaggedShape will be equal to `src.Dim0()`.
 
-  A small example of unstacking a 3 axes RaggedShape (with empty_pos="right"):
+  A small example of unstacking a 3 axes RaggedShape (with pad_right=true):
 
     src: [ [ [ x x ] [ x ] ] [ [ x ] ] ]
     unstack on axis 0:
@@ -252,7 +252,7 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
     out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 2, 3]
     out[1] : [ [ x ] [ ] ]       split_map[1] : [1]
 
-  for empty_pos equals to "left":
+  for pad_right equals to false:
 
     src: [ [ [ x x ] [ x ] ] [ [ x ] ] ]
 
@@ -264,12 +264,12 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
     out[0] : [ [ x x ] [ ] ]       split_map[0] : [0, 1]
     out[1] : [ [ x ] [ x ] ]       split_map[1] : [2, 3]
  */
-void Unstack(RaggedShape &src, int32_t axis, const std::string &empty_pos,
+void Unstack(RaggedShape &src, int32_t axis, bool pad_right,
              std::vector<RaggedShape> *out,
              std::vector<Array1<int32_t>> *split_map = nullptr);
 
 /*
- * The same as above, except that it uses the "right" empty_pos.
+ * The same as above, except that it uses `pad_right=true`.
  */
 void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
              std::vector<Array1<int32_t>> *split_map = nullptr);
@@ -1031,11 +1031,11 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
     @param [in] src  The ragged tensor to be unstacked.
     @param [in] axis  The axis to be removed, all the elements of this axis will
                       be rearranged into output Raggeds.
-    @param [in] empty_pos  Before unstack, we will pad the sublists along axis
-                  `axis` to the same size with empty lists(we don't actually do
-                  that, but think about it), `empty_pos` tells where to put
-                  the padding empty lists, either "left" or "right".
-                  Note, `empty_pos` makes no difference when `axis == 0` and
+    @param [in] pad_right  Before unstack, we will (conceptually) pad the
+                  sublists along axis `axis` to the same size with empty lists
+                  `pad_right` tells where to put the padding empty lists, see
+                  the example for more details.
+                  Note, `pad_right` makes no difference when `axis == 0` or
                   `axis == src.NumAxes() - 1`.
     @param [out] out  The container where the output ragged tensors would write
                       to. MUST NOT be a nullptr, will be reallocated.
@@ -1061,7 +1061,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
         only one sublist along `axis == 0`(i.e. the src itself), so the number
         of output ragged will be equal to `src.Dim0()`.
 
-  A small example of unstacking a 3 axes Ragged (with empty_pos = "right"):
+  A small example of unstacking a 3 axes Ragged (with pad_right = true):
 
     src: [ [ [ 1 2 ] [ 3 ] ] [ [ 4 ] ] ]
     unstack on axis 0:
@@ -1086,7 +1086,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
     out[0] : [ [ 1 3 ] [ 4 ] ]   split_map[0] : [0, 2, 3]
     out[1] : [ [ 2 ] [ ] ]       split_map[1] : [1]
 
-  for empty_pos equals to "left":
+  for pad_right equals to false:
 
     src: [ [ [ 1 2 ] [ 3 ] ] [ [ 4 ] ] ]
 
@@ -1099,17 +1099,17 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
     out[1] : [ [ 3 ] [ 4 ] ]       split_map[1] : [2, 3]
  */
 template <typename T>
-void Unstack(Ragged<T> src, int32_t axis, const std::string &empty_pos,
+void Unstack(Ragged<T> src, int32_t axis, bool pad_right,
              std::vector<Ragged<T>> *out,
              std::vector<Array1<int32_t>> *split_map = nullptr);
 
 /*
- * The same as above, except that it uses the "right" empty_pos.
+ * The same as above, except that it uses `pad_right=true`.
  */
 template <typename T>
 void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
              std::vector<Array1<int32_t>> *split_map = nullptr) {
-  Unstack(src, axis, "right", out, split_map);
+  Unstack(src, axis, true /*pad_right*/, out, split_map);
 }
 
 /*

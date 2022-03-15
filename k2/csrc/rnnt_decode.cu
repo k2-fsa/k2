@@ -76,7 +76,7 @@ RnntDecodingStreams::RnntDecodingStreams(
   // when we need all prev_frames_ to format output fsas.
 }
 
-void RnntDecodingStreams::Detach() {
+void RnntDecodingStreams::TerminateAndFlushToStreams() {
   NVTX_RANGE(K2_FUNC);
   // return directlly if already detached or no frames decoded.
   if (!attached_ || prev_frames_.empty()) return;
@@ -414,7 +414,7 @@ RaggedShape RnntDecodingStreams::GroupStatesByContexts(
  */
 void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(attached_) << "Streams detached.";
+  K2_CHECK(attached_) << "Streams terminated.";
   K2_CHECK_EQ(logprobs.Dim0(), states_.TotSize(1));
   K2_CHECK_EQ(logprobs.Dim1(), config_.vocab_size);
 
@@ -652,7 +652,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
 
 void RnntDecodingStreams::GatherPrevFrames(std::vector<int32_t> &num_frames) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(!attached_) << "Please call Detach() first.";
+  K2_CHECK(!attached_) << "Please call TerminateAndFlushToStreams() first.";
   K2_CHECK_EQ(num_streams_, static_cast<int32_t>(num_frames.size()));
   std::vector<Ragged<ArcInfo> *> frames_ptr;
   Array1<int32_t> stream2t_row_splits(GetCpuContext(), num_frames.size() + 1);
@@ -679,7 +679,7 @@ void RnntDecodingStreams::GatherPrevFrames(std::vector<int32_t> &num_frames) {
                            frames.values);
 
   std::vector<Ragged<ArcInfo>> prev_frames;
-  Unstack(frames, 1, "left", &prev_frames);
+  Unstack(frames, 1, false /*pad_right*/, &prev_frames);
 
   prev_frames_.resize(prev_frames.size());
   for (size_t i = 0; i < prev_frames.size(); ++i) {
@@ -690,7 +690,8 @@ void RnntDecodingStreams::GatherPrevFrames(std::vector<int32_t> &num_frames) {
 void RnntDecodingStreams::FormatOutput(std::vector<int32_t> &num_frames,
                                        FsaVec *ofsa, Array1<int32_t> *out_map) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(!attached_) << "You can only get outputs after calling Detach()";
+  K2_CHECK(!attached_)
+      << "You can only get outputs after calling TerminateAndFlushToStreams()";
   K2_CHECK(ofsa);
   K2_CHECK(out_map);
   K2_CHECK_EQ(static_cast<int32_t>(num_frames.size()), num_streams_);

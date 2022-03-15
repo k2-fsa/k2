@@ -190,20 +190,21 @@ class RnntDecodingStreams {
                     Array1<int32_t> *out_map);
 
   /*
-    Detach the RnntDecodingStreams, it will update the states & scoers of each
-    individual streams and split & appended the prev_frames_ in current object
-    to the prev_frames of the individual streams.
+    Terminate the decoding process of current RnntDecodingStreams object, it
+    will update the states & scores of each individual streams and split &
+    append the prev_frames_ in current object to the prev_frames of the
+    individual streams.
 
-    Note: We can not decode with this object anymore after calling Detach().
+    Note: We can not decode with this object anymore after calling
+    TerminateAndFlushToStreams().
    */
-  void Detach();
+  void TerminateAndFlushToStreams();
 
-  const ContextPtr &Context() const {return c_;}
+  const ContextPtr &Context() const { return c_; }
   const Ragged<int64_t> &States() const { return states_; }
   const Ragged<double> &Scores() const { return scores_; }
   const Array1<int32_t> &NumGraphStates() const { return num_graph_states_; }
-  int32_t NumStreams() const {return num_streams_; }
-
+  int32_t NumStreams() const { return num_streams_; }
 
   // Note: The following three functions should be private members, they are not
   // expected to be called outsize this class. We make it public because of the
@@ -221,7 +222,7 @@ class RnntDecodingStreams {
      arcs(i.e. the out-going arcs of state idx0), so that we can get a new
      shape of [stream][context][state][arc].
 
-     Caution: This function intends to be used in `Advance()` only. 
+     Caution: This function intends to be used in `Advance()` only.
 
      @return Return the expected 4 axes shape
      (i.e.[stream][context][state][arc]).
@@ -238,7 +239,7 @@ class RnntDecodingStreams {
            arc would be >= the max_scores_per_stream entry for this stream
            minus the beam from the config.
 
-     Caution: This function intends to be used in `Advance()` only. 
+     Caution: This function intends to be used in `Advance()` only.
 
       @param [in] unprund_arcs_shape   The RaggedShape return by `ExpandArcs()`.
       @param [in] logprobs  Array of shape [tot_contexts][num_symbols],
@@ -278,7 +279,7 @@ class RnntDecodingStreams {
      [ [ [ [ 112 ] ] [ [ 120 ] [ 123 ] [ 125 ] ] [ [ 345 345 ] ] ]
        [ [ [ 123 ] [ 124 ] ] [ [ 567 ] [ 568 ] ] [ [ 670 ] ] ] ]
 
-     Caution: This function intends to be used in `Advance()` only. 
+     Caution: This function intends to be used in `Advance()` only.
 
      @param [in] states  A two axes ragged tensor with each sub-list **sorted**.
 
@@ -287,7 +288,6 @@ class RnntDecodingStreams {
               `ans.Dim0() == states.Dim0()`.
    */
   RaggedShape GroupStatesByContexts(Ragged<int64_t> &states);
-
 
  private:
   /*
@@ -313,8 +313,9 @@ class RnntDecodingStreams {
     frames to generate lattice.
 
     Note: The prev_frames_ in current object only contains the frames from the
-          point we created this object to the frame we called `Detach()`
-          (i.e. prev_frames_.size() equals to the times we called `Advance()`.
+          point we created this object to the frame we called
+          `TerminateAndFlushToStreams()` (i.e. prev_frames_.size() equals to the
+          times we called `Advance()`.
 
       @param [in] num_frames  A vector containing the number of frames we want
                     to gather for each stream.
@@ -326,9 +327,9 @@ class RnntDecodingStreams {
   ContextPtr c_;
 
   bool attached_;  // A flag indicating whether this streams is still attached,
-                   // initialized with true, only if the Detach() being called
-                   // `attached_` will set to false, that means we can not do
-                   // decoding any more.
+                   // initialized with true, only if the
+                   // TerminateAndFlushToStreams() being called `attached_` will
+                   // set to false, that means we can not do decoding any more.
 
   int32_t num_streams_;  // The number of RnntDecodingStream
 

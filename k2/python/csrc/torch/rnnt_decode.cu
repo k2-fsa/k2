@@ -137,9 +137,9 @@ static void PybindRnntDecodingStreams(py::module &m) {
                 return std::make_pair(shape, contexts_tensor);
               });
 
-  streams.def("detach", [](PyClass &self) -> void {
+  streams.def("terminate_and_flush_to_streams", [](PyClass &self) -> void {
     DeviceGuard guard(self.Context());
-    self.Detach();
+    self.TerminateAndFlushToStreams();
   });
 
   streams.def(

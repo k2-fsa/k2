@@ -81,7 +81,7 @@ TEST(RnntDecodingStreams, Basic) {
       K2_LOG(INFO) << "states : " << streams.States();
       K2_LOG(INFO) << "scores : " << streams.Scores();
     }
-    streams.Detach();
+    streams.TerminateAndFlushToStreams();
 
     std::vector<int32_t> num_frames(num_streams, steps);
     Array1<int32_t> out_map;

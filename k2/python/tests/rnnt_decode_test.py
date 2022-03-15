@@ -69,7 +69,7 @@ class TestRnntDecode(unittest.TestCase):
                 )
                 streams.advance(logprobs)
 
-            streams.detach()
+            streams.terminate_and_flush_to_streams()
             ofsa = streams.format_output([3, 4, 5])
             print(ofsa)
 

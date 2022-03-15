@@ -126,13 +126,15 @@ class RnntDecodingStreams(object):
         self.streams.advance(logprobs)
 
     """
-    Detach the RnntDecodingStreams. It will update the decoding states and store
-    the decoding results currently got for each of the individual streams.
+    Terminate the decoding process of current RnntDecodingStreams objects.
+    It will update the decoding states and store the decoding results currently
+    got to each of the individual streams.
 
-    Note: We can not decode with this object anymore after calling detach().
+    Note: We can not decode with this object anymore after calling
+    terminate_and_flush_to_streams().
     """
-    def detach(self) -> None:
-        self.streams.detach()
+    def terminate_and_flush_to_streams(self) -> None:
+        self.streams.terminate_and_flush_to_streams()
 
     """
     Generate the lattice Fsa currently got.
