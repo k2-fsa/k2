@@ -50,6 +50,7 @@ from .fsa_algo import remove_epsilon_self_loops
 from .fsa_algo import replace_fsa
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
+from .fsa_algo import trivial_graph
 from .fsa_algo import union
 from .fsa_properties import to_str as properties_to_str
 from .mutual_information import joint_mutual_information_recursion
@@ -60,6 +61,10 @@ from .ops import compose_arc_maps
 from .ops import index_add
 from .ops import index_fsa
 from .ops import index_select
+
+from .rnnt_decode import RnntDecodingConfig
+from .rnnt_decode import RnntDecodingStream
+from .rnnt_decode import RnntDecodingStreams
 
 from .rnnt_loss import do_rnnt_pruning
 from .rnnt_loss import get_rnnt_logprobs
