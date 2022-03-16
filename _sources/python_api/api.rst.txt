@@ -880,8 +880,48 @@ vocab_size
 RnntDecodingStream
 ------------------
 
+__init__
+^^^^^^^^
+
+.. automethod:: k2.RnntDecodingStream.__init__
+
+__str__
+^^^^^^^
+
+.. automethod:: k2.RnntDecodingStream.__str__
+
 RnntDecodingStreams
 -------------------
+
+__init__
+^^^^^^^^
+
+.. automethod:: k2.RnntDecodingStreams.__init__
+
+__str__
+^^^^^^^
+
+.. automethod:: k2.RnntDecodingStreams.__str__
+
+advance
+^^^^^^^
+
+.. automethod:: k2.RnntDecodingStreams.advance
+
+format_output
+^^^^^^^^^^^^^
+
+.. automethod:: k2.RnntDecodingStreams.format_output
+
+get_contexts
+^^^^^^^^^^^^
+
+.. automethod:: k2.RnntDecodingStreams.get_contexts
+
+terminate_and_flush_to_streams
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automethod:: k2.RnntDecodingStreams.terminate_and_flush_to_streams
 
 SymbolTable
 -----------
