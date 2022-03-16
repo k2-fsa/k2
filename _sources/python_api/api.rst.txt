@@ -293,6 +293,11 @@ top_sort
 
 .. autofunction:: top_sort
 
+trivial_graph
+-------------
+
+.. autofunction:: trivial_graph
+
 union
 -----
 
@@ -838,6 +843,45 @@ values
 ^^^^^^
 
 .. autoattribute:: k2.RaggedTensor.values
+
+RnntDecodingConfig
+------------------
+
+__init__
+^^^^^^^^
+
+.. automethod:: k2.RnntDecodingConfig.__init__
+
+beam
+^^^^
+
+.. autoattribute:: k2.RnntDecodingConfig.beam
+
+decoder_history_len
+^^^^^^^^^^^^^^^^^^^
+
+.. autoattribute:: k2.RnntDecodingConfig.decoder_history_len
+
+max_contexts
+^^^^^^^^^^^^
+
+.. autoattribute:: k2.RnntDecodingConfig.max_contexts
+
+max_states
+^^^^^^^^^^
+
+.. autoattribute:: k2.RnntDecodingConfig.max_states
+
+vocab_size
+^^^^^^^^^^
+
+.. autoattribute:: k2.RnntDecodingConfig.vocab_size
+
+RnntDecodingStream
+------------------
+
+RnntDecodingStreams
+-------------------
 
 SymbolTable
 -----------
