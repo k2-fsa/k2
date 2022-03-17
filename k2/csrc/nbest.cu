@@ -48,8 +48,7 @@ inline bool Leq(T a1, T a2, T a3, T b1, T b2, T b3) {
 */
 template <typename T>
 static void RadixPass(const T* a, T* b, const T* r, T n, T K) {
-  std::vector<T> c(K + 1);
-  for (T i = 0; i <= K; i++) c[i] = 0;  // reset counters
+  std::vector<T> c(K + 1, 0); // counter array
   for (T i = 0; i < n; i++) c[r[a[i]]]++;  // count occurrences
   for (T i = 0, sum = 0; i <= K; i++) {  // exclusive prefix sums
     T t = c[i]; c[i] = sum; sum += t;
