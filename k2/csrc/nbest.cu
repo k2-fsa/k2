@@ -69,9 +69,8 @@ void CreateSuffixArray(const T* text, T n, T K, T* SA) {
     return;
   }
   T n0 = (n + 2) / 3, n1 = (n+1) / 3, n2 = n / 3, n02 = n0 + n2;
-  std::vector<T> R(n02 + 3); R[n02] = R[n02 + 1] = R[n02 + 2] = 0;
-
-  std::vector<T> SA12(n02 + 3); SA12[n02] = SA12[n02 + 1] = SA12[n02 + 2] = 0;
+  std::vector<T> R(n02 + 3); // entries are set to zero by default
+  std::vector<T> SA12(n02 + 3);
   std::vector<T> R0(n0);
   std::vector<T> SA0(n0);
 
