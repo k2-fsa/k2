@@ -2,7 +2,6 @@
 set(torch_srcs
   arc.cu
   array_ops.cu
-  discounted_cum_sum.cu
   fsa.cu
   fsa_algo.cu
   index_add.cu
