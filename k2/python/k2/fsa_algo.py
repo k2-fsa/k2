@@ -1064,8 +1064,8 @@ def ctc_topo(max_token: int,
 def trivial_graph(max_token: int,
                   device: Optional[Union[torch.device, str]] = None) -> k2.Fsa:
     '''
-    Creat a trivial graph which has only two states, on state 0, there are
-    `max-token + 1` self loops(i.e. a loop for each symbol, including blank),
+    Create a trivial graph with only two states. On state 0, there are
+    `max_token + 1` self loops(i.e. a loop for each symbol, including blank),
     and state 1 is the final state.
 
     Args:

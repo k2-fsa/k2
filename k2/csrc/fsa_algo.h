@@ -580,8 +580,8 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
             Array1<int32_t> *aux_labels);
 
 /*
-  Creat a trivial graph which has only two states, on state 0, there are
-  `max-token + 1` self loops(i.e. a loop for each symbol, including blank), and
+  Create a trivial graph which has only two states. On state 0, there are
+  `max_token + 1` self loops(i.e. a loop for each symbol, including blank), and
   state 1 is the final state.
 
     @param [in] c  The context with which we'll allocate memory for

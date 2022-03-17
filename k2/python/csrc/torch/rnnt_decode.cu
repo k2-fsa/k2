@@ -45,10 +45,10 @@ static void PybindRnntDecodingConfig(py::module &m) {
 
              Args:
                vocab_size:
-                 It indicates how many symbols we are using, euqals the
+                 It indicates how many symbols we are using, equals the
                  largest-symbol plus one.
                decoder_history_len:
-                 `decoder_history_len` is the number of symbols of history the
+                 The number of symbols of history the
                  decoder takes; will normally be one or two
                  ("stateless decoder"), our RNN-T decoding setup does not
                  support unlimited decoder context such as with LSTMs.
