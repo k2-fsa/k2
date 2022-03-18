@@ -48,7 +48,6 @@ namespace k2 {
  */
 class Array1OfRaggedShape {
  public:
-
   // Default constructor.
   Array1OfRaggedShape() = default;
 
@@ -205,7 +204,6 @@ class Array1OfRaggedShape {
 
 template <typename T>
 struct Array1OfRagged {
-
   Array1OfRaggedShape shape;
 
   // Array of the individual values pointers of the source arrays, indexed by

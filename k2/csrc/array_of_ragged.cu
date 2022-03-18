@@ -147,4 +147,4 @@ Array1OfRagged<T>::Array1OfRagged(Ragged<T> *srcs, int32_t num_srcs) :
 template struct Array1OfRagged<int32_t>;
 template struct Array1OfRagged<float>;
 
-}  // namespeace k2
+}  // namespace k2

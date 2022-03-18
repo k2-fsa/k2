@@ -56,7 +56,7 @@ void TestArray1OfRaggedConstruct() {
       expected_row_ids = expected_row_ids.To(c);
       expected_row_splits_data = expected_row_splits.Data();
       expected_row_ids_data = expected_row_ids.Data();
-      
+
       Array1<int32_t> flags(c, 2, 1);
       int32_t *flags_data = flags.Data();
       K2_EVAL(
@@ -70,7 +70,6 @@ void TestArray1OfRaggedConstruct() {
       K2_CHECK_EQ(array_of_ragged.values[i], raggeds[i].values.Data());
     }
 
-    
     for (int32_t j = 0; j < num_axes; ++j) {
       Array1<int32_t> meta_row_splits(array_of_ragged.shape.MetaRowSplits(j));
       Array1<int32_t> meta_row_ids(array_of_ragged.shape.MetaRowIds(j));
@@ -82,7 +81,8 @@ void TestArray1OfRaggedConstruct() {
       }
       ExclusiveSum(expected_meta_row_splits, &expected_meta_row_splits);
       expected_meta_row_splits = expected_meta_row_splits.To(c);
-      Array1<int32_t> expected_meta_row_ids(c, array_of_ragged.shape.TotSize(j));
+      Array1<int32_t> expected_meta_row_ids(c,
+                                            array_of_ragged.shape.TotSize(j));
       RowSplitsToRowIds(expected_meta_row_splits, &expected_meta_row_ids);
 
       K2_CHECK(Equal(meta_row_splits, expected_meta_row_splits));
