@@ -76,7 +76,7 @@ class Array1OfRaggedShape {
   // Returns device-accessible array of row-splits for the individual shapes,
   // indexed [axis-1][src], with 0 <= src < num_srcs.  The shape of this
   // Array2 is [NumAxes() - 1][NumSrcs()].
-  const Array2<const int32_t*> *RowSplits() const { return &row_splits_; }
+  const Array2<const int32_t *> *RowSplits() const { return &row_splits_; }
 
   // Returns device-accessible vector of row-splits for a particular
   // axis, indexed by 0 <= src < num_srcs.
@@ -113,7 +113,6 @@ class Array1OfRaggedShape {
 
   // equivalent to TotSize(0).
   int32_t Dim0() const { return TotSize(0); }
-
 
   /* Return the device-accessible meta-row-splits, which is the cumulative sum,
      along the src axis, of the tot-sizes of the individual arrays.
@@ -202,13 +201,21 @@ class Array1OfRaggedShape {
 
 
 
+/*
+  Array1OfRagged<T> is a 1-dimensional array of Ragged<T>.
+  It is intended for situations where you want to do some operations on
+  arrays of ragged arrays, without explicitly concatenating them (e.g. to
+  save time).   This is a fairly low-level interface, intended to
+  be used mostly by CUDA/C++ implementation code.  It is a convenience
+  wrapper that saves you the trouble of creating arrays of pointers.
+ */
 template <typename T>
 struct Array1OfRagged {
   Array1OfRaggedShape shape;
 
   // Array of the individual values pointers of the source arrays, indexed by
   // shape
-  Array1<T*> values;
+  Array1<T *> values;
 
   int32_t NumSrcs() const { return values.Dim(); }
   ContextPtr &Context() { return shape.Context(); }
@@ -222,7 +229,6 @@ struct Array1OfRagged {
   Array1OfRagged(Ragged<T> *srcs,
                 int32_t num_srcs);
 };
-
 
 
 }  // namespace k2

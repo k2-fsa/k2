@@ -119,12 +119,9 @@ class Renumbering {
     return new2old_;
   }
 
-  /* Return a mapping from new index to old index, with one extra element
-     containing the total number of kept elements if extra_element == true.
-     If Keep() can be interpreted as a tails vector, i.e. with 1 at the end
-     of sub-lists of elements, then New2Old(true) would corresponds to a
-     row-splits array and Old2New(false) would correspond to a row-ids
-     array.
+  /*
+    Return a mapping from new index to old index, with one extra element
+    containing the total number of kept elements if extra_element == true.
   */
   Array1<int32_t> New2Old(bool extra_element) {
     Array1<int32_t> &new2old_part = New2Old();
