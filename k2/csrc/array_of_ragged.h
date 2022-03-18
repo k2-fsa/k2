@@ -1,5 +1,6 @@
 /**
- * Copyright      2022  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright      2022  Xiaomi Corporation (authors: Daniel Povey, Wei Kang)
+ *                2022  ASLP@NWPU          (authors: Hang Lyu)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -24,13 +25,15 @@
 #include <vector>
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/ragged.h"
 
 namespace k2 {
 
 /*
-  ArrayOfRagged<T> is a 1-dimensional array of Ragged<T>.
+  Array1OfRagged<T> is a 1-dimensional array of Ragged<T>.
   It is intended for situations where you want to do some operations on
   arrays of ragged arrays, without explicitly concatenating them (e.g. to
   save time).   This is a fairly low-level interface, intended to
@@ -40,14 +43,14 @@ namespace k2 {
 
 
 /*
-  ArrayOfRaggedShape is a convenience function that gives you easy access
+  Array1OfRaggedShape is a convenience function that gives you easy access
   to pointers-of-pointers for an array of ragged shapes.
  */
-class ArrayOfRaggedShape {
+class Array1OfRaggedShape {
  public:
 
   // Default constructor.
-  ArrayOfRaggedShape() = default;
+  Array1OfRaggedShape() = default;
 
   /*
     Constructor.
@@ -62,37 +65,39 @@ class ArrayOfRaggedShape {
    axes.
 
   */
-  ArrayOfRaggedShape(RaggedShape *srcs,
+  Array1OfRaggedShape(RaggedShape *srcs,
                      int32_t num_srcs);
 
 
   int32_t NumSrcs() const { return num_srcs_; }
   int32_t NumAxes() const { return num_axes_; }
 
+  ContextPtr &Context() { return c_; }
+
   // Returns device-accessible array of row-splits for the individual shapes,
   // indexed [axis-1][src], with 0 <= src < num_srcs.  The shape of this
   // Array2 is [NumAxes() - 1][NumSrcs()].
-  Array2<int32_t*> *RowSplits() { return row_splits_; }
+  const Array2<const int32_t*> *RowSplits() const { return &row_splits_; }
 
   // Returns device-accessible vector of row-splits for a particular
   // axis, indexed by 0 <= src < num_srcs.
-  int32_t **RowSplits(int32_t axis) {
+  const int32_t **RowSplits(int32_t axis) {
       K2_CHECK_LT(static_cast<uint32_t>(axis),
-                  static_cast<uint32_t>num_axes_);
+                  static_cast<uint32_t>(num_axes_));
       return row_splits_.Row(axis - 1).Data();
   }
 
   // Returns device-accessible array of row-ids for the individual shapes
   // indexed [axis-1][src], with 0 <= src < num_srcs.  The shape of this
   // Array2 is [NumAxes() - 1][NumSrcs()].
-  Array2<int32_t*> *RowIds() { return row_ids_; }
+  const Array2<const int32_t*> *RowIds() const { return &row_ids_; }
 
 
   // Returns device-accessible vector of row-splits for a particular
   // axis, indexed by 0 <= src < num_srcs.
-  int32_t **RowIds(int32_t axis) {
+  const int32_t **RowIds(int32_t axis) {
       K2_CHECK_LT(static_cast<uint32_t>(axis),
-                  static_cast<uint32_t>num_axes_);
+                  static_cast<uint32_t>(num_axes_));
       return row_ids_.Row(axis - 1).Data();
   }
 
@@ -103,7 +108,7 @@ class ArrayOfRaggedShape {
   */
   int32_t TotSize(int32_t axis) const {
       K2_CHECK_LT(static_cast<uint32_t>(axis),
-                  static_cast<uint32_t>num_axes_);
+                  static_cast<uint32_t>(num_axes_));
       return tot_sizes_[axis];
   }
 
@@ -115,7 +120,7 @@ class ArrayOfRaggedShape {
      along the src axis, of the tot-sizes of the individual arrays.
      This Array2 is of shape [NumAxes()][NumSrcs() + 1], indexed [axis][src];
      caution, the indexing is different from RowSplits(), there is no offset.
-     Also, the meta_row_splits0 is a thing, unlike with regular row-splits
+     Also, the meta_row_splits_ is a thing, unlike with regular row-splits
      which start from 1.
 
      Caution: the lengths of the arrays pointed to by the elements of this
@@ -128,14 +133,15 @@ class ArrayOfRaggedShape {
    */
   Array2<int32_t> MetaRowSplits() { return meta_row_splits_; }
 
-  // could POSSIBLY add this so this code could be used in functions like Stack().
-  // would be like MetaRowSplits but with an extra 1st row containing 0,1,2,...
-  // We could perhaps create it with 1 extra initial row so this is always
-  // convenient to output.
+  // could POSSIBLY add this so this code could be used in functions like
+  // Stack(). would be like MetaRowSplits but with an extra 1st row containing
+  // 0,1,2,... We could perhaps create it with 1 extra initial row so this is
+  // always convenient to output.
   Array2<int32_t> Offsets() { return offsets_; }
 
   /*
-    Returns the meta-row-splits for a particular axis, with 0 <= axis < NumAxes();
+    Returns the meta-row-splits for a particular axis, with
+    0 <= axis < NumAxes();
     this is the cumulative sum of the TotSize(axis) for all of the sources,
     with MetaRowSplits(axis).Dim() == NumSrcs() + 1.
 
@@ -143,26 +149,27 @@ class ArrayOfRaggedShape {
   */
   Array1<int32_t> MetaRowSplits(int32_t axis) {
     K2_CHECK_LT(static_cast<uint32_t>(axis),
-                static_cast<uint32_t>num_axes_);
+                static_cast<uint32_t>(num_axes_));
     return meta_row_splits_.Row(axis);
   }
 
-  /* Return the device-accessible meta-row-ids, which are the row-ids corresponding
-     to MetaRowSplits(); this tells us, for indexes into the appended/concatenated
-     array, which source array they belong to, i.e. elements are in [0,NumSrcs()-1].
+  /* Return the device-accessible meta-row-ids, which are the row-ids
+     corresponding to MetaRowSplits(); this tells us, for indexes into the
+     appended/concatenated array, which source array they belong to,
+     i.e. elements are in [0,NumSrcs()-1].
 
-     This cannot be an Array2 because unlike the MetaRowSplits(), all the row-ids
-     arrays are of different lengths.
+     This cannot be an Array2 because unlike the MetaRowSplits(), all the
+     row-ids arrays are of different lengths.
 
      Note: in ragged_ops.cu we refer to this as composed_row_ids.
   */
   Array1<int32_t*> MetaRowIds() {
-    Array1<int32_t*> ans(c_, num_axes_);
+    Array1<int32_t*> ans(GetCpuContext(), num_axes_);
     int32_t* *ans_data = ans.Data();
-    K2_EVAL(
-        c_, num_axes_, lambda_set_meta_row_ids, (int32_t axis)->void {
-          ans_data[axis] = meta_row_ids_[axis].Data();
-        });
+    for (int32_t i = 0; i < num_axes_; ++i) {
+      ans_data[i] = meta_row_ids_[i].Data();
+    }
+    ans = ans.To(c_);
     return ans;
   }
 
@@ -176,7 +183,7 @@ class ArrayOfRaggedShape {
   */
   Array1<int32_t> MetaRowIds(int32_t axis) {
     K2_CHECK_LT(static_cast<uint32_t>(axis),
-                static_cast<uint32_t>num_axes_);
+                static_cast<uint32_t>(num_axes_));
     return meta_row_ids_[axis];
   }
 
@@ -185,40 +192,36 @@ class ArrayOfRaggedShape {
   int32_t num_srcs_;
   int32_t num_axes_;
 
-  // Its shape is [num_axes_ - 1][num_srcs_]
-  Array2<int32_t*> row_splits_;
-  Array2<int32_t*> row_ids_;
+  Array2<const int32_t *> row_splits_;  // shape [num_axes_ - 1][num_srcs_]
+  Array2<const int32_t *> row_ids_;     // shape [num_axes_ - 1][num_srcs_]
+  Array1<int32_t> tot_sizes_;           // dim num_axes_
 
-  // Its dimension is num_axes_
-  Array1<int32_t> tot_sizes_;
-
-  // Its shape is [num_axes_][num_srcs_ + 1]
-  Array2<int32_t> meta_row_splits_;
-  // Its shape is [num_axes_ + 1][num_srcs_ + 1]
-  Array2<int32_t> offsets_;
-  // The length of vector is num_axes_
-  std::vector<Array1<int32_t> > meta_row_ids_;
+  Array2<int32_t> meta_row_splits_;     // shape [num_axes_][num_srcs_ + 1]
+  Array2<int32_t> offsets_;             // shape [num_axes_][num_srcs_ + 1]
+  std::vector<Array1<int32_t> > meta_row_ids_;  // dim num_axes_
 };
 
 
 
 template <typename T>
-struct ArrayOfRagged {
+struct Array1OfRagged {
 
-  ArrayOfRaggedShape shape;
+  Array1OfRaggedShape shape;
 
   // Array of the individual values pointers of the source arrays, indexed by
   // shape
   Array1<T*> values;
 
-  int32_t NumSrcs() { return values.Dim(); }
+  int32_t NumSrcs() const { return values.Dim(); }
+  ContextPtr &Context() { return shape.Context(); }
 
-  // Default constructor will not leave this a valid ArrayOfRagged object,
+  // Default constructor will not leave this a valid Array1OfRagged object,
   // you shouldn't do anything with it. Both members will be initialized with
   // default constructors.
-  ArrayOfRagged() = default;
+  Array1OfRagged() = default;
 
-  ArrayOfRagged(Ragged<T> *srcs,
+  // The 'srcs' should have the same number of axes.
+  Array1OfRagged(Ragged<T> *srcs,
                 int32_t num_srcs);
 };
 
