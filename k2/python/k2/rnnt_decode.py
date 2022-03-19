@@ -30,10 +30,11 @@ from _k2 import RnntDecodingConfig
 
 
 class RnntDecodingStream(object):
+
     def __init__(self, fsa: Fsa) -> None:
         """Create a new rnnt decoding stream.
 
-        Every sequence(wave data) need a decoding stream, this function is
+        Every sequence(wave data) needs a decoding stream, this function is
         expected to be called when a new sequence comes. We support different
         decoding graphs for different streams.
 
@@ -43,7 +44,7 @@ class RnntDecodingStream(object):
 
         Returns:
           A rnnt decoding stream object, which will be combined into
-          `RnntDecodingStreams` to do decoding together with other
+          :class:`RnntDecodingStreams` to do decoding together with other
           sequences in parallel.
         """
         self.fsa = fsa
@@ -59,9 +60,12 @@ class RnntDecodingStream(object):
 
 
 class RnntDecodingStreams(object):
-    def __init__(
-        self, src_streams: List[RnntDecodingStream], config: RnntDecodingConfig
-    ) -> None:
+    '''See https://github.com/k2-fsa/icefall/blob/master/egs/librispeech/ASR/pruned_transducer_stateless/beam_search.py  # noqa
+    for how this class is used in RNN-T decoding.
+    '''
+
+    def __init__(self, src_streams: List[RnntDecodingStream],
+                 config: RnntDecodingConfig) -> None:
         """
         Combines multiple RnntDecodingStream objects to create a
         RnntDecodingStreams object, then all these RnntDecodingStreams can do
@@ -98,11 +102,11 @@ class RnntDecodingStreams(object):
     def get_contexts(self) -> Tuple[RaggedShape, Tensor]:
         """
         This function must be called prior to evaluating the joiner network
-        for a particular frame.  It tells the calling code which contexts
-        it must evaluate the joiner network for.
+        for a particular frame.  It tells the calling code for which contexts
+        it must evaluate the joiner network.
 
         Returns:
-          Return a two elements tuple containing a RaggedShape and a tensor.
+          Return a two-element tuple containing a RaggedShape and a tensor.
 
           shape:
             A RaggedShape with 2 axes, representing [stream][context].
@@ -111,8 +115,9 @@ class RnntDecodingStreams(object):
             A tensor of shape [tot_contexts][decoder_history_len], where
             tot_contexts == shape->TotSize(1) and decoder_history_len comes from
             the config, it represents the number of symbols in the context of
-            the decode network (assumed to be finite). It contains the token ids
-            into the vocabulary(i.e. `0 <= value < vocab_size`).
+            the decoder network (assumed to be finite). It contains the token
+            ids into the vocabulary(i.e. `0 <= value < vocab_size`).
+            Its dtype is torch.int32.
         """
         return self.streams.get_contexts()
 
@@ -131,7 +136,7 @@ class RnntDecodingStreams(object):
 
     def terminate_and_flush_to_streams(self) -> None:
         """
-        Terminate the decoding process of current RnntDecodingStreams objects.
+        Terminate the decoding process of current RnntDecodingStreams object.
         It will update the decoding states and store the decoding results
         currently got to each of the individual streams.
 
@@ -147,7 +152,7 @@ class RnntDecodingStreams(object):
 
         Note:
           The attributes of the generated lattice is a union of the attributes
-          of all the decoding graphs. For example, a streams contains three
+          of all the decoding graphs. For example, if `self` contains three
           individual stream, each stream has its own decoding graphs, graph[0]
           has attributes attr1, attr2; graph[1] has attributes attr1, attr3;
           graph[2] has attributes attr3, attr4; then the generated lattice has
@@ -205,17 +210,17 @@ class RnntDecodingStreams(object):
                     value = getattr(src, name)
                     if info["tensor_type"] == "Tensor":
                         assert isinstance(value, Tensor)
-                        new_value = index_select(
-                            value, arc_map, default_value=filler
-                        )
+                        new_value = index_select(value,
+                                                 arc_map,
+                                                 default_value=filler)
                     else:
                         assert isinstance(value, RaggedTensor)
                         # Only integer types ragged attributes are supported now
                         assert value.num_axes == 2
                         assert value.dtype == torch.int32
-                        new_value, _ = value.index(
-                            arc_map, axis=0, need_value_indexes=False
-                        )
+                        new_value, _ = value.index(arc_map,
+                                                   axis=0,
+                                                   need_value_indexes=False)
                 else:
                     if info["tensor_type"] == "Tensor":
                         # fill with filler value
@@ -231,8 +236,7 @@ class RnntDecodingStreams(object):
                                 (num_arcs, 0),
                                 dtype=info["dtype"],
                                 device=device,
-                            )
-                        )
+                            ))
                 values.append(new_value)
             if info["tensor_type"] == "Tensor":
                 new_value = torch.cat(values)

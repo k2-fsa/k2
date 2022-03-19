@@ -189,11 +189,11 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
 
 /*
   Unstack a RaggedShape to a list of RaggedShapes, all the output RaggedShapes
-  have one less axis.
+  have one axis less.
   This function tries to do the opposite of Stack(), i.e. to generate an array
   out such that `Equal(src, Stack(axis, out->size(), out->data()))`. But notes
   that `Stack` needs a pointer of RaggedShape pointer, Unstack produces only a
-  pointer of RaggedShape, you should do some convertion before using Stack.
+  pointer of RaggedShape, you should do some conversion before using Stack.
 
     @param [in] src  The shape to unstack.
     @param [in] axis  The axis to be removed, all the elements of this axis will
@@ -210,7 +210,7 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
                    `src` telling where the elements of each split RaggedShapes
                    come from. It has the same size of `out`, see notes below
                    for the dimension of it. For Array1 in each of the
-                   `split_map`, It satifies
+                   `split_map`, It satisfies
                    `split_map[i].Dim() == out[i].NumElements()`, and
                    `0 <= split_map[i][j] < src.NumElements()`.
                    `split_map` will be reallocated by this function.
@@ -222,7 +222,7 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
   Note: The output RaggedShape may contain empty lists on axis `axis`, you can
         remove them by RemoveEmptyLists if needed.
 
-  Note: The number of output RaggedShape is decided by the size of sublist
+  Note: The number of output RaggedShape is determined by the size of sublist
         with max number of elements along axis `axis`, for `axis == 0`, it has
         only one sublist along `axis == 0`(i.e. the src itself), so the number
         of output RaggedShape will be equal to `src.Dim0()`.

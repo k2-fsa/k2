@@ -39,7 +39,7 @@ namespace rnnt_decoding {
   that the trained model is compatible with decoding with this setting).
 
   - contexts are finite symbol left-contexts, of length
-  RnntDecodingConfig::decoder_history_len. conceptuatly they represent a list of
+  RnntDecodingConfig::decoder_history_len. Conceptually they represent a list of
   `decoder_history_len` symbols; they are represented numerically as, for
   example in the length-2-history case: symbol_{t-1} +  symbol_{t-2} *
   vocab_size.
@@ -56,7 +56,7 @@ struct RnntDecodingConfig {
         beam(beam),
         max_states(max_states),
         max_contexts(max_contexts) {
-    num_context_states = pow(vocab_size, decoder_history_len);
+    // num_context_states = pow(vocab_size, decoder_history_len);
   }
 
   // vocab_size is the largest-symbol plus one.
@@ -74,7 +74,7 @@ struct RnntDecodingConfig {
   // equals to 10, we need 0 ~ 9 to distinguish each context state when
   // decoder_history_len is 1, and 0 ~ 99 (10 ^ 2 ids) for decoder_history_len
   // equals to 2, 0 ~ 999 (10 ^ 3 ids) for decoder_history_len equals to 3.
-  int32_t num_context_states;
+  // int32_t num_context_states;
 
   // `beam` imposes a limit on the score of a state, relative to the
   // best-scoring state on the same frame.  E.g. 10.
@@ -162,38 +162,38 @@ class RnntDecodingStreams {
       @param [in] logprobs  Array of shape [tot_contexts][num_symbols],
                     containing log-probs of symbols given the contexts output
                     by `GetContexts()`. Will satisfy
-                    logprobs.Dim0() == states.TotSize(1).
+                    logprobs.Dim0() == states_.TotSize(1).
    */
-  void Advance(Array2<float> &logprobs);
+  void Advance(const Array2<float> &logprobs);
 
   /*
     Generate the lattice.
 
     Note: The prev_frames_ only contains decoded by current object, in order to
-          generate the lattice we will fisrt gather all the previous frames from
+          generate the lattice we will first gather all the previous frames from
           individual streams.
 
       @param [in] num_frames  A vector containing the number of frames we want
                     to gather for each stream (note: the frames we have
                     ever received).
                     It MUST satisfy `num_frames.size() == num_streams_`, and
-                    `num_frames[i] < srcs_[i].prev_frames.size()`.
+                    `num_frames[i] <= srcs_[i].prev_frames.size()`.
       @param [out] ofsa  The output lattice will write to here, its num_axes
                          equals to 3, will be re-allocated.
-      @param [out] out_map  It it a Array1 with Dim() equals to
+      @param [out] out_map  It is an Array1 with Dim() equals to
                      ofsa.NumElements() containing the idx01 into the graph of
                      each individual streams, mapping current arc in ofsa to
-                     original decoding graphs. It may contains -1 which means
+                     original decoding graphs. It may contain -1 which means
                      this arc is a "termination symbol".
    */
-  void FormatOutput(std::vector<int32_t> &num_frames, FsaVec *ofsa,
+  void FormatOutput(const std::vector<int32_t> &num_frames, FsaVec *ofsa,
                     Array1<int32_t> *out_map);
 
   /*
     Terminate the decoding process of current RnntDecodingStreams object, it
-    will update the states & scores of each individual streams and split &
-    append the prev_frames_ in current object to the prev_frames of the
-    individual streams.
+    will update the states & scores of each individual stream and split &
+    append the prev_frames_ in current object to the `prev_frames` of the
+    individual stream.
 
     Note: We can not decode with this object anymore after calling
     TerminateAndFlushToStreams().
@@ -207,22 +207,22 @@ class RnntDecodingStreams {
   int32_t NumStreams() const { return num_streams_; }
 
   // Note: The following three functions should be private members, they are not
-  // expected to be called outsize this class. We make it public because of the
+  // expected to be called outside this class. We make it public because of the
   // extended lambda restrictions, see
   // https://docs.nvidia.com/cuda/cuda-c-programming-guide/#extended-lambda-restrictions
   // for more details.
 
   /* Expand arcs according to states_.
 
-     `states_` has a shape of [stream][context][state], each of its values is a
-     combinatioin of context_state and graph_state, this is:
+     `states_` has a shape of [stream][context][state], each of its value is a
+     combination of context_state and graph_state, that is:
      `state = context_state * num_graph_states + graph_state`. The graph_state
-     is the idx0 of corresponding individual graph(has shape [state][arc]).
+     is the idx0 of corresponding individual graph(with shape [state][arc]).
      This function will expand each of these states into several
      arcs(i.e. the out-going arcs of state idx0), so that we can get a new
      shape of [stream][context][state][arc].
 
-     Caution: This function intends to be used in `Advance()` only.
+     Caution: This function is intended to be used in `Advance()` only.
 
      @return Return the expected 4 axes shape
      (i.e.[stream][context][state][arc]).
@@ -235,13 +235,14 @@ class RnntDecodingStreams {
      rule is:
        (1) keep all epsilon transitions to the next frame, to ensure there is
            no way we can have no states surviving.
-       (2) for all other arcs, keep the it if the forward scores after the
+       (2) for all other arcs, keep it if the forward scores after the
            arc would be >= the max_scores_per_stream entry for this stream
            minus the beam from the config.
 
-     Caution: This function intends to be used in `Advance()` only.
+     Caution: This function is intended to be used in `Advance()` only.
 
-      @param [in] unprund_arcs_shape   The RaggedShape return by `ExpandArcs()`.
+      @param [in] unprund_arcs_shape   The RaggedShape returned by
+                                       `ExpandArcs()`.
       @param [in] logprobs  Array of shape [tot_contexts][num_symbols],
                     containing log-probs of symbols given the contexts output
                     by `GetContexts()`. Will satisfy
@@ -251,7 +252,7 @@ class RnntDecodingStreams {
       @return Return the renumbering object indicating which arc will be kept.
    */
   Renumbering DoFisrtPassPruning(RaggedShape &unprund_arcs_shape,
-                                 Array2<float> &logprobs);
+                                 const Array2<float> &logprobs);
   /*
      Group states by contexts.
 
@@ -265,7 +266,7 @@ class RnntDecodingStreams {
            we need a shape of [stream][context][state][arc], obviously the
            sub-lists along axis -1 contains same values.
 
-     Here is a example: suppose vocab_size=10, num_graph_states=10,
+     Here is an example: suppose vocab_size=10, num_graph_states=10,
      decoder_history_len=2, we have a states like:
 
      [ [ 112 120 123 125 345 345 ] [ 123 124 567 568 670 ] ]
@@ -279,7 +280,7 @@ class RnntDecodingStreams {
      [ [ [ [ 112 ] ] [ [ 120 ] [ 123 ] [ 125 ] ] [ [ 345 345 ] ] ]
        [ [ [ 123 ] [ 124 ] ] [ [ 567 ] [ 568 ] ] [ [ 670 ] ] ] ]
 
-     Caution: This function intends to be used in `Advance()` only.
+     Caution: This function is intended to be used in `Advance()` only.
 
      @param [in] states  A two axes ragged tensor with each sub-list **sorted**.
 
@@ -292,7 +293,7 @@ class RnntDecodingStreams {
  private:
   /*
   Prune the incoming scores based on beam, max-states and max-contexts.
-  Actually the beam part is not realy necessary, as we already pruned
+  Actually the beam part is not really necessary, as we already pruned
   with the beam, but it doesn't cost anything extra.
   Args:
      incoming_scores [in]  The ragged array of scores to be pruned, indexed
@@ -309,7 +310,7 @@ class RnntDecodingStreams {
                             Array1<int32_t> *arcs_new2old);
 
   /*
-    Gather all previously decoded frames util now, we need all the previous
+    Gather all previously decoded frames until now, we need all the previous
     frames to generate lattice.
 
     Note: The prev_frames_ in current object only contains the frames from the
@@ -320,9 +321,9 @@ class RnntDecodingStreams {
       @param [in] num_frames  A vector containing the number of frames we want
                     to gather for each stream.
                     It MUST satisfy `num_frames.size() == num_streams_`, and
-                    `num_frames[i] < srcs_[i].prev_frames.size()`.
+                    `num_frames[i] <= srcs_[i].prev_frames.size()`.
    */
-  void GatherPrevFrames(std::vector<int32_t> &num_frames);
+  void GatherPrevFrames(const std::vector<int32_t> &num_frames);
 
   ContextPtr c_;
 

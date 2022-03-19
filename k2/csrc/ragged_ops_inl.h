@@ -860,7 +860,7 @@ Renumbering PruneRaggedAxis1(Ragged<T> &src, T beam,
     K2_EVAL(c, total_elements, lambda_set_keep_sorted, (int32_t idx01) {
                 // idx01 is the index after sorting
         int32_t original_idx01 = order_map_data[idx01],
-                // SortSublists wouldn't chaneg idx0 & idx0x
+                // SortSublists wouldn't change idx0 and idx0x
                 idx0 = row_ids1_data[original_idx01],
                 idx0x = row_splits1_data[idx0],
                 // idx1 is the index after sorting

@@ -43,24 +43,24 @@ void TestArray1OfRaggedConstruct() {
     for (int32_t j = 1; j < num_axes; ++j) {
       const int32_t **row_splits = array_of_ragged.shape.RowSplits(j);
       const int32_t **row_ids = array_of_ragged.shape.RowIds(j);
-      Array1<int32_t *> excepted_row_splits(GetCpuContext(), num_srcs);
-      Array1<int32_t *> excepted_row_ids(GetCpuContext(), num_srcs);
-      int32_t **excepted_row_splits_data = excepted_row_splits.Data();
-      int32_t **excepted_row_ids_data = excepted_row_ids.Data();
+      Array1<int32_t *> expected_row_splits(GetCpuContext(), num_srcs);
+      Array1<int32_t *> expected_row_ids(GetCpuContext(), num_srcs);
+      int32_t **expected_row_splits_data = expected_row_splits.Data();
+      int32_t **expected_row_ids_data = expected_row_ids.Data();
       for (int32_t i = 0; i < num_srcs; ++i) {
-        excepted_row_splits_data[i] = raggeds[i].RowSplits(j).Data();
-        excepted_row_ids_data[i] = raggeds[i].RowIds(j).Data();
+        expected_row_splits_data[i] = raggeds[i].RowSplits(j).Data();
+        expected_row_ids_data[i] = raggeds[i].RowIds(j).Data();
       }
-      excepted_row_splits = excepted_row_splits.To(c);
-      excepted_row_ids = excepted_row_ids.To(c);
-      excepted_row_splits_data = excepted_row_splits.Data();
-      excepted_row_ids_data = excepted_row_ids.Data();
+      expected_row_splits = expected_row_splits.To(c);
+      expected_row_ids = expected_row_ids.To(c);
+      expected_row_splits_data = expected_row_splits.Data();
+      expected_row_ids_data = expected_row_ids.Data();
       Array1<int32_t> flags(c, 2, 1);
       int32_t *flags_data = flags.Data();
       K2_EVAL(
           c, num_srcs, lambda_check_pointer, (int32_t i) {
-            if (row_splits[i] != excepted_row_splits_data[i]) flags_data[0] = 0;
-            if (row_ids[i] != excepted_row_ids_data[i]) flags_data[1] = 0;
+            if (row_splits[i] != expected_row_splits_data[i]) flags_data[0] = 0;
+            if (row_ids[i] != expected_row_ids_data[i]) flags_data[1] = 0;
           });
       K2_CHECK(Equal(flags, Array1<int32_t>(c, std::vector<int32_t>{1, 1})));
     }
