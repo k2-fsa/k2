@@ -129,13 +129,13 @@ class Array1OfRaggedShape {
      to GPU, this will be faster than invoking an extra kernel in normal cases
      when the NumSrcs() is small.  [Also: see GetRowInfoMulti()].
    */
-  Array2<int32_t> MetaRowSplits() { return meta_row_splits_; }
+  const Array2<int32_t> &MetaRowSplits() const { return meta_row_splits_; }
 
   // could POSSIBLY add this so this code could be used in functions like
   // Stack(). would be like MetaRowSplits but with an extra 1st row containing
   // 0,1,2,... We could perhaps create it with 1 extra initial row so this is
   // always convenient to output.
-  Array2<int32_t> Offsets() { return offsets_; }
+  const Array2<int32_t> &Offsets() const { return offsets_; }
 
   /*
     Returns the meta-row-splits for a particular axis, with
@@ -161,9 +161,9 @@ class Array1OfRaggedShape {
 
      Note: in ragged_ops.cu we refer to this as composed_row_ids.
   */
-  Array1<int32_t*> MetaRowIds() {
-    Array1<int32_t*> ans(GetCpuContext(), num_axes_);
-    int32_t* *ans_data = ans.Data();
+  Array1<const int32_t*> MetaRowIds() {
+    Array1<const int32_t*> ans(GetCpuContext(), num_axes_);
+    const int32_t* *ans_data = ans.Data();
     for (int32_t i = 0; i < num_axes_; ++i) {
       ans_data[i] = meta_row_ids_[i].Data();
     }
@@ -179,7 +179,7 @@ class Array1OfRaggedShape {
     would tell us which source an idx012 with value 100 into axis 2 of
     concatenated array would come from.
   */
-  Array1<int32_t> MetaRowIds(int32_t axis) {
+  const Array1<int32_t> &MetaRowIds(int32_t axis) const {
     K2_CHECK_LT(static_cast<uint32_t>(axis),
                 static_cast<uint32_t>(num_axes_));
     return meta_row_ids_[axis];
@@ -226,8 +226,19 @@ struct Array1OfRagged {
   Array1OfRagged() = default;
 
   // The 'srcs' should have the same number of axes.
-  Array1OfRagged(Ragged<T> *srcs,
-                int32_t num_srcs);
+  Array1OfRagged(Ragged<T> *srcs, int32_t num_srcs) {
+    K2_CHECK_GT(num_srcs, 0);
+    K2_CHECK(srcs);
+    values = Array1<T *>(GetCpuContext(), num_srcs);
+    T **values_data = values.Data();
+    std::vector<RaggedShape> shapes(num_srcs);
+    for (int32_t i = 0; i < num_srcs; ++i) {
+      shapes[i] = srcs[i].shape;
+      values_data[i] = srcs[i].values.Data();
+    }
+    shape = Array1OfRaggedShape(shapes.data(), num_srcs);
+    values = values.To(shape.Context());
+  }
 };
 
 

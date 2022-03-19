@@ -125,27 +125,4 @@ Array1OfRaggedShape::Array1OfRaggedShape(RaggedShape *srcs, int32_t num_srcs) :
 }
 
 
-template <typename T>
-Array1OfRagged<T>::Array1OfRagged(Ragged<T> *srcs, int32_t num_srcs) :
-  values(GetCpuContext(), num_srcs, nullptr) {
-  K2_CHECK_GT(num_srcs, 0);
-  K2_CHECK(srcs);
-
-  T **values_data = values.Data();
-  std::vector<RaggedShape> shapes(num_srcs);
-
-  for (int32_t i = 0; i < num_srcs; i++) {
-    // Initialize values
-    values_data[i] = srcs[i].values.Data();
-    shapes[i] = srcs[i].shape;
-  }
-
-  // Initialize shape
-  shape = Array1OfRaggedShape(shapes.data(), num_srcs);
-  values = values.To(shape.Context());
-}
-
-template struct Array1OfRagged<int32_t>;
-template struct Array1OfRagged<float>;
-
 }  // namespace k2
