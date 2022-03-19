@@ -19,6 +19,7 @@
 #include <cmath>
 #include <limits>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
@@ -78,7 +79,7 @@ RnntDecodingStreams::RnntDecodingStreams(
 
 void RnntDecodingStreams::TerminateAndFlushToStreams() {
   NVTX_RANGE(K2_FUNC);
-  // return directlly if already detached or no frames decoded.
+  // return directly if already detached or no frames decoded.
   if (!attached_ || prev_frames_.empty()) return;
   std::vector<Ragged<int64_t>> states;
   std::vector<Ragged<double>> scores;
@@ -87,15 +88,15 @@ void RnntDecodingStreams::TerminateAndFlushToStreams() {
   K2_CHECK_EQ(static_cast<int32_t>(states.size()), num_streams_);
   K2_CHECK_EQ(static_cast<int32_t>(scores.size()), num_streams_);
 
-  // detatch prev_frames_
+  // detach prev_frames_
   std::vector<Ragged<ArcInfo> *> frames_ptr;
   for (size_t i = 0; i < prev_frames_.size(); ++i) {
     frames_ptr.emplace_back(prev_frames_[i].get());
   }
-  // statck_frames has a shape of [t][stream][state][arc]
+  // stack_frames has a shape of [t][stream][state][arc]
   auto stack_frames = Stack(0, prev_frames_.size(), frames_ptr.data());
-  // stack_frames now has a shape of [strams][state][arc]
-  // its Dim0(0) equals to `num_streams_ * prev_frames_.size()`
+  // stack_frames now has a shape of [stream][state][arc]
+  // its Dim0() equals to `num_streams_ * prev_frames_.size()`
   stack_frames = stack_frames.RemoveAxis(0);
 
   std::vector<Ragged<ArcInfo>> frames;
@@ -144,6 +145,10 @@ void RnntDecodingStreams::GetContexts(RaggedShape *shape,
         int32_t idx0 = shape_row_ids1_data[row],
                 num_graph_states = num_graph_states_data[idx0],
                 state_idx01x = states_row_splits2_data[row];
+        // Note: Entries in the sublist [state] grouped by [context] share
+        // the same context, so we use the first entry to compute the
+        // context_state here.
+        //
         // state_value = context_state * num_graph_states + graph_state
         // We want to extract token ids from context_state below.
         // Think about that the vocab_size=10 & decoder_history_len=3, and we
@@ -179,7 +184,7 @@ Ragged<double> RnntDecodingStreams::PruneTwice(Ragged<double> &incoming_scores,
   Ragged<double> temp_scores =
       SubsetRagged(incoming_scores, states_prune, 2 /*axis*/, &arcs_new2old1);
 
-  // incoming_scores has a shape of [stream][context][state][arc]
+  // temp_scores has a shape of [stream][context][state][arc]
   // context_prune is a renumbering on the states context.
   Renumbering context_prune =
       PruneRagged(temp_scores, 1 /*axis*/, config_.beam, config_.max_contexts);
@@ -205,7 +210,7 @@ RaggedShape RnntDecodingStreams::ExpandArcs() {
                 *num_graph_states_data = num_graph_states_.Data();
 
   const int64_t *states_values_data = states_.values.Data();
-  const int32_t **graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
+  const int32_t *const *graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
   int32_t *num_arcs_data = num_arcs.Data();
 
   K2_EVAL(
@@ -232,7 +237,7 @@ RaggedShape RnntDecodingStreams::ExpandArcs() {
 }
 
 Renumbering RnntDecodingStreams::DoFisrtPassPruning(
-    RaggedShape &unpruned_arcs_shape, Array2<float> &logprobs) {
+    RaggedShape &unpruned_arcs_shape, const Array2<float> &logprobs) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(unpruned_arcs_shape.NumAxes(), 4);
 
@@ -247,7 +252,7 @@ Renumbering RnntDecodingStreams::DoFisrtPassPruning(
   Array1<double> max_scores_per_stream(c_, num_streams_);
   double minus_inf = -std::numeric_limits<double>::infinity();
   {
-    // scores_ has 3 axes: [stream][context][score]
+    // scores_ has 3 axes: [stream][context][state]
     Ragged<double> scores_per_stream = scores_.RemoveAxis(1);
     MaxPerSublist<double>(scores_per_stream, minus_inf, &max_scores_per_stream);
   }
@@ -263,10 +268,10 @@ Renumbering RnntDecodingStreams::DoFisrtPassPruning(
                 *uas_row_ids2_data = unpruned_arcs_shape.RowIds(2).Data(),
                 *uas_row_ids1_data = unpruned_arcs_shape.RowIds(1).Data(),
                 *num_graph_states_data = num_graph_states_.Data();
-  const int32_t **graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
+  const int32_t *const *graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
   const int64_t *states_values_data = states_.values.Data();
 
-  Arc **graphs_arcs_data = graphs_.values.Data();
+  const Arc *const *graphs_arcs_data = graphs_.values.Data();
 
   K2_EVAL(
       c_, unpruned_arcs_shape.NumElements(), lambda_pass1_pruning,
@@ -300,7 +305,7 @@ Renumbering RnntDecodingStreams::DoFisrtPassPruning(
           return;
         }
 
-        // prune the arcs pointting final state.
+        // prune the arcs pointing to the final state.
         if (arc.label == -1) {
           pass1_keep_data[idx0123] = 0;
           return;
@@ -323,7 +328,7 @@ Renumbering RnntDecodingStreams::DoFisrtPassPruning(
 RaggedShape RnntDecodingStreams::GroupStatesByContexts(
     Ragged<int64_t> &states) {
   NVTX_RANGE(K2_FUNC);
-  // states has a shape of [stream][state]
+  // states has a shape of [stream][arc]
   K2_CHECK_EQ(states.NumAxes(), 2);
   // state_boundaries and context_boundaries are Renumbering objects
   // that we use in a slightly different way from normal.
@@ -408,11 +413,11 @@ RaggedShape RnntDecodingStreams::GroupStatesByContexts(
      (2) Do initial pruning(beam pruning with some special rules) to reduce the
          the number of arcs.
      (3) Figure out the dest-states and corresponding scores.
-     (4) Re-arange dest-states by contexts and states.
-     (5) Second pass pruning (prune on context axis and state axis).
+     (4) Rearrange dest-states by contexts and states.
+     (5) Second pass pruning (prune on state axis and context axis).
      (6) Update states_, scores_ and prev_frames_.
  */
-void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
+void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(attached_) << "Streams terminated.";
   K2_CHECK_EQ(logprobs.Dim0(), states_.TotSize(1));
@@ -433,25 +438,27 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
       SubsetRaggedShape(unpruned_arcs_shape, pass1_renumbering);
 
   // (3) Figure out the dest-states and corresponding scores.
-  // stream_arc_shape is pass1_arcs indexed [stream][arc].
-  // We need to rearrange so it's by destination context and state, not source.
+  // stream_arc_shape is pass1_arcs indexed by [stream][arc].
+  // We need to rearrange it so it's ordered by destination context and state,
+  // not source.
   RaggedShape stream_arc_shape = RemoveAxis(pass1_arcs_shape, 2);
   stream_arc_shape = RemoveAxis(stream_arc_shape, 1);
 
-  // arcs, indexed [stream][context][state][arc].
+  // arcs, indexed by [stream][context][state][arc].
   Ragged<ArcInfo> arcs(pass1_arcs_shape);
-  // dest-states of arcs, incexed [stream][arc]
+  // dest-states of arcs, indexed by [stream][arc]
   Ragged<int64_t> states(stream_arc_shape);
-  // final-scores after arcs, indexed [stream][arc]
+  // final-scores after arcs, indexed by [stream][arc]
+  // It contains the forward scores of dest-states.
   Ragged<double> scores(stream_arc_shape);
 
-  // We will populate arcs, states and scores below, it computes
-  // the destination state for each arc and puts its in 'states',
+  // We will populate arcs, states and scores below; it computes
+  // the destination state for each arc and puts it in 'states',
   // and the after-the-arc scores for each arc and puts them in
   // 'scores'.
   int32_t cur_num_arcs = arcs.NumElements();
   // This renumbering object will be used for renumbering the arcs after we
-  // fiishing the pruning.
+  // finishing the pruning.
   Renumbering renumber_arcs(c_, cur_num_arcs);
   char *renumber_arcs_keep_data = renumber_arcs.Keep().Data();
 
@@ -470,9 +477,9 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
                 *uas_row_ids2_data = unpruned_arcs_shape.RowIds(2).Data(),
                 *uas_row_ids1_data = unpruned_arcs_shape.RowIds(1).Data(),
                 *pass1_new2old_data = pass1_renumbering.New2Old().Data();
-  const int32_t **graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
+  const int32_t *const *graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
   const auto logprobs_acc = logprobs.Accessor();
-  Arc **graphs_arcs_data = graphs_.values.Data();
+  const Arc *const *graphs_arcs_data = graphs_.values.Data();
 
   K2_EVAL(
       c_, cur_num_arcs, lambda_populate_arcs_states_scores, (int32_t arc_idx) {
@@ -487,7 +494,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
                 idx3 = idx0123 - idx012x,  // `idx3 - 1` can be interpreted as
                                            // idx1 into the corresponding
                                            // decoding graph, minus 1 here
-                                           // because we add a implicit
+                                           // because we added an implicit
                                            // self-loop for each state, see
                                            // `ExpandArcs()`.
             idx01 = uas_row_ids2_data[idx012], idx0 = uas_row_ids1_data[idx01],
@@ -531,7 +538,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
           context_state = context_state * vocab_size + arc.label;
         }
 
-        // next state is the state current arc pointting to.
+        // next state is the state the current arc pointing to.
         int64_t state = context_state * num_graph_states + arc.dest_state;
         states_data[arc_idx] = state;
 
@@ -545,7 +552,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
         arcs_data[arc_idx] = ai;
       });
 
-  // (4) Re-arange dest-states by contexts and states.
+  // (4) Rearrange dest-states by contexts and states.
   // sort states so that we can group states by context-state
   Array1<int32_t> dest_state_sort_new2old(c, states.NumElements());
   SortSublists(&states, &dest_state_sort_new2old);
@@ -554,9 +561,11 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
 
   scores.values = scores.values[dest_state_sort_new2old];
   Ragged<double> incoming_scores(incoming_arcs_shape, scores.values);
+  // Note: `arcs` is not sorted. `renumber_arcs` will be used later
+  // to map `pruned arcs` to `arcs`.
 
   // (5) Second pass pruning (prune on context axis and state axis).
-  // The scores has been re-arange by destination context and state.
+  // The scores has been rearranged by context and destination state.
   Array1<int32_t> arcs_prune2_new2old;
   Ragged<double> pruned_incoming_scores =
       PruneTwice(incoming_scores, &arcs_prune2_new2old);
@@ -576,17 +585,17 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   // frame
   Ragged<double> dest_state_scores(RemoveAxis(pruned_incoming_scores.shape, 3),
                                    dest_state_scores_values);
-  scores_ = dest_state_scores;
+  scores_ = std::move(dest_state_scores);
 
   // dest_states will be the `states` held by this object on the next frame.
   // sub-lists along last axis has same values, so we just pick the first one,
   // see `GroupStatesByContexts()` for more details.
   auto pruned_row_split3 = pruned_dest_states.RowSplits(3);
   Ragged<int64_t> dest_states(
-      dest_state_scores.shape,
+      scores_.shape,
       pruned_dest_states
           .values[pruned_row_split3.Arange(0, pruned_row_split3.Dim() - 1)]);
-  states_ = dest_states;
+  states_ = std::move(dest_states);
 
   // Update prev_frames_.
   // arcs_new2old is new2old map from indexes in `incoming_scores` or
@@ -597,7 +606,7 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
   // Renumber the original arcs, we create and initialize the renumbering object
   // when we create the arcs, see above.
   // arcs has a shape of [stream][context][state][arc]
-  int32_t *arcs_new2old_data = arcs_new2old.Data();
+  const int32_t *arcs_new2old_data = arcs_new2old.Data();
   K2_EVAL(
       c_, arcs_new2old.Dim(), lambda_renumber_arcs, (int32_t idx) {
         int32_t arc_idx0123 = arcs_new2old_data[idx];
@@ -650,7 +659,8 @@ void RnntDecodingStreams::Advance(Array2<float> &logprobs) {
       std::make_shared<Ragged<ArcInfo>>(pruned_arcs.RemoveAxis(1)));
 }
 
-void RnntDecodingStreams::GatherPrevFrames(std::vector<int32_t> &num_frames) {
+void RnntDecodingStreams::GatherPrevFrames(
+    const std::vector<int32_t> &num_frames) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(!attached_) << "Please call TerminateAndFlushToStreams() first.";
   K2_CHECK_EQ(num_streams_, static_cast<int32_t>(num_frames.size()));
@@ -687,7 +697,7 @@ void RnntDecodingStreams::GatherPrevFrames(std::vector<int32_t> &num_frames) {
   }
 }
 
-void RnntDecodingStreams::FormatOutput(std::vector<int32_t> &num_frames,
+void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
                                        FsaVec *ofsa, Array1<int32_t> *out_map) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(!attached_)
@@ -722,7 +732,7 @@ void RnntDecodingStreams::FormatOutput(std::vector<int32_t> &num_frames,
   {
     // each of these have 3 axes.
     std::vector<RaggedShape *> arcs_shapes(frames + 2);
-    for (int32_t t = 0; t < frames; t++) {
+    for (int32_t t = 0; t < frames; ++t) {
       arcs_shapes[t] = &(prev_frames_[t]->shape);
       arcs_data_ptrs_data[t] = prev_frames_[t]->values.Data();
     }
@@ -758,9 +768,9 @@ void RnntDecodingStreams::FormatOutput(std::vector<int32_t> &num_frames,
 
   K2_EVAL(
       c_, num_arcs, lambda_set_arcs, (int32_t oarc_idx0123) {
-        int32_t oarc_idx012 = oshape_row_ids3[oarc_idx0123],
-                oarc_idx01 = oshape_row_ids2[oarc_idx012],
-                oarc_idx0 = oshape_row_ids1[oarc_idx01],
+        int32_t oarc_idx012 = oshape_row_ids3[oarc_idx0123],  // state
+                oarc_idx01 = oshape_row_ids2[oarc_idx012],  // frame
+                oarc_idx0 = oshape_row_ids1[oarc_idx01],  // stream
                 oarc_idx0x = oshape_row_splits1[oarc_idx0],
                 oarc_idx0xx = oshape_row_splits2[oarc_idx0x],
                 oarc_idx1 = oarc_idx01 - oarc_idx0x,
