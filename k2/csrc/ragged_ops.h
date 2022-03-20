@@ -186,6 +186,94 @@ void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
 RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
                   Array1<uint32_t> *merge_map = nullptr);
 
+
+/*
+  Unstack a RaggedShape to a list of RaggedShapes, all the output RaggedShapes
+  have one axis less.
+  This function tries to do the opposite of Stack(), i.e. to generate an array
+  out such that `Equal(src, Stack(axis, out->size(), out->data()))`. But notes
+  that `Stack` needs a pointer of RaggedShape pointer, Unstack produces only a
+  pointer of RaggedShape, you should do some conversion before using Stack.
+
+    @param [in] src  The shape to unstack.
+    @param [in] axis  The axis to be removed, all the elements of this axis will
+                      be rearranged into output RaggedShapes.
+    @param [out] out  The container where the output RaggedShapes would write
+                      to. MUST NOT be a nullptr, will be reallocated.
+    @param [in] pad_right  Before unstack, we will (conceptually) pad the
+                  sublists along axis `axis` to the same size with empty lists
+                  `pad_right` tells where to put the padding empty lists, see
+                  the example for more details.
+                  Note, `pad_right` makes no difference when `axis == 0` or
+                  `axis == src.NumAxes() - 1`.
+    @param [out] split_map  If not nullptr will store the element-index within
+                   `src` telling where the elements of each split RaggedShapes
+                   come from. It has the same size of `out`, see notes below
+                   for the dimension of it. For Array1 in each of the
+                   `split_map`, It satisfies
+                   `split_map[i].Dim() == out[i].NumElements()`, and
+                   `0 <= split_map[i][j] < src.NumElements()`.
+                   `split_map` will be reallocated by this function.
+
+  Caution: If `src.NumAxes() == 2`, the output shapes will only have one
+           dimension, to make it a RaggedShape, we will add a TrivialShape on
+           each of the output tensors.
+
+  Note: The output RaggedShape may contain empty lists on axis `axis`, you can
+        remove them by RemoveEmptyLists if needed.
+
+  Note: The number of output RaggedShape is determined by the size of sublist
+        with max number of elements along axis `axis`, for `axis == 0`, it has
+        only one sublist along `axis == 0`(i.e. the src itself), so the number
+        of output RaggedShape will be equal to `src.Dim0()`.
+
+  A small example of unstacking a 3 axes RaggedShape (with pad_right=true):
+
+    src: [ [ [ x x ] [ x ] ] [ [ x ] ] ]
+    unstack on axis 0:
+    src.Dim0() == 2, will produce 2 RaggedShape.
+
+    out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 1, 2]
+    out[1] : [ [ x ] ]           split_map[1] : [3]
+
+    unstack on axis 1:
+    two sublists along axis 1, the sizes are [2, 1], will produce 2 RaggedShape
+
+    think about that we first pad src to [ [ [ x x ] [ x ] ] [ [ x ] [ ] ] ]
+    then select elements along axis 1 into separate ragged shapes
+
+    out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 1, 3]
+    out[1] : [ [ x ] [ ] ]       split_map[1] : [2]
+
+    unstack on axis 2:
+    three sublists along axis 2, the sizes are [2, 1, 1], will produce 2
+    RaggedShape.
+
+    out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 2, 3]
+    out[1] : [ [ x ] [ ] ]       split_map[1] : [1]
+
+  for pad_right equals to false:
+
+    src: [ [ [ x x ] [ x ] ] [ [ x ] ] ]
+
+    unstack on axis 1:
+
+    think about that we first pad src to [ [ [ x x ] [ x ] ] [ [ ] [ x ] ] ]
+    then select elements along axis 1 into separate ragged shapes
+
+    out[0] : [ [ x x ] [ ] ]       split_map[0] : [0, 1]
+    out[1] : [ [ x ] [ x ] ]       split_map[1] : [2, 3]
+ */
+void Unstack(RaggedShape &src, int32_t axis, bool pad_right,
+             std::vector<RaggedShape> *out,
+             std::vector<Array1<int32_t>> *split_map = nullptr);
+
+/*
+ * The same as above, except that it uses `pad_right=true`.
+ */
+void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
+             std::vector<Array1<int32_t>> *split_map = nullptr);
+
 /*
   Return a modified version of `src` in which all sub-lists on the last axis of
   the tenor have size modified by `size_delta`.  `size_delta` may have either
@@ -699,15 +787,32 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
                               int32_t max_num_elements = 2000);
 
 /*
-  Return ragged shape with only a subset of the bottom-level elements kept.
-  Require renumbering.NumOldElems() == src.NumElements().  Note: all
-  dimensions and tot-sizes preceding the final axis will remain the same, which
-  might give rise to empty lists.
+  Return ragged shape with only a subset of the elements or sub-lists
+  on the specified axis kept.  (This is not regular sampling, it is
+  irregular subsampling with specified elements kept).
+
+    @param [in] src  The ragged shape that we are subsampling
+    @param [in] renumbering  The renumbering object that dictates
+                    which elements of `src` we keep; we require
+                    renumbering.NumOldElems() == src.TotSize(axis2)
+                    where axis2 = (axis < 0 ? src.NumAxes() + axis : axis).
+    @param [in] axis  The axis to subsample; if negative, will be
+                    interpreted as an offset from src.NumAxes().
+    @param [out] elems_new2old   If supplied, this function will
+                    output to this location a new2old vector that
+                    dictates how the elements of a ragged tensor
+                    with shape `src` would be renumbered.
+    @return  Returns the subsampled shape. All dimensions and tot-sizes
+       preceding the axis `axis` will remain the same, which might give
+       rise to empty lists on those axes; these can be removed if
+       necessary with RemoveEmptyLists().
 
   Notice the other version of this function below.
  */
-RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
-
+RaggedShape SubsetRaggedShape(RaggedShape &src,
+                              Renumbering &renumbering,
+                              int32_t axis = -1,
+                              Array1<int32_t> *elems_new2old = nullptr);
 
 /*
   Return ragged shape with only a subset of the elements on the last
@@ -718,9 +823,9 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
   Note: all dimensions and tot-sizes preceding the last two axes will remain the
   same, which might give rise to empty lists.
  */
-RaggedShape SubsampleRaggedShape(RaggedShape &src,
-                                 Renumbering &renumbering_before_last,
-                                 Renumbering &renumbering_last);
+RaggedShape SubsetRaggedShape(RaggedShape &src,
+                              Renumbering &renumbering_before_last,
+                              Renumbering &renumbering_last);
 
 /*
   Removes empty lists on a particular axis (not last axis) of a RaggedShape,
@@ -804,17 +909,84 @@ RaggedShape RemoveEmptyListsAxis0(RaggedShape &src_shape,
 RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
                                 Renumbering &renumbering);
 
+
+
 /*
-  Return ragged array with only a subset of the bottom-level elements kept.
-  Require renumbering.NumOldElems() == src.NumElements().  Note: all
-  dimensions and tot-sizes preceding the final axis will remain the same, which
-  might give rise to empty lists.
+  Return ragged array with only a subset of the elements or sub-lists
+  on the specified axis kept.  (This is not regular sampling, it is
+  irregular subsampling with specified elements kept).
+
+    @param [in] src  The ragged shape that we are subsampling
+    @param [in] renumbering  The renumbering object that dictates
+                    which elements of `src` we keep; we require
+                    renumbering.NumOldElems() == src.TotSize(axis2)
+                    where axis2 = (axis < 0 ? src.NumAxes() - axis : axis).
+    @param [in] axis  The axis to subsample; if negative, will be
+                    interpreted as an offset from src.NumAxes().
+    @param [out] elems_new2old   If supplied, this function will
+                    output to this location a new2old array that
+                    dictates how the elements of a ragged tensor
+                    with shape `src` would be renumbered.
+    @return  Returns the subsampled shape. All dimensions and tot-sizes
+       preceding the axis `axis` will remain the same, which might give
+       rise to empty lists on those axes; these can be removed if
+       necessary with RemoveEmptyLists().
  */
 template <typename T>
-Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering) {
-  return Ragged<T>(SubsampleRaggedShape(src.shape, renumbering),
-                   src.values[renumbering.New2Old()]);
+Ragged<T> SubsetRagged(Ragged<T> &src, Renumbering &renumbering,
+                       int32_t axis = -1,
+                       Array1<int32_t> *elems_new2old = nullptr) {
+  Array1<int32_t> tmp;
+  if (elems_new2old == nullptr)
+    elems_new2old = &tmp;
+  RaggedShape shape = SubsetRaggedShape(src.shape, renumbering,
+                                           axis, elems_new2old);
+  return Ragged<T>(shape, src.values[*elems_new2old]);
 }
+
+/*
+  This function creates a Renumbering object that can be used to obtain subsets
+  of ragged arrays via SubsetRaggedShape().  It implements beam pruning as
+  used in pruned Viterbi search and similar algorithms, where there is both a
+  beam and a max-active (`max_elems`) constraint.  T will probably be float or
+  double, interpreted as a "positive-is-better" sense, i.e. as scores.
+
+   @param [in] src  The ragged object to be subsampled.
+   @param [in] axis  The axis to be subsampled, must satisfy
+              0 <= axis < src.NumAxes().  The axis before `axis`, if axis > 0,
+              will be interpreted as a "batch" axis.
+   @param [in] beam  The main pruning beam.  The sub-lists of elements on axis
+              `axis` will be removed if their maximum element (or the element
+              itself, if axis + 1 == src.NumAxes()) is less than
+              this_best_elem - beam, where this_best_elem
+              is the maximum element taken over axis `axis-1` (or over the
+              entire array, if axis == 0).   Think of axis `axis-1`, if
+              axis > 0, as the "batch" axis, and axis `axis` as the axis that we
+              actually remove elements or sub-lists on.  Empty sub-lists on axis
+              `axis` will always be pruned, as their score would be treated
+              as -infinity.
+   @param [in] max_elems  If max_elems > 0, it is the maximum number of
+              sub-lists or elements that are allowed within any sub-list
+              on axis `axis-1` (or the maximum number of top-level sub-lists
+              after subsampling, if axis == 0).  We keep the best ones.
+              If max_elems <= 0, there is no such constraint.
+    @return  Returns the renumbering object to be used to actually
+             prune/subsample the specified axis.
+
+   Example:
+      PruneRagged([ [0 -1 -2 -3], [ -10, -20 ], [ ] ], 1, 5.0, 3)
+    would create a Renumbering object that would prune the
+    ragged tensor to [ [0 -1 -2], [ -10 ], [ ] ]
+
+      PruneRagged([ [0 -1 -2 -3], [ -10, -20 ], [ ] ], 0, 5.0, 0)
+    would create a Renumbering object that would prune the
+    ragged tensor to [ [0 -1 -2 -3] ]
+ */
+template <typename T>
+Renumbering PruneRagged(Ragged<T> &src,
+                        int32_t axis,
+                        T beam,
+                        int32_t max_elems);
 
 /*
   Stack a list of Ragged arrays to create a Ragged array with one more axis.
@@ -853,10 +1025,97 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
                 Array1<uint32_t> *merge_map = nullptr);
 
 /*
+  Unstack a Ragged tensor to a list of Ragged, tensors all the output Ragged
+  tensors have one less axis. Similar to TF's Unstack (or unbind in Pytorch).
+
+    @param [in] src  The ragged tensor to be unstacked.
+    @param [in] axis  The axis to be removed, all the elements of this axis will
+                      be rearranged into output Raggeds.
+    @param [in] pad_right  Before unstack, we will (conceptually) pad the
+                  sublists along axis `axis` to the same size with empty lists
+                  `pad_right` tells where to put the padding empty lists, see
+                  the example for more details.
+                  Note, `pad_right` makes no difference when `axis == 0` or
+                  `axis == src.NumAxes() - 1`.
+    @param [out] out  The container where the output ragged tensors would write
+                      to. MUST NOT be a nullptr, will be reallocated.
+    @param [out] split_map  If not nullptr will store the element-index within
+                   the `src` telling where the elements of each split Raggeds
+                   comes from. It has same size as `out`, see notes below for
+                   the dimension of `out`. For Array1 in each of the
+                   `split_map`, It satifies
+                   `split_map[i].Dim() == out[i].values.Dim()`, and it contains
+                   the element-index within `src`.
+                   (i.e.`out[i].values[j] == src.values[split_map[i][j]]`)
+                   `split_map` will be reallocated by this function.
+
+  Caution: If `src.NumAxes() == 2`, the output shapes will only have one
+           dimension, to make it a ragged tensor, we will add a TrivialShape on
+           each of the output tensors.
+
+  Note: The output ragged tensors may contain empty lists on axis `axis`,
+        you can remove them by RemoveEmptyLists if needed.
+
+  Note: The number of output ragged tensors is decided by the size of sublist
+        with max number of elements along axis `axis`, for `axis == 0`, it has
+        only one sublist along `axis == 0`(i.e. the src itself), so the number
+        of output ragged will be equal to `src.Dim0()`.
+
+  A small example of unstacking a 3 axes Ragged (with pad_right = true):
+
+    src: [ [ [ 1 2 ] [ 3 ] ] [ [ 4 ] ] ]
+    unstack on axis 0:
+    src.Dim0() == 2, will produce 2 ragged tensors.
+
+    out[0] : [ [ 1 2 ] [ 3 ] ]   split_map[0] : [0, 1, 2]
+    out[1] : [ [ 4 ] ]           split_map[1] : [3]
+
+    unstack on axis 1:
+    two sublists along axis 1, the sizes are [2, 1], will produce 2 ragged tensors
+
+    think about that we first pad src to [ [ [ 1 2 ] [ 3 ] ] [ [ 4 ] [ ] ] ]
+    then select elements along axis 1 into separate raggeds
+
+    out[0] : [ [ 1 2 ] [ 4 ] ]   split_map[0] : [0, 1, 3]
+    out[1] : [ [ 3 ] [ ] ]       split_map[1] : [2]
+
+    unstack on axis 2:
+    three sublists along axis 2, the sizes are [2, 1, 1], will produce 2
+    ragged tensors.
+
+    out[0] : [ [ 1 3 ] [ 4 ] ]   split_map[0] : [0, 2, 3]
+    out[1] : [ [ 2 ] [ ] ]       split_map[1] : [1]
+
+  for pad_right equals to false:
+
+    src: [ [ [ 1 2 ] [ 3 ] ] [ [ 4 ] ] ]
+
+    unstack on axis 1:
+
+    think about that we first pad src to [ [ [ 1 2 ] [ 3 ] ] [ [ ] [ 4 ] ] ]
+    then select elements along axis 1 into separate raggeds
+
+    out[0] : [ [ 1 2 ] [ ] ]       split_map[0] : [0, 1]
+    out[1] : [ [ 3 ] [ 4 ] ]       split_map[1] : [2, 3]
+ */
+template <typename T>
+void Unstack(Ragged<T> src, int32_t axis, bool pad_right,
+             std::vector<Ragged<T>> *out,
+             std::vector<Array1<int32_t>> *split_map = nullptr);
+
+/*
+ * The same as above, except that it uses `pad_right=true`.
+ */
+template <typename T>
+void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
+             std::vector<Array1<int32_t>> *split_map = nullptr) {
+  Unstack(src, axis, true /*pad_right*/, out, split_map);
+}
+
+/*
    Concatenate a list of Ragged<T> to form a single Ragged<T>.
 
-      @param [in] axis     Axis to append them on.  Currently
-                           we only support axis == 0 or axis == 1.
+      @param [in] axis     Axis to append them on.
                            Previous axes must
                            have the same shape, i.e. if axis == 1
                            then `src[i]->Dim0()` must all have the
@@ -1249,7 +1508,7 @@ Ragged<T> Merge(int32_t num_srcs, Ragged<T> **src,
 /*
   Returns a ragged tensor after removing all 'values' that were <= a provided
   cutoff.  Leaves all layers of the shape except for the last one unaffected.
-  Equivalent to SubsampleRaggedShape with a numbering given by (src.values[i] <=
+  Equivalent to SubsetRaggedShape with a numbering given by (src.values[i] <=
   cutoff).
  */
 template <typename T>
@@ -1258,7 +1517,7 @@ Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff);
 /*
   Returns a ragged tensor after removing all 'values' that equal a provided
   target.  Leaves all layers of the shape except for the last one unaffected.
-  Equivalent to SubsampleRaggedShape with a numbering given by (src.values[i] ==
+  Equivalent to SubsetRaggedShape with a numbering given by (src.values[i] ==
   target).
 */
 template <typename T>

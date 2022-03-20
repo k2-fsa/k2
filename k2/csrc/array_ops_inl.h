@@ -193,6 +193,19 @@ static void RandArray1Internal(int32_t dim, T min_value, T max_value, T *data,
   for (int32_t i = 0; i < dim; ++i) data[i] = dis(gen);
 }
 
+// called in RandGaussianArray1 & RandGaussianArray2
+template <typename T, typename std::enable_if<std::is_floating_point<T>::value,
+                                              T>::type * = nullptr>
+static void GaussianArray1Internal(int32_t dim, T mean, T std, T *data,
+                               int32_t seed = 0) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  if (seed != 0) gen = std::mt19937(seed);
+  std::normal_distribution<T> dis(mean, std);
+  for (int32_t i = 0; i < dim; ++i) data[i] = dis(gen);
+}
+
+
 }  // namespace internal
 }  // namespace k2
 
@@ -442,15 +455,39 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value, T max_value,
 
 template <typename T>
 Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
-                            T min_value, T max_value) {
+                            T min_value, T max_value, int32_t seed /*= 0*/) {
   int32_t dim1_extra = RandInt(0, 2),  // make it randomly not contiguous.
       new_dim1 = dim1 + dim1_extra;
   Array1<T> array1temp =
-      RandUniformArray1<T>(c, dim0 * new_dim1, min_value, max_value);
+      RandUniformArray1<T>(c, dim0 * new_dim1, min_value, max_value, seed);
   Array2<T> array2temp(array1temp, dim0, new_dim1);
 
   int32_t offset = RandInt(0, dim1_extra);
   return array2temp.ColArange(offset, offset + dim1);
+}
+
+template <typename T>
+Array1<T> RandGaussianArray1(ContextPtr c, int32_t dim, T mean, T std,
+                            int32_t seed /*= 0*/) {
+  static_assert(std::is_floating_point<T>::value,
+                "Only support floating-point type");
+  Array1<T> temp(GetCpuContext(), dim);
+  T *data = temp.Data();
+  internal::GaussianArray1Internal<T>(dim, mean, std, data, seed);
+  return temp.To(c);
+}
+
+template <typename T>
+Array2<T> RandGaussianArray2(ContextPtr c, int32_t dim0, int32_t dim1,
+                            T mean, T std, int32_t seed /*= 0*/) {
+  static_assert(std::is_floating_point<T>::value,
+                "Only support floating-point type");
+  Array2<T> temp(GetCpuContext(), dim0, dim1);
+  for (int32_t i = 0; i < dim0; ++i) {
+    internal::GaussianArray1Internal<T>(
+        dim1, mean, std, temp.Row(i).Data(), seed);
+  }
+  return temp.To(c);
 }
 
 template <typename T>

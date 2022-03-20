@@ -83,9 +83,8 @@ void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
   ExclusiveSum(src.Context(), dest_dim, src.Data(), dest->Data());
 }
 
-/*  wrapper for the ExclusiveSum above (returns array with same dim as src).  Will satisfy
-     ans[i] = sum_{j=0}^{i-1} src[j] for i > 0.
-     ans[0] is always 0.
+/*  wrapper for the ExclusiveSum above (returns array with same dim as src).
+   Will satisfy ans[i] = sum_{j=0}^{i-1} src[j] for i > 0. ans[0] is always 0.
  */
 template <typename T>
 Array1<T> ExclusiveSum(const Array1<T> &src) {
@@ -182,7 +181,6 @@ Array1<T> Cat(ContextPtr c, int32_t src_size, const Array1<T> **src);
 template <typename T>
 Array1<T> Cat(ContextPtr c, int32_t src_size, const Array1<T> *src);
 
-
 /*
   Concatenate arrays, adding offsets to each one.
       @param [in] offsets   Array containing the offsets to add
@@ -219,10 +217,6 @@ Array1<int32_t> CatWithOffsets(const Array1<int32_t> &offsets,
 
  */
 Array1<int32_t> SpliceRowSplits(int32_t src_size, const Array1<int32_t> **src);
-
-
-
-
 
 /*
   Get the reduction value from the array `src` with a binary operator `Op`,
@@ -377,11 +371,58 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value, T max_value,
     @param[in] min_value  Minimum value allowed in the array
     @param[in] max_value  Maximum value allowed in the array;
                            require max_value >= min_value.
+    @param [in] seed  The seed for the random generator. 0 to
+                      use the default seed. Set it to a non-zero
+                      value for reproducibility.
     @return    Returns the randomly generated array
  */
 template <typename T>
 Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
-                            T min_value, T max_value);
+                            T min_value, T max_value, int32_t seed = 0);
+
+/*
+  Returns a random Array1, normally distributed with `mean` and
+  `std`.  CAUTION: for now, this will be randomly generated on CPU and
+  then transferred to other devices if c is not a CPU context, so it will be
+  slow if c is not a CPU context.
+  Note T should be floating-pointer type.
+
+    @param[in] c  Context for this array; note, this function will be slow
+                  if this is not a CPU context
+    @param [in] dim    Dimension, must be > 0
+    @param [in] mean  Mean value of the normal distribution.  
+    @param [in] std  Standard deviation of the normal distribution.
+    @param [in] seed  The seed for the random generator. 0 to
+                      use the default seed. Set it to a non-zero
+                      value for reproducibility.
+    @return    Returns the randomly generated array
+ */
+template <typename T>
+Array1<T> RandGaussianArray1(ContextPtr c, int32_t dim, T mean, T std,
+                            int32_t seed = 0);
+
+/*
+  Returns a random Array2, each row normally distributed with `mean` and
+  `std`.  CAUTION: for now, this will be randomly generated on CPU and
+  then transferred to other devices if c is not a CPU context, so it will be
+  slow if c is not a CPU context.
+  Note: T should be floating-pointer type.
+
+    @param[in] c  Context for this array; note, this function will be slow
+                  if this is not a CPU context
+    @param [in] dim0    Dimension 0 of answer, must be >= 0.
+    @param [in] dim1    Dimension 1 of answer, must be >= 0.
+    @param [in] mean  Mean value of the normal distribution.  
+    @param [in] std  Standard deviation of the normal distribution.
+    @param [in] seed  The seed for the random generator. 0 to
+                      use the default seed. Set it to a non-zero
+                      value for reproducibility.
+
+    @return    Returns the randomly generated array
+ */
+template <typename T>
+Array2<T> RandGaussianArray2(ContextPtr c, int32_t dim0, int32_t dim1,
+                            T mean, T std, int32_t seed = 0);
 
 /*
   Return a newly allocated Array1 whose values form a linear sequence,
@@ -403,7 +444,6 @@ Array1<T> Arange(ContextPtr c, T begin, T end, T inc = 1);
 void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *row_ids);
 
-
 /*
   This function is like RowSplitsToRowIds() but after subracting
   the first element of `row_splits_part` from `row_splits_part`.
@@ -417,8 +457,6 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
 */
 void RowSplitsToRowIdsOffset(const Array1<int32_t> &row_splits_part,
                              Array1<int32_t> *row_ids_part);
-
-
 
 /*
   Given a vector of row_splits, return a vector of sizes.
@@ -660,15 +698,12 @@ Array2<T> ToContiguous(const Array2<T> &src);
 template <typename T>
 bool Equal(const Array2<T> &a, const Array2<T> &b);
 
-
-
 /*
   Return true if all elements of the two arrays are equal.
   Will crash if the sizes differ.
 */
 template <typename T>
 bool ApproxEqual(const Array2<T> &a, const Array2<T> &b, T tol = T(0.0001));
-
 
 /*
   Index `src` with `indexes`, as in src[indexes].

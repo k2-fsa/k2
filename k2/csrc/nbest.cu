@@ -18,6 +18,8 @@
  */
 
 #include <algorithm>
+#include <vector>
+
 #include "k2/csrc/nbest.h"
 
 // This is not really a CUDA file but for build-system reasons I'm currently
@@ -46,14 +48,12 @@ inline bool Leq(T a1, T a2, T a3, T b1, T b2, T b3) {
 */
 template <typename T>
 static void RadixPass(const T* a, T* b, const T* r, T n, T K) {
-  T* c = new T[K + 1];  // counter array
-  for (T i = 0; i <= K; i++) c[i] = 0;  // reset counters
+  std::vector<T> c(K + 1, 0);  // counter array
   for (T i = 0; i < n; i++) c[r[a[i]]]++;  // count occurrences
   for (T i = 0, sum = 0; i <= K; i++) {  // exclusive prefix sums
     T t = c[i]; c[i] = sum; sum += t;
   }
   for (T i = 0; i < n; i++) b[c[r[a[i]]]++] = a[i];  // sort
-  delete [] c;
 }
 
 // See documentation in nbest.h, where we use different names
@@ -69,19 +69,20 @@ void CreateSuffixArray(const T* text, T n, T K, T* SA) {
     return;
   }
   T n0 = (n + 2) / 3, n1 = (n+1) / 3, n2 = n / 3, n02 = n0 + n2;
-  T *R = new T[n02 + 3]; R[n02] = R[n02 + 1] = R[n02 + 2] = 0;
-  T *SA12 = new T[n02 + 3]; SA12[n02] = SA12[n02 + 1] = SA12[n02 + 2] = 0;
-  T *R0 = new T[n0];
-  T *SA0 = new T[n0];
+  std::vector<T> R(n02 + 3, 0);
+  std::vector<T> SA12(n02 + 3, 0);
+  std::vector<T> R0(n0, 0);
+  std::vector<T> SA0(n0, 0);
+
   //******* Step 0: Construct sample ********
   // generate positions of mod 1 and mod 2 suffixes
   // the "+(n0-n1)" adds a dummy mod 1 suffix if n%3 == 1
   for (T i = 0, j = 0; i < n + (n0 - n1); i++) if (i % 3 != 0) R[j++] = i;
   //******* Step 1: Sort sample suffixes ********
   // lsb radix sort the mod 1 and mod 2 triples
-  RadixPass(R, SA12, text + 2, n02, K);
-  RadixPass(SA12, R , text + 1, n02, K);
-  RadixPass(R, SA12, text, n02, K);
+  RadixPass(R.data(), SA12.data(), text + 2, n02, K);
+  RadixPass(SA12.data(), R.data() , text + 1, n02, K);
+  RadixPass(R.data(), SA12.data(), text, n02, K);
 
   // find lexicographic names of triples and
   // write them to correct places in R
@@ -99,7 +100,7 @@ void CreateSuffixArray(const T* text, T n, T K, T* SA) {
   }
   // recurse if names are not yet unique
   if (name < n02) {
-    CreateSuffixArray(R, n02, name, SA12);
+    CreateSuffixArray(R.data(), n02, name, SA12.data());
     // store unique names in R using the suffix array
     for (T i = 0; i < n02; i++) R[SA12[i]] = i + 1;
   } else  // generate the suffix array of R directly
@@ -108,7 +109,7 @@ void CreateSuffixArray(const T* text, T n, T K, T* SA) {
   // stably sort the mod 0 suffixes from SA12 by their first character
   for (T i = 0, j = 0; i < n02; i++)
     if (SA12[i] < n0) R0[j++] = 3 * SA12[i];
-  RadixPass(R0, SA0, text, n0, K);
+  RadixPass(R0.data(), SA0.data(), text, n0, K);
   //******* Step 3: Merge ********
   // merge sorted SA0 suffixes and sorted SA12 suffixes
   for (T p = 0, t = n0 - n1, k = 0; k < n; k++) {
@@ -129,7 +130,6 @@ void CreateSuffixArray(const T* text, T n, T K, T* SA) {
           SA[k] = (SA12[t] < n0 ? SA12[t] * 3 + 1 : (SA12[t] - n0) * 3 + 2);
     }
   }
-  delete [] R; delete [] SA12; delete [] SA0; delete [] R0;
 }
 
 // Instantiate template for int32_t and int16_t
