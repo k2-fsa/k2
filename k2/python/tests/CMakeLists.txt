@@ -52,6 +52,7 @@ set(py_test_files
   levenshtein_alignment_test.py
   levenshtein_graph_test.py
   linear_fsa_test.py
+  linear_fsa_with_self_loops_test.py
   linear_fst_test.py
   multi_gpu_test.py
   mutual_information_test.py
