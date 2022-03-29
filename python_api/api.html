@@ -1891,7 +1891,7 @@ sequence is “special”.</p>
 <h2>levenshtein_alignment<a class="headerlink" href="#levenshtein-alignment" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.levenshtein_alignment">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_alignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">refs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyp_to_ref_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sorted_match_ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1132-L1205"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_alignment" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_alignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">refs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyp_to_ref_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sorted_match_ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1133-L1206"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_alignment" title="Permalink to this definition"></a></dt>
 <dd><p>Get the levenshtein alignment of two FsaVecs</p>
 <p>This function supports both CPU and GPU. But it is very slow on CPU.</p>
 <dl class="field-list simple">
@@ -1956,7 +1956,7 @@ sequences of hyps. You can get the levenshtein distance by calling
 <h2>levenshtein_graph<a class="headerlink" href="#levenshtein-graph" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.levenshtein_graph">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ins_del_score</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">0.501</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1087-L1129"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_graph" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ins_del_score</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">0.501</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1088-L1130"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_graph" title="Permalink to this definition"></a></dt>
 <dd><p>Construct levenshtein graphs from symbols.</p>
 <p>See <a class="reference external" href="https://github.com/k2-fsa/k2/pull/828">https://github.com/k2-fsa/k2/pull/828</a> for more details about levenshtein
 graph.</p>
@@ -2880,25 +2880,26 @@ a vector of FSAs if the input is a vector of FSAs.</p>
 <h2>trivial_graph<a class="headerlink" href="#trivial-graph" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.trivial_graph">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">trivial_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1064-L1084"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.trivial_graph" title="Permalink to this definition"></a></dt>
-<dd><p>Create a trivial graph with only two states. On state 0, there are
-<cite>max_token + 1</cite> self loops(i.e. a loop for each symbol, including blank),
-and state 1 is the final state.</p>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">trivial_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1064-L1085"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.trivial_graph" title="Permalink to this definition"></a></dt>
+<dd><p>Create a trivial graph which has only two states. On state 0, there are
+<cite>max_token</cite> self loops(i.e. a loop for each symbol from 1 to max_token), and
+state 1 is the final state.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>max_token</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The maximum token ID (inclusive). We assume that token IDs
-are contiguous (from 1 to <cite>max_token</cite>). 0 represents blank.</p></li>
+are contiguous (from 1 to <cite>max_token</cite>).</p></li>
 <li><p><strong>device</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">device</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code>]) – Optional. It can be either a string (e.g., ‘cpu’,
 ‘cuda:0’) or a torch.device.
 If it is None, then the returned FSA is on CPU.</p></li>
 </ul>
 </dd>
-</dl>
-<p>Returns:  Returns the expected trivial graph on the given device.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Returns the expected trivial graph on the given device.
+Note: The returned graph does not contain arcs with label being 0.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2908,7 +2909,7 @@ If it is None, then the returned FSA is on CPU.</p></li>
 <h2>union<a class="headerlink" href="#union" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.union">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">union</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1208-L1226"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.union" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">union</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1209-L1227"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.union" title="Permalink to this definition"></a></dt>
 <dd><p>Compute the union of a FsaVec.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
