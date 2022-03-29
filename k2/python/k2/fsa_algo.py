@@ -68,6 +68,37 @@ def linear_fsa(labels: Union[List[int], List[List[int]], k2.RaggedTensor],
     return fsa
 
 
+def linear_fsa_with_self_loops(fsas: k2.Fsa):
+    '''Create a linear FSA with epsilon self-loops by first removing epsilon
+    transitions from the input linear FSA.
+
+    Args:
+      fsas:
+        An FSA or an FsaVec. It MUST be a linear FSA or a vector of linear FSAs.
+    Returns:
+      Return an FSA or FsaVec, where each FSA contains epsilon self-loops but
+      contains no epsilon transitions for arcs that are not self-loops.
+    '''
+    if len(fsas.shape) == 2:
+        # A single FSA
+        device = fsas.device
+        shape0 = _k2.RaggedShape.regular_ragged_shape(dim0=1,
+                                                      dim1=fsas.shape[0])
+        shape = shape0.to(device).compose(fsas.arcs.shape())
+    else:
+        shape = fsas.arcs.shape()
+
+    shape = shape.remove_axis(1)  # remove the state axis
+
+    labels = k2.RaggedTensor(shape, fsas.labels.contiguous())
+    labels = labels.remove_values_leq(0)
+    ans = add_epsilon_self_loops(linear_fsa(labels))
+
+    if len(fsas.shape) == 2:
+        ans = ans[0]
+    return ans
+
+
 def linear_fst(labels: Union[List[int], List[List[int]]],
                aux_labels: Union[List[int], List[List[int]]]) -> Fsa:
     '''Construct a linear FST from labels and its corresponding
@@ -1192,16 +1223,18 @@ def levenshtein_alignment(
 
     hyps.rename_tensor_attribute_("aux_labels", "hyp_labels")
 
-    lattice = k2.intersect_device(
-        refs, hyps, b_to_a_map=hyp_to_ref_map, sorted_match_a=sorted_match_ref)
+    lattice = k2.intersect_device(refs,
+                                  hyps,
+                                  b_to_a_map=hyp_to_ref_map,
+                                  sorted_match_a=sorted_match_ref)
     lattice = k2.remove_epsilon_self_loops(lattice)
 
     alignment = k2.shortest_path(lattice, use_double_scores=True).invert_()
     alignment.rename_tensor_attribute_("labels", "ref_labels")
     alignment.rename_tensor_attribute_("aux_labels", "labels")
 
-    alignment.scores -= getattr(
-        alignment, "__ins_del_score_offset_internal_attr_")
+    alignment.scores -= getattr(alignment,
+                                "__ins_del_score_offset_internal_attr_")
 
     return alignment
 
@@ -1223,5 +1256,6 @@ def union(fsas: Fsa) -> Fsa:
     need_arc_map = True
     ragged_arc, arc_map = _k2.union(fsas.arcs, need_arc_map)
 
-    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsas, ragged_arc, arc_map)
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsas, ragged_arc,
+                                                      arc_map)
     return out_fsa
