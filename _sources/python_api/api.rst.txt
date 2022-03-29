@@ -178,6 +178,11 @@ linear_fsa
 
 .. autofunction:: linear_fsa
 
+linear_fsa_with_self_loops
+--------------------------
+
+.. autofunction:: linear_fsa_with_self_loops
+
 linear_fst
 ----------
 
