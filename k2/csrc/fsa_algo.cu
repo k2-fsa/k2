@@ -820,9 +820,8 @@ Fsa TrivialGraph(const ContextPtr &c, int32_t max_token,
     Array1<int32_t> *aux_labels) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(aux_labels);
-  int32_t num_arcs = max_token + 2;
-  Array1<int32_t> row_splits(
-      c, std::vector<int32_t>{0, max_token + 2, max_token + 2});
+  int32_t num_arcs = max_token + 1;
+  Array1<int32_t> row_splits(c, std::vector<int32_t>{0, num_arcs, num_arcs});
   Array1<int32_t> row_ids(c, num_arcs);
   Array1<Arc> values(c, num_arcs);
   *aux_labels = Array1<int32_t>(c, num_arcs);
@@ -836,10 +835,9 @@ Fsa TrivialGraph(const ContextPtr &c, int32_t max_token,
         arc.score = 0;
         arc.src_state = 0;
         arc.dest_state = 0;
-        arc.label = idx;
-        int32_t aux_label = idx, row_id = 0;
+        arc.label = idx + 1;
+        int32_t aux_label = idx + 1, row_id = 0;
         if (idx == num_arcs - 1) {
-          row_id = 0;
           arc.dest_state = 1;
           arc.label = -1;
           aux_label = -1;
