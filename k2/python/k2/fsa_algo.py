@@ -1115,10 +1115,11 @@ def trivial_graph(max_token: int,
     return fsa
 
 
-def levenshtein_graph(symbols: Union[k2.RaggedTensor, List[List[int]]],
-                      ins_del_score: float = -0.501,
-                      device: Optional[Union[torch.device, str]] = "cpu"
-                     ) -> Fsa:
+def levenshtein_graph(
+    symbols: Union[k2.RaggedTensor, List[List[int]]],
+    ins_del_score: float = -0.501,
+    device: Optional[Union[torch.device, str]] = "cpu"
+) -> Fsa:
     '''Construct levenshtein graphs from symbols.
 
     See https://github.com/k2-fsa/k2/pull/828 for more details about levenshtein
