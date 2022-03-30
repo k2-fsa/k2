@@ -742,6 +742,7 @@ Args:
 Return:
   Return a new ragged tensor with the same number of axes as ``self`` but
   only contains the specified sublists.
+
 )doc";
 
 static constexpr const char *kRaggedAnyCloneDoc = R"doc(

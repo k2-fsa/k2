@@ -45,7 +45,7 @@ message(STATUS "Enabled languages: ${languages}")
 
 project(k2 ${languages})
 
-set(K2_VERSION "1.13")
+set(K2_VERSION "1.14")
 
 # ----------------- Supported build types for K2 project -----------------
 set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
@@ -203,33 +203,30 @@ if(K2_WITH_CUDA)
   cuda_select_nvcc_arch_flags(K2_COMPUTE_ARCH_FLAGS)
   message(STATUS "K2_COMPUTE_ARCH_FLAGS: ${K2_COMPUTE_ARCH_FLAGS}")
 
-  # You can use -DK2_COMPUTE_ARCHS="37;50;70" when invoking CMake
+  # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
+  # message(WARNING "arch 62/72 are not supported for now")
+
+  # see https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+  # https://www.myzhar.com/blog/tutorials/tutorial-nvidia-gpu-cuda-compute-capability/
+  set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
+  if(CUDA_VERSION VERSION_GREATER "11.0")
+    list(APPEND K2_COMPUTE_ARCH_CANDIDATES 80 86)
+  endif()
+  message(STATUS "K2_COMPUTE_ARCH_CANDIDATES ${K2_COMPUTE_ARCH_CANDIDATES}")
+
+  set(K2_COMPUTE_ARCHS)
+
+  foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
+    if("${K2_COMPUTE_ARCH_FLAGS}" MATCHES ${COMPUTE_ARCH})
+      message(STATUS "Adding arch ${COMPUTE_ARCH}")
+      list(APPEND K2_COMPUTE_ARCHS ${COMPUTE_ARCH})
+    else()
+      message(STATUS "Skipping arch ${COMPUTE_ARCH}")
+    endif()
+  endforeach()
+
   if(NOT K2_COMPUTE_ARCHS)
-    # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
-    # message(WARNING "arch 62/72 are not supported for now")
-
-    # see https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
-    # https://www.myzhar.com/blog/tutorials/tutorial-nvidia-gpu-cuda-compute-capability/
-    set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
-    if(CUDA_VERSION VERSION_GREATER "11.0")
-      list(APPEND K2_COMPUTE_ARCH_CANDIDATES 80 86)
-    endif()
-    message(STATUS "K2_COMPUTE_ARCH_CANDIDATES ${K2_COMPUTE_ARCH_CANDIDATES}")
-
-    set(K2_COMPUTE_ARCHS)
-
-    foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
-      if("${K2_COMPUTE_ARCH_FLAGS}" MATCHES ${COMPUTE_ARCH})
-        message(STATUS "Adding arch ${COMPUTE_ARCH}")
-        list(APPEND K2_COMPUTE_ARCHS ${COMPUTE_ARCH})
-      else()
-        message(STATUS "Skipping arch ${COMPUTE_ARCH}")
-      endif()
-    endforeach()
-
-    if(NOT K2_COMPUTE_ARCHS)
-      set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
-    endif()
+    set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
   endif()
 
   message(STATUS "K2_COMPUTE_ARCHS: ${K2_COMPUTE_ARCHS}")
