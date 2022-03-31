@@ -199,9 +199,10 @@ class OnlineDenseIntersecter {
                         will have been assigned to this location.
      */
     void Decode(DenseFsaVec &b_fsas,
-                std::vector<std::unique_ptr<DecodeStateInfo>> *decode_states,
+                std::vector<std::shared_ptr<DecodeStateInfo>> *decode_states,
                 FsaVec *ofsa, Array1<int32_t> *arc_map_a);
 
+    ContextPtr &Context() { return c_;}
     ~OnlineDenseIntersecter();
 
  private:

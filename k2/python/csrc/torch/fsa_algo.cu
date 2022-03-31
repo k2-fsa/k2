@@ -29,6 +29,7 @@
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host_shim.h"
+#include "k2/csrc/intersect_dense_pruned.h"
 #include "k2/csrc/rm_epsilon.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
 #include "k2/python/csrc/torch/torch_util.h"
@@ -244,8 +245,8 @@ static void PybindIntersectDense(py::module &m) {
       "intersect_dense",
       [](FsaVec &a_fsas, DenseFsaVec &b_fsas,
          torch::optional<torch::Tensor> a_to_b_map, float output_beam,
-         int32_t max_states, int32_t max_arcs)
-          -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
+         int32_t max_states,
+         int32_t max_arcs) -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
         DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> arc_map_a;
         Array1<int32_t> arc_map_b;
@@ -703,12 +704,12 @@ static void PybindReplaceFsa(py::module &m) {
 static void PybindCtcGraph(py::module &m) {
   m.def(
       "ctc_graph",
-      [](RaggedAny &symbols, bool modified = false)
-      -> std::pair<FsaVec, torch::Tensor> {
+      [](RaggedAny &symbols,
+         bool modified = false) -> std::pair<FsaVec, torch::Tensor> {
         DeviceGuard guard(symbols.any.Context());
         Array1<int32_t> aux_labels;
-        FsaVec graph = CtcGraphs(symbols.any.Specialize<int32_t>(), modified,
-                                 &aux_labels);
+        FsaVec graph =
+            CtcGraphs(symbols.any.Specialize<int32_t>(), modified, &aux_labels);
         torch::Tensor tensor = ToTorch(aux_labels);
         return std::make_pair(graph, tensor);
       },
@@ -749,15 +750,14 @@ static void PybindLevenshteinGraph(py::module &m) {
   m.def(
       "levenshtein_graph",
       [](RaggedAny &symbols, float ins_del_score = -0.501,
-         bool need_score_offset =
-             true) -> std::tuple<FsaVec, torch::Tensor,
-                                 torch::optional<torch::Tensor>> {
+         bool need_score_offset = true)
+          -> std::tuple<FsaVec, torch::Tensor, torch::optional<torch::Tensor>> {
         DeviceGuard guard(symbols.any.Context());
         Array1<int32_t> aux_labels;
         Array1<float> score_offsets;
-        FsaVec graph = LevenshteinGraphs(symbols.any.Specialize<int32_t>(),
-                                 ins_del_score, &aux_labels,
-                                 need_score_offset ? &score_offsets : nullptr);
+        FsaVec graph = LevenshteinGraphs(
+            symbols.any.Specialize<int32_t>(), ins_del_score, &aux_labels,
+            need_score_offset ? &score_offsets : nullptr);
         torch::Tensor aux_labels_tensor = ToTorch(aux_labels);
         torch::optional<torch::Tensor> score_offsets_tensor;
         if (need_score_offset) score_offsets_tensor = ToTorch(score_offsets);
@@ -765,6 +765,39 @@ static void PybindLevenshteinGraph(py::module &m) {
       },
       py::arg("symbols"), py::arg("ins_del_score") = -0.501,
       py::arg("need_score_offset") = true);
+}
+
+static void PybindDecodeStateInfo(py::module &m) {
+  using PyClass = DecodeStateInfo;
+  py::class_<PyClass, std::shared_ptr<PyClass>> state_info(m,
+                                                           "DecodeStateInfo");
+}
+
+static void PybindOnlineDenseIntersecter(py::module &m) {
+  using PyClass = OnlineDenseIntersecter;
+  py::class_<PyClass> intersecter(m, "OnlineDenseIntersecter");
+
+  intersecter.def(py::init(
+      [](FsaVec &a_fsas, int32_t num_seqs, float search_beam, float output_beam,
+         int32_t min_states, int32_t max_states) -> std::unique_ptr<PyClass> {
+        DeviceGuard guard(a_fsas.Context());
+        return std::make_unique<PyClass>(a_fsas, num_seqs, search_beam,
+                                         output_beam, min_states, max_states);
+      }));
+
+  intersecter.def(
+      "decode",
+      [](PyClass &self, DenseFsaVec &b_fsas,
+         std::vector<std::shared_ptr<DecodeStateInfo>> &decode_states)
+          -> std::tuple<FsaVec, torch::Tensor,
+                        std::vector<std::shared_ptr<DecodeStateInfo>>> {
+        DeviceGuard guard(self.Context());
+        FsaVec ofsa;
+        Array1<int32_t> arc_map;
+        self.Decode(b_fsas, &decode_states, &ofsa, &arc_map);
+        torch::Tensor arc_map_tensor = ToTorch(arc_map);
+        return std::make_tuple(ofsa, arc_map_tensor, decode_states);
+      });
 }
 
 }  // namespace k2
@@ -776,6 +809,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindConnect(m);
   k2::PybindCtcGraph(m);
   k2::PybindCtcTopo(m);
+  k2::PybindDecodeStateInfo(m);
   k2::PybindDeterminize(m);
   k2::PybindExpandArcs(m);
   k2::PybindFixFinalLabels(m);
@@ -786,6 +820,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindInvert(m);
   k2::PybindLevenshteinGraph(m);
   k2::PybindLinearFsa(m);
+  k2::PybindOnlineDenseIntersecter(m);
   k2::PybindRemoveEpsilon(m);
   k2::PybindRemoveEpsilonSelfLoops(m);
   k2::PybindReplaceFsa(m);

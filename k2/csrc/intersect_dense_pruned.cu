@@ -1596,7 +1596,7 @@ OnlineDenseIntersecter::~OnlineDenseIntersecter(){
 }
 
 void OnlineDenseIntersecter::Decode(DenseFsaVec &b_fsas,
-    std::vector<std::unique_ptr<DecodeStateInfo>> *decode_states,
+    std::vector<std::shared_ptr<DecodeStateInfo>> *decode_states,
     FsaVec *ofsa, Array1<int32_t> *arc_map_a) {
 
   auto b_fsas_p = std::make_shared<DenseFsaVec>(b_fsas);
@@ -1626,7 +1626,7 @@ void OnlineDenseIntersecter::Decode(DenseFsaVec &b_fsas,
           Array1<ArcInfo>(c_, std::vector<ArcInfo>{ArcInfo()}));
 
       info.beam = search_beam_;
-      decode_states->at(i) = std::make_unique<DecodeStateInfo>(info);
+      decode_states->at(i) = std::make_shared<DecodeStateInfo>(info);
     }
     seq_states_ptr_vec[i] = &(decode_states->at(i)->states);
     seq_arcs_ptr_vec[i] = &(decode_states->at(i)->arcs);
@@ -1684,7 +1684,7 @@ void OnlineDenseIntersecter::Decode(DenseFsaVec &b_fsas,
     info.states = seq_states_vec[i];
     info.arcs = seq_arcs_vec[i];
     info.beam = beams_data[i];
-    decode_states->at(i) = std::make_unique<DecodeStateInfo>(info);
+    decode_states->at(i) = std::make_shared<DecodeStateInfo>(info);
   }
 }
 
