@@ -341,19 +341,14 @@ std::string RaggedAny::ToString(bool compact /*=false*/,
   std::ostringstream os;
   Dtype t = any.GetDtype();
   std::string dtype;
-  switch (t) {
-    case kInt32Dtype:
-      dtype = "torch.int32";
-      break;
-    case kFloatDtype:
-      dtype = "torch.float32";
-      break;
-    case kDoubleDtype:
-      dtype = "torch.float64";
-      break;
-    default:
-      K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
-  }
+  if (t == kInt32Dtype)
+    dtype = "torch.int32";
+  else if (t == kFloatDtype)
+    dtype = "torch.float32";
+  else if (t == kDoubleDtype)
+    dtype = "torch.float64";
+  else
+    K2_LOG(FATAL) << "Unsupported dtype: " << TraitsOf(t).Name();
 
   FOR_REAL_AND_INT32_TYPES(t, T, {
     os << "RaggedTensor([";

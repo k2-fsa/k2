@@ -52,6 +52,7 @@ set(py_test_files
   levenshtein_alignment_test.py
   levenshtein_graph_test.py
   linear_fsa_test.py
+  linear_fsa_with_self_loops_test.py
   linear_fst_test.py
   multi_gpu_test.py
   mutual_information_test.py
@@ -64,6 +65,7 @@ set(py_test_files
   random_paths_test.py
   remove_epsilon_self_loops_test.py
   remove_epsilon_test.py
+  rnnt_decode_test.py
   rnnt_loss_test.py
   shortest_path_test.py
   sparse_abs_test.py

@@ -26,7 +26,6 @@
 
 #include "k2/python/csrc/torch/arc.h"
 #include "k2/python/csrc/torch/array_ops.h"
-#include "k2/python/csrc/torch/discounted_cum_sum.h"
 #include "k2/python/csrc/torch/fsa.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
 #include "k2/python/csrc/torch/index_add.h"
@@ -35,6 +34,7 @@
 #include "k2/python/csrc/torch/nbest.h"
 #include "k2/python/csrc/torch/ragged.h"
 #include "k2/python/csrc/torch/ragged_ops.h"
+#include "k2/python/csrc/torch/rnnt_decode.h"
 #include "k2/python/csrc/torch/v2/k2.h"
 
 void PybindTorch(py::module &m) {
@@ -43,7 +43,6 @@ void PybindTorch(py::module &m) {
 
   PybindArc(m);
   PybindArrayOps(m);
-  PybindDiscountedCumSum(m);
   PybindFsa(m);
   PybindFsaAlgo(m);
   PybindIndexAdd(m);
@@ -52,6 +51,7 @@ void PybindTorch(py::module &m) {
   PybindNbest(m);
   PybindRagged(m);
   PybindRaggedOps(m);
+  PybindRnntDecode(m);
 
   k2::PybindV2(m);
 }
