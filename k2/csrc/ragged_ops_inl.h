@@ -170,7 +170,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
 }
 
 template <typename T>
-void Unstack(Ragged<T> src, int32_t axis, std::string empty_pos,
+void Unstack(Ragged<T> src, int32_t axis, bool pad_right,
              std::vector<Ragged<T>> *out,
              std::vector<Array1<int32_t>> *split_map /* = nullptr */) {
   NVTX_RANGE(K2_FUNC);
@@ -181,7 +181,7 @@ void Unstack(Ragged<T> src, int32_t axis, std::string empty_pos,
       (split_map != nullptr ? split_map : &split_map_tmp);
   std::vector<RaggedShape> shape_out;
 
-  Unstack(src.shape, axis, empty_pos, &shape_out, split_map_ptr);
+  Unstack(src.shape, axis, pad_right, &shape_out, split_map_ptr);
 
   out->resize(shape_out.size());
   // +1 here because we need to do ExclusiveSum on this Array1 later
@@ -816,70 +816,26 @@ Array2<T> PadRagged(Ragged<T> &src, const std::string &mode, T padding_value) {
   return res;
 }
 
-/* Prune a two axes ragged tensor on axis0.
- * This is a special case of PruneRagged with axis == 0 and src.NumAxes() == 2,
- * To get more details, please refer to the docs for PruneRagged in
- * ragged_ops.h.
- */
-template <typename T>
-Renumbering PruneRaggedAxis0(Ragged<T> &src, T beam, int32_t max_elems) {
-  K2_CHECK_EQ(src.NumAxes(), 2);
-  const ContextPtr &c = src.Context();
-  int32_t total_elements = src.TotSize(0);
-  Renumbering renumbering(c, total_elements);
-
-  T negative_infinity = -std::numeric_limits<T>::infinity();
-  Array1<T> sub_max(c, total_elements);
-  MaxPerSublist<T>(src, negative_infinity, &sub_max);
-
-  T max_value = MaxValue(src.values);
-
-  bool prune_with_max_elems =
-      max_elems > 0 && max_elems < total_elements;
-
-  Array1<int32_t> order_map;
-  const int32_t *order_map_data;
-  if (prune_with_max_elems) {
-    order_map = Array1<int32_t>(c, total_elements);
-    Sort<T, GreaterThan<T>>(&sub_max, &order_map);
-    order_map_data = order_map.Data();
-  }
-
-  char *keep_data = renumbering.Keep().Data();
-  const T *sub_max_data = sub_max.Data();
-
-  // prune_with_max_elems means we have sorted the source ragged tensor
-  if (prune_with_max_elems) {
-    K2_EVAL(c, total_elements, lambda_set_keep_sorted, (int32_t i) {
-        bool pruned_by_beam = sub_max_data[i] < max_value - beam;
-        bool pruned_by_max_elems = i >= max_elems;
-        keep_data[order_map_data[i]] =
-            !(pruned_by_max_elems || pruned_by_beam);
-    });
-  } else {
-    K2_EVAL(c, total_elements, lambda_set_keep, (int32_t i) {
-        keep_data[i] = sub_max_data[i] >= max_value - beam;
-    });
-  }
-  return renumbering;
-}
-
-/* Prune a two axes ragged tensor on axis1
- * This is a special case of PruneRagged with axis == 1 and src.NumAxes() == 2,
+/* Prune a three axes ragged tensor on axis1
+ * This is a special case of PruneRagged with axis == 1 and src.NumAxes() == 3,
  * To get more details, please refer to the docs for PruneRagged in
  * ragged_ops.h.
  */
 template <typename T>
 Renumbering PruneRaggedAxis1(Ragged<T> &src, T beam,
                              int32_t max_elems) {
-  K2_CHECK_EQ(src.NumAxes(), 2);
-  const ContextPtr &c = src.Context();
+  K2_CHECK_EQ(src.NumAxes(), 3);
+  ContextPtr &c = src.Context();
   int32_t total_elements = src.TotSize(1);
   Renumbering renumbering(c, total_elements);
 
   T negative_infinity = -std::numeric_limits<T>::infinity();
-  Array1<T> sub_max(c, src.TotSize(0));
+  Array1<T> sub_max(c, src.TotSize(1));
   MaxPerSublist<T>(src, negative_infinity, &sub_max);
+
+  Array1<T> best_scores(c, src.TotSize(0));
+  Ragged<T> ragged_sub_max(RemoveAxis(src.shape, 2), sub_max);
+  MaxPerSublist<T>(ragged_sub_max, negative_infinity, &best_scores);
 
   bool prune_with_max_elems =
       max_elems > 0 && max_elems < total_elements;
@@ -887,37 +843,38 @@ Renumbering PruneRaggedAxis1(Ragged<T> &src, T beam,
   Array1<int32_t> order_map;
   const int32_t *order_map_data;
   if (prune_with_max_elems) {
-    Ragged<T> sorted_src = src.Clone();
+    Ragged<T> sorted_sub_max = ragged_sub_max.Clone();
     order_map = Array1<int32_t>(c, total_elements);
-    SortSublists<T, GreaterThan<T>>(&sorted_src, &order_map);
+    SortSublists<T, GreaterThan<T>>(&sorted_sub_max, &order_map);
     order_map_data = order_map.Data();
   }
 
   char *keep_data = renumbering.Keep().Data();
   const T *sub_max_data = sub_max.Data(),
+          *best_scores_data = best_scores.Data(),
           *src_data = src.values.Data();
   const int32_t *row_ids1_data = src.RowIds(1).Data(),
                 *row_splits1_data = src.RowSplits(1).Data();
-  // prune_with_max_elems means we have sorted the source ragged tensor
+  // prune_with_max_elems means we have sorted the sub-max ragged tensor
   if (prune_with_max_elems) {
     K2_EVAL(c, total_elements, lambda_set_keep_sorted, (int32_t idx01) {
                 // idx01 is the index after sorting
         int32_t original_idx01 = order_map_data[idx01],
-                // SortSublists wouldn't chaneg idx0 & idx0x
+                // SortSublists wouldn't change idx0 and idx0x
                 idx0 = row_ids1_data[original_idx01],
                 idx0x = row_splits1_data[idx0],
                 // idx1 is the index after sorting
                 idx1 = idx01 - idx0x;
         bool pruned_by_max_elems = idx1 >= max_elems,
              pruned_by_beam =
-                 src_data[original_idx01] < sub_max_data[idx0] - beam;
+                 sub_max_data[original_idx01] < best_scores_data[idx0] - beam;
         keep_data[original_idx01] =
             !(pruned_by_max_elems || pruned_by_beam);
     });
   } else {
     K2_EVAL(c, total_elements, lambda_set_keep, (int32_t idx01) {
         int32_t idx0 = row_ids1_data[idx01];
-        keep_data[idx01] = src_data[idx01] >= sub_max_data[idx0] - beam;
+        keep_data[idx01] = sub_max_data[idx01] >= best_scores_data[idx0] - beam;
     });
   }
   return renumbering;
@@ -927,23 +884,32 @@ template <typename T>
 Renumbering PruneRagged(Ragged<T> &src, int32_t axis, T beam,
                         int32_t max_elems) {
   NVTX_RANGE(K2_FUNC);
+  ContextPtr &c = src.Context();
   if (axis == 0) {
-    auto reduced_src = src;
-    while (reduced_src.NumAxes() > 2) {
-      reduced_src = RemoveAxis(reduced_src, reduced_src.NumAxes() - 2);
+    auto new_shape = ComposeRaggedShapes(
+            TrivialShape(c, src.TotSize(0)), src.shape);
+    auto new_src = Ragged<T>(new_shape, src.values);
+    while (new_src.NumAxes() > 3) {
+      new_src = RemoveAxis(new_src, new_src.NumAxes() - 2);
     }
-    return PruneRaggedAxis0(reduced_src, beam, max_elems);
+    return PruneRaggedAxis1(new_src, beam, max_elems);
   } else if (axis == src.NumAxes() - 1) {
-    auto reduced_src = src;
-    while (reduced_src.NumAxes() > 2) {
-      reduced_src = RemoveAxis(reduced_src, 0);
+    auto new_shape = ComposeRaggedShapes(src.shape,
+         RegularRaggedShape(c, src.NumElements(), 1));
+    auto new_src = Ragged<T>(new_shape, src.values);
+    while (new_src.NumAxes() > 3) {
+      new_src = RemoveAxis(new_src, 0);
     }
-    return PruneRaggedAxis1(reduced_src, beam, max_elems);
+    return PruneRaggedAxis1(new_src, beam, max_elems);
   } else {
-    RaggedShape top, bottom;
-    DecomposeRaggedShape(src.shape, axis, &top, &bottom);
-    Ragged<T> bottom_ragged(bottom, src.values);
-    return PruneRagged(bottom_ragged, 0, beam, max_elems);
+    auto new_src = src;
+    while (--axis) {
+     new_src = RemoveAxis(new_src, 0);
+    }
+    while (new_src.NumAxes() > 3) {
+      new_src = RemoveAxis(new_src, new_src.NumAxes() - 2);
+    }
+    return PruneRaggedAxis1(new_src, beam, max_elems);
   }
 }
 

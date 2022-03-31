@@ -746,6 +746,34 @@ static void PybindCtcTopo(py::module &m) {
       py::arg("modified") = false);
 }
 
+static void PybindTrivialGraph(py::module &m) {
+  m.def(
+      "trivial_graph",
+      [](int32_t max_token, torch::optional<torch::Device> device = {})
+          -> std::pair<Fsa, torch::Tensor> {
+        ContextPtr context = GetContext(device.value_or(torch::Device("cpu")));
+        DeviceGuard guard(context);
+        Array1<int32_t> aux_labels;
+        Fsa fsa = TrivialGraph(context, max_token, &aux_labels);
+        torch::Tensor tensor = ToTorch(aux_labels);
+        return std::make_pair(fsa, tensor);
+      },
+      py::arg("max_token"), py::arg("device") = py::none());
+
+  m.def(
+      "trivial_graph",
+      [](int32_t max_token, torch::optional<std::string> device = {})
+          -> std::pair<Fsa, torch::Tensor> {
+        ContextPtr context = GetContext(torch::Device(device.value_or("cpu")));
+        DeviceGuard guard(context);
+        Array1<int32_t> aux_labels;
+        Fsa fsa = TrivialGraph(context, max_token, &aux_labels);
+        torch::Tensor tensor = ToTorch(aux_labels);
+        return std::make_pair(fsa, tensor);
+      },
+      py::arg("max_token"), py::arg("device") = py::none());
+}
+
 static void PybindLevenshteinGraph(py::module &m) {
   m.def(
       "levenshtein_graph",
@@ -826,5 +854,6 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindReplaceFsa(m);
   k2::PybindShortestPath(m);
   k2::PybindTopSort(m);
+  k2::PybindTrivialGraph(m);
   k2::PybindUnion(m);
 }

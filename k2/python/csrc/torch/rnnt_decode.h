@@ -1,8 +1,8 @@
 /**
- * @brief python wrapper for DiscountedCumSum
+ * @brief python wrappers for rnnt_decode.h
  *
  * @copyright
- * Copyright      2021  Xiaomi Corp.  (authors: Daniel Povey)
+ * Copyright      2022  Xiaomi Corp.       (author: Wei Kang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -20,11 +20,11 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_DISCOUNTED_CUM_SUM_H_
-#define K2_PYTHON_CSRC_TORCH_DISCOUNTED_CUM_SUM_H_
+#ifndef K2_PYTHON_CSRC_TORCH_RNNT_DECODE_H_
+#define K2_PYTHON_CSRC_TORCH_RNNT_DECODE_H_
 
 #include "k2/python/csrc/torch.h"
 
-void PybindDiscountedCumSum(py::module &m);
+void PybindRnntDecode(py::module &m);
 
-#endif  // K2_PYTHON_CSRC_TORCH_DISCOUNTED_CUM_SUM_H_
+#endif  // K2_PYTHON_CSRC_TORCH_RNNT_DECODE_H_

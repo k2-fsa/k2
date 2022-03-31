@@ -68,6 +68,37 @@ def linear_fsa(labels: Union[List[int], List[List[int]], k2.RaggedTensor],
     return fsa
 
 
+def linear_fsa_with_self_loops(fsas: k2.Fsa):
+    '''Create a linear FSA with epsilon self-loops by first removing epsilon
+    transitions from the input linear FSA.
+
+    Args:
+      fsas:
+        An FSA or an FsaVec. It MUST be a linear FSA or a vector of linear FSAs.
+    Returns:
+      Return an FSA or FsaVec, where each FSA contains epsilon self-loops but
+      contains no epsilon transitions for arcs that are not self-loops.
+    '''
+    if len(fsas.shape) == 2:
+        # A single FSA
+        device = fsas.device
+        shape0 = _k2.RaggedShape.regular_ragged_shape(dim0=1,
+                                                      dim1=fsas.shape[0])
+        shape = shape0.to(device).compose(fsas.arcs.shape())
+    else:
+        shape = fsas.arcs.shape()
+
+    shape = shape.remove_axis(1)  # remove the state axis
+
+    labels = k2.RaggedTensor(shape, fsas.labels.contiguous())
+    labels = labels.remove_values_leq(0)
+    ans = add_epsilon_self_loops(linear_fsa(labels))
+
+    if len(fsas.shape) == 2:
+        ans = ans[0]
+    return ans
+
+
 def linear_fst(labels: Union[List[int], List[List[int]]],
                aux_labels: Union[List[int], List[List[int]]]) -> Fsa:
     '''Construct a linear FST from labels and its corresponding
@@ -1061,6 +1092,30 @@ def ctc_topo(max_token: int,
     return fsa
 
 
+def trivial_graph(max_token: int,
+                  device: Optional[Union[torch.device, str]] = None) -> k2.Fsa:
+    '''Create a trivial graph which has only two states. On state 0, there are
+    `max_token` self loops(i.e. a loop for each symbol from 1 to max_token), and
+    state 1 is the final state.
+
+    Args:
+      max_token:
+        The maximum token ID (inclusive). We assume that token IDs
+        are contiguous (from 1 to `max_token`).
+      device:
+        Optional. It can be either a string (e.g., 'cpu',
+        'cuda:0') or a torch.device.
+        If it is None, then the returned FSA is on CPU.
+
+    Returns:
+      Returns the expected trivial graph on the given device.
+      Note: The returned graph does not contain arcs with label being 0.
+    '''
+    ragged_arc, aux_labels = _k2.trivial_graph(max_token, device)
+    fsa = Fsa(ragged_arc, aux_labels=aux_labels)
+    return fsa
+
+
 def levenshtein_graph(
     symbols: Union[k2.RaggedTensor, List[List[int]]],
     ins_del_score: float = -0.501,
@@ -1168,16 +1223,18 @@ def levenshtein_alignment(
 
     hyps.rename_tensor_attribute_("aux_labels", "hyp_labels")
 
-    lattice = k2.intersect_device(
-        refs, hyps, b_to_a_map=hyp_to_ref_map, sorted_match_a=sorted_match_ref)
+    lattice = k2.intersect_device(refs,
+                                  hyps,
+                                  b_to_a_map=hyp_to_ref_map,
+                                  sorted_match_a=sorted_match_ref)
     lattice = k2.remove_epsilon_self_loops(lattice)
 
     alignment = k2.shortest_path(lattice, use_double_scores=True).invert_()
     alignment.rename_tensor_attribute_("labels", "ref_labels")
     alignment.rename_tensor_attribute_("aux_labels", "labels")
 
-    alignment.scores -= getattr(
-        alignment, "__ins_del_score_offset_internal_attr_")
+    alignment.scores -= getattr(alignment,
+                                "__ins_del_score_offset_internal_attr_")
 
     return alignment
 
@@ -1199,5 +1256,6 @@ def union(fsas: Fsa) -> Fsa:
     need_arc_map = True
     ragged_arc, arc_map = _k2.union(fsas.arcs, need_arc_map)
 
-    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsas, ragged_arc, arc_map)
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsas, ragged_arc,
+                                                      arc_map)
     return out_fsa

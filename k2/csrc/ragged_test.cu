@@ -235,8 +235,8 @@ TEST(RaggedShapeOpsTest, UnstackMoreAxes) {
     std::vector<RaggedShape *> out_ptr;
 
     for (int32_t axis = 0; axis < 4; axis++) {
-      for (auto &empty_pos : {"left", "right"}) {
-        Unstack(shape, axis, empty_pos, &out, &out_map);
+      for (bool pad_right : {true, false}) {
+        Unstack(shape, axis, pad_right, &out, &out_map);
 
         out_ptr.clear();
         for (size_t i = 0; i < out.size(); ++i) out_ptr.emplace_back(&(out[i]));
@@ -260,17 +260,13 @@ TEST(RaggedShapeOpsTest, UnstackRandom) {
     std::vector<RaggedShape *> out_ptr;
     for (int32_t axis = 0; axis < 4; axis++) {
       auto random_shape = RemoveEmptyLists(random_shape0, axis);
-      for (auto &empty_pos : {"left", "right"}) {
-        Unstack(random_shape, axis, empty_pos, &out, nullptr);
+      for (bool pad_right : {true, false}) {
+        Unstack(random_shape, axis, pad_right, &out, nullptr);
 
         out_ptr.clear();
         for (size_t i = 0; i < out.size(); ++i) {
           out_ptr.emplace_back(&(out[i]));
         }
-        // There is a bug in `Stack` for stacking a shape itself,
-        // not urgent, so skipping here.
-        // TODO: Remove this line when the bug fixed.
-        if (out.size() == 1) continue;
         auto dest = Stack(axis, out.size(), out_ptr.data());
         dest = RemoveEmptyLists(dest, axis);
 
@@ -3049,7 +3045,7 @@ static void TestPruneRagged() {
 
     T beam = 2.0;
     auto renumbering = PruneRagged(src, 0, beam, 2);
-    // best_score=6.3, best scores for sublists are [6.1, 6.3, 5.0]
+    // best_score=6.3, max scores for sublists are [6.1, 6.3, 5.0]
     // no sublist is pruned by beam, 5.0 is pruned by max-elems
     // keep : [ [ [ 1.1 2.1 5.2 ] [ 1.0 5.1 ] [ 6.1 ] ]
     //          [ [ 1.2 ] [ 2.2 6.3 ] [ ] ] ]
@@ -3058,29 +3054,29 @@ static void TestPruneRagged() {
 
     beam = 0.1;
     renumbering = PruneRagged(src, 0, beam, 3);
-    // best_score=6.3, best scores for sublists are [6.1, 6.3, 5.0]
+    // best_score=6.3, max scores for sublists are [6.1, 6.3, 5.0]
     // 6.1 & 5.0 are pruned by beam
     // keep : [ [ [ 1.2 ] [ 2.2 6.3 ] [ ] ] ]
     keep_ref = Array1<char>(c, std::vector<char>{0, 1, 0});
     K2_CHECK(Equal(renumbering.Keep(), keep_ref));
 
     beam = 2.0;
-    renumbering = PruneRagged(src, 1, beam, 5);
-    // best_score=6.3, best scores for sublists are
-    // [5.2, 5.1, 6.1, 1.2, 6.3, -inf, 4.4, 5.0]
-    // 1.2 & -inf are pruned by beam, 4.4 is pruned by max-elems.
-    // keep : [ [ [ 1.1 2.1 5.2 ] [ 1.0 5.1 ] [ 6.1 ] ] [ [ 2.2 6.3 ] ]
-    //          [ [ 2.3 5.0 ] ] ]
-    keep_ref = Array1<char>(c, std::vector<char>{1, 1, 1, 0, 1, 0, 0, 1});
+    renumbering = PruneRagged(src, 1, beam, 2);
+    // best_score=[6.1, 6.3, 5.0], max scores for sublists are
+    // [[5.2, 5.1, 6.1], [1.2, 6.3, -inf], [4.4, 5.0]]
+    // 1.2 & -inf are pruned by beam, 5.1 is pruned by max-elems.
+    // keep : [ [ [ 1.1 2.1 5.2 ] [ 6.1 ] ] [ [ 2.2 6.3 ] ]
+    //          [ [1.3 4.4] [ 2.3 5.0 ] ] ]
+    keep_ref = Array1<char>(c, std::vector<char>{1, 0, 1, 0, 1, 0, 1, 1});
     K2_CHECK(Equal(renumbering.Keep(), keep_ref));
 
-    beam = 1.0;
-    renumbering = PruneRagged(src, 1, beam, 5);
-    // best_score=6.3, best scores for sublists are
-    // [5.2, 5.1, 6.1, 1.2, 6.3, -inf, 4.4, 5.0]
-    // all sublists are pruned by beam, except 6.1 & 6.3
-    // keep : [ [ [ 6.1 ] ] [ [ 2.2 6.3 ] ] ]
-    keep_ref = Array1<char>(c, std::vector<char>{0, 0, 1, 0, 1, 0, 0, 0});
+    beam = 0.5;
+    renumbering = PruneRagged(src, 1, beam, 2);
+    // best_score=[6.1, 6.3, 5.0], max scores for sublists are
+    // [[5.2, 5.1, 6.1], [1.2, 6.3, -inf], [4.4, 5.0]]
+    // all sublists are pruned by beam, except 6.1 & 6.3 & 5.0
+    // keep : [ [ [ 6.1 ] ] [ [ 2.2 6.3 ] ] [ [ 2.3 5.0 ] ] ]
+    keep_ref = Array1<char>(c, std::vector<char>{0, 0, 1, 0, 1, 0, 0, 1});
     K2_CHECK(Equal(renumbering.Keep(), keep_ref));
 
     beam = 4.0;
@@ -3128,15 +3124,19 @@ static void TestPruneRaggedAndSubsetRagged() {
     K2_CHECK(Equal(dest, dest_ref));
     K2_CHECK(Equal(new2old, new2old_ref));
 
-    beam = 2.0;
-    renumbering = PruneRagged(src, 1, beam, 5);
+    beam = 1.0;
+    renumbering = PruneRagged(src, 1, beam, 2);
     dest = SubsetRagged(src, renumbering, 1, &new2old);
+    // [5.0, 6.3, 5.2]
+    // [ [4.2 5.0] [1.2 6.3 6.1 5.1] [4.4 5.2]]
     dest_ref =
         Ragged<T>(c,
-                  "[ [ [ 5.0 3.1 ] ] [ [ 2.2 6.3 ] [ 2.4 6.1 ] [ 5.1 ] ] "
-                  "  [ [ 1.4 0.8 2.3 5.2 3.6 ] ] ]");
+                  "[ [ [ 1.1 4.2 2.1 1.8] [ 5.0 3.1 ] ]"
+                  "  [ [ 2.2 6.3 ] [ 2.4 6.1 ] ] "
+                  "  [ [ 1.3 4.4 ] [ 1.4 0.8 2.3 5.2 3.6 ] ] ]");
     new2old_ref = Array1<int32_t>(
-        c, std::vector<int32_t>{4, 5, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18});
+        c, std::vector<int32_t>{
+        0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18});
     K2_CHECK(Equal(dest, dest_ref));
     K2_CHECK(Equal(new2old, new2old_ref));
 

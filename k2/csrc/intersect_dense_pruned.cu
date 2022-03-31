@@ -1646,8 +1646,8 @@ void OnlineDenseIntersecter::Decode(DenseFsaVec &b_fsas,
   std::vector<Ragged<StateInfo>> frame_states_vec;
   std::vector<Ragged<ArcInfo>> frame_arcs_vec;
   // Put empty list left, we want the latest frames at the tail positions
-  Unstack(stack_states, 1, "left", &frame_states_vec);
-  Unstack(stack_arcs, 1, "left", &frame_arcs_vec);
+  Unstack(stack_states, 1, false /*pad_right*/, &frame_states_vec);
+  Unstack(stack_arcs, 1, false /*pad_right*/, &frame_arcs_vec);
 
   std::vector<std::unique_ptr<FrameInfo>> frames(frame_states_vec.size());
 

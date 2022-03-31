@@ -92,7 +92,9 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
     if (merge_map)
       *(reinterpret_cast<Array1<int32_t>*>(merge_map)) =
           Range(src[0]->Context(), src[0]->TotSize(layer + 1), 0);
-    return *src[0];
+    std::vector<RaggedShapeLayer> layers;
+    layers.emplace_back(src[0]->Layers()[layer]);
+    return RaggedShape(layers);
   }
 
   std::vector<int32_t*> row_splits_ptrs_vec(num_srcs);

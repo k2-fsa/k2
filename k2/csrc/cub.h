@@ -20,7 +20,6 @@
 #ifndef K2_CSRC_CUB_H_
 #define K2_CSRC_CUB_H_
 
-
 #ifdef K2_WITH_CUDA
 #include "cub/cub.cuh"  // NOLINT
 #endif
