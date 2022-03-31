@@ -543,7 +543,7 @@ class TestRnntLoss(unittest.TestCase):
                     )
 
                     print(
-                        f"{dtype} unpruned rnnt loss with modified {modified} : {k2_loss}"
+                        f"{dtype} unpruned rnnt loss with modified {modified} : {k2_loss}" # noqa
                     )
 
                     # pruning
