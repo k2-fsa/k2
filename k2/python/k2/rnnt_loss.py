@@ -255,9 +255,13 @@ def rnnt_loss_simple(
         boundary=boundary,
         modified=modified,
     )
-    scores_and_grads = mutual_information_recursion(
-        px=px, py=py, boundary=boundary, return_grad=return_grad
-    )
+    with torch.autocast(device_type=px.device.type, enabled=False):
+        scores_and_grads = mutual_information_recursion(
+            px=px.float(),
+            py=py.float(),
+            boundary=boundary,
+            return_grad=return_grad,
+        )
     negated_loss = scores_and_grads[0] if return_grad else scores_and_grads
     if reduction == "none":
         loss = -negated_loss
@@ -412,7 +416,10 @@ def rnnt_loss(
         boundary=boundary,
         modified=modified,
     )
-    negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
+    with torch.autocast(device_type=px.device.type, enabled=False):
+        negated_loss = mutual_information_recursion(
+            px=px.float(), py=py.float(), boundary=boundary
+        )
     if reduction == "none":
         return -negated_loss
     elif reduction == "mean":
@@ -838,7 +845,10 @@ def rnnt_loss_pruned(
         boundary=boundary,
         modified=modified,
     )
-    negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
+    with torch.autocast(device_type=px.device.type, enabled=False):
+        negated_loss = mutual_information_recursion(
+            px=px.float(), py=py.float(), boundary=boundary
+        )
     if reduction == "none":
         return -negated_loss
     elif reduction == "mean":
@@ -1145,9 +1155,13 @@ def rnnt_loss_smoothed(
         boundary=boundary,
         modified=modified,
     )
-    scores_and_grads = mutual_information_recursion(
-        px=px, py=py, boundary=boundary, return_grad=return_grad
-    )
+    with torch.autocast(device_type=px.device.type, enabled=False):
+        scores_and_grads = mutual_information_recursion(
+            px=px.float(),
+            py=py.float(),
+            boundary=boundary,
+            return_grad=return_grad,
+        )
     negated_loss = scores_and_grads[0] if return_grad else scores_and_grads
     if reduction == "none":
         loss = -negated_loss
