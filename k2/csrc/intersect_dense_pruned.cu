@@ -1592,7 +1592,17 @@ OnlineDenseIntersecter::OnlineDenseIntersecter(FsaVec &a_fsas,
 }
 
 OnlineDenseIntersecter::~OnlineDenseIntersecter(){
+  // WARNING(Wei Kang): Python garbage collector runs in a separate thread,
+  // so we have to reset its default device. Otherwise, it will throw later
+  // if the main thread is using a different device.
+  // Actually, it is the `CheckEmpty` function invoked in Hash's destructor
+  // would throw, but I think it is properly to put the DeviceGuard here, as the
+  // hanging occurs when destructing this object.
+  // Note: The hanging only occurs on the versions built with debug mode, as the
+  // release mode won't invoked `CheckEmpty` when destructing Hash objects.
+#ifndef NDEBUG
   DeviceGuard guard(c_);
+#endif
   delete impl_;
 }
 
