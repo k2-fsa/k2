@@ -182,11 +182,11 @@ class OnlineDenseIntersecter {
                              the log-likes of each phone.
          @param [in,out] decode_states  History decoding states for current
                            batch of sequences, its size equals to
-                           `b_fsas.Dim0()`, ant each element in `decode_states`
-                           belong to the fsa in `b_fsas` at the same position.
-                           For a new sequence(i.e. has no history states), just
-                           put a empty DecodeStateInfo unique_ptr to the
-                           corresponding position.
+                           `b_fsas.Dim0()`, and each element in `decode_states`
+                           belong to the fsa in `b_fsas` at the corresponding
+                           position. For a new sequence(i.e. has no history
+                           states), just put an empty DecodeStateInfo unique_ptr
+                           to the corresponding position.
                            `decode_states` will be updated in this function,
                            so you can use them in the following chunks.
 
@@ -208,7 +208,7 @@ class OnlineDenseIntersecter {
  private:
     ContextPtr c_;
     float search_beam_;
-    MultiGraphDenseIntersectPruned *impl_;
+    MultiGraphDenseIntersectPruned* impl_;
 };
 };  // namespace k2
 

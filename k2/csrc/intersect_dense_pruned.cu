@@ -304,7 +304,7 @@ class MultiGraphDenseIntersectPruned {
     // is set up (it has no arcs but we need the shape).
     frames_.pop_back();
 
-    int32_t his_t = T_ - 1;
+    int32_t history_t = T_ - 1;
 
     T_ = T - 1;
     // partial_final_frame_ is the last frame to generate partial result,
@@ -320,7 +320,7 @@ class MultiGraphDenseIntersectPruned {
         c_, num_seqs_, lambda_set_final_and_final_t, (int32_t i)->void {
           int32_t b_chunk_size =
               b_fsas_row_splits1[i + 1] - b_fsas_row_splits1[i];
-          final_t_data[i] = his_t + b_chunk_size - 1;
+          final_t_data[i] = history_t + b_chunk_size - 1;
         });
     return &frames_;
   }
@@ -1592,6 +1592,7 @@ OnlineDenseIntersecter::OnlineDenseIntersecter(FsaVec &a_fsas,
 }
 
 OnlineDenseIntersecter::~OnlineDenseIntersecter(){
+  DeviceGuard guard(c_);
   delete impl_;
 }
 
@@ -1609,7 +1610,6 @@ void OnlineDenseIntersecter::Decode(DenseFsaVec &b_fsas,
 
   Array1<float> beams(GetCpuContext(), num_seqs);
   float *beams_data = beams.Data();
-
   for (int32_t i = 0; i < num_seqs; ++i) {
     // initialization
     if (!decode_states->at(i)) {

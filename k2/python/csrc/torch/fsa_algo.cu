@@ -18,6 +18,7 @@
  */
 
 #include <algorithm>
+#include <memory>
 #include <numeric>
 #include <string>
 #include <tuple>
@@ -805,27 +806,34 @@ static void PybindOnlineDenseIntersecter(py::module &m) {
   using PyClass = OnlineDenseIntersecter;
   py::class_<PyClass> intersecter(m, "OnlineDenseIntersecter");
 
-  intersecter.def(py::init(
-      [](FsaVec &a_fsas, int32_t num_seqs, float search_beam, float output_beam,
-         int32_t min_states, int32_t max_states) -> std::unique_ptr<PyClass> {
-        DeviceGuard guard(a_fsas.Context());
-        return std::make_unique<PyClass>(a_fsas, num_seqs, search_beam,
-                                         output_beam, min_states, max_states);
-      }));
+  intersecter.def(
+      py::init([](FsaVec &decoding_graph, int32_t num_streams,
+                  float search_beam, float output_beam,
+                  int32_t min_active_states,
+                  int32_t max_active_states) -> std::unique_ptr<PyClass> {
+        DeviceGuard guard(decoding_graph.Context());
+        return std::make_unique<PyClass>(decoding_graph, num_streams,
+                                         search_beam, output_beam,
+                                         min_active_states, max_active_states);
+      }),
+      py::arg("decoding_graph"), py::arg("num_streams"), py::arg("search_beam"),
+      py::arg("output_beam"), py::arg("min_active_states"),
+      py::arg("max_active_states"));
 
   intersecter.def(
       "decode",
-      [](PyClass &self, DenseFsaVec &b_fsas,
+      [](PyClass &self, DenseFsaVec &dense_fsa_vec,
          std::vector<std::shared_ptr<DecodeStateInfo>> &decode_states)
           -> std::tuple<FsaVec, torch::Tensor,
                         std::vector<std::shared_ptr<DecodeStateInfo>>> {
         DeviceGuard guard(self.Context());
         FsaVec ofsa;
         Array1<int32_t> arc_map;
-        self.Decode(b_fsas, &decode_states, &ofsa, &arc_map);
+        self.Decode(dense_fsa_vec, &decode_states, &ofsa, &arc_map);
         torch::Tensor arc_map_tensor = ToTorch(arc_map);
         return std::make_tuple(ofsa, arc_map_tensor, decode_states);
-      });
+      },
+      py::arg("dense_fsa_vec"), py::arg("decode_states"));
 }
 
 }  // namespace k2
