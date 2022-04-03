@@ -175,11 +175,17 @@ Ragged<double> RnntDecodingStreams::PruneTwice(Ragged<double> &incoming_scores,
   // problems created by empty lists, although it's perhaps not an optimal way
   // to prune.
 
-  // incoming_scores has a shape of [stream][context][state][arc]
+  // incoming_scores has a shape of [stream][context][state][arc], we are
+  // pruning with max-states per stream, so that contexts axis should be
+  // removed. reduced_incoming_scores has a shape of [stream][state][arc].
+  auto reduced_incoming_scores = incoming_scores.RemoveAxis(1);
   // states_prune is a renumbering on the states axis.
-  Renumbering states_prune = PruneRagged(incoming_scores, 2 /*axis*/,
+  Renumbering states_prune = PruneRagged(reduced_incoming_scores, 1 /*axis*/,
                                          config_.beam, config_.max_states);
 
+  // The new2old indexes in states_prune are global indexes along axis state,
+  // so we can extract the surviving elements from `incoming_scores` along
+  // state axis.
   Array1<int32_t> arcs_new2old1;
   Ragged<double> temp_scores =
       SubsetRagged(incoming_scores, states_prune, 2 /*axis*/, &arcs_new2old1);
