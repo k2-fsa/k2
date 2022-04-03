@@ -34,6 +34,16 @@ FsaClass CtcTopo(int32_t max_token, bool modified /*= false*/,
   return dest;
 }
 
+FsaClass TrivialGraph(int32_t max_token,
+                      torch::Device device /*=torch::kCPU*/) {
+  Array1<int32_t> aux_labels;
+  auto ctx = ContextFromDevice(device);
+  Fsa fsa = TrivialGraph(ctx, max_token, &aux_labels);
+  FsaClass dest(fsa);
+  dest.SetTensorAttr("aux_labels", Array1ToTorch(aux_labels));
+  return dest;
+}
+
 FsaClass IntersectDensePruned(FsaClass &graph, DenseFsaVec &dense,
                               float search_beam, float output_beam,
                               int32_t min_activate_states,

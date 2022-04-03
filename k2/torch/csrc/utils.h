@@ -117,6 +117,20 @@ Array2<T> Array2FromTorch(torch::Tensor tensor) {
   return ans;
 }
 
+template <typename T>
+torch::Tensor Array2ToTorch(Array2<T> &array) {
+  auto device = DeviceFromContext(array.Context());
+  auto scalar_type = caffe2::TypeMeta::Make<T>();
+  auto options = torch::device(device).dtype(scalar_type);
+
+  // NOTE: we keep a copy of `Region` inside the lambda
+  // so that `torch::Tensor` always accesses valid memory.
+  auto tensor = torch::from_blob(
+      array.Data(), {array.Dim0(), array.Dim1()}, {array.ElemStride0(), 1},
+      [saved_region = array.GetRegion()](void *) {}, options);
+  return tensor;
+}
+
 /* Convert an Array1<T> to torch::Tensor.
 
    @tparam T          A primitive type, e.g., int32_t, which has

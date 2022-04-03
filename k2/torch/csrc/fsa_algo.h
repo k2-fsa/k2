@@ -44,6 +44,8 @@ namespace k2 {
 FsaClass CtcTopo(int32_t max_token, bool modified = false,
                  torch::Device device = torch::kCPU);
 
+FsaClass TrivialGraph(int32_t max_token, torch::Device device = torch::kCPU);
+
 /* Intersect a DenseFsaVec constructed from nnet_output with an FsaClass, i.e.,
    decoding graphs.
 

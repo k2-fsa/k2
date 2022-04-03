@@ -104,4 +104,35 @@ void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
   }
 }
 
+void DecodeOneChunk(rnnt_decoding::RnntDecodingStreams &streams,
+                    torch::jit::script::Module module,
+                    torch::Tensor encoder_outs) {
+  K2_CHECK_EQ(encoder_outs.dim(), 3);
+  K2_CHECK_EQ(streams.NumStreams(), encoder_outs.size(0));
+  int32_t T = encoder_outs.size(1);
+  for (int32_t t = 0; t < T; ++t) {
+    RaggedShape shape;
+    Array2<int32_t> contexts;
+    streams.GetContexts(&shape, &contexts);
+    auto contexts_tensor = k2::Array2ToTorch<int32_t>(contexts);
+    contexts_tensor = contexts_tensor.to(torch::kInt64);
+    auto decoder_outs =
+        module.run_method("decoder_forward", contexts_tensor).toTensor();
+    auto current_encoder_outs = encoder_outs.index(
+        {torch::indexing::Slice(), torch::indexing::Slice(t, t + 1),
+         torch::indexing::Slice()});
+    auto row_ids = Array1ToTorch<int32>(shape.RowIds(1));
+    current_encoder_outs =
+        torch::index_select(current_encoder_outs, 0, row_ids);
+    auto logits =
+        module.run_method("joiner_forward", current_encoder_outs.unsqueeze(2),
+                          decoder_outs.unsqueeze(1));
+    logits = logits.squeeze(1).squeeze(1);
+    auto logprobs = logits.log_softmax(-1);
+    auto logprobs_array = k2::Array2FromTorch(logprobs);
+    streams.Advance(logprobs_array);
+  }
+  streams.TerminateAndFlushToStreams();
+}
+
 }  // namespace k2

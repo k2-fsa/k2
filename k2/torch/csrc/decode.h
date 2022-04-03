@@ -22,6 +22,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/ragged.h"
+#include "k2/csrc/rnnt_decode.h"
 #include "k2/torch/csrc/fsa_class.h"
 #include "torch/script.h"
 
@@ -77,6 +78,10 @@ Ragged<int32_t> GetTexts(FsaClass &lattice);
  */
 void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
                            FsaClass *lattice);
+
+void DecodeOneChunk(rnnt_decoding::RnntDecodingStreams &streams,
+                    torch::jit::script::Module module,
+                    torch::Tensor encoder_outs);
 
 }  // namespace k2
 
