@@ -46,7 +46,7 @@ static constexpr const char *kPythonVersion = "@PYTHON_VERSION_MAJOR@.@PYTHON_VE
 static constexpr const char *kBuildType = "@CMAKE_BUILD_TYPE@";
 
 // The operating system that is used to build k2, e.g., Ubuntu 16.04 LTS
-static constexpr const char *kOS = "@K2_OS@";
+static constexpr const char *kOS = R"os(@K2_OS@)os";
 
 // e.g., 3.18.0
 static constexpr const char *kCMakeVersion = "@CMAKE_VERSION@";
@@ -55,10 +55,10 @@ static constexpr const char *kCMakeVersion = "@CMAKE_VERSION@";
 static constexpr const char *kGCCVersion = "@CMAKE_CXX_COMPILER_VERSION@";
 
 // CUDA flags used to compile k2
-static constexpr const char *kCMakeCudaFlags = "@CMAKE_CUDA_FLAGS@";
+static constexpr const char *kCMakeCudaFlags = R"cuda_flags(@CMAKE_CUDA_FLAGS@)cuda_flags";
 
 // CXX flags used to compile k2
-static constexpr const char *kCMakeCxxFlags = "@CMAKE_CXX_FLAGS@";
+static constexpr const char *kCMakeCxxFlags = R"cxx_flags(@CMAKE_CXX_FLAGS@)cxx_flags";
 
 // Which PyTorch version k2 is using, e.g., 1.6.0+cu101
 static constexpr const char *kTorchVersion = "@TORCH_VERSION@";
