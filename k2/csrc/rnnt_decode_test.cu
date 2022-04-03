@@ -28,12 +28,12 @@ namespace rnnt_decoding {
 TEST(RnntDecodeStream, CreateRnntDecodeStream) {
   for (const auto &c : {GetCpuContext(), GetCudaContext()}) {
     Array1<int32_t> aux_labels;
-    auto graph = std::make_shared<Fsa>(TrivialGraph(c, 5, &aux_labels));
+    auto graph = TrivialGraph(c, 5, &aux_labels);
     auto stream = CreateStream(graph);
-    K2_CHECK(Equal(*graph, *(stream->graph)));
+    K2_CHECK(Equal(graph, stream->graph));
     K2_CHECK(Equal(stream->states, Ragged<int64_t>(c, "[[0]]")));
     K2_CHECK(Equal(stream->scores, Ragged<double>(c, "[[0]]")));
-    K2_CHECK_EQ(stream->num_graph_states, graph->Dim0());
+    K2_CHECK_EQ(stream->num_graph_states, graph.Dim0());
   }
 }
 
@@ -46,12 +46,10 @@ TEST(RnntDecodingStreams, Basic) {
                            2 /*max_states*/, 3 /*max_contexts*/);
 
     Array1<int32_t> aux_labels;
-    auto trivial_graph = std::make_shared<Fsa>(TrivialGraph(c, 5, &aux_labels));
-    auto ctc_topo = std::make_shared<Fsa>(CtcTopo(c, 5, false, &aux_labels));
-    auto ctc_topo_modified =
-        std::make_shared<Fsa>(CtcTopo(c, 5, true, &aux_labels));
-    std::vector<std::shared_ptr<Fsa>> graphs(
-        {trivial_graph, ctc_topo, ctc_topo_modified});
+    auto trivial_graph = TrivialGraph(c, vocab_size - 1, &aux_labels);
+    auto ctc_topo = CtcTopo(c, vocab_size - 1, false, &aux_labels);
+    auto ctc_topo_modified = CtcTopo(c, vocab_size - 1, true, &aux_labels);
+    std::vector<Fsa> graphs({trivial_graph, ctc_topo, ctc_topo_modified});
 
     int32_t num_streams = 3;
     std::vector<std::shared_ptr<RnntDecodingStream>> streams_vec(num_streams);

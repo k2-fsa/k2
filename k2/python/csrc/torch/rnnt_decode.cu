@@ -91,8 +91,8 @@ static void PybindRnntDecodingStream(py::module &m) {
   stream.def("__str__", [](const PyClass &self) -> std::string {
     std::ostringstream os;
     os << "RnntDecodingStream : {\n"
-       << "  num graph states : " << self.graph->Dim0() << "\n"
-       << "  num graph arcs : " << self.graph->NumElements() << "\n"
+       << "  num graph states : " << self.graph.Dim0() << "\n"
+       << "  num graph arcs : " << self.graph.NumElements() << "\n"
        << "  num contexts : " << self.states.Dim0() << "\n"
        << "  num states : " << self.states.NumElements() << "\n"
        << "  num prev frames : " << self.prev_frames.size() << "\n"
@@ -101,9 +101,9 @@ static void PybindRnntDecodingStream(py::module &m) {
   });
 
   m.def("create_rnnt_decoding_stream",
-        [](Fsa &graph) -> std::shared_ptr<PyClass> {
+        [](const Fsa &graph) -> std::shared_ptr<PyClass> {
           DeviceGuard guard(graph.Context());
-          return rnnt_decoding::CreateStream(std::make_shared<Fsa>(graph));
+          return rnnt_decoding::CreateStream(graph);
         });
 }
 
@@ -116,7 +116,7 @@ static void PybindRnntDecodingStreams(py::module &m) {
          const rnnt_decoding::RnntDecodingConfig &config)
           -> std::unique_ptr<PyClass> {
         K2_CHECK_GE(srcs.size(), 1);
-        DeviceGuard guard(srcs[0]->graph->Context());
+        DeviceGuard guard(srcs[0]->graph.Context());
         return std::make_unique<PyClass>(srcs, config);
       }));
 

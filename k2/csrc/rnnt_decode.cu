@@ -31,17 +31,10 @@ namespace k2 {
 namespace rnnt_decoding {
 
 std::shared_ptr<RnntDecodingStream> CreateStream(
-    const std::shared_ptr<Fsa> &graph) {
-  K2_CHECK_EQ(graph->shape.NumAxes(), 2);
-  ContextPtr &c = graph->shape.Context();
-  RnntDecodingStream stream;
-  stream.graph = graph;
-  stream.num_graph_states = graph->shape.Dim0();
-  // initialize to start state
-  stream.states = Ragged<int64_t>(RegularRaggedShape(c, 1, 1),
-                                  Array1<int64_t>(c, std::vector<int64_t>{0}));
-  stream.scores = Ragged<double>(stream.states.shape,
-                                 Array1<double>(c, std::vector<double>{0.0}));
+    const Fsa &graph) {
+  K2_CHECK_EQ(graph.shape.NumAxes(), 2);
+  ContextPtr &c = graph.shape.Context();
+  RnntDecodingStream stream(graph);
   return std::make_shared<RnntDecodingStream>(stream);
 }
 
@@ -50,7 +43,7 @@ RnntDecodingStreams::RnntDecodingStreams(
     const RnntDecodingConfig &config)
     : attached_(true), num_streams_(srcs.size()), srcs_(srcs), config_(config) {
   K2_CHECK_GE(num_streams_, 1);
-  c_ = srcs_[0]->graph->shape.Context();
+  c_ = srcs_[0]->graph.shape.Context();
 
   Array1<int32_t> num_graph_states(GetCpuContext(), num_streams_);
 
@@ -61,11 +54,11 @@ RnntDecodingStreams::RnntDecodingStreams(
   std::vector<Fsa> graphs(num_streams_);
 
   for (int32_t i = 0; i < num_streams_; ++i) {
-    K2_CHECK(c_->IsCompatible(*(srcs_[i]->graph->shape.Context())));
+    K2_CHECK(c_->IsCompatible(*(srcs_[i]->graph.shape.Context())));
     num_graph_states_data[i] = srcs_[i]->num_graph_states;
     states_ptr[i] = &(srcs_[i]->states);
     scores_ptr[i] = &(srcs_[i]->scores);
-    graphs[i] = *(srcs_[i]->graph);
+    graphs[i] = srcs_[i]->graph;
   }
 
   num_graph_states_ = num_graph_states.To(c_);

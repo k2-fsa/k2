@@ -26,6 +26,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/array_of_ragged.h"
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/macros.h"
 
@@ -108,10 +109,21 @@ struct ArcInfo {
 };
 
 struct RnntDecodingStream {
-  // `graph` is a pointer to the FSA (decoding graph) that we are decoding this
-  // stream with.  Different streams might have different graphs.  This must
-  // be an Fsa, not FsaVec (i.e. 2 axes).
-  std::shared_ptr<Fsa> graph;
+  // construct a RnntDecodingStream from the decoding graph
+  RnntDecodingStream(const Fsa &fsa) : graph(fsa) {
+    num_graph_states = graph.shape.Dim0();
+    ContextPtr &c = graph.Context();
+    // initialize to start state
+    states = Ragged<int64_t>(RegularRaggedShape(c, 1, 1),
+                             Array1<int64_t>(c, std::vector<int64_t>{0}));
+    scores = Ragged<double>(states.shape,
+                            Array1<double>(c, std::vector<double>{0.0}));
+  }
+
+  // `graph` is a reference to the FSA (decoding graph) that we are decoding
+  // this stream with.  Different streams might have different graphs.
+  // This must be an Fsa, not FsaVec (i.e. 2 axes).
+  const Fsa &graph;
 
   // The states number of the graph, equals to graph->shape.Dim0().
   int32_t num_graph_states;
@@ -382,8 +394,7 @@ class RnntDecodingStreams {
             `RnntDecodingStreams` to do decoding together with other
             sequences in parallel.
  */
-std::shared_ptr<RnntDecodingStream> CreateStream(
-    const std::shared_ptr<Fsa> &graph);
+std::shared_ptr<RnntDecodingStream> CreateStream(const Fsa &graph);
 
 }  // namespace rnnt_decoding
 }  // namespace k2
