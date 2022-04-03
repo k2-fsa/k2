@@ -380,10 +380,8 @@ void PybindRaggedAny(py::module &m) {
 
         torch::Device device(device_type, self.any.Context()->GetDeviceId());
 
-        PyObject *ptr = THPDevice_New(device);
-
-        // takes ownership
-        return py::reinterpret_steal<py::object>(ptr);
+        auto torch_device = py::module_::import("torch").attr("device");
+        return torch_device(device.str());
       },
       kRaggedAnyDeviceDoc);
 
