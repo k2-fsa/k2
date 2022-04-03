@@ -611,8 +611,8 @@ def do_rnnt_pruning(
     assert am.shape[1] == ranges.shape[1]
     (B, T, s_range) = ranges.shape
     (B, S1, decoder_dim) = lm.shape
-    decoder_dim = am.shape[-1]
-    assert am.shape == (B, T, decoder_dim)
+    encoder_dim = am.shape[-1]
+    assert am.shape == (B, T, encoder_dim)
     S = S1 - 1
 
     # (B, T, s_range, encoder_dim)
