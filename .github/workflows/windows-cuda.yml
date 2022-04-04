@@ -88,7 +88,6 @@ jobs:
         uses: microsoft/setup-msbuild@v1.0.2
 
       - name: Download CUDNN for CUDA 10.2
-        uses: microsoft/setup-msbuild@v1.0.2
         shell: powershell
         run: |
           git clone https://huggingface.co/csukuangfj/cudnn-for-windows
