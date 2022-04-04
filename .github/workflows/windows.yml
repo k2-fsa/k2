@@ -21,7 +21,6 @@ on:
   push:
     branches:
       - master
-      - fix-build-on-windows
   pull_request:
     types: [labeled]
 
@@ -117,7 +116,7 @@ jobs:
       - name: Build k2
         run: |
           cd build_release
-          cmake --build . --target _k2 --config Release
+          cmake --build . --target _k2 --config Release -- -m
 
       - name: Display generated files
         shell: bash
@@ -140,6 +139,7 @@ jobs:
           path: dist/*.whl
 
       - name: Run C++ tests
+        shell: bash
         run: |
           cd build_release
           cmake --build . --target ALL_BUILD --config Release

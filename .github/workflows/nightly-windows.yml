@@ -17,9 +17,6 @@
 name: nightly-windows
 
 on:
-  push:
-    branches:
-      - fix-build-on-windows
   schedule:
     # minute (0-59)
     # hour (0-23)
@@ -121,7 +118,7 @@ jobs:
       - name: Build k2
         run: |
           cd build_release
-          cmake --build . --target _k2 --config Release
+          cmake --build . --target _k2 --config Release -- -m
 
       - name: Display generated files
         shell: bash
