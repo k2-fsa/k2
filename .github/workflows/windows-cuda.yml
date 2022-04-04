@@ -96,7 +96,7 @@ jobs:
           path: |
             !~/cache/exclude
             "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/lib/"
-          key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix-torch }}
+          key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.torch }}
 
       - name: Download CUDNN for CUDA 10.2
         if: steps.cache-cuda.outputs.cache-hit != 'true'
