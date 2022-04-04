@@ -125,9 +125,15 @@ jobs:
       - name: Move cuDNN
         shell: bash
         run: |
-          cd cudnn-for-windows
-          mv ./t/cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/"
-          ls -lh "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2"
+          cd cudnn-for-windows/t/cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive
+          ls -lh include/
+          ls -lh bin/
+          ls -lh lib/
+
+          mv ./bin/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/bin/"
+          mv ./lib/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/lib/"
+          mv ./include/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/include/"
+          ls -lh "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/include/"
 
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
