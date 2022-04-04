@@ -113,7 +113,7 @@ jobs:
           echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
           echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
           nvcc --version
-          ls ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}
+          ls "${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
 
       - name: Unzip cuDNN
         shell: powershell
@@ -121,8 +121,8 @@ jobs:
           cd cudnn-for-windows
           mkdir t
           Expand-Archive -LiteralPath .\cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive.zip -DestinationPath .\t
-          mv .\t\cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive\* ${{steps.cuda-toolkit.outputs.CUDA_PATH}}\
-          ls ${{steps.cuda-toolkit.outputs.CUDA_PATH}}\include
+          mv .\t\cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive\* "${{steps.cuda-toolkit.outputs.CUDA_PATH}}"\
+          ls "${{steps.cuda-toolkit.outputs.CUDA_PATH}}\include"
 
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
