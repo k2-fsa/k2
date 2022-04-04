@@ -118,9 +118,8 @@ void PybindRaggedAny(py::module &m) {
   any.def(
       "__getitem__",
       [](RaggedAny &self, const py::slice &slice) -> RaggedAny {
-        py::ssize_t start = 0, stop = 0, step = 0, slicelength = 0;
-        if (!slice.compute(static_cast<py::ssize_t>(self.any.Dim0()), &start,
-                           &stop, &step, &slicelength))
+        py::size_t start = 0, stop = 0, step = 0, slicelength = 0;
+        if (!slice.compute(self.any.Dim0(), &start, &stop, &step, &slicelength))
           throw py::error_already_set();
         int32_t istart = static_cast<int32_t>(start);
         int32_t istop = static_cast<int32_t>(stop);
