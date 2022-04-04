@@ -87,7 +87,17 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.0.2
 
+      - name: Cache multiple paths
+        uses: actions/cache@v3
+        id: cache-cuda
+        with:
+          path: |
+            !~/cache/exclude
+            "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/lib/"
+          key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix-torch }}
+
       - name: Download CUDNN for CUDA 10.2
+        if: steps.cache-cuda.outputs.cache-hit != 'true'
         shell: powershell
         run: |
           git clone https://huggingface.co/csukuangfj/cudnn-for-windows
@@ -98,11 +108,14 @@ jobs:
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
+          cache: 'pip'
           python-version: ${{ matrix.python-version }}
+          cache-dependency-path: '**/requirements.txt'
 
       # See https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
       # for available CUDA versions
       - uses: Jimver/cuda-toolkit@v0.2.5
+        if: steps.cache-cuda.outputs.cache-hit != 'true'
         id: cuda-toolkit
         with:
           cuda: '10.2.89'
@@ -116,6 +129,7 @@ jobs:
           ls "${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
 
       - name: Unzip cuDNN
+        if: steps.cache-cuda.outputs.cache-hit != 'true'
         shell: powershell
         run: |
           cd cudnn-for-windows
@@ -123,6 +137,7 @@ jobs:
           Expand-Archive -LiteralPath .\cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive.zip -DestinationPath .\t
 
       - name: Move cuDNN
+        if: steps.cache-cuda.outputs.cache-hit != 'true'
         shell: bash
         run: |
           cd cudnn-for-windows/t/cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive
