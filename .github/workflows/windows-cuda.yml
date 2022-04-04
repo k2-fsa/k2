@@ -165,44 +165,44 @@ jobs:
           cmake --version
           cmake --help
 
-      # - name: Configure CMake
-      #   shell: bash
-      #   run: |
-      #     mkdir build_release
-      #     cd build_release
-      #     cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=ON ..
-      #     ls -lh
-      #
-      # - name: Build k2
-      #   run: |
-      #     cd build_release
-      #     cmake --build . --target _k2 --config Release
+      - name: Configure CMake
+        shell: bash
+        run: |
+          mkdir build_release
+          cd build_release
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=ON ..
+          ls -lh
 
-      # - name: Display generated files
-      #   shell: bash
-      #   run: |
-      #     cd build_release
-      #     ls -lh lib/*/*
+      - name: Build k2
+        run: |
+          cd build_release
+          cmake --build . --target _k2 --config Release
 
-      # - name: Build wheel
-      #   shell: bash
-      #   run: |
-      #     export K2_CMAKE_ARGS="-DK2_WITH_CUDA=ON -DCMAKE_BUILD_TYPE=Release"
-      #     python3 setup.py bdist_wheel
-      #     ls -lh dist/
-      #     pip install ./dist/*.whl
+      - name: Display generated files
+        shell: bash
+        run: |
+          cd build_release
+          ls -lh lib/*/*
 
-      # - name: Upload Wheel
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cuda-10.2
-      #     path: dist/*.whl
+      - name: Build wheel
+        shell: bash
+        run: |
+          export K2_CMAKE_ARGS="-DK2_WITH_CUDA=ON -DCMAKE_BUILD_TYPE=Release"
+          python3 setup.py bdist_wheel
+          ls -lh dist/
+          pip install ./dist/*.whl
 
-      # - name: Build C++ tests
-      #   shell: bash
-      #   run: |
-      #     cd build_release
-      #     cmake --build . --target ALL_BUILD --config Release
-      #     ls -lh bin/*/*
+      - name: Upload Wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cuda-10.2
+          path: dist/*.whl
+
+      - name: Build C++ tests
+        shell: bash
+        run: |
+          cd build_release
+          cmake --build . --target ALL_BUILD --config Release
+          ls -lh bin/*/*
           # disable python tests for k2host
           # ctest -C Release --output-on-failure -E host
