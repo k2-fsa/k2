@@ -21,6 +21,7 @@ on:
   push:
     branches:
       - master
+      - fix-build-on-windows
   pull_request:
     types: [labeled]
 
@@ -36,9 +37,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2019]
-        # Python 3.9 is for PyTorch 1.7.1, 1.8.x, 1.9.0
-        python-version: [3.6, 3.7, 3.8, 3.9]
-        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0"]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+        torch: ["1.4.0", "1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0", "1.9.1", "1.10.0", "1.10.1", "1.10.2", "1.11.0"]
         exclude:
           - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
             torch: "1.5.0"
@@ -48,6 +48,34 @@ jobs:
             torch: "1.6.0"
           - python-version: 3.9
             torch: "1.7.0"
+          - python-version: "3.10" # exclude Python 3.10 for [1.4.0, 1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
+            torch: "1.4.0"
+          - python-version: "3.10"
+            torch: "1.5.0"
+          - python-version: "3.10"
+            torch: "1.5.1"
+          - python-version: "3.10"
+            torch: "1.6.0"
+          - python-version: "3.10"
+            torch: "1.7.0"
+          - python-version: "3.10"
+            torch: "1.7.1"
+          - python-version: "3.10"
+            torch: "1.8.0"
+          - python-version: "3.10"
+            torch: "1.8.1"
+          - python-version: "3.10"
+            torch: "1.9.0"
+          - python-version: "3.10"
+            torch: "1.9.1"
+          - python-version: "3.10"
+            torch: "1.10.0"
+          - python-version: "3.10"
+            torch: "1.10.1"
+          - python-version: "3.10"
+            torch: "1.10.2"
+          - python-version: "3.6" # exclude Python 3.6 for [1.11.0]
+            torch: "1.11.0"
 
     steps:
       - uses: actions/checkout@v2
@@ -68,8 +96,8 @@ jobs:
 
       - name: Install PyTorch ${{ matrix.torch }}
         run: |
-          pip3 install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
-          pip3 install -qq wheel twine dataclasses numpy typing_extensions
+          pip3 install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html numpy
+          pip3 install -qq wheel twine dataclasses typing_extensions
 
           python3 -m torch.utils.collect_env
 
@@ -95,7 +123,6 @@ jobs:
         shell: bash
         run: |
           cd build_release
-          ls -lh bin/*/*
           ls -lh lib/*/*
 
       - name: Build wheel
@@ -116,5 +143,6 @@ jobs:
         run: |
           cd build_release
           cmake --build . --target ALL_BUILD --config Release
+          ls -lh bin/*/*
           # disable python tests for k2host
           ctest -C Release --output-on-failure -E host

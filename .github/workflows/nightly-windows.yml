@@ -127,7 +127,6 @@ jobs:
         shell: bash
         run: |
           cd build_release
-          ls -lh bin/*/*
           ls -lh lib/*/*
 
       - name: Build wheel
