@@ -23,14 +23,8 @@
 #ifndef K2_PYTHON_CSRC_K2_H_
 #define K2_PYTHON_CSRC_K2_H_
 
-#ifndef _MSC_VER
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-#else
-// Otherwise, it will use pybind11 header from PyTorch, which causes CI errors
-#include "pybind11-src/include/pybind11/pybind11.h"
-#include "pybind11-src/include/pybind11/stl.h"
-#endif
 
 namespace py = pybind11;
 

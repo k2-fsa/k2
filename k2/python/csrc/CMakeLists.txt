@@ -28,15 +28,12 @@ if(WIN32)
   set_property(TARGET pybind11::windows_extras PROPERTY INTERFACE_COMPILE_OPTIONS "")
 endif()
 
+
+# Without this line, it may use pybind11 headers provided by PyTorch
+include_directories(BEFORE ${pybind11_SOURCE_DIR}/include)
 pybind11_add_module(_k2 ${k2_srcs})
 target_link_libraries(_k2 PRIVATE context)
 target_link_libraries(_k2 PRIVATE fsa)
 target_include_directories(_k2 PRIVATE ${CMAKE_SOURCE_DIR})
 target_include_directories(_k2 PRIVATE ${CMAKE_BINARY_DIR})
 set_target_properties(_k2 PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-
-if(WIN32)
-  get_filename_component(DEPS_DIR ${pybind11_SOURCE_DIR} DIRECTORY)
-  message(STATUS "DPES_DIR: ${DEPS_DIR}")
-  target_include_directories(_k2 PRIVATE ${DEPS_DIR})
-endif()
