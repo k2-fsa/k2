@@ -123,7 +123,7 @@ jobs:
           Expand-Archive -LiteralPath .\cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive.zip -DestinationPath .\t
 
       - name: Move cuDNN
-        shell: shell
+        shell: bash
         run: |
           cd cudnn-for-windows
           mv ./t/cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/"
