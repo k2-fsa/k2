@@ -481,7 +481,7 @@ static void PybindRemoveEpsilonSelfLoops(py::module &m) {
       py::arg("src"), py::arg("need_arc_map") = true);
 }
 
-static void PybindExpandArcs(py::module &m) {
+/*static*/ void PybindExpandArcs(py::module &m) {
   // See doc-string below.
   m.def(
       "expand_arcs",

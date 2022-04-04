@@ -26,11 +26,20 @@ target_link_libraries(fsa PUBLIC k2_log)
 target_link_libraries(fsa PUBLIC k2_nvtx)
 target_include_directories(fsa PUBLIC ${CUDA_TOOLKIT_INCLUDE})
 if(K2_ENABLE_NVTX)
-  target_link_libraries(fsa
-    PUBLIC
-      -L${CUDA_TOOLKIT_ROOT_DIR}/lib64  # for /usr/local/cuda
-      -L${CUDA_TOOLKIT_ROOT_DIR}/lib  # for conda
-    nvToolsExt)
+  if(NOT WIN32)
+    target_link_libraries(fsa
+      PUBLIC
+        -L${CUDA_TOOLKIT_ROOT_DIR}/lib64  # for /usr/local/cuda
+        -L${CUDA_TOOLKIT_ROOT_DIR}/lib  # for conda
+      nvToolsExt)
+  else()
+    target_link_directories(fsa PUBLIC
+      ${CUDA_TOOLKIT_ROOT_DIR}/lib64  # for /usr/local/cuda
+      ${CUDA_TOOLKIT_ROOT_DIR}/lib  # for conda
+      "C:/Program Files/NVIDIA Corporation/NvToolsExt/lib/x64/"
+    )
+    target_link_libraries(fsa PUBLIC NvToolsExt64_1)
+  endif()
 endif()
 
 #---------------------------- Test K2 host sources ----------------------------
