@@ -87,6 +87,15 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.0.2
 
+      - name: Download CUDNN for CUDA 10.2
+        uses: microsoft/setup-msbuild@v1.0.2
+        shell: powershell
+        run: |
+          git clone https://huggingface.co/csukuangfj/cudnn-for-windows
+          cd cudnn-for-windows
+          git lfs pull --include="cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive.zip"
+          ls -lh
+
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
