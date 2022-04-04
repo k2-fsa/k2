@@ -154,6 +154,7 @@ jobs:
           path: dist/*.whl
 
       - name: Build C++ tests
+        shell: bash
         run: |
           cd build_release
           cmake --build . --target ALL_BUILD --config Release
