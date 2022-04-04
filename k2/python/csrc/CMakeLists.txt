@@ -29,8 +29,6 @@ if(WIN32)
 endif()
 
 
-# Without this line, it may use pybind11 headers provided by PyTorch
-include_directories(BEFORE ${pybind11_SOURCE_DIR}/include)
 pybind11_add_module(_k2 ${k2_srcs})
 target_link_libraries(_k2 PRIVATE context)
 target_link_libraries(_k2 PRIVATE fsa)

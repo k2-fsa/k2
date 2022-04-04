@@ -168,7 +168,7 @@ void PybindRaggedShape(py::module &m) {
 
         torch::Device device(device_type, self.Context()->GetDeviceId());
 
-        auto torch_device = py::module_::import("torch").attr("device");
+        auto torch_device = py::module::import("torch").attr("device");
         return torch_device(device.str());
       },
       kRaggedShapeDeviceDoc);
