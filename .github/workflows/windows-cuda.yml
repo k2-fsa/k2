@@ -108,12 +108,12 @@ jobs:
           cuda: '10.2.89'
 
       - name: Display CUDA version
-        shell: bash
+        shell: powershell
         run: |
           echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
-          echo "Cuda install location: ${{steps.cuda-toolkit.outputs.CUDA_PATH}}"
+          echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
           nvcc --version
-          ls -lh ${{steps.cuda-toolkit.outputs.CUDA_PATH}}
+          ls ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}
 
       - name: Unzip cuDNN
         shell: powershell
