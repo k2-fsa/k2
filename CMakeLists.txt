@@ -219,6 +219,8 @@ if(K2_WITH_CUDA)
         # can be used to allow this
         string(APPEND CMAKE_CUDA_FLAGS " --expt-relaxed-constexpr ")
       endif()
+
+      string(APPEND CMAKE_CUDA_FLAGS " -Wno-deprecated-gpu-targets ")
   endif()
   message(STATUS "K2_COMPUTE_ARCH_CANDIDATES ${K2_COMPUTE_ARCH_CANDIDATES}")
 
