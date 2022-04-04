@@ -93,10 +93,10 @@ jobs:
         with:
           path: |
             !~/cache/exclude
-            "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/lib/"
-          key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.torch }}
+            "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/lib/"
+          key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.torch }}-cuda-11.1.1
 
-      - name: Download CUDNN for CUDA 10.2
+      - name: Download CUDNN for CUDA 11.1
         if: steps.cache-cuda.outputs.cache-hit != 'true'
         shell: powershell
         run: |
@@ -118,7 +118,7 @@ jobs:
         if: steps.cache-cuda.outputs.cache-hit != 'true'
         id: cuda-toolkit
         with:
-          cuda: '10.2.89'
+          cuda: '11.1.1'
 
       - name: Display CUDA version
         shell: powershell
@@ -145,17 +145,17 @@ jobs:
           ls -lh bin/
           ls -lh lib/
 
-          mv ./bin/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/bin/"
-          mv ./lib/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/lib/"
-          mv ./include/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/include/"
-          ls -lh "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2/include/"
+          mv ./bin/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/"
+          mv ./lib/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/lib/"
+          mv ./include/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/include/"
+          ls -lh "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/include/"
 
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
 
       - name: Install PyTorch ${{ matrix.torch }}
         run: |
-          pip3 install -qq torch==${{ matrix.torch }}+cu102 -f https://download.pytorch.org/whl/torch_stable.html numpy
+          pip3 install -qq torch==${{ matrix.torch }}+cu111 -f https://download.pytorch.org/whl/torch_stable.html numpy
           pip3 install -qq wheel twine dataclasses typing_extensions
 
           python3 -m torch.utils.collect_env
@@ -165,44 +165,44 @@ jobs:
           cmake --version
           cmake --help
 
-      - name: Configure CMake
-        shell: bash
-        run: |
-          mkdir build_release
-          cd build_release
-          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=ON ..
-          ls -lh
+      # - name: Configure CMake
+      #   shell: bash
+      #   run: |
+      #     mkdir build_release
+      #     cd build_release
+      #     cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=ON ..
+      #     ls -lh
+      #
+      # - name: Build k2
+      #   run: |
+      #     cd build_release
+      #     cmake --build . --target _k2 --config Release
 
-      - name: Build k2
-        run: |
-          cd build_release
-          cmake --build . --target _k2 --config Release
+      # - name: Display generated files
+      #   shell: bash
+      #   run: |
+      #     cd build_release
+      #     ls -lh lib/*/*
 
-      - name: Display generated files
-        shell: bash
-        run: |
-          cd build_release
-          ls -lh lib/*/*
+      # - name: Build wheel
+      #   shell: bash
+      #   run: |
+      #     export K2_CMAKE_ARGS="-DK2_WITH_CUDA=ON -DCMAKE_BUILD_TYPE=Release"
+      #     python3 setup.py bdist_wheel
+      #     ls -lh dist/
+      #     pip install ./dist/*.whl
 
-      - name: Build wheel
-        shell: bash
-        run: |
-          export K2_CMAKE_ARGS="-DK2_WITH_CUDA=ON -DCMAKE_BUILD_TYPE=Release"
-          python3 setup.py bdist_wheel
-          ls -lh dist/
-          pip install ./dist/*.whl
+      # - name: Upload Wheel
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cuda-10.2
+      #     path: dist/*.whl
 
-      - name: Upload Wheel
-        uses: actions/upload-artifact@v2
-        with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cuda-10.2
-          path: dist/*.whl
-
-      - name: Build C++ tests
-        shell: bash
-        run: |
-          cd build_release
-          cmake --build . --target ALL_BUILD --config Release
-          ls -lh bin/*/*
+      # - name: Build C++ tests
+      #   shell: bash
+      #   run: |
+      #     cd build_release
+      #     cmake --build . --target ALL_BUILD --config Release
+      #     ls -lh bin/*/*
           # disable python tests for k2host
           # ctest -C Release --output-on-failure -E host
