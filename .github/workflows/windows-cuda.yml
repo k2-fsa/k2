@@ -93,7 +93,7 @@ jobs:
           git clone https://huggingface.co/csukuangfj/cudnn-for-windows
           cd cudnn-for-windows
           git lfs pull --include="cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive.zip"
-          ls -lh
+          ls
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
