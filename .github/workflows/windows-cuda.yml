@@ -121,7 +121,7 @@ jobs:
           cuda: '11.1.1'
 
       - name: Display CUDA version
-        shell: bash
+        shell: powershell
         run: |
           # echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
           # echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
