@@ -129,8 +129,14 @@ jobs:
       - name: Display NVCC version
         shell: bash
         run: |
-          "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/nvcc" --version
-          nvcc --version
+          ls -l "C:/Program Files/"
+          ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit"
+          ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/"
+          ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1"
+          ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/"
+          #ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/nvcc" --version
+          #ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/nvcc" --version
+          #nvcc --version
 
       - name: Unzip cuDNN
         if: steps.cache-cuda.outputs.cache-hit != 'true'
