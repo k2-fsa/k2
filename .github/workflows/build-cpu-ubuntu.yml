@@ -16,7 +16,7 @@
 
 # refer to https://github.com/actions/starter-workflows/pull/47/files
 
-name: build-cpu
+name: build-cpu-ubuntu
 
 on:
   push:
@@ -46,10 +46,10 @@ jobs:
           python scripts/github_actions/generate_build_matrix.py
           MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
           echo "::set-output name=matrix::${MATRIX}"
-  build-cpu:
+  build-cpu-ubuntu:
     if: github.event.label.name == 'ready' || github.event_name == 'push'
     needs: generate_build_matrix
-    runs-on: [ubuntu-18.04, macos-10.15]
+    runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
       matrix:
@@ -69,16 +69,10 @@ jobs:
         run: date
 
       - name: Install GCC 7
-        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get install -y gcc-7 g++-7
           echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
           echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
-
-      - name: Display clang version
-        if: startsWith(matrix.os, 'macos')
-        run: |
-          clang --version
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -89,22 +83,11 @@ jobs:
         run: python -c "import sys; print(sys.version)"
 
       - name: Install PyTorch ${{ matrix.torch }}
-        if: startsWith(matrix.os, 'ubuntu')
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip
           python3 -m pip install -qq wheel twine typing_extensions
           python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
-
-          python3 -c "import torch; print('torch version:', torch.__version__)"
-
-      - name: Install PyTorch ${{ matrix.torch }}
-        if: startsWith(matrix.os, 'macos')
-        shell: bash
-        run: |
-          python3 -m pip install -qq --upgrade pip
-          python3 -m pip install -qq wheel twine
-          python3 -m pip install -qq torch==${{ matrix.torch }}
 
           python3 -c "import torch; print('torch version:', torch.__version__)"
 
@@ -129,5 +112,5 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-18.04-cpu
           path: dist/*.whl
