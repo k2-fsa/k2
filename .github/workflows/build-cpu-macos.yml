@@ -32,7 +32,7 @@ env:
 jobs:
   generate_build_matrix:
     # see https://github.com/pytorch/pytorch/pull/50633
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
