@@ -30,7 +30,7 @@ env:
 
 jobs:
   generate_build_matrix:
-    runs-on: windows-latest
+    runs-on: macos-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
