@@ -87,13 +87,15 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.0.2
 
-      - name: Cache multiple paths
-        uses: actions/cache@v3
-        id: cache-cuda
-        with:
-          path: |
-            "D:/a/k2/k2"
-          key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.torch }}-cuda-11.1
+
+      - name: Download CUDNN for CUDA 11.1
+        shell: powershell
+        run: |
+          git clone https://huggingface.co/csukuangfj/cudnn-for-windows
+          cd cudnn-for-windows
+          git lfs pull --include="cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive.zip"
+          ls
+
 
       # See https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
       # for available CUDA versions
