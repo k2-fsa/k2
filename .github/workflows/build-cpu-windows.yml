@@ -95,12 +95,18 @@ jobs:
           cat CMakeCache.txt
 
       - name: Build k2
+        shell: bash
         run: |
           cd build_release
           cmake --build . --target _k2 --config Release -- -m
           cmake --build . --target ALL_BUILD --config Release
           ls -lh lib/*/*
           ls -lh bin/*/*
+
+      - name: Run tests
+        shell: bash
+        run: |
+          cd build_release
           # disable python tests for k2host
           ctest -C Release --output-on-failure -E host
 

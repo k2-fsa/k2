@@ -102,6 +102,11 @@ jobs:
           cat CMakeCache.txt
 
           make VERBOSE=1 -j2
+
+      - name: Run tests
+        shell: bash
+        run: |
+          cd build
           ctest --output-on-failure
 
       - name: Build wheel
