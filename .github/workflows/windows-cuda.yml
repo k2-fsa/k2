@@ -95,87 +95,81 @@ jobs:
             "D:/a/k2/k2"
           key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.torch }}-cuda-11.1
 
-      # - name: Download CUDNN for CUDA 11.1
-      #   shell: powershell
-      #   run: |
-      #     git clone https://huggingface.co/csukuangfj/cudnn-for-windows
-      #     cd cudnn-for-windows
-      #     git lfs pull --include="cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive.zip"
-      #     ls
+      See https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
+      for available CUDA versions
+      - uses: Jimver/cuda-toolkit@v0.2.5
+        id: cuda-toolkit
+        with:
+          cuda: '11.1.1'
 
-      # See https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
-      # for available CUDA versions
-      # - uses: Jimver/cuda-toolkit@v0.2.5
-      #   id: cuda-toolkit
-      #   with:
-      #     cuda: '11.1.1'
-      #
-      # - name: Display NVCC version
-      #   shell: bash
-      #   run: |
-      #     echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
-      #     echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
-      #     nvcc --version
-      #     ls -lh "${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
-      #
-      #
-      # - name: Unzip cuDNN
-      #   shell: powershell
-      #   run: |
-      #     cd cudnn-for-windows
-      #     mkdir t
-      #     Expand-Archive -LiteralPath .\cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive.zip -DestinationPath .\t
-      #
-      # - name: Move cuDNN
-      #   shell: bash
-      #   run: |
-      #     cd cudnn-for-windows/t/cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive
-      #     ls -lh include/
-      #     ls -lh bin/
-      #     ls -lh lib/
-      #
-      #     mv ./bin/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/"
-      #     mv ./lib/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/lib/"
-      #     mv ./include/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/include/"
-      #     ls -lh "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/include/"
-      #
-      # - name: Setup Python ${{ matrix.python-version }}
-      #   uses: actions/setup-python@v2
-      #   with:
-      #     cache: 'pip'
-      #     python-version: ${{ matrix.python-version }}
-      #     cache-dependency-path: '**/requirements.txt'
-      #
-      #
-      # - name: Display Python version
-      #   run: python -c "import sys; print(sys.version)"
-      #
-      # - name: Install PyTorch ${{ matrix.torch }}
-      #   run: |
-      #     pip3 install -qq torch==${{ matrix.torch }}+cu111 -f https://download.pytorch.org/whl/torch_stable.html numpy
-      #     pip3 install -qq wheel twine dataclasses typing_extensions
-      #
-      #     python3 -m torch.utils.collect_env
-      #
-      # - name: Display CMake version
-      #   run: |
-      #     cmake --version
-      #     cmake --help
-      #
-      # - name: Configure CMake
-      #   shell: bash
-      #   run: |
-      #     mkdir build_release
-      #     cd build_release
-      #     cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=ON ..
-      #     ls -lh
-      #
-      # - name: Build k2
-      #   shell: bash
-      #   run: |
-      #     cd build_release
-      #     cmake --build . --target _k2 --config Release
-      #
+      - name: Display NVCC version
+        shell: bash
+        run: |
+          echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
+          echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
+          nvcc --version
+          ls -lh "${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
+
+
+      - name: Unzip cuDNN
+        shell: powershell
+        run: |
+          cd cudnn-for-windows
+          mkdir t
+          Expand-Archive -LiteralPath .\cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive.zip -DestinationPath .\t
+
+      - name: Move cuDNN
+        shell: bash
+        run: |
+          cd cudnn-for-windows/t/cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive
+          ls -lh include/
+          ls -lh bin/
+          ls -lh lib/
+
+          mv ./bin/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/"
+          mv ./lib/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/lib/"
+          mv ./include/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/include/"
+          ls -lh "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/include/"
+          cd ../../../
+          rm -rfv cudnn-for-windows
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          cache: 'pip'
+          python-version: ${{ matrix.python-version }}
+          cache-dependency-path: '**/requirements.txt'
+
+
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Install PyTorch ${{ matrix.torch }}
+        run: |
+          pip3 install -qq torch==${{ matrix.torch }}+cu111 -f https://download.pytorch.org/whl/torch_stable.html numpy
+          pip3 install -qq wheel twine dataclasses typing_extensions
+
+          # python3 -m torch.utils.collect_env
+
+      - name: Display CMake version
+        run: |
+          cmake --version
+          cmake --help
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          mkdir build_release
+          cd build_release
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=ON ..
+          ls -lh
+
+      - name: Build k2
+        shell: bash
+        run: |
+          cd build_release
+          cmake --build . --target _k2 --config Release
+
       # - name: Display generated files
       #   shell: bash
       #   run: |
