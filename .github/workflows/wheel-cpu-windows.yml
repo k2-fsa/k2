@@ -1,22 +1,24 @@
 # Copyright (c)  2021  Xiaomi Corporation (authors: Fangjun Kuang)
 
-name: Publish to PyPI macOS
+name: Publish to PyPI - Windows CPU
 
 on:
   push:
     branches:
-      - wheel
+      - fix-build-on-windows
+    tags:
+      - '*'
 
 env:
   BUILD_TYPE: Release
 
 jobs:
-  PyPI-macos-cpu:
+  PyPI-windows-cpu:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-10.15]
+        os: [windows-2019]
         torch: ["1.7.1"]
         python-version: [3.6, 3.7, 3.8]
 
@@ -24,6 +26,10 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
+      # see https://github.com/microsoft/setup-msbuild
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.0.2
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -34,29 +40,28 @@ jobs:
         run: python -c "import sys; print(sys.version)"
 
       - name: Install PyTorch ${{ matrix.torch }}
-        if: startsWith(matrix.os, 'macos')
-        shell: bash
         run: |
-          python3 -m pip install -qq --upgrade pip
-          python3 -m pip install -q wheel twine typing_extensions
-          python3 -m pip install -qq torch==${{ matrix.torch }}
+          pip3 install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html numpy
+          pip3 install -qq wheel twine dataclasses typing_extensions
+
+          python3 -m torch.utils.collect_env
 
 
       - name: Build pip packages
         shell: bash
         env:
           K2_IS_FOR_PYPI: 1
+          K2_IS_STABLE: 1
         run: |
           tag=$(python3 -c "import sys; print(''.join(sys.version[:3].split('.')))")
-          export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
-          export K2_MAKE_ARGS="-j2"
+          export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=$BUILD_TYPE"
           python3 setup.py bdist_wheel --python-tag=py${tag}
           ls -lh dist/
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-cpu
           path: dist/*.whl
 
       - name: Publish wheels to PyPI
