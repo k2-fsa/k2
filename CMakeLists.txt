@@ -179,7 +179,7 @@ endif()
 
 # ========= Settings for CUB begin =========
 # the following settings are modified from cub/CMakeLists.txt
-set(CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ version to be used.")
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
@@ -201,6 +201,14 @@ if(K2_WITH_CUDA)
   set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
   include(cmake/select_compute_arch.cmake)
+
+  if(CUDA_VERSION VERSION_GREATER_EQUAL "11.0" AND WIN32)
+    # To fix the following error on Windows for CUDA >= 11.0
+    # error : expected a "("
+    #  detected during instantiation of "void std::_Adl_verify_range(const _Iter &, const _Sentinel &)
+    set(CMAKE_CXX_STANDARD 17)
+  endif()
+
   cuda_select_nvcc_arch_flags(K2_COMPUTE_ARCH_FLAGS)
   message(STATUS "K2_COMPUTE_ARCH_FLAGS: ${K2_COMPUTE_ARCH_FLAGS}")
 
