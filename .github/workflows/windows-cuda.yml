@@ -104,13 +104,6 @@ jobs:
           git lfs pull --include="cudnn-windows-x86_64-8.3.3.40_cuda10.2-archive.zip"
           ls
 
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          cache: 'pip'
-          python-version: ${{ matrix.python-version }}
-          cache-dependency-path: '**/requirements.txt'
-
       # See https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
       # for available CUDA versions
       - uses: Jimver/cuda-toolkit@v0.2.5
@@ -160,15 +153,23 @@ jobs:
           mv ./include/* "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/include/"
           ls -lh "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/include/"
 
-      - name: Display Python version
-        run: python -c "import sys; print(sys.version)"
+      # - name: Setup Python ${{ matrix.python-version }}
+      #   uses: actions/setup-python@v2
+      #   with:
+      #     cache: 'pip'
+      #     python-version: ${{ matrix.python-version }}
+      #     cache-dependency-path: '**/requirements.txt'
+      #
+      #
+      # - name: Display Python version
+      #   run: python -c "import sys; print(sys.version)"
 
-      - name: Install PyTorch ${{ matrix.torch }}
-        run: |
-          pip3 install -qq torch==${{ matrix.torch }}+cu111 -f https://download.pytorch.org/whl/torch_stable.html numpy
-          pip3 install -qq wheel twine dataclasses typing_extensions
-
-          python3 -m torch.utils.collect_env
+      # - name: Install PyTorch ${{ matrix.torch }}
+      #   run: |
+      #     pip3 install -qq torch==${{ matrix.torch }}+cu111 -f https://download.pytorch.org/whl/torch_stable.html numpy
+      #     pip3 install -qq wheel twine dataclasses typing_extensions
+      #
+      #     python3 -m torch.utils.collect_env
 
       # - name: Display CMake version
       #   run: |
