@@ -129,11 +129,12 @@ jobs:
       - name: Display NVCC version
         shell: bash
         run: |
-          ls -l "C:/Program Files/"
-          ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit"
-          ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/"
-          ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1"
-          ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/"
+          ls -lh
+          # ls -l "C:/Program Files/"
+          # ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit"
+          # ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/"
+          # ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1"
+          # ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/"
           #ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/nvcc" --version
           #ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/nvcc" --version
           #nvcc --version
