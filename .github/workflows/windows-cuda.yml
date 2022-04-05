@@ -92,9 +92,8 @@ jobs:
         id: cache-cuda
         with:
           path: |
-            !~/cache/exclude
-            "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/lib/"
-          key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.torch }}-cuda-11.1.1
+            "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/"
+          key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.torch }}-cuda-11.1
 
       - name: Download CUDNN for CUDA 11.1
         if: steps.cache-cuda.outputs.cache-hit != 'true'
@@ -120,24 +119,24 @@ jobs:
         with:
           cuda: '11.1.1'
 
-      - name: Set environment variables
-        shell: bash
-        run: |
-          # echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
-          # echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
-          CUDA_HOME="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/"
-          echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
-          echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
-
-          ls -lh $GITHUB_ENV
-          ls -lh $GITHUB_PATH
-          cat $GITHUB_ENV
-          cat $GITHUB_PATH
-
-      - name: Display NVCC version
-        shell: bash
-        run: |
-          "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/nvcc" --version
+      # - name: Set environment variables
+      #   shell: bash
+      #   run: |
+      #     # echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
+      #     # echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
+      #     CUDA_HOME="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/"
+      #     echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
+      #     echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
+      #
+      #     ls -lh $GITHUB_ENV
+      #     ls -lh $GITHUB_PATH
+      #     cat $GITHUB_ENV
+      #     cat $GITHUB_PATH
+      #
+      # - name: Display NVCC version
+      #   shell: bash
+      #   run: |
+      #     "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/nvcc" --version
 
       - name: Unzip cuDNN
         if: steps.cache-cuda.outputs.cache-hit != 'true'
@@ -171,50 +170,50 @@ jobs:
 
           python3 -m torch.utils.collect_env
 
-      - name: Display CMake version
-        run: |
-          cmake --version
-          cmake --help
-
-      - name: Configure CMake
-        shell: bash
-        run: |
-          mkdir build_release
-          cd build_release
-          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=ON ..
-          ls -lh
-
-      - name: Build k2
-        shell: bash
-        run: |
-          cd build_release
-          cmake --build . --target _k2 --config Release
-
-      - name: Display generated files
-        shell: bash
-        run: |
-          cd build_release
-          ls -lh lib/*/*
-
-      - name: Build wheel
-        shell: bash
-        run: |
-          export K2_CMAKE_ARGS="-DK2_WITH_CUDA=ON -DCMAKE_BUILD_TYPE=Release"
-          python3 setup.py bdist_wheel
-          ls -lh dist/
-          pip install ./dist/*.whl
-
-      - name: Upload Wheel
-        uses: actions/upload-artifact@v2
-        with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cuda-11.1
-          path: dist/*.whl
-
-      - name: Build C++ tests
-        shell: bash
-        run: |
-          cd build_release
-          cmake --build . --target ALL_BUILD --config Release
-          ls -lh bin/*/*
+      # - name: Display CMake version
+      #   run: |
+      #     cmake --version
+      #     cmake --help
+      #
+      # - name: Configure CMake
+      #   shell: bash
+      #   run: |
+      #     mkdir build_release
+      #     cd build_release
+      #     cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=ON ..
+      #     ls -lh
+      #
+      # - name: Build k2
+      #   shell: bash
+      #   run: |
+      #     cd build_release
+      #     cmake --build . --target _k2 --config Release
+      #
+      # - name: Display generated files
+      #   shell: bash
+      #   run: |
+      #     cd build_release
+      #     ls -lh lib/*/*
+      #
+      # - name: Build wheel
+      #   shell: bash
+      #   run: |
+      #     export K2_CMAKE_ARGS="-DK2_WITH_CUDA=ON -DCMAKE_BUILD_TYPE=Release"
+      #     python3 setup.py bdist_wheel
+      #     ls -lh dist/
+      #     pip install ./dist/*.whl
+      #
+      # - name: Upload Wheel
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cuda-11.1
+      #     path: dist/*.whl
+      #
+      # - name: Build C++ tests
+      #   shell: bash
+      #   run: |
+      #     cd build_release
+      #     cmake --build . --target ALL_BUILD --config Release
+      #     ls -lh bin/*/*
           # disable python tests for k2host
           # ctest -C Release --output-on-failure -E host
