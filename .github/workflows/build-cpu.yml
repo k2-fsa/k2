@@ -22,6 +22,7 @@ on:
   push:
     branches:
       - master
+      - fix-build-on-windows
   pull_request:
     types: [labeled]
 
@@ -29,52 +30,31 @@ env:
   BUILD_TYPE: Release
 
 jobs:
+  generate_build_matrix:
+    # see https://github.com/pytorch/pytorch/pull/50633
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Generating build matrix
+        id: set-matrix
+        run: |
+          # outputting for debugging purposes
+          python scripts/github_actions/generate_build_matrix.py
+          MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
+          echo "::set-output name=matrix::${MATRIX}"
   build-cpu:
     if: github.event.label.name == 'ready' || github.event_name == 'push'
+    needs: generate-build-matrix
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04, macos-10.15]
-        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0", "1.9.1", "1.10.0", "1.10.1", "1.10.2", "1.11.0"]
-        # Python 3.9 is for PyTorch 1.7.1, 1.8.x, 1.9.x, 1.10.x, 1.11.x
-        # Python 3.10 is for PyTorch 1.11.x
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
-        exclude:
-          - python-version: "3.10" # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
-            torch: "1.5.0"
-          - python-version: "3.10"
-            torch: "1.5.1"
-          - python-version: "3.10"
-            torch: "1.6.0"
-          - python-version: "3.10"
-            torch: "1.7.0"
-          - python-version: "3.10"
-            torch: "1.7.1"
-          - python-version: "3.10"
-            torch: "1.8.0"
-          - python-version: "3.10"
-            torch: "1.8.1"
-          - python-version: "3.10"
-            torch: "1.9.0"
-          - python-version: "3.10"
-            torch: "1.9.1"
-          - python-version: "3.10"
-            torch: "1.10.0"
-          - python-version: "3.10"
-            torch: "1.10.1"
-          - python-version: "3.10"
-            torch: "1.10.2"
-          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
-            torch: "1.5.0"
-          - python-version: 3.9
-            torch: "1.5.1"
-          - python-version: 3.9
-            torch: "1.6.0"
-          - python-version: 3.9
-            torch: "1.7.0"
-          - python-version: 3.6 # exclude Python 3.6 for [1.11.0]
-            torch: "1.11.0"
+        ${{ fromJson(needs.generate-build-matrix.outputs.matrix) }}
 
     steps:
       # refer to https://github.com/actions/checkout
