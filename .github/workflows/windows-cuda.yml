@@ -125,9 +125,10 @@ jobs:
         run: |
           # echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
           # echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
-          echo "CUDA_HOME=${C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/}" >> $GITHUB_ENV
+          echo "CUDA_HOME='C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/'" >> $GITHUB_ENV
           echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
           echo "LD_LIBRARY_PATH=${CUDA_HOME}/lib:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+          echo "GITHUB_ENV: ${GITHUB_ENV}"
           nvcc --version
 
       - name: Unzip cuDNN
