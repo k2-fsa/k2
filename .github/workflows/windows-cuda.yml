@@ -121,12 +121,14 @@ jobs:
           cuda: '11.1.1'
 
       - name: Display CUDA version
-        shell: powershell
+        shell: bash
         run: |
-          echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
-          echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
+          # echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
+          # echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
+          echo "CUDA_HOME=${C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/}" >> $GITHUB_ENV
+          echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=${CUDA_HOME}/lib:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
           nvcc --version
-          ls "${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
 
       - name: Unzip cuDNN
         if: steps.cache-cuda.outputs.cache-hit != 'true'
@@ -174,6 +176,7 @@ jobs:
           ls -lh
 
       - name: Build k2
+        shell: bash
         run: |
           cd build_release
           cmake --build . --target _k2 --config Release
@@ -195,7 +198,7 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cuda-10.2
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cuda-11.1
           path: dist/*.whl
 
       - name: Build C++ tests
