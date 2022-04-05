@@ -112,24 +112,25 @@ jobs:
         with:
           cuda: '11.1.1'
 
-      # - name: Set environment variables
-      #   shell: bash
-      #   run: |
-      #     # echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
-      #     # echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
-      #     CUDA_HOME="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/"
-      #     echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
-      #     echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
-      #
-      #     ls -lh $GITHUB_ENV
-      #     ls -lh $GITHUB_PATH
-      #     cat $GITHUB_ENV
-      #     cat $GITHUB_PATH
-      #
-      # - name: Display NVCC version
-      #   shell: bash
-      #   run: |
-      #     "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/nvcc" --version
+      - name: Set environment variables
+        shell: bash
+        run: |
+          # echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
+          # echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
+          CUDA_HOME="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/"
+          echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
+          echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
+
+          ls -lh $GITHUB_ENV
+          ls -lh $GITHUB_PATH
+          cat $GITHUB_ENV
+          cat $GITHUB_PATH
+
+      - name: Display NVCC version
+        shell: bash
+        run: |
+          "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin/nvcc" --version
+          nvcc --version
 
       - name: Unzip cuDNN
         if: steps.cache-cuda.outputs.cache-hit != 'true'
