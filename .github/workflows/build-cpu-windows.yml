@@ -15,12 +15,13 @@
 # limitations under the License.
 
 
-name: build-windows
+name: build-cpu-windows
 
 on:
   push:
     branches:
       - master
+      - fix-build-on-windows
   pull_request:
     types: [labeled]
 
@@ -28,53 +29,31 @@ env:
   BUILD_TYPE: Release
 
 jobs:
+  generate_build_matrix:
+    runs-on: windows-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Generating build matrix
+        id: set-matrix
+        run: |
+          # outputting for debugging purposes
+          python scripts/github_actions/generate_build_matrix.py
+          MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
+          echo "::set-output name=matrix::${MATRIX}"
+
   build-windows:
     # see https://github.com/actions/virtual-environments/blob/win19/20210525.0/images/win/Windows2019-Readme.md
     if: github.event.label.name == 'ready' || github.event_name == 'push'
-    runs-on: ${{ matrix.os }}
+    needs: generate_build_matrix
+    runs-on: windows-2019
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2019]
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
-        torch: ["1.4.0", "1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0", "1.9.1", "1.10.0", "1.10.1", "1.10.2", "1.11.0"]
-        exclude:
-          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
-            torch: "1.5.0"
-          - python-version: 3.9
-            torch: "1.5.1"
-          - python-version: 3.9
-            torch: "1.6.0"
-          - python-version: 3.9
-            torch: "1.7.0"
-          - python-version: "3.10" # exclude Python 3.10 for [1.4.0, 1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
-            torch: "1.4.0"
-          - python-version: "3.10"
-            torch: "1.5.0"
-          - python-version: "3.10"
-            torch: "1.5.1"
-          - python-version: "3.10"
-            torch: "1.6.0"
-          - python-version: "3.10"
-            torch: "1.7.0"
-          - python-version: "3.10"
-            torch: "1.7.1"
-          - python-version: "3.10"
-            torch: "1.8.0"
-          - python-version: "3.10"
-            torch: "1.8.1"
-          - python-version: "3.10"
-            torch: "1.9.0"
-          - python-version: "3.10"
-            torch: "1.9.1"
-          - python-version: "3.10"
-            torch: "1.10.0"
-          - python-version: "3.10"
-            torch: "1.10.1"
-          - python-version: "3.10"
-            torch: "1.10.2"
-          - python-version: "3.6" # exclude Python 3.6 for [1.11.0]
-            torch: "1.11.0"
+        ${{ fromJson(needs.generate_build_matrix.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v2
@@ -112,17 +91,18 @@ jobs:
           cd build_release
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
           ls -lh
+          cat k2/csrc/version.h
+          cat CMakeCache.txt
 
       - name: Build k2
         run: |
           cd build_release
           cmake --build . --target _k2 --config Release -- -m
-
-      - name: Display generated files
-        shell: bash
-        run: |
-          cd build_release
+          cmake --build . --target ALL_BUILD --config Release
           ls -lh lib/*/*
+          ls -lh bin/*/*
+          # disable python tests for k2host
+          ctest -C Release --output-on-failure -E host
 
       - name: Build wheel
         shell: bash
@@ -135,14 +115,5 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-2019-cpu
           path: dist/*.whl
-
-      - name: Run C++ tests
-        shell: bash
-        run: |
-          cd build_release
-          cmake --build . --target ALL_BUILD --config Release
-          ls -lh bin/*/*
-          # disable python tests for k2host
-          ctest -C Release --output-on-failure -E host
