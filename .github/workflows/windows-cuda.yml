@@ -125,7 +125,9 @@ jobs:
         run: |
           # echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
           # echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
-          echo "CUDA_HOME=$env:C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $CUDA_HOME = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/"
+
+          echo "CUDA_HOME=$env:CUDA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           echo "$env:CUDA_HOME/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           nvcc --version
 
