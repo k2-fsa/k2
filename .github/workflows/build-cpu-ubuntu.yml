@@ -91,7 +91,7 @@ jobs:
 
           python3 -c "import torch; print('torch version:', torch.__version__)"
 
-      - name: Configure CMake
+      - name: Build k2
         shell: bash
         run: |
           pwd
@@ -99,10 +99,12 @@ jobs:
           cd build
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
           cat k2/csrc/version.h
+          cat CMakeCache.txt
+
           make VERBOSE=1 -j2
           ctest --output-on-failure --verbose
 
-      - name: Build k2
+      - name: Build wheel
         shell: bash
         run: |
           export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF"
