@@ -110,7 +110,7 @@ struct ArcInfo {
 
 struct RnntDecodingStream {
   // construct a RnntDecodingStream from the decoding graph
-  RnntDecodingStream(const Fsa &fsa) : graph(fsa) {
+  explicit RnntDecodingStream(const Fsa &fsa) : graph(fsa) {
     num_graph_states = graph.shape.Dim0();
     ContextPtr &c = graph.Context();
     // initialize to start state

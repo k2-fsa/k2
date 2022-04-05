@@ -56,6 +56,7 @@ C10_DEFINE_double(frame_shift_ms, 10.0,
 C10_DEFINE_double(frame_length_ms, 25.0,
                   "Frame length in ms for computing Fbank");
 C10_DEFINE_int(num_bins, 80, "Number of triangular bins for computing Fbank");
+C10_DEFINE_int(max_num_streams, 2, "Max number of decoding streams");
 
 static void CheckArgs() {
 #if !defined(K2_WITH_CUDA)
@@ -176,6 +177,10 @@ int main(int argc, char *argv[]) {
   module.eval();
   module.to(device);
 
+  int32_t vocab_size = module.attr("vocab_size").toInt();
+  int32_t context_size = module.attr("context_size").toInt();
+  int32_t subsampling_factor = module.attr("subsampling_factor").toInt();
+
   k2::FsaClass decoding_graph;
   if (FLAGS_use_lg) {
     K2_LOG(INFO) << "Load LG.pt";
@@ -184,41 +189,160 @@ int main(int argc, char *argv[]) {
              decoding_graph.HasRaggedTensorAttr("aux_labels"));
   } else {
     K2_LOG(INFO) << "Build Trivial graph";
-    decoding_graph = k2::TrivialGraph(logits.size(2) - 1, device);
+    decoding_graph = k2::TrivialGraph(vocab_size - 1, device);
   }
 
   K2_LOG(INFO) << "Decoding";
-
-  auto decoding_fsa = std::make_shared<k2::Fsa>(decoding_graph.fsa);
-  int32_t vocab_size = module.attr("vocab_size").toInt();
-  int32_t context_size = module.attr("context_size").toInt();
 
   k2::rnnt_decoding::RnntDecodingConfig config(vocab_size, context_size,
                                                FLAGS_beam, FLAGS_max_states,
                                                FLAGS_max_contexts);
 
   std::vector<std::shared_ptr<k2::rnnt_decoding::RnntDecodingStream>>
-      individual_streams;
+      individual_streams(num_waves);
+  std::vector<k2::FsaClass> individual_graphs(num_waves);
+  // suppose we are using same graph for all waves.
   for (int32_t i = 0; i < num_waves; ++i) {
-    individual_streams.emplace_back(
-        k2::rnnt_decoding::CreateStream(decoding_fsa));
+    individual_graphs[i] = decoding_graph;
+    individual_streams[i] =
+        k2::rnnt_decoding::CreateStream(individual_graphs[i].fsa);
   }
 
-  int32_t subsampling_factor = module.attr("subsampling_factor").toInt();
+  // we are not using a streaming model currently, so calculate encoder_outs
+  // at a time.
   auto input_lengths =
       torch::from_blob(num_frames.data(), {num_waves}, torch::kLong)
           .to(torch::kInt);
-
   K2_LOG(INFO) << "Compute encoder outs";
   // the output for module.encoder.forward() is a tuple of 2 tensors
   auto outputs =
       module.run_method("encoder_forward", features, input_lengths).toTuple();
   assert(outputs->elements().size() == 2u);
 
-  auto logits = outputs->elements()[0].toTensor();
-  auto logit_lengths = outputs->elements()[1].toTensor();
+  auto encoder_outs = outputs->elements()[0].toTensor();
+  auto encoder_outs_lengths = outputs->elements()[1].toTensor();
 
-  k2::rnnt_decoding::RnntDecodingStreams streams(individual_streams, config);
+  int32_t T = encoder_outs.size(1);
+  int32_t chunk_size = 10;  // 10 frames per chunk
+  std::vector<int32_t> decoded_frames(num_waves, 0);
+  std::vector<int32_t> positions(num_waves, 0);
 
+  // decocding results for each waves
+  std::vector<std::string> texts(num_waves, "");
+
+  // simulate asynchronous decoding
+  while (true) {
+    std::vector<std::shared_ptr<k2::rnnt_decoding::RnntDecodingStream>>
+        current_streams;
+    std::vector<torch::Tensor> current_encoder_outs;
+    // which waves we are decoding now
+    std::vector<int32_t> current_wave_ids;
+
+    for (int32_t i = 0; i < num_waves; ++i) {
+      // this wave is done
+      if (decoded_frames[i] * subsampling_factor >= num_frames[i]) continue;
+
+      current_streams.emplace_back(individual_streams[i]);
+      current_wave_ids.push_back(i);
+
+      if ((num_frames[i] - decoded_frames[i]) <=
+          chunk_size * subsampling_factor) {
+        decoded_frames[i] = num_frames[i] / subsampling_factor;
+      } else {
+        decoded_frames[i] += chunk_size;
+      }
+
+      int32_t start = positions[i],
+              end = start + chunk_size >= T ? T : start + chunk_size;
+      positions[i] = end;
+      auto sub_output = encoder_outs.index(
+          {i, torch::indexing::Slice(start, end), torch::indexing::Slice()});
+
+      // padding T axis to chunk_size if needed
+      namespace F = torch::nn::functional;
+      sub_output = F::pad(sub_output,
+                          F::PadFuncOptions({0, 0, 0, chunk_size - end + start})
+                              .mode(torch::kConstant));
+
+      current_encoder_outs.push_back(sub_output);
+
+      // we can decode at most `FLAGS_max_num_streams` waves at a time
+      if (static_cast<int32_t>(current_wave_ids.size()) >=
+          FLAGS_max_num_streams)
+        break;
+    }
+    if (current_wave_ids.size() == 0) break;  // finished
+
+    auto sub_encoder_outs = torch::stack(current_encoder_outs);
+
+    auto streams =
+        k2::rnnt_decoding::RnntDecodingStreams(current_streams, config);
+    k2::DecodeOneChunk(streams, module, sub_encoder_outs);
+
+    k2::FsaVec ofsa;
+    k2::Ragged<int32_t> out_map;
+
+    std::vector<int32_t> current_num_frames;
+    std::vector<k2::FsaClass> current_graphs;
+    for (size_t i = 0; i < current_wave_ids.size(); ++i) {
+      current_num_frames.emplace_back(decoded_frames[current_wave_ids[i]]);
+      current_graphs.emplace_back(individual_graphs[current_wave_ids[i]]);
+    }
+    streams.FormatOutput(current_num_frames, &ofsa, &out_map);
+
+    k2::FsaClass lattice(ofsa);
+    lattice.CopyAttrs(current_graphs, out_map);
+
+    lattice = k2::ShortestPath(lattice);
+
+    auto ragged_aux_labels = k2::GetTexts(lattice);
+
+    auto aux_labels_vec = ragged_aux_labels.ToVecVec();
+
+    if (!FLAGS_use_lg) {
+      sentencepiece::SentencePieceProcessor processor;
+      auto status = processor.Load(FLAGS_bpe_model);
+      if (!status.ok()) {
+        K2_LOG(FATAL) << status.ToString();
+      }
+      for (size_t i = 0; i < current_wave_ids.size(); ++i) {
+        std::string text;
+        status = processor.Decode(aux_labels_vec[i], &text);
+        if (!status.ok()) {
+          K2_LOG(FATAL) << status.ToString();
+        }
+        texts[current_wave_ids[i]] = text;
+      }
+    } else {
+      k2::SymbolTable symbol_table(FLAGS_word_table);
+      for (size_t i = 0; i < current_wave_ids.size(); ++i) {
+        std::string text;
+        std::string sep = "";
+        for (auto id : aux_labels_vec[i]) {
+          text.append(sep);
+          text.append(symbol_table[id]);
+          sep = " ";
+        }
+        texts[current_wave_ids[i]] = text;
+      }
+    }
+    std::ostringstream os;
+    os << "\nPartial result:\n";
+    for (size_t i = 0; i != current_wave_ids.size(); ++i) {
+      os << wave_filenames[current_wave_ids[i]] << "\n";
+      os << texts[current_wave_ids[i]];
+      os << "\n\n";
+    }
+    K2_LOG(INFO) << os.str();
+  }
+
+  std::ostringstream os;
+  os << "\nDecoding result:\n";
+  for (int32_t i = 0; i != num_waves; ++i) {
+    os << wave_filenames[i] << "\n";
+    os << texts[i];
+    os << "\n\n";
+  }
+  K2_LOG(INFO) << os.str();
   return 0;
 }

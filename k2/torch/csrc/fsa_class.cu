@@ -46,6 +46,13 @@ void FsaClass::CopyAttrs(FsaClass &src, torch::Tensor arc_map) {
   CopyRaggedTensorAttrs(src, arc_map);
 }
 
+void FsaClass::CopyAttrs(std::vector<FsaClass> &srcs,
+                         Ragged<int32_t> &arc_map) {
+  K2_CHECK_EQ(fsa.NumAxes(), 3);
+  CopyTensorAttrs(srcs, arc_map);
+  CopyRaggedTensorAttrs(srcs, arc_map);
+}
+
 void FsaClass::CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
   for (const auto &iter : src.tensor_attrs) {
     Dtype dtype = ConvertDtype(iter.second.scalar_type());
@@ -56,11 +63,79 @@ void FsaClass::CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
   }
 }
 
+void FsaClass::CopyTensorAttrs(std::vector<FsaClass> &srcs,
+                               Ragged<int32_t> &arc_map) {
+  K2_CHECK_EQ(arc_map.NumAxes(), 2);
+  K2_CHECK_EQ(arc_map.Dim0(), static_cast<int32_t>(srcs.size()));
+  std::unordered_map<std::string, Dtype> attrs_info;
+  for (const auto &fsa : srcs) {
+    for (const auto &iter : fsa.tensor_attrs) {
+      Dtype dtype = ConvertDtype(iter.second.scalar_type());
+      attrs_info.insert(std::make_pair(iter.first, dtype));
+    }
+  }
+  std::vector<torch::Tensor> values;
+  auto row_splits = arc_map.RowSplits(1).To(GetCpuContext());
+  for (const auto &iter : attrs_info) {
+    for (int32_t i = 0; i < static_cast<int32_t>(srcs.size()); ++i) {
+      auto this_arc_map_array =
+          arc_map.values.Arange(row_splits[i], row_splits[i + 1]);
+      auto this_arc_map = Array1ToTorch<int32_t>(this_arc_map_array);
+      if (srcs[i].HasTensorAttr(iter.first)) {
+        auto attr = srcs[i].GetTensorAttr(iter.first);
+        FOR_REAL_AND_INT32_TYPES(iter.second, T, {
+          auto value = IndexSelect<T>(attr, this_arc_map, 0);
+          values.emplace_back(value);
+        });
+      } else {
+        FOR_REAL_AND_INT32_TYPES(iter.second, T, {
+          auto opts = torch::dtype(ConvertDtype(iter.second))
+                          .device(this_arc_map.device());
+          auto value = torch::zeros(this_arc_map.numel(), opts);
+          values.emplace_back(value);
+        });
+      }
+    }
+    SetTensorAttr(iter.first, torch::cat(values));
+  }
+}
+
 void FsaClass::CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map) {
   Array1<int32_t> indexes_array = Array1FromTorch<int32_t>(arc_map);
   for (auto &iter : src.ragged_tensor_attrs) {
     auto value = Index<int32_t>(iter.second, 0, indexes_array, nullptr);
     SetRaggedTensorAttr(iter.first, value);
+  }
+}
+
+void FsaClass::CopyRaggedTensorAttrs(std::vector<FsaClass> &srcs,
+                                     Ragged<int32_t> &arc_map) {
+  K2_CHECK_EQ(arc_map.NumAxes(), 2);
+  K2_CHECK_EQ(arc_map.Dim0(), static_cast<int32_t>(srcs.size()));
+  std::unordered_set<std::string> attrs_name;
+  for (const auto &fsa : srcs) {
+    for (const auto &iter : fsa.ragged_tensor_attrs) {
+      attrs_name.insert(iter.first);
+    }
+  }
+  std::vector<Ragged<int32_t>> values;
+  auto row_splits = arc_map.RowSplits(1).To(GetCpuContext());
+  for (const auto &name : attrs_name) {
+    for (int32_t i = 0; i < static_cast<int32_t>(srcs.size()); ++i) {
+      auto this_arc_map =
+          arc_map.values.Arange(row_splits[i], row_splits[i + 1]);
+      if (srcs[i].HasRaggedTensorAttr(name)) {
+        auto attr = srcs[i].GetRaggedTensorAttr(name);
+        auto value = Index<int32_t>(attr, 0 /*axis*/, this_arc_map);
+        values.emplace_back(value);
+      } else {
+        auto empty_shape =
+            RegularRaggedShape(this_arc_map.Context(), this_arc_map.Dim(), 0);
+        auto value = Ragged<int32_t>(empty_shape);
+        values.emplace_back(value);
+      }
+    }
+    SetRaggedTensorAttr(name, Cat(0 /*axis*/, values.size(), values.data()));
   }
 }
 

@@ -26,6 +26,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
@@ -177,6 +178,13 @@ struct FsaClass {
    */
   void CopyAttrs(FsaClass &src, torch::Tensor arc_map);
 
+  /** Propagate attributes from source FsaClass via tensor arc_map.
+
+    @param src  The source FsaClass.
+    @param arc_map  The arc_map (as idx012) to select items in attributes.
+   */
+  void CopyAttrs(std::vector<FsaClass> &srcs, Ragged<int32_t> &arc_map);
+
   /** Associate an tensor attribute with a value directly.
 
     @param name  The attribute name.
@@ -212,6 +220,8 @@ struct FsaClass {
      */
   void CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map);
 
+  void CopyTensorAttrs(std::vector<FsaClass> &srcs, Ragged<int32_t> &arc_map);
+
   /** Propagate ragged tensor attributes from source FsaClass via tensor
     arc_map.
 
@@ -219,6 +229,9 @@ struct FsaClass {
     @param arc_map  The arc_map (as idx012) to select items in attributes.
    */
   void CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map);
+
+  void CopyRaggedTensorAttrs(std::vector<FsaClass> &srcs,
+                             Ragged<int32_t> &arc_map);
 };
 
 }  // namespace k2
