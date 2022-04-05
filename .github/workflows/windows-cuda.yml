@@ -130,6 +130,9 @@ jobs:
         shell: bash
         run: |
           ls -lh
+          echo "$PWD"
+          ls -lh ../
+          ls -lh ../..
           # ls -l "C:/Program Files/"
           # ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit"
           # ls -l "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/"
