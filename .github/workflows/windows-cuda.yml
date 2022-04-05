@@ -121,20 +121,21 @@ jobs:
           cuda: '11.1.1'
 
       - name: Set environment variables
-        shell: powershell
+        shell: bash
         run: |
           # echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
           # echo "Cuda install location: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
-          $CUDA_HOME = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/"
+          CUDA_HOME="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/"
+          echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
+          echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
 
-          echo "CUDA_HOME=$env:CUDA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "$env:CUDA_HOME/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          $env:GITHUB_ENV
-          $env:GITHUB_PATH
+          cat GITHUB_ENV
+          cat GITHUB_PATH
 
       - name: Display NVCC version
-        shell: powershell
+        shell: bash
         run: |
+          export PATH="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/bin":$PATH
           nvcc --version
 
       - name: Unzip cuDNN
