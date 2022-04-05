@@ -1,0 +1,147 @@
+# Copyright      2020  Fangjun Kuang (csukuangfj@gmail.com)
+
+# See ../../LICENSE for clarification regarding multiple authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# refer to https://github.com/actions/starter-workflows/pull/47/files
+
+name: build-cuda-ubuntu
+
+on:
+  push:
+    branches:
+      - master
+      - fix-build-on-windows
+  pull_request:
+    types: [labeled]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  generate_build_matrix:
+    # see https://github.com/pytorch/pytorch/pull/50633
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Generating build matrix
+        id: set-matrix
+        run: |
+          # outputting for debugging purposes
+          python scripts/github_actions/generate_build_matrix.py
+          MATRIX=$(python scripts/github_actions/generate_build_matrix.py --enable-cuda)
+          echo "::set-output name=matrix::${MATRIX}"
+  build-cuda-ubuntu:
+    if: github.event.label.name == 'ready' || github.event_name == 'push'
+    needs: generate_build_matrix
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        ${{ fromJson(needs.generate_build_matrix.outputs.matrix) }}
+
+    steps:
+      # refer to https://github.com/actions/checkout
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - uses: szenius/set-timezone@v1.0
+        with:
+          timezoneLinux: "Asia/Shanghai"
+
+      - name: Display date and time
+        run: date
+
+      - name: Install CUDA Toolkit ${{ matrix.cuda }}
+        env:
+          cuda: ${{ matrix.cuda }}
+        run: |
+          source ./scripts/github_actions/install_cuda.sh
+          echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
+          echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=${CUDA_HOME}/lib:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Display NVCC version
+        run: |
+          which nvcc
+          nvcc --version
+
+      - name: Install GCC 7
+        run: |
+          sudo apt-get install -y gcc-7 g++-7
+          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
+          echo "CUDAHOSTCXX=/usr/bin/g++-7" >> $GITHUB_ENV
+
+      - name: Install git lfs
+        run: |
+          sudo apt-get install -y git-lfs
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Install PyTorch ${{ matrix.torch }}
+        env:
+          cuda: ${{ matrix.cuda }}
+          torch: ${{ matrix.torch }}
+        shell: bash
+        run: |
+          python3 -m pip install -q --upgrade pip
+          python3 -m pip install -q wheel twine typing_extensions
+          python3 -m pip install -q bs4 requests tqdm
+
+          ./scripts/github_actions/install_torch.sh
+          python3 -c "import torch; print('torch version:', torch.__version__)"
+
+      - name: Download cudnn 8.0
+        env:
+          cuda: ${{ matrix.cuda }}
+        run: |
+          ./scripts/github_actions/install_cudnn.sh
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          pwd
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          cat k2/csrc/version.h
+          cat CMakeCache.txt
+
+      - name: Build k2
+        shell: bash
+        run: |
+          export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
+          export K2_MAKE_ARGS="-j2"
+          python3 setup.py bdist_wheel
+          ls -lh dist/
+          ls -lh build/*
+
+      - name: Upload Wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: gcc-7-cuda-${{ matrix.cuda }}-torch-${{ matrix.torch }}-python-${{ matrix.python-version }}
+          path: dist/*.whl
