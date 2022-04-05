@@ -83,7 +83,7 @@ def generate_build_matrix(enable_cuda: bool):
         for k in ans:
             del k["cuda"]
 
-    print(json.dumps({"include": ans}))
+    print(json.dumps({"os": ["ubuntu-18.04", "macos-10.15"], "include": ans}))
 
 
 def main():
