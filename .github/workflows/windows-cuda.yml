@@ -120,7 +120,7 @@ jobs:
         with:
           cuda: '11.1.1'
 
-      - name: Display CUDA version
+      - name: Set environment variables
         shell: powershell
         run: |
           # echo "Installed cuda version is: ${{ steps.cuda-toolkit.outputs.cuda }}"
@@ -129,6 +129,12 @@ jobs:
 
           echo "CUDA_HOME=$env:CUDA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           echo "$env:CUDA_HOME/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:GITHUB_ENV
+          $env:GITHUB_PATH
+
+      - name: Display NVCC version
+        shell: powershell
+        run: |
           nvcc --version
 
       - name: Unzip cuDNN
