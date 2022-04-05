@@ -192,14 +192,15 @@ class RnntDecodingStreams {
                     `num_frames[i] <= srcs_[i].prev_frames.size()`.
       @param [out] ofsa  The output lattice will write to here, its num_axes
                          equals to 3, will be re-allocated.
-      @param [out] out_map  It is an Array1 with Dim() equals to
-                     ofsa.NumElements() containing the idx01 into the graph of
-                     each individual streams, mapping current arc in ofsa to
-                     original decoding graphs. It may contain -1 which means
-                     this arc is a "termination symbol".
+      @param [out] out_map  It is an Ragged which satisfies
+                     `Dim0() == ofsa.Dim0()` and
+                     `NumElements() == ofsa.NumElements()`, containing the idx01
+                     into the graph of each individual streams, mapping current
+                     arc in ofsa to original decoding graphs. It may contain -1
+                     which means this arc is a "termination symbol".
    */
   void FormatOutput(const std::vector<int32_t> &num_frames, FsaVec *ofsa,
-                    Array1<int32_t> *out_map);
+                    Ragged<int32_t> *out_map);
 
   /*
     Terminate the decoding process of current RnntDecodingStreams object, it

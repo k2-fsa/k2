@@ -697,7 +697,7 @@ void RnntDecodingStreams::GatherPrevFrames(
 }
 
 void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
-                                       FsaVec *ofsa, Array1<int32_t> *out_map) {
+                                       FsaVec *ofsa, Ragged<int32_t> *out_map) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(!attached_)
       << "You can only get outputs after calling TerminateAndFlushToStreams()";
@@ -752,8 +752,8 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
   arcs_data_ptrs_data = arcs_data_ptrs.Data();
   uint32_t *oshape_merge_map_data = oshape_merge_map.Data();
 
-  *out_map = Array1<int32_t>(c_, num_arcs);
-  int32_t *out_map_data = out_map->Data();
+  auto out_map_values = Array1<int32_t>(c_, num_arcs);
+  int32_t *out_map_values_data = out_map_values.Data();
 
   int32_t *oshape_row_ids3 = oshape.RowIds(3).Data(),
           *oshape_row_ids2 = oshape.RowIds(2).Data(),
@@ -814,12 +814,17 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
           }
           arc.score = arc_info.score;
         }
-        out_map_data[oarc_idx0123] = arc_info.graph_arc_idx01;
+        out_map_values_data[oarc_idx0123] = arc_info.graph_arc_idx01;
         arcs_out_data[oarc_idx0123] = arc;
       });
 
   // Remove axis 1, which corresponds to time.
-  *ofsa = FsaVec(RemoveAxis(oshape, 1), arcs_out);
+  auto ofsa_shape = RemoveAxis(oshape, 1);
+  *ofsa = FsaVec(ofsa_shape, arcs_out);
+
+  // out_map_shape has a shape of [fsa][arc]
+  auto out_map_shape = RemoveAxis(ofsa_shape, 1);
+  *out_map = Ragged<int32_t>(out_map_shape, out_map_values);
 }
 
 }  // namespace rnnt_decoding

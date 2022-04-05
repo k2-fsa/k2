@@ -31,6 +31,7 @@
 #include "k2/csrc/rnnt_decode.h"
 #include "k2/python/csrc/torch/rnnt_decode.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
 static void PybindRnntDecodingConfig(py::module &m) {
@@ -145,13 +146,12 @@ static void PybindRnntDecodingStreams(py::module &m) {
   streams.def(
       "format_output",
       [](PyClass &self,
-         std::vector<int32_t> &num_frames) -> std::pair<FsaVec, torch::Tensor> {
+         std::vector<int32_t> &num_frames) -> std::pair<FsaVec, RaggedAny> {
         DeviceGuard guard(self.Context());
         FsaVec ofsa;
-        Array1<int32_t> out_map;
+        Ragged<int32_t> out_map;
         self.FormatOutput(num_frames, &ofsa, &out_map);
-        torch::Tensor out_map_tensor = ToTorch<int32_t>(out_map);
-        return std::make_pair(ofsa, out_map_tensor);
+        return std::make_pair(ofsa, RaggedAny(out_map.Generic()));
       });
 }
 

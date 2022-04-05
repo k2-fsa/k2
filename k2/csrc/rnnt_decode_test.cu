@@ -82,7 +82,7 @@ TEST(RnntDecodingStreams, Basic) {
     streams.TerminateAndFlushToStreams();
 
     std::vector<int32_t> num_frames(num_streams, steps);
-    Array1<int32_t> out_map;
+    Ragged<int32_t> out_map;
     FsaVec ofsa;
     streams.FormatOutput(num_frames, &ofsa, &out_map);
     K2_LOG(INFO) << "ofsa : " << ofsa;
