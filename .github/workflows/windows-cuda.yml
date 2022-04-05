@@ -138,9 +138,7 @@ jobs:
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
-          cache: 'pip'
           python-version: ${{ matrix.python-version }}
-          cache-dependency-path: '**/requirements.txt'
 
 
       - name: Display Python version
