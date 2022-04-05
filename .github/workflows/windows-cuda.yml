@@ -95,8 +95,8 @@ jobs:
             "D:/a/k2/k2"
           key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.torch }}-cuda-11.1
 
-      See https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
-      for available CUDA versions
+      # See https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
+      # for available CUDA versions
       - uses: Jimver/cuda-toolkit@v0.2.5
         id: cuda-toolkit
         with:
