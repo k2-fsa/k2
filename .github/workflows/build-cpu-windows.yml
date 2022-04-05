@@ -45,7 +45,7 @@ jobs:
           MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
           echo "::set-output name=matrix::${MATRIX}"
 
-  build-windows:
+  build-cpu-windows:
     # see https://github.com/actions/virtual-environments/blob/win19/20210525.0/images/win/Windows2019-Readme.md
     if: github.event.label.name == 'ready' || github.event_name == 'push'
     needs: generate_build_matrix
