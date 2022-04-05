@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2019]
+        os: [windows-latest]
         python-version: ["3.8"]
         torch: ["1.10.0"]
         # torch: ["1.4.0", "1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0", "1.9.1", "1.10.0", "1.10.1", "1.10.2", "1.11.0"]
@@ -86,8 +86,6 @@ jobs:
       # see https://github.com/microsoft/setup-msbuild
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
-        with:
-          vs-version: '[16.4,16.12)'
 
       - name: Download CUDNN for CUDA 11.1
         shell: powershell
