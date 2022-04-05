@@ -16,7 +16,7 @@ def get_args():
     return parser.parse_args()
 
 
-def generate_build_matrix(enable_cuda: bool):
+def generate_build_matrix(enable_cuda):
     matrix = {
         "1.5.0": {
             "python-version": ["3.6", "3.7", "3.8"],
