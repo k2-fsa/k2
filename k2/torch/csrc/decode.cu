@@ -125,8 +125,8 @@ void DecodeOneChunk(rnnt_decoding::RnntDecodingStreams &streams,
     current_encoder_outs =
         torch::index_select(current_encoder_outs, 0, row_ids);
     auto logits =
-        module.run_method("joiner_forward", current_encoder_outs.unsqueeze(2),
-                          decoder_outs.unsqueeze(1)).toTensor();
+        module.run_method("joiner_forward", current_encoder_outs, decoder_outs)
+            .toTensor();
     logits = logits.squeeze(1).squeeze(1);
     auto logprobs = logits.log_softmax(-1);
     auto logprobs_array = Array2FromTorch<float>(logprobs);

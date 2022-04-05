@@ -212,7 +212,8 @@ int main(int argc, char *argv[]) {
   // at a time.
   auto input_lengths =
       torch::from_blob(num_frames.data(), {num_waves}, torch::kLong)
-          .to(torch::kInt);
+          .to(torch::kInt).to(device);
+
   K2_LOG(INFO) << "Compute encoder outs";
   // the output for module.encoder.forward() is a tuple of 2 tensors
   auto outputs =
