@@ -72,22 +72,18 @@ def generate_build_matrix(enable_cuda: bool):
         },
     }
 
-    torch_python_cuda = []
+    ans = []
     for torch, python_cuda in matrix.items():
         python_versions = python_cuda["python-version"]
         cuda_versions = python_cuda["cuda"]
         for p in python_versions:
             for c in cuda_versions:
-                torch_python_cuda.append(
-                    {"torch": torch, "python-version": p, "cuda": c}
-                )
+                ans.append({"torch": torch, "python-version": p, "cuda": c})
     if not enable_cuda:
-        for k in torch_python_cuda:
+        for k in ans:
             del k["cuda"]
 
-    m = {"include": torch_python_cuda, "os": ["ubuntu-18.04", "macos-10.15"]}
-
-    print(json.dumps(m))
+    print(json.dumps({"include": ans}))
 
 
 def main():
