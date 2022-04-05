@@ -129,8 +129,10 @@ jobs:
           echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
           echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
 
-          cat GITHUB_ENV
-          cat GITHUB_PATH
+          ls -lh $GITHUB_ENV
+          ls -lh $GITHUB_PATH
+          cat $GITHUB_ENV
+          cat $GITHUB_PATH
 
       - name: Display NVCC version
         shell: bash
