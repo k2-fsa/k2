@@ -47,7 +47,6 @@ jobs:
   build_conda_cpu_windows:
     # see https://github.com/actions/virtual-environments/blob/win19/20210525.0/images/win/Windows2019-Readme.md
     runs-on: windows-2019
-    runs-on: macos-10.15
     strategy:
       fail-fast: false
       matrix:
