@@ -77,7 +77,7 @@ def generate_build_matrix(enable_cuda, test_only_latest_torch):
         },
         "1.11.0": {
             "python-version": ["3.7", "3.8", "3.9", "3.10"],
-            "cuda": ["10.2", "11.1", "11.3", "11.5"],
+            "cuda": ["10.2", "11.3", "11.5"],
         },
     }
     if test_only_latest_torch:

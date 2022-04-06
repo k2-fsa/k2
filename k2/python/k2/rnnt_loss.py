@@ -568,7 +568,7 @@ def get_rnnt_prune_ranges(
 
     s_begin_padding = boundary[:, 2].reshape(B, 1) - s_range + 1
     # handle the cases when `len(symbols) < s_range`
-    s_begin_padding = torch.where(s_begin_padding >= 0, s_begin_padding, 0)
+    s_begin_padding = torch.clamp(s_begin_padding, min=0)
 
     s_begin = torch.where(mask, s_begin, s_begin_padding)
 

@@ -125,7 +125,7 @@ if(K2_USE_PYTORCH)
     target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
   else()
     # see https://discuss.pytorch.org/t/nvcc-fatal-a-single-input-file-is-required-for-a-non-link-phase-when-an-outputfile-is-specified/142843/6
-    # Depending on ${TORCH_LIBRARIES} will introduction an compile time otpion "/bigobj",
+    # Depending on ${TORCH_LIBRARIES} will introduce a compile time option "/bigobj",
     # which causes the error in the above link.
     #
     # It would be ideal to remove /bigobj so that we can use ${TORCH_LIBRARIES}.
