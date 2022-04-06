@@ -4,8 +4,6 @@ name: Publish to PyPI - Windows CPU
 
 on:
   push:
-    branches:
-      - fix-build-on-windows
     tags:
       - '*'
 
@@ -14,6 +12,7 @@ env:
 
 jobs:
   PyPI-windows-cpu:
+    if: ${{ false }} # Disable it at present. Users can install it from https://k2-fsa.org/nightly/index.html
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

@@ -44,7 +44,7 @@ jobs:
         run: |
           # outputting for debugging purposes
           python scripts/github_actions/generate_build_matrix.py --enable-cuda
-          MATRIX=$(python scripts/github_actions/generate_build_matrix.py --enable-cuda)
+          MATRIX=$(python scripts/github_actions/generate_build_matrix.py --enable-cuda --test-only-latest-torch)
           echo "::set-output name=matrix::${MATRIX}"
   build-cuda-ubuntu:
     if: github.event.label.name == 'ready' || github.event_name == 'push'

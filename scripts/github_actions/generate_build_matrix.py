@@ -13,11 +13,19 @@ def get_args():
         default=False,
         help="True to enable CUDA",
     )
+
+    parser.add_argument(
+        "--test-only-latest-torch",
+        action="store_true",
+        default=False,
+        help="If True, we test only the latest PyTroch to save CI running time.",
+    )
     return parser.parse_args()
 
 
-def generate_build_matrix(enable_cuda):
+def generate_build_matrix(enable_cuda, test_only_latest_torch):
     matrix = {
+        # there are issues in serializing ragged tensors in 1.5.0 and 1.5.1
         #  "1.5.0": {
         #      "python-version": ["3.6", "3.7", "3.8"],
         #      "cuda": ["10.1", "10.2"],
@@ -71,6 +79,9 @@ def generate_build_matrix(enable_cuda):
             "cuda": ["10.2", "11.1", "11.3", "11.5"],
         },
     }
+    if test_only_latest_torch:
+        latest = "1.11.0"
+        matrix = {latest: matrix[latest]}
 
     ans = []
     for torch, python_cuda in matrix.items():
@@ -89,7 +100,10 @@ def generate_build_matrix(enable_cuda):
 
 def main():
     args = get_args()
-    generate_build_matrix(enable_cuda=args.enable_cuda)
+    generate_build_matrix(
+        enable_cuda=args.enable_cuda,
+        test_only_latest_torch=args.test_only_latest_torch,
+    )
 
 
 if __name__ == "__main__":
