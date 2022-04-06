@@ -22,15 +22,14 @@ on:
     branches:
       - master
   pull_request:
-    # types: [labeled]
-    branches:
-      - master
+    types: [labeled]
 
 env:
   BUILD_TYPE: Release
 
 jobs:
   generate_build_matrix:
+    # see https://github.com/pytorch/pytorch/pull/50633
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
