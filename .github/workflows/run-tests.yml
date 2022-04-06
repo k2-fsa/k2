@@ -33,10 +33,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04]
-        cuda: ["11.3"]
-        gcc: ["5"]
+        cuda: ["10.2"]
+        gcc: ["7"]
         torch: ["1.11.0"]
-        python-version: [3.9]
+        python-version: [3.10]
         build_type: ["Release", "Debug"]
 
     steps:
