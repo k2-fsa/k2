@@ -34,7 +34,7 @@ struct Arc {
   int32_t label;
   float score;
 
-  __host__ __device__ __forceinline__ Arc() = default;
+  Arc() = default;
   __host__ __device__ __forceinline__ Arc(int32_t src_state, int32_t dest_state,
                                           int32_t label, float score)
       : src_state(src_state),

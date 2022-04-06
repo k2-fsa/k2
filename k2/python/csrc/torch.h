@@ -29,38 +29,6 @@
 
 namespace pybind11 {
 namespace detail {
-#if K2_TORCH_VERSION_MAJOR < 1 || \
-    (K2_TORCH_VERSION_MAJOR == 1 && K2_TORCH_VERSION_MINOR < 9)
-// Only for torch version < 1.9.0
-
-// See https://github.com/pytorch/pytorch/pull/57292
-
-template <>
-struct type_caster<torch::Device> {
- public:
-  PYBIND11_TYPE_CASTER(torch::Device, _("torch::Device"));
-
-  // PYBIND11_TYPE_CASTER defines a member field called value. Since
-  // torch::Device cannot be default-initialized, we provide this constructor to
-  // explicitly initialize that field. The value doesn't matter as it will be
-  // overwritten after a successful call to load.
-  type_caster() : value(torch::kCPU) {}
-
-  bool load(handle src, bool) {
-    PyObject *obj = src.ptr();
-    if (THPDevice_Check(obj)) {
-      value = reinterpret_cast<THPDevice *>(obj)->device;
-      return true;
-    }
-    return false;
-  }
-
-  static handle cast(const torch::Device &src, return_value_policy /* policy */,
-                     handle /* parent */) {
-    return handle(THPDevice_New(src));
-  }
-};
-#endif
 
 template <>
 struct type_caster<torch::ScalarType> {

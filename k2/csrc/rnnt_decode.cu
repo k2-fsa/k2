@@ -159,8 +159,8 @@ void RnntDecodingStreams::GetContexts(RaggedShape *shape,
         int64_t state_value = states_values_data[state_idx01x],
                 context_state = state_value / num_graph_states,
                 exp = decoder_history_len - col,
-                state = context_state % (int64_t)pow(vocab_size, exp);
-        state = state / (int64_t)pow(vocab_size, exp - 1);
+                state = context_state % (int64_t)powf(vocab_size, exp);
+        state = state / (int64_t)powf(vocab_size, exp - 1);
         contexts_acc(row, col) = state;
       });
 }
@@ -175,11 +175,17 @@ Ragged<double> RnntDecodingStreams::PruneTwice(Ragged<double> &incoming_scores,
   // problems created by empty lists, although it's perhaps not an optimal way
   // to prune.
 
-  // incoming_scores has a shape of [stream][context][state][arc]
+  // incoming_scores has a shape of [stream][context][state][arc], we are
+  // pruning with max-states per stream, so that contexts axis should be
+  // removed. reduced_incoming_scores has a shape of [stream][state][arc].
+  auto reduced_incoming_scores = incoming_scores.RemoveAxis(1);
   // states_prune is a renumbering on the states axis.
-  Renumbering states_prune = PruneRagged(incoming_scores, 2 /*axis*/,
+  Renumbering states_prune = PruneRagged(reduced_incoming_scores, 1 /*axis*/,
                                          config_.beam, config_.max_states);
 
+  // The new2old indexes in states_prune are global indexes along axis state,
+  // so we can extract the surviving elements from `incoming_scores` along
+  // state axis.
   Array1<int32_t> arcs_new2old1;
   Ragged<double> temp_scores =
       SubsetRagged(incoming_scores, states_prune, 2 /*axis*/, &arcs_new2old1);
@@ -534,7 +540,7 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
           // can be done with `358 % 10^2`, then we append 6 to 58, that can be
           // done with `58 * 10 + 6`.
           context_state = this_context_state %
-                          (int64_t)pow(vocab_size, decoder_history_len - 1);
+                          (int64_t)powf(vocab_size, decoder_history_len - 1);
           context_state = context_state * vocab_size + arc.label;
         }
 

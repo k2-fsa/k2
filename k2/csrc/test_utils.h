@@ -20,15 +20,16 @@
 #ifndef K2_CSRC_TEST_UTILS_H_
 #define K2_CSRC_TEST_UTILS_H_
 
-#include <gtest/gtest.h>
 
 #include <cmath>
 #include <limits>
 #include <type_traits>
 #include <vector>
 
+#include "gtest/gtest.h"
 #include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
+#include "k2/csrc/log.h"
 
 namespace k2 {
 
@@ -103,9 +104,9 @@ inline void ExpectEqual<double>(const std::vector<double> &expected,
 // check if `array` and `target` have the same values
 template <typename T>
 void CheckArrayData(const Array1<T> &array, const Array1<T> &target,
-                    T abs_error = (T)0.001) {
+                    T abs_error = T(0.001)) {
   if (array.Dim() != target.Dim()) {
-    K2_LOG(ERROR) << "Dims mismatch " << array.Dim() << " vs. " << target.Dim();
+    K2_LOG(FATAL) << "Dims mismatch " << array.Dim() << " vs. " << target.Dim();
   }
   int32_t dim = array.Dim();
   ContextPtr cpu = GetCpuContext();

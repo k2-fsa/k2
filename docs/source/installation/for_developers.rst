@@ -1,6 +1,10 @@
 For developers
 ==============
 
+.. hint::
+
+    It supports Linux (CPU + CUDA), macOS (CPU), and Windows (CPU + CUDA).
+
 This page is for developers and advanced users. It describes
 how to build k2 and run tests.
 

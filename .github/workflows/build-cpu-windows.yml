@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-name: build-windows
+name: build-cpu-windows
 
 on:
   push:
@@ -28,26 +28,32 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  build-windows:
+  generate_build_matrix:
+    # see https://github.com/pytorch/pytorch/pull/50633
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Generating build matrix
+        id: set-matrix
+        run: |
+          # outputting for debugging purposes
+          python scripts/github_actions/generate_build_matrix.py
+          MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
+          echo "::set-output name=matrix::${MATRIX}"
+
+  build-cpu-windows:
     # see https://github.com/actions/virtual-environments/blob/win19/20210525.0/images/win/Windows2019-Readme.md
     if: github.event.label.name == 'ready' || github.event_name == 'push'
-    runs-on: ${{ matrix.os }}
+    needs: generate_build_matrix
+    runs-on: windows-2019
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2019]
-        # Python 3.9 is for PyTorch 1.7.1, 1.8.x, 1.9.0
-        python-version: [3.6, 3.7, 3.8, 3.9]
-        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0"]
-        exclude:
-          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
-            torch: "1.5.0"
-          - python-version: 3.9
-            torch: "1.5.1"
-          - python-version: 3.9
-            torch: "1.6.0"
-          - python-version: 3.9
-            torch: "1.7.0"
+        ${{ fromJson(needs.generate_build_matrix.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v2
@@ -68,8 +74,8 @@ jobs:
 
       - name: Install PyTorch ${{ matrix.torch }}
         run: |
-          pip3 install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
-          pip3 install -qq wheel twine dataclasses numpy typing_extensions
+          pip3 install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html numpy
+          pip3 install -qq wheel twine dataclasses typing_extensions
 
           python3 -m torch.utils.collect_env
 
@@ -85,18 +91,17 @@ jobs:
           cd build_release
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
           ls -lh
+          cat k2/csrc/version.h
+          cat CMakeCache.txt
 
       - name: Build k2
-        run: |
-          cd build_release
-          cmake --build . --target _k2 --config Release
-
-      - name: Display generated files
         shell: bash
         run: |
           cd build_release
-          ls -lh bin/*/*
+          cmake --build . --target _k2 --config Release -- -m
+          cmake --build . --target ALL_BUILD --config Release
           ls -lh lib/*/*
+          ls -lh bin/*/*
 
       - name: Build wheel
         shell: bash
@@ -106,15 +111,15 @@ jobs:
           ls -lh dist/
           pip install ./dist/*.whl
 
+      - name: Run tests
+        shell: bash
+        run: |
+          cd build_release
+          # disable python tests for k2host
+          ctest -C Release --output-on-failure -E host
+
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-2019-cpu
           path: dist/*.whl
-
-      - name: Run C++ tests
-        run: |
-          cd build_release
-          cmake --build . --target ALL_BUILD --config Release
-          # disable python tests for k2host
-          ctest -C Release --output-on-failure -E host

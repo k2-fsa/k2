@@ -36,7 +36,7 @@ namespace k2 {
    @return Returns a 1-D tensor with the given `dim` and `stride`.
  */
 template <typename T>
-static Tensor GenerateRandTensor1D(ContextPtr context, int32_t dim,
+/*static*/ Tensor GenerateRandTensor1D(ContextPtr context, int32_t dim,
                                    int32_t stride) {
   K2_CHECK_GT(stride, 0);
 
@@ -69,7 +69,7 @@ static Tensor GenerateRandTensor1D(ContextPtr context, int32_t dim,
            `stride`.
  */
 template <typename T>
-static Tensor GenerateRandTensor2D(ContextPtr context, int32_t num_rows,
+/*static*/ Tensor GenerateRandTensor2D(ContextPtr context, int32_t num_rows,
                                    int32_t num_cols, int32_t stride) {
   int32_t num_tensor_elements = num_rows * num_cols;
   K2_CHECK_GT(num_cols, 0);
@@ -301,7 +301,7 @@ TEST(IndexAdd, IndexAdd2D) {
 }
 
 template <typename T>
-static void TestSimpleRaggedIndexSelect1D() {
+/*static*/ void TestSimpleRaggedIndexSelect1D() {
   // test with simple case should be good enough
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     // create src

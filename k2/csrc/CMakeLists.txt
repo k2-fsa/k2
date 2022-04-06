@@ -38,6 +38,12 @@ add_library(k2_nvtx INTERFACE)
 target_include_directories(k2_nvtx INTERFACE ${CMAKE_SOURCE_DIR})
 if(K2_ENABLE_NVTX)
   target_compile_definitions(k2_nvtx INTERFACE K2_ENABLE_NVTX=1)
+  if(WIN32)
+    target_include_directories(k2_nvtx INTERFACE
+      ${CUDA_TOOLKIT_ROOT_DIR}/include/nvtx3
+      "C:/Program Files/NVIDIA Corporation/NvToolsExt/include"
+    )
+  endif()
 endif()
 
 add_subdirectory(host)
@@ -115,7 +121,23 @@ target_link_libraries(context PUBLIC fsa)
 target_link_libraries(context PUBLIC k2_log)
 target_link_libraries(context PUBLIC k2_nvtx)
 if(K2_USE_PYTORCH)
-  target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
+  if(NOT WIN32)
+    target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
+  else()
+    # see https://discuss.pytorch.org/t/nvcc-fatal-a-single-input-file-is-required-for-a-non-link-phase-when-an-outputfile-is-specified/142843/6
+    # Depending on ${TORCH_LIBRARIES} will introduce a compile time option "/bigobj",
+    # which causes the error in the above link.
+    #
+    # It would be ideal to remove /bigobj so that we can use ${TORCH_LIBRARIES}.
+    # To make life simpler, we use the following approach.
+    #
+    message(STATUS "TORCH_DIR: ${TORCH_DIR}") # TORCH_DIR is defined in cmake/torch.cmake
+    # target_link_libraries(context PUBLIC D:/software/anaconda3/envs/py38/Lib/site-packages/torch/lib/*.lib)
+    target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/*.lib)
+    target_include_directories(context PUBLIC ${TORCH_DIR}/include)
+    target_include_directories(context PUBLIC ${TORCH_DIR}/include/torch/csrc/api/include)
+  endif()
+
   if(UNIX AND NOT APPLE)
     # It causes errors on macOS
     target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/libtorch_python.so)
