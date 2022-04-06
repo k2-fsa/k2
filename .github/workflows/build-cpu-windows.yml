@@ -103,13 +103,6 @@ jobs:
           ls -lh lib/*/*
           ls -lh bin/*/*
 
-      - name: Run tests
-        shell: bash
-        run: |
-          cd build_release
-          # disable python tests for k2host
-          ctest -C Release --output-on-failure -E host
-
       - name: Build wheel
         shell: bash
         run: |
@@ -117,6 +110,13 @@ jobs:
           python3 setup.py bdist_wheel
           ls -lh dist/
           pip install ./dist/*.whl
+
+      - name: Run tests
+        shell: bash
+        run: |
+          cd build_release
+          # disable python tests for k2host
+          ctest -C Release --output-on-failure -E host
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
