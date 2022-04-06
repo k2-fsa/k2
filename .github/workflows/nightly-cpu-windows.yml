@@ -48,7 +48,9 @@ jobs:
           python scripts/github_actions/generate_build_matrix.py
           MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
           echo "::set-output name=matrix::${MATRIX}"
+
   nightly_cpu_windows:
+    needs: generate_build_matrix
     runs-on: windows-2019
     strategy:
       fail-fast: false
