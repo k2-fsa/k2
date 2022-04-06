@@ -192,7 +192,7 @@ class RnntDecodingStreams {
                     `num_frames[i] <= srcs_[i].prev_frames.size()`.
       @param [out] ofsa  The output lattice will write to here, its num_axes
                          equals to 3, will be re-allocated.
-      @param [out] out_map  It is an Ragged which satisfies
+      @param [out] out_map  It is an ragged int which satisfies
                      `Dim0() == ofsa.Dim0()` and
                      `NumElements() == ofsa.NumElements()`, containing the idx01
                      into the graph of each individual streams, mapping current

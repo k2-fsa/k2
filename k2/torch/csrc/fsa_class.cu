@@ -67,6 +67,7 @@ void FsaClass::CopyTensorAttrs(std::vector<FsaClass> &srcs,
                                Ragged<int32_t> &arc_map) {
   K2_CHECK_EQ(arc_map.NumAxes(), 2);
   K2_CHECK_EQ(arc_map.Dim0(), static_cast<int32_t>(srcs.size()));
+  // Gather attributes info of all source fsas.
   std::unordered_map<std::string, Dtype> attrs_info;
   for (const auto &fsa : srcs) {
     for (const auto &iter : fsa.tensor_attrs) {

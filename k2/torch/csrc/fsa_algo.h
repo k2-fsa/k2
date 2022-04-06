@@ -44,6 +44,18 @@ namespace k2 {
 FsaClass CtcTopo(int32_t max_token, bool modified = false,
                  torch::Device device = torch::kCPU);
 
+/*
+  Create a trivial graph which has only two states. On state 0, there are
+  `max_token` self loops(i.e. a loop for each symbol from 1 to max_token), and
+  state 1 is the final state.
+
+    @param [in] max_token  The maximum token ID (inclusive). We assume that
+                           token IDs are contiguous (from 1 to `max_token`).
+    @param device  A torch.device indicating what device the returned Fsa will
+                   be. Default torch::CPU.
+    @return    Returns the expected trivial graph on the given device.
+               Note the returned graph does not contain arcs with label being 0.
+ */
 FsaClass TrivialGraph(int32_t max_token, torch::Device device = torch::kCPU);
 
 /* Intersect a DenseFsaVec constructed from nnet_output with an FsaClass, i.e.,

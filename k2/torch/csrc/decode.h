@@ -79,6 +79,20 @@ Ragged<int32_t> GetTexts(FsaClass &lattice);
 void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
                            FsaClass *lattice);
 
+/** Advance a chunk of frames for rnnt decoding.
+
+    @param streams  The rnnt decoding streams.
+    @param module  Jit script module containing "decoder_forword" and
+                   "joiner_forward" methods.
+    @param encoder_outs  The output of rnnt encoder which has a shape of
+                         (B, T, C), B (i.e. the batch size) equals to
+                         streams.NumStreams(). T is the chunk size. C is the
+                         embedding dimension.
+
+    Note: streams.TerminateAndFlushToStreams() will be invoked in this function,
+          so all the decoding results will be flushed back to the individual
+          streams belonging to the corresponding sequences.
+ */
 void DecodeOneChunk(rnnt_decoding::RnntDecodingStreams &streams,
                     torch::jit::script::Module module,
                     torch::Tensor encoder_outs);

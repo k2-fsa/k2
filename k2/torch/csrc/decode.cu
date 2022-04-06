@@ -115,6 +115,7 @@ void DecodeOneChunk(rnnt_decoding::RnntDecodingStreams &streams,
     Array2<int32_t> contexts;
     streams.GetContexts(&shape, &contexts);
     auto contexts_tensor = Array2ToTorch<int32_t>(contexts);
+    // `nn.Embedding()` in torch below v1.7.1 supports only torch.int64
     contexts_tensor = contexts_tensor.to(torch::kInt64);
     auto decoder_outs =
         module.run_method("decoder_forward", contexts_tensor).toTensor();
@@ -127,7 +128,6 @@ void DecodeOneChunk(rnnt_decoding::RnntDecodingStreams &streams,
     auto logits =
         module.run_method("joiner_forward", current_encoder_outs, decoder_outs)
             .toTensor();
-    logits = logits.squeeze(1).squeeze(1);
     auto logprobs = logits.log_softmax(-1);
     auto logprobs_array = Array2FromTorch<float>(logprobs);
     streams.Advance(logprobs_array);

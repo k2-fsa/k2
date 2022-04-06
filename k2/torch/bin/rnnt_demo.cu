@@ -239,11 +239,15 @@ int main(int argc, char *argv[]) {
     // which waves we are decoding now
     std::vector<int32_t> current_wave_ids;
 
+    std::vector<int32_t> current_num_frames;
+    std::vector<k2::FsaClass> current_graphs;
+
     for (int32_t i = 0; i < num_waves; ++i) {
       // this wave is done
       if (decoded_frames[i] * subsampling_factor >= num_frames[i]) continue;
 
       current_streams.emplace_back(individual_streams[i]);
+      current_graphs.emplace_back(individual_graphs[i]);
       current_wave_ids.push_back(i);
 
       if ((num_frames[i] - decoded_frames[i]) <=
@@ -252,6 +256,8 @@ int main(int argc, char *argv[]) {
       } else {
         decoded_frames[i] += chunk_size;
       }
+
+      current_num_frames.emplace_back(decoded_frames[i]);
 
       int32_t start = positions[i],
               end = start + chunk_size >= T ? T : start + chunk_size;
@@ -282,13 +288,6 @@ int main(int argc, char *argv[]) {
 
     k2::FsaVec ofsa;
     k2::Ragged<int32_t> out_map;
-
-    std::vector<int32_t> current_num_frames;
-    std::vector<k2::FsaClass> current_graphs;
-    for (size_t i = 0; i < current_wave_ids.size(); ++i) {
-      current_num_frames.emplace_back(decoded_frames[current_wave_ids[i]]);
-      current_graphs.emplace_back(individual_graphs[current_wave_ids[i]]);
-    }
     streams.FormatOutput(current_num_frames, &ofsa, &out_map);
 
     k2::FsaClass lattice(ofsa);
