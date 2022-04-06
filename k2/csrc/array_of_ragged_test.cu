@@ -73,6 +73,8 @@ void TestArray1OfRaggedConstruct() {
     for (int32_t j = 0; j < num_axes; ++j) {
       Array1<int32_t> meta_row_splits(array_of_ragged.shape.MetaRowSplits(j));
       Array1<int32_t> meta_row_ids(array_of_ragged.shape.MetaRowIds(j));
+      Array1<int32_t> offsets(
+          array_of_ragged.shape.Offsets().RowArange(j + 1, j + 2).Row(0));
 
       Array1<int32_t> expected_meta_row_splits(GetCpuContext(), num_srcs + 1);
       int32_t *expected_meta_row_splits_data = expected_meta_row_splits.Data();
@@ -87,7 +89,18 @@ void TestArray1OfRaggedConstruct() {
 
       K2_CHECK(Equal(meta_row_splits, expected_meta_row_splits));
       K2_CHECK(Equal(meta_row_ids, expected_meta_row_ids));
+      K2_CHECK(Equal(offsets, expected_meta_row_splits));
     }
+
+    Array1<int32_t> expected_offsets_1st_row(GetCpuContext(), num_srcs + 1);
+    int32_t *expected_offsets_1st_row_data = expected_offsets_1st_row.Data();
+    for (int32_t i = 0; i <= num_srcs; ++i) {
+      expected_offsets_1st_row_data[i] = i;
+    }
+    expected_offsets_1st_row = expected_offsets_1st_row.To(c);
+    Array1<int32_t> offsets_1st_row(
+        array_of_ragged.shape.Offsets().RowArange(0, 1).Row(0));
+    K2_CHECK(Equal(offsets_1st_row, expected_offsets_1st_row));
   }
 }
 
