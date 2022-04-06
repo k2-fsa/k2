@@ -21,9 +21,10 @@ namespace k2 {
 
 template <typename T>
 /*static*/ void CopyTensorElements2d(ContextPtr c, int32_t dim0, int32_t dim1,
-                                 const T *src_data, int32_t src_stride0,
-                                 int32_t src_stride1, T *dest_data,
-                                 int32_t dest_stride0, int32_t dest_stride1) {
+                                     const T *src_data, int32_t src_stride0,
+                                     int32_t src_stride1, T *dest_data,
+                                     int32_t dest_stride0,
+                                     int32_t dest_stride1) {
   NVTX_RANGE(K2_FUNC);
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
@@ -133,9 +134,10 @@ Tensor Cast(Tensor src, Dtype new_dtype) {
 // See the documentation of `Index`.
 template <typename T>
 /*static*/ void Index1DImpl(ContextPtr context, const T *src_data,
-                        int32_t src_stride, int32_t src_dim,
-                        const int32_t *indexes_data, bool allow_minus_one,
-                        int32_t ans_dim, T *ans_data, double default_value) {
+                            int32_t src_stride, int32_t src_dim,
+                            const int32_t *indexes_data, bool allow_minus_one,
+                            int32_t ans_dim, T *ans_data,
+                            double default_value) {
   if (std::is_integral<T>::value) {
     K2_CHECK_EQ(static_cast<T>(default_value), default_value);
   }
@@ -167,9 +169,10 @@ template <typename T>
 // See the documentation of `Index`.
 template <typename T>
 /*static*/ void Index2DImpl(ContextPtr context, const T *src_data,
-                        int32_t src_stride, int32_t src_dim0, int32_t src_dim1,
-                        const int32_t *indexes_data, bool allow_minus_one,
-                        int32_t ans_dim, int32_t ans_stride, T *ans_data) {
+                            int32_t src_stride, int32_t src_dim0,
+                            int32_t src_dim1, const int32_t *indexes_data,
+                            bool allow_minus_one, int32_t ans_dim,
+                            int32_t ans_stride, T *ans_data) {
   NVTX_RANGE(K2_FUNC);
   if (allow_minus_one) {
     if (context->GetDeviceType() == kCpu) {
@@ -300,10 +303,10 @@ Tensor Index(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
 
 template <typename T>
 /*static*/ void IndexAdd1DImpl(ContextPtr context, const T *src_data,
-                           int32_t src_dim, int32_t src_stride,
-                           const int32_t *indexes_data, bool allow_minus_one,
-                           int32_t dest_dim, int32_t dest_stride,
-                           T *dest_data) {
+                               int32_t src_dim, int32_t src_stride,
+                               const int32_t *indexes_data,
+                               bool allow_minus_one, int32_t dest_dim,
+                               int32_t dest_stride, T *dest_data) {
   NVTX_RANGE(K2_FUNC);
   if (allow_minus_one) {
     K2_EVAL(
@@ -331,11 +334,12 @@ template <typename T>
 
 template <typename T>
 /*static*/ void IndexAdd2DImpl(ContextPtr context, const T *src_data,
-                           int32_t src_dim0, int32_t src_dim1,
-                           int32_t src_stride0, int32_t src_stride1,
-                           const int32_t *indexes_data, bool allow_minus_one,
-                           int32_t dest_dim, int32_t dest_stride0,
-                           int32_t dest_stride1, T *dest_data) {
+                               int32_t src_dim0, int32_t src_dim1,
+                               int32_t src_stride0, int32_t src_stride1,
+                               const int32_t *indexes_data,
+                               bool allow_minus_one, int32_t dest_dim,
+                               int32_t dest_stride0, int32_t dest_stride1,
+                               T *dest_data) {
   NVTX_RANGE(K2_FUNC);
   if (allow_minus_one) {
     K2_EVAL2(
@@ -437,10 +441,9 @@ void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
 }
 
 template <typename T>
-/*static*/ void SimpleRaggedIndexSelect1DImpl(ContextPtr context, const T *src_data,
-                                          int32_t src_stride, int32_t src_dim,
-                                          Ragged<int32_t> &indexes,
-                                          int32_t ans_dim, T *ans_data) {
+/*static*/ void SimpleRaggedIndexSelect1DImpl(
+    ContextPtr context, const T *src_data, int32_t src_stride, int32_t src_dim,
+    Ragged<int32_t> &indexes, int32_t ans_dim, T *ans_data) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(indexes.NumAxes(), 2);
   int32_t indexes_dim0 = indexes.Dim0(),
