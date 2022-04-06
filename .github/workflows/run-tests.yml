@@ -36,7 +36,7 @@ jobs:
         cuda: ["10.2"]
         gcc: ["7"]
         torch: ["1.11.0"]
-        python-version: [3.10]
+        python-version: ["3.10"]
         build_type: ["Release", "Debug"]
 
     steps:
