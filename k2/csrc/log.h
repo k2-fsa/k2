@@ -166,7 +166,13 @@ class Logger {
       // this is usually caused by one of the K2_CHECK macros and the detailed
       // error messages should have already been printed by the macro, so we
       // use an arbitrary string here.
+#ifndef _MSC_VER
       __assert_fail(kErrMsg, filename_, line_num_, func_name_);
+#else
+      (void)kErrMsg;
+      assert(0);
+#endif  // _MSC_VER
+
 #else
       std::string stack_trace = GetStackTrace();
       if (!stack_trace.empty()) {

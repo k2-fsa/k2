@@ -491,7 +491,7 @@ static void PybindBackpropGetArcPost(py::module &m, const char *name) {
    @return It returns the gradient of scores of all arcs.
  */
 template <typename T>
-static torch::Tensor GetTotScoresTropicalBackward(
+/*static*/ torch::Tensor GetTotScoresTropicalBackward(
     FsaVec &fsas, const RaggedAny &best_path_arc_indexes,
     torch::Tensor tot_scores_grad) {
   DeviceGuard guard(fsas.Context());
@@ -542,7 +542,7 @@ static torch::Tensor GetTotScoresTropicalBackward(
    @return It returns the gradient of scores of all arcs.
  */
 template <typename T>
-static torch::Tensor GetTotScoresLogBackward(FsaVec &fsas,
+/*static*/ torch::Tensor GetTotScoresLogBackward(FsaVec &fsas,
                                              torch::Tensor arc_post,
                                              torch::Tensor tot_scores_grad) {
   DeviceGuard guard(fsas.Context());

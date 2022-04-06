@@ -69,7 +69,7 @@ namespace k2 {
     @param [out] epsilon_closure_mapped_arc_map  The arc map from
                        `epsilon_closure_mapped` to `src`.
 */
-static void GetEpsilonClosureMapped(
+/*static*/ void GetEpsilonClosureMapped(
     FsaVec &epsilon_fsa_closure,
     const Array1<int32_t> &epsilon_closure_state_map,
     Ragged<int32_t> &epsilon_closure_arc_map, FsaVec &non_epsilon_fsa,
@@ -139,7 +139,7 @@ static void GetEpsilonClosureMapped(
                        foll_shape.RowSplits(1)[i] is the number of following
                        arcs it is combined with.
 */
-static void DecideCombineWithFollowingOrPreceding(
+/*static*/ void DecideCombineWithFollowingOrPreceding(
     FsaVec &epsilon_closure_mapped, FsaVec &non_epsilon_fsa,
     Renumbering *epsilon_prec_renumbering, RaggedShape *foll_shape) {
   NVTX_RANGE(K2_FUNC);
@@ -237,7 +237,7 @@ static void DecideCombineWithFollowingOrPreceding(
      @param [out] combined_foll_arc_map The arc map of `combined_foll`, from
                        arcs idx012 in `combined_foll` to the original Fsa.
 */
-static void CombineWithFollowingNonEpsilonArcs(
+/*static*/ void CombineWithFollowingNonEpsilonArcs(
     FsaVec &epsilon_closure_mapped,
     Ragged<int32_t> &epsilon_closure_mapped_arc_map, FsaVec &non_epsilon_fsa,
     const Array1<int32_t> &non_epsilon_arc_map, RaggedShape &foll_shape,
@@ -341,7 +341,7 @@ static void CombineWithFollowingNonEpsilonArcs(
                        `epsilon_closure_prec_arc_map`, user will get the
                        complete arc map info for `combined_prec`.
 */
-static void CombineWithPrecedingNonEpsilonArcs(
+/*static*/ void CombineWithPrecedingNonEpsilonArcs(
     FsaVec &epsilon_closure_prec, Ragged<int32_t> &epsilon_closure_prec_arc_map,
     FsaVec &non_epsilon_fsa, FsaVec *combined_prec,
     Ragged<int32_t> *epsilon_closure_prec_arc_map_prec,

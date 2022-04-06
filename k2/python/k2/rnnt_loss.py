@@ -471,7 +471,7 @@ def _adjust_pruning_lower_bound(
     # make the transformed tensor to be non-decreasing
     s_begin = k2.monotonic_lower_bound(s_begin)
     # make start symbol to be zero.
-    s_begin = torch.where(s_begin < 0, 0, s_begin)
+    s_begin = torch.clamp(s_begin, min=0)
     # do the magic transformation again to recover s_begin
     s_begin = -(
         s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device)
@@ -568,7 +568,7 @@ def get_rnnt_prune_ranges(
 
     s_begin_padding = boundary[:, 2].reshape(B, 1) - s_range + 1
     # handle the cases when `len(symbols) < s_range`
-    s_begin_padding = torch.where(s_begin_padding >= 0, s_begin_padding, 0)
+    s_begin_padding = torch.clamp(s_begin_padding, min=0)
 
     s_begin = torch.where(mask, s_begin, s_begin_padding)
 

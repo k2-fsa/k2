@@ -15,36 +15,42 @@
 # limitations under the License.
 
 
-name: build-windows-conda
+name: build_conda_cpu_windows
 
 on:
   push:
-    branches:
-      - conda-win
+    tags:
+      - '*'
 
 env:
   BUILD_TYPE: Release
 
 jobs:
-  build-windows-conda:
+  generate_build_matrix:
+    # see https://github.com/pytorch/pytorch/pull/50633
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Generating build matrix
+        id: set-matrix
+        run: |
+          # outputting for debugging purposes
+          python scripts/github_actions/generate_build_matrix.py
+          MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
+          echo "::set-output name=matrix::${MATRIX}"
+
+  build_conda_cpu_windows:
     # see https://github.com/actions/virtual-environments/blob/win19/20210525.0/images/win/Windows2019-Readme.md
-    runs-on: ${{ matrix.os }}
+    needs: generate_build_matrix
+    runs-on: windows-2019
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2019]
-        # Python 3.9 is for PyTorch 1.7.1, 1.8.x, 1.9.0,
-        python-version: [3.6, 3.7, 3.8, 3.9]
-        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0"]
-        exclude:
-          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
-            torch: "1.5.0"
-          - python-version: 3.9
-            torch: "1.5.1"
-          - python-version: 3.9
-            torch: "1.6.0"
-          - python-version: 3.9
-            torch: "1.7.0"
+        ${{ fromJson(needs.generate_build_matrix.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v2

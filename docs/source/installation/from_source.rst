@@ -3,6 +3,10 @@
 Install from source
 ===================
 
+.. hint::
+
+    It supports Linux (CPU + CUDA), macOS (CPU), and Windows (CPU + CUDA).
+
 The following versions of Python, CUDA, and PyTorch are known to work.
 
     - |source_python_versions|
@@ -15,7 +19,7 @@ The following versions of Python, CUDA, and PyTorch are known to work.
 .. |source_cuda_versions| image:: ./images/cuda_ge_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |source_pytorch_versions| image:: ./images/pytorch_ge_1.5.0-green.svg
+.. |source_pytorch_versions| image:: ./images/pytorch_ge_1.6.0-green.svg
   :alt: Supported pytorch versions
 
 Before compiling k2, some preparation work has to be done:

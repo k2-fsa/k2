@@ -1,30 +1,24 @@
-name: nightly
+# Copyright (c)  2021  Xiaomi Corporation (authors: Fangjun Kuang)
+
+name: Publish to PyPI - Ubuntu CUDA
 
 on:
   push:
-    branches:
-      - nightly
-  schedule:
-    # minute (0-59)
-    # hour (0-23)
-    # day of the month (1-31)
-    # month (1-12)
-    # day of the week (0-6)
-    # nightly build at 14:00 UTC time every day
-    - cron: "0 14 * * *"
+    tags:
+      - '*'
 
 env:
   BUILD_TYPE: Release
 
 jobs:
-  nightly:
+  PyPI_CUDA_Ubuntu:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04]
-        cuda: ["10.1", "10.2", "11.0"]
-        gcc: ["7"]
+        cuda: ["10.1"]
+        gcc: ["5"]
         torch: ["1.7.1"]
         python-version: [3.6, 3.7, 3.8]
 
@@ -32,13 +26,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
-      - uses: szenius/set-timezone@v1.0
-        with:
-          timezoneLinux: "Asia/Shanghai"
-
-      - name: Display date and time
-        run: date
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -95,18 +82,19 @@ jobs:
 
       - name: Build pip packages
         shell: bash
+        env:
+          K2_IS_FOR_PYPI: 1
+          K2_IS_STABLE: 1
         run: |
+          tag=$(python3 -c "import sys; print(''.join(sys.version[:3].split('.')))")
           export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
           export K2_MAKE_ARGS="-j2"
-          python3 setup.py bdist_wheel
+          python3 setup.py bdist_wheel --python-tag=py${tag}
           ls -lh dist/
 
-      - name: Copy wheels to k2-fsa.org
-        uses: horochx/deploy-via-scp@v1.0.1
-        with:
-          host: ${{ secrets.K2_HOST }}
-          user: ${{ secrets.K2_USERNAME }}
-          key: ${{ secrets.K2_KEY }}
-          port: ${{ secrets.K2_PORT }}
-          local: dist/*.whl
-          remote: nightly/whl
+      - name: Publish wheels to PyPI
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          twine upload dist/k2-*.whl

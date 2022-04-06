@@ -107,7 +107,7 @@ TEST(RandInt, CUDA) {
 }
 
 template <typename T>
-static void TestBounds(T low, T high) {
+/*static*/ void TestBounds(T low, T high) {
   int32_t dim = 100000;
   ContextPtr cpu = GetCpuContext();
   ContextPtr cuda = GetCudaContext();

@@ -1,6 +1,7 @@
 function(k2_add_benchmark source)
   get_filename_component(name ${source} NAME_WE)
   add_executable(${name} ${source})
+  set_target_properties(${name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
   target_link_libraries(${name} PRIVATE benchmark)
 endfunction()
 

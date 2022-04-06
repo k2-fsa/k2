@@ -73,11 +73,12 @@ option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
 option(K2_USE_PYTORCH "Whether to build with PyTorch" ON)
 option(K2_ENABLE_BENCHMARK "Whether to enable benchmark" ON)
 option(K2_WITH_CUDA "Whether to build k2 with CUDA" ${_K2_WITH_CUDA})
+option(K2_ENABLE_NVTX "Whether to build k2 with the NVTX library" ON)
 
-# If K2_WITH_CUDA is ON, then K2_ENABLE_NVTX has a default value ON
-# If K2_WITH_CUDA is OFF, then K2_ENABLE_NVTX is set to OFF
-include(CMakeDependentOption)
-cmake_dependent_option(K2_ENABLE_NVTX "Whether to build with the NVTX library" ON K2_WITH_CUDA OFF)
+if(NOT K2_WITH_CUDA)
+  message(STATUS "Set K2_ENABLE_NVTX to OFF since K2_WITH_CUDA is OFF")
+  set(K2_ENABLE_NVTX OFF CACHE BOOL "" FORCE)
+endif()
 
 if(NOT K2_USE_PYTORCH)
   message(FATAL_ERROR "\
@@ -210,7 +211,16 @@ if(K2_WITH_CUDA)
   # https://www.myzhar.com/blog/tutorials/tutorial-nvidia-gpu-cuda-compute-capability/
   set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
   if(CUDA_VERSION VERSION_GREATER "11.0")
-    list(APPEND K2_COMPUTE_ARCH_CANDIDATES 80 86)
+      list(APPEND K2_COMPUTE_ARCH_CANDIDATES 80 86)
+      if(WIN32)
+        # To fix the following warning from PyTorch:
+        # c10/util/TypeCast.h(39): warning : calling a constexpr __host__ function from a
+        # __host__ __device__ function is not allowed. The experimental flag '--expt-relaxed-constexpr'
+        # can be used to allow this
+        string(APPEND CMAKE_CUDA_FLAGS " --expt-relaxed-constexpr ")
+      endif()
+
+      string(APPEND CMAKE_CUDA_FLAGS " -Wno-deprecated-gpu-targets ")
   endif()
   message(STATUS "K2_COMPUTE_ARCH_CANDIDATES ${K2_COMPUTE_ARCH_CANDIDATES}")
 
@@ -260,6 +270,10 @@ if(K2_WITH_CUDA)
   add_definitions(-DK2_WITH_CUDA)
 endif()
 
+if(WIN32)
+  add_definitions(-DNOMINMAX) # Otherwise, std::max() and std::min() won't work
+endif()
+
 if(K2_WITH_CUDA AND CUDA_VERSION VERSION_LESS 11.0)
   # CUB is included in CUDA toolkit 11.0 and above
   include(cub)
@@ -271,39 +285,75 @@ endif()
 
 include(googletest)
 
-if(K2_WITH_CUDA)
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -Wall --compiler-options -Wno-unknown-pragmas --compiler-options -Wno-strict-overflow")
+if(K2_WITH_CUDA AND NOT WIN32)
+  string(APPEND CMAKE_CUDA_FLAGS " --compiler-options -Wall ")
+  string(APPEND CMAKE_CUDA_FLAGS " --compiler-options -Wno-strict-overflow ")
+  string(APPEND CMAKE_CUDA_FLAGS " --compiler-options -Wno-unknown-pragmas ")
   message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 endif()
 
-if(NOT K2_WITH_CUDA AND NOT WIN32)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable")
-endif()
 
 if(NOT WIN32)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
+  string(APPEND CMAKE_CXX_FLAGS " -Wno-unused-variable ")
+  string(APPEND CMAKE_CXX_FLAGS " -Wno-strict-overflow ")
 endif()
 
 if(WIN32)
   # disable various warnings for MSVC
   # NOTE: Most of the warnings are from PyTorch C++ APIs
-  # 4068: unknown pragma "unroll"
-  # 4996: "getenv": This function is unsafe
-  # 4224: conversion from 'int64_t' to 'int32_t', possible loss of data
-  # 4099: type name first seen using 'class' now seen using 'struct'
-  # 4267: conversion from 'size_t' to 'I', possible loss of data
-  # 4305: truncation from 'int' to 'bool'
-  # 4244: conversion from 'const M' to 'const FloatType'
-  # 4624: destructor was implicitly defined as deleted
-  # 4551: function call missing argument list
-  # 4067: unexpected tokens following preprocessor directive
-  # 4819: The file contains a character that cannot be presented in the current code page.
   # 4005: macro redefinition
-  # 4722: destructor never returns
   # 4018: signed/unsigned mismatch
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4996 /wd4224 /wd4099 /wd4267 /wd4305 /wd4244 /wd4624 /wd4551 /wd4067 /wd4819 /wd4005 /wd4722 /wd4018")
+  # 4067: unexpected tokens following preprocessor directive
+  # 4068: unknown pragma "unroll"
+  # 4099: type name first seen using 'class' now seen using 'struct'
+  # 4101: 'identifier' : unreferenced local variable
+  # 4190: 'identifier1' has C-linkage specified, but returns UDT 'identifier2' which is incompatible with C
+  # 4224: conversion from 'int64_t' to 'int32_t', possible loss of data
+  # 4244: conversion from 'const M' to 'const FloatType'
+  # 4251: 'type' : class 'type1' needs to have dll-interface to be used by clients of class 'type2'
+  # 4267: conversion from 'size_t' to 'I', possible loss of data
+  # 4275: non - DLL-interface class 'class_1' used as base for DLL-interface class 'class_2'
+  # 4305: truncation from 'int' to 'bool'
+  # 4522: 'class' : multiple assignment operators specified
+  # 4551: function call missing argument list
+  # 4624: destructor was implicitly defined as deleted
+  # 4700: uninitialized local variable 'device' used
+  # 4722: destructor never returns
+  # 4819: The file contains a character that cannot be presented in the current code page.
+  # 4838: conversion from 'type_1' to 'type_2' requires a narrowing conversion
+  # 4996: "getenv": This function is unsafe
+  set(disabled_warnings
+      /wd4005
+      /wd4018
+      /wd4067
+      /wd4068
+      /wd4099
+      /wd4101
+      /wd4190
+      /wd4224
+      /wd4251
+      /wd4244
+      /wd4267
+      /wd4275
+      /wd4305
+      /wd4522
+      /wd4551
+      /wd4624
+      /wd4700
+      /wd4722
+      /wd4819
+      /wd4838
+      /wd4996
+  )
+  message(STATUS "Disabled warnings: ${disabled_warnings}")
+  foreach(w IN LISTS disabled_warnings)
+    string(APPEND CMAKE_CXX_FLAGS " ${w} ")
+    string(APPEND CMAKE_CUDA_FLAGS " --compiler-options ${w} ")
+  endforeach()
+  string(APPEND CMAKE_CXX_FLAGS " /bigobj ")
 endif()
 
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 
 add_subdirectory(k2)
