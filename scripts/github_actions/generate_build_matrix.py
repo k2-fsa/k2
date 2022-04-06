@@ -18,7 +18,8 @@ def get_args():
         "--test-only-latest-torch",
         action="store_true",
         default=False,
-        help="If True, we test only the latest PyTroch to save CI running time.",
+        help="""If True, we test only the latest PyTroch
+        to reduce CI running time.""",
     )
     return parser.parse_args()
 
