@@ -4578,7 +4578,7 @@ uses <code class="docutils literal notranslate"><span class="pre">self</span></c
 <h3>to<a class="headerlink" href="#id20" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.RaggedShape.to">
-<span class="sig-prename descclassname"><span class="pre">RaggedShape.</span></span><span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self:</span> <span class="pre">_k2.ragged.RaggedShape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device:</span> <span class="pre">torch::Device</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedShape</span></span></span><a class="headerlink" href="#k2.RaggedShape.to" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">RaggedShape.</span></span><span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedShape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedShape</span></span></span><a class="headerlink" href="#k2.RaggedShape.to" title="Permalink to this definition"></a></dt>
 <dd><p>Move this shape to the specified device.</p>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
@@ -4952,7 +4952,7 @@ backward compatibility.</p>
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#k2.RaggedTensor.__init__" title="Permalink to this definition"></a></dt>
 <dd><p>Overloaded function.</p>
 <ol class="arabic simple">
-<li><p>__init__(self: _k2.ragged.RaggedTensor, data: list, dtype: object = None, device: torch::Device = device(type=’cpu’)) -&gt; None</p></li>
+<li><p>__init__(self: _k2.ragged.RaggedTensor, data: list, dtype: object = None, device: object = ‘cpu’) -&gt; None</p></li>
 </ol>
 <p>Create a ragged tensor with arbitrary number of axes.</p>
 <div class="admonition note">
@@ -5104,7 +5104,7 @@ values are: <code class="docutils literal notranslate"><span class="pre">&quot;c
 </dd>
 </dl>
 <ol class="arabic simple" start="3">
-<li><p>__init__(self: _k2.ragged.RaggedTensor, s: str, dtype: object = None, device: torch::Device = device(type=’cpu’)) -&gt; None</p></li>
+<li><p>__init__(self: _k2.ragged.RaggedTensor, s: str, dtype: object = None, device: object = ‘cpu’) -&gt; None</p></li>
 </ol>
 <p>Create a ragged tensor from its string representation.</p>
 <p>Fields are separated by space(s) <strong>or</strong> comma(s).</p>
@@ -5165,7 +5165,7 @@ values are: <code class="docutils literal notranslate"><span class="pre">&quot;c
 </dd>
 </dl>
 <ol class="arabic simple" start="4">
-<li><p>__init__(self: _k2.ragged.RaggedTensor, s: str, dtype: object = None, device: str = device(type=’cpu’)) -&gt; None</p></li>
+<li><p>__init__(self: _k2.ragged.RaggedTensor, s: str, dtype: object = None, device: str = ‘cpu’) -&gt; None</p></li>
 </ol>
 <p>Create a ragged tensor from its string representation.</p>
 <p>Fields are separated by space(s) <strong>or</strong> comma(s).</p>
@@ -6460,7 +6460,7 @@ containing the computed sum.</p>
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#k2.RaggedTensor.to" title="Permalink to this definition"></a></dt>
 <dd><p>Overloaded function.</p>
 <ol class="arabic simple">
-<li><p>to(self: _k2.ragged.RaggedTensor, device: torch::Device) -&gt; _k2.ragged.RaggedTensor</p></li>
+<li><p>to(self: _k2.ragged.RaggedTensor, device: object) -&gt; _k2.ragged.RaggedTensor</p></li>
 </ol>
 <p>Transfer this tensor to a given device.</p>
 <div class="admonition note">
@@ -7559,7 +7559,7 @@ but can avoid a GPU to CPU transfer if known.</p></li>
 <span class="sig-prename descclassname"><span class="pre">k2.ragged.</span></span><span class="sig-name descname"><span class="pre">create_ragged_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#k2.ragged.create_ragged_tensor" title="Permalink to this definition"></a></dt>
 <dd><p>Overloaded function.</p>
 <ol class="arabic simple">
-<li><p>create_ragged_tensor(data: list, dtype: object = None, device: torch::Device = device(type=’cpu’)) -&gt; _k2.ragged.RaggedTensor</p></li>
+<li><p>create_ragged_tensor(data: list, dtype: object = None, device: object = ‘cpu’) -&gt; _k2.ragged.RaggedTensor</p></li>
 </ol>
 <p>Create a ragged tensor with arbitrary number of axes.</p>
 <div class="admonition note">
@@ -7715,7 +7715,7 @@ values are: <code class="docutils literal notranslate"><span class="pre">&quot;c
 </dd>
 </dl>
 <ol class="arabic simple" start="3">
-<li><p>create_ragged_tensor(s: str, dtype: object = None, device: torch::Device = device(type=’cpu’)) -&gt; _k2.ragged.RaggedTensor</p></li>
+<li><p>create_ragged_tensor(s: str, dtype: object = None, device: object = ‘cpu’) -&gt; _k2.ragged.RaggedTensor</p></li>
 </ol>
 <p>Create a ragged tensor from its string representation.</p>
 <p>Fields are separated by space(s) <strong>or</strong> comma(s).</p>
@@ -8541,7 +8541,7 @@ uses <code class="docutils literal notranslate"><span class="pre">self</span></c
 <h3>to<a class="headerlink" href="#id67" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedShape.to">
-<span class="sig-prename descclassname"><span class="pre">RaggedShape.</span></span><span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self:</span> <span class="pre">_k2.ragged.RaggedShape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device:</span> <span class="pre">torch::Device</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedShape</span></span></span><a class="headerlink" href="#k2.ragged.RaggedShape.to" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">RaggedShape.</span></span><span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedShape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedShape</span></span></span><a class="headerlink" href="#k2.ragged.RaggedShape.to" title="Permalink to this definition"></a></dt>
 <dd><p>Move this shape to the specified device.</p>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
@@ -8915,7 +8915,7 @@ backward compatibility.</p>
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#k2.ragged.RaggedTensor.__init__" title="Permalink to this definition"></a></dt>
 <dd><p>Overloaded function.</p>
 <ol class="arabic simple">
-<li><p>__init__(self: _k2.ragged.RaggedTensor, data: list, dtype: object = None, device: torch::Device = device(type=’cpu’)) -&gt; None</p></li>
+<li><p>__init__(self: _k2.ragged.RaggedTensor, data: list, dtype: object = None, device: object = ‘cpu’) -&gt; None</p></li>
 </ol>
 <p>Create a ragged tensor with arbitrary number of axes.</p>
 <div class="admonition note">
@@ -9067,7 +9067,7 @@ values are: <code class="docutils literal notranslate"><span class="pre">&quot;c
 </dd>
 </dl>
 <ol class="arabic simple" start="3">
-<li><p>__init__(self: _k2.ragged.RaggedTensor, s: str, dtype: object = None, device: torch::Device = device(type=’cpu’)) -&gt; None</p></li>
+<li><p>__init__(self: _k2.ragged.RaggedTensor, s: str, dtype: object = None, device: object = ‘cpu’) -&gt; None</p></li>
 </ol>
 <p>Create a ragged tensor from its string representation.</p>
 <p>Fields are separated by space(s) <strong>or</strong> comma(s).</p>
@@ -9128,7 +9128,7 @@ values are: <code class="docutils literal notranslate"><span class="pre">&quot;c
 </dd>
 </dl>
 <ol class="arabic simple" start="4">
-<li><p>__init__(self: _k2.ragged.RaggedTensor, s: str, dtype: object = None, device: str = device(type=’cpu’)) -&gt; None</p></li>
+<li><p>__init__(self: _k2.ragged.RaggedTensor, s: str, dtype: object = None, device: str = ‘cpu’) -&gt; None</p></li>
 </ol>
 <p>Create a ragged tensor from its string representation.</p>
 <p>Fields are separated by space(s) <strong>or</strong> comma(s).</p>
@@ -10423,7 +10423,7 @@ containing the computed sum.</p>
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#k2.ragged.RaggedTensor.to" title="Permalink to this definition"></a></dt>
 <dd><p>Overloaded function.</p>
 <ol class="arabic simple">
-<li><p>to(self: _k2.ragged.RaggedTensor, device: torch::Device) -&gt; _k2.ragged.RaggedTensor</p></li>
+<li><p>to(self: _k2.ragged.RaggedTensor, device: object) -&gt; _k2.ragged.RaggedTensor</p></li>
 </ol>
 <p>Transfer this tensor to a given device.</p>
 <div class="admonition note">
