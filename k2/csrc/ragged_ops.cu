@@ -424,7 +424,8 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
 // Don't make it static to fix the following error on Windows.
 // Error : On Windows, the enclosing parent function ("IndexAxis0") for an
 // extended __host__ __device__ lambda cannot have internal or no linkage
-/*static*/ RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
+/*static*/ RaggedShape IndexAxis0(RaggedShape &src,
+                                  const Array1<int32_t> &new2old,
                                   Array1<int32_t> *elem_indexes /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
@@ -1500,8 +1501,8 @@ Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
 }
 
 #ifndef _MSC_VER
-/*static*/ Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
-                                                               int32_t num_cols) {
+/*static*/ Array1<int32_t> GetTransposeReorderingThreeAxesCuda(
+    Ragged<int32_t> &src, int32_t num_cols) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 3);
   ContextPtr &context = src.Context();

@@ -152,8 +152,9 @@ static void PybindNormalizePerSublist(py::module &m, const char *name) {
                         (out.NumElements(),).
  */
 template <typename T>
-/*static*/ torch::Tensor NormalizePerSublistBackward(Ragged<T> &out, bool use_log,
-                                                 torch::Tensor out_grad) {
+/*static*/ torch::Tensor NormalizePerSublistBackward(Ragged<T> &out,
+                                                     bool use_log,
+                                                     torch::Tensor out_grad) {
   NVTX_RANGE(K2_FUNC);
   DeviceGuard guard(out.Context());
   K2_CHECK_EQ(out_grad.dim(), 1)

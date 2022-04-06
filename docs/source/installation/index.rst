@@ -50,7 +50,7 @@ below:
 .. |conda_cuda_versions| image:: ./images/cuda_ge_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |conda_pytorch_versions| image:: ./images/pytorch_ge_1.5.0-green.svg
+.. |conda_pytorch_versions| image:: ./images/pytorch_ge_1.6.0-green.svg
   :alt: Supported pytorch versions
 
 .. |pip_python_versions| image:: ./images/python_ge_3.6-blue.svg
@@ -59,7 +59,7 @@ below:
 .. |pip_cuda_versions| image:: ./images/cuda_ge_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |pip_pytorch_versions| image:: ./images/pytorch_ge_1.5.0-green.svg
+.. |pip_pytorch_versions| image:: ./images/pytorch_ge_1.6.0-green.svg
   :alt: Supported pytorch versions
 
 .. |pypi_python_versions| image:: ./images/pypi_python-3.6_3.7_3.8-blue.svg
@@ -77,7 +77,7 @@ below:
 .. |source_cuda_versions| image:: ./images/cuda_ge_10.1-orange.svg
   :alt: Supported cuda versions
 
-.. |source_pytorch_versions| image:: ./images/pytorch_ge_1.5.0-green.svg
+.. |source_pytorch_versions| image:: ./images/pytorch_ge_1.6.0-green.svg
   :alt: Supported pytorch versions
 
 Reporting issues

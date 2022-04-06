@@ -286,12 +286,12 @@ class TestMutualInformation(unittest.TestCase):
                     observed_delta = (delta_m * m_grad).sum().to("cpu")
                     predicted_delta = (delta_px * px.grad).sum().to("cpu")
 
-                    atol = 1.0e-02 if dtype == torch.float32 else 1.0e-04
-                    rtol = 1.0e-02 if dtype == torch.float32 else 1.0e-04
+                    atol = 1.0e-01
+                    rtol = atol
 
                     assert torch.allclose(
                         observed_delta, predicted_delta, atol=atol, rtol=rtol
-                    )
+                    ), (observed_delta, predicted_delta)
 
                     delta_py = delta * torch.randn_like(py)
                     m2 = k2.mutual_information_recursion(

@@ -471,7 +471,7 @@ def _adjust_pruning_lower_bound(
     # make the transformed tensor to be non-decreasing
     s_begin = k2.monotonic_lower_bound(s_begin)
     # make start symbol to be zero.
-    s_begin = torch.where(s_begin < 0, 0, s_begin)
+    s_begin = torch.clamp(s_begin, min=0)
     # do the magic transformation again to recover s_begin
     s_begin = -(
         s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device)

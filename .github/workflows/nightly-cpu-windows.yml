@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: nightly-windows
+name: nightly_cpu_windows
 
 on:
   schedule:
@@ -30,53 +30,29 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  nightly-windows:
-    runs-on: ${{ matrix.os }}
+  generate_build_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Generating build matrix
+        id: set-matrix
+        run: |
+          # outputting for debugging purposes
+          python scripts/github_actions/generate_build_matrix.py
+          MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
+          echo "::set-output name=matrix::${MATRIX}"
+
+  nightly_cpu_windows:
+    needs: generate_build_matrix
+    runs-on: windows-2019
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2019]
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
-        torch: ["1.4.0", "1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.9.0", "1.9.1", "1.10.0", "1.10.1", "1.10.2", "1.11.0"]
-        exclude:
-          - python-version: "3.9" # exclude Python 3.9 for [1.4.0, 1.5.0, 1.5.1, 1.6.0, 1.7.0]
-            torch: "1.4.0"
-          - python-version: "3.9"
-            torch: "1.5.0"
-          - python-version: "3.9"
-            torch: "1.5.1"
-          - python-version: "3.9"
-            torch: "1.6.0"
-          - python-version: "3.9"
-            torch: "1.7.0"
-          - python-version: "3.10" # exclude Python 3.10 for [1.4.0, 1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1, 1.8.0, 1.8.1, 1.9.0, 1.9.1, 1.10.0, 1.10.1, 1.10.2]
-            torch: "1.4.0"
-          - python-version: "3.10"
-            torch: "1.5.0"
-          - python-version: "3.10"
-            torch: "1.5.1"
-          - python-version: "3.10"
-            torch: "1.6.0"
-          - python-version: "3.10"
-            torch: "1.7.0"
-          - python-version: "3.10"
-            torch: "1.7.1"
-          - python-version: "3.10"
-            torch: "1.8.0"
-          - python-version: "3.10"
-            torch: "1.8.1"
-          - python-version: "3.10"
-            torch: "1.9.0"
-          - python-version: "3.10"
-            torch: "1.9.1"
-          - python-version: "3.10"
-            torch: "1.10.0"
-          - python-version: "3.10"
-            torch: "1.10.1"
-          - python-version: "3.10"
-            torch: "1.10.2"
-          - python-version: "3.6" # exclude Python 3.6 for [1.11.0]
-            torch: "1.11.0"
+        ${{ fromJson(needs.generate_build_matrix.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v2
@@ -114,11 +90,15 @@ jobs:
           cd build_release
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
           ls -lh
+          cat k2/csrc/version.h
+          cat CMakeCache.txt
 
       - name: Build k2
         run: |
           cd build_release
           cmake --build . --target _k2 --config Release -- -m
+          ls -lh lib/*/*
+          ls -lh bin/*/*
 
       - name: Display generated files
         shell: bash
@@ -136,7 +116,7 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-cpu
           path: dist/*.whl
 
       - name: Copy wheels to k2-fsa.org
