@@ -35,7 +35,7 @@ jobs:
         os: [ubuntu-18.04]
         cuda: ["11.1"]
         gcc: ["5"]
-        torch: ["1.9.0"]
+        torch: ["1.11.0"]
         python-version: [3.9]
         build_type: ["Release", "Debug"]
 

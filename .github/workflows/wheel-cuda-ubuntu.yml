@@ -4,8 +4,6 @@ name: Publish to PyPI - Ubuntu CUDA
 
 on:
   push:
-    branches:
-      - fix-build-on-windows
     tags:
       - '*'
 

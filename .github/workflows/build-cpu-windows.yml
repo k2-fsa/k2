@@ -21,7 +21,6 @@ on:
   push:
     branches:
       - master
-      - fix-build-on-windows
   pull_request:
     types: [labeled]
 

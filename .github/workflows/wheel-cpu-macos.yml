@@ -4,8 +4,6 @@ name: Publish to PyPI - macOS CPU
 
 on:
   push:
-    branches:
-      - fix-build-on-windows
     tags:
       - '*'
 

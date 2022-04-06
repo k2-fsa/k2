@@ -19,8 +19,6 @@ name: build_conda_cpu_windows
 
 on:
   push:
-    branches:
-      - fix-build-on-windows
     tags:
       - '*'
 
@@ -44,6 +42,7 @@ jobs:
           python scripts/github_actions/generate_build_matrix.py
           MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
           echo "::set-output name=matrix::${MATRIX}"
+
   build_conda_cpu_windows:
     # see https://github.com/actions/virtual-environments/blob/win19/20210525.0/images/win/Windows2019-Readme.md
     needs: generate_build_matrix

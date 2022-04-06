@@ -30,8 +30,6 @@ name: build_conda_cpu_ubuntu
 
 on:
   push:
-    branches:
-      - conda-cpu
     tags:
       - '*'
 
@@ -55,6 +53,7 @@ jobs:
           python scripts/github_actions/generate_build_matrix.py
           MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
           echo "::set-output name=matrix::${MATRIX}"
+
   build_conda_cpu_ubuntu:
     needs: generate_build_matrix
     runs-on: ubuntu-18.04

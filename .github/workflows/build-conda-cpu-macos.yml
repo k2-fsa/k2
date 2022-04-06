@@ -30,8 +30,6 @@ name: build_conda_cpu_macos
 
 on:
   push:
-    branches:
-      - fix-build-on-windows
     tags:
       - '*'
 
@@ -55,6 +53,7 @@ jobs:
           python scripts/github_actions/generate_build_matrix.py
           MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
           echo "::set-output name=matrix::${MATRIX}"
+
   build_conda_cpu_macos:
     needs: generate_build_matrix
     runs-on: macos-10.15

@@ -17,10 +17,6 @@
 name: nightly_cpu_ubuntu
 
 on:
-  push:
-    branches:
-      - nightly-cpu
-      - fix-build-on-windows
   schedule:
     # minute (0-59)
     # hour (0-23)
@@ -50,6 +46,7 @@ jobs:
           python scripts/github_actions/generate_build_matrix.py
           MATRIX=$(python scripts/github_actions/generate_build_matrix.py)
           echo "::set-output name=matrix::${MATRIX}"
+
   nightly_cpu_ubuntu:
     needs: generate_build_matrix
     runs-on: ubuntu-18.04

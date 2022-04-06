@@ -20,8 +20,6 @@ name: build_conda_cuda_ubuntu
 
 on:
   push:
-    branches:
-      - fix-build-on-windows
     tags:
       - '*'
 
@@ -45,6 +43,7 @@ jobs:
           python scripts/github_actions/generate_build_matrix.py
           MATRIX=$(python scripts/github_actions/generate_build_matrix.py --enable-cuda)
           echo "::set-output name=matrix::${MATRIX}"
+
   build_conda_cuda_ubuntu:
     needs: generate_build_matrix
     runs-on: ubuntu-18.04
