@@ -7,7 +7,15 @@ from datetime import datetime, timedelta
 
 def get_last_commit_date() -> datetime:
     date = (
-        subprocess.check_output(["git", "log", "-1", "--format=%ad", "--date=unix"])
+        subprocess.check_output(
+            [
+                "git",
+                "log",
+                "-1",
+                "--format=%ad",
+                "--date=unix",
+            ]
+        )
         .decode("ascii")
         .strip()
     )
