@@ -17,9 +17,6 @@
 name: nightly_cpu_windows
 
 on:
-  push:
-    branches:
-      - fix-nightly-cpu-windows-build
   schedule:
     # minute (0-59)
     # hour (0-23)
