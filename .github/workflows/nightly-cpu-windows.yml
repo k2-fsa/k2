@@ -50,8 +50,7 @@ jobs:
 
   generate_build_matrix:
     needs: enable_nightly_build
-    # if: needs.enable_nightly_build.outputs.enabled
-    if: false
+    if: needs.enable_nightly_build.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
