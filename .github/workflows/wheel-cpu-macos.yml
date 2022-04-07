@@ -60,6 +60,7 @@ jobs:
           path: dist/*.whl
 
       - name: Publish wheels to PyPI
+        if: ${{ github.repository_owner == 'k2-fsa' }}
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}

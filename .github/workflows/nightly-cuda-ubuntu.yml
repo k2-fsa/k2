@@ -7,14 +7,31 @@ on:
     # day of the month (1-31)
     # month (1-12)
     # day of the week (0-6)
-    # nightly build at 14:00 UTC time every day
-    - cron: "0 14 * * *"
+    # nightly build at 23:50 UTC time every day
+    - cron: "50 23 * * *"
 
 env:
   BUILD_TYPE: Release
 
 jobs:
+  enable_nightly_build:
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.set-enabled.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set enabled
+        id: set-enabled
+        run: |
+          enabled=$(python scripts/github_actions/run-nightly-build.py)
+          echo "enabled: $enabled"
+          echo "::set-output name=enabled::${enabled}"
+
   nightly:
+    needs: enable_nightly_build
+    if: needs.enable_nightly_build.outputs.enabled == 'true'
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
@@ -98,6 +115,7 @@ jobs:
           ls -lh dist/
 
       - name: Copy wheels to k2-fsa.org
+        if: ${{ github.repository_owner == 'k2-fsa' }}
         uses: horochx/deploy-via-scp@v1.0.1
         with:
           host: ${{ secrets.K2_HOST }}

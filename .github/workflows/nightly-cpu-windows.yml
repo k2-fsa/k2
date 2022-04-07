@@ -23,14 +23,31 @@ on:
     # day of the month (1-31)
     # month (1-12)
     # day of the week (0-6)
-    # nightly build at 14:00 UTC time every day
-    - cron: "0 14 * * *"
+    # nightly build at 23:50 UTC time every day
+    - cron: "50 23 * * *"
 
 env:
   BUILD_TYPE: Release
 
 jobs:
+  enable_nightly_build:
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.set-enabled.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set enabled
+        id: set-enabled
+        run: |
+          enabled=$(python scripts/github_actions/run-nightly-build.py)
+          echo "enabled: $enabled"
+          echo "::set-output name=enabled::${enabled}"
+
   generate_build_matrix:
+    needs: enable_nightly_build
+    if: needs.enable_nightly_build.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -83,6 +100,31 @@ jobs:
           cmake --version
           cmake --help
 
+      - name: Build wheel
+        shell: bash
+        run: |
+          export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release"
+          python3 setup.py bdist_wheel
+          ls -lh dist/
+          pip install ./dist/*.whl
+
+      - name: Upload Wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-cpu
+          path: dist/*.whl
+
+      - name: Copy wheels to k2-fsa.org
+        if: ${{ github.repository_owner == 'k2-fsa' }}
+        shell: bash
+        run: |
+          user=${{ secrets.K2_USERNAME }}
+          server=${{ secrets.K2_HOST }}
+          port=${{ secrets.K2_PORT }}
+          echo "${{ secrets.K2_KEY }}" > id_rsa && chmod 600 id_rsa
+          scp -P $port -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i id_rsa dist/*.whl $user@$server:~/nightly/whl
+          rm id_rsa
+
       - name: Configure CMake
         shell: bash
         run: |
@@ -94,37 +136,22 @@ jobs:
           cat CMakeCache.txt
 
       - name: Build k2
+        shell: bash
         run: |
           cd build_release
           cmake --build . --target _k2 --config Release -- -m
-          ls -lh lib/*/*
-          ls -lh bin/*/*
+          cmake --build . --target ALL_BUILD --config Release
 
       - name: Display generated files
         shell: bash
         run: |
           cd build_release
           ls -lh lib/*/*
+          ls -lh bin/*/*
 
-      - name: Build wheel
+      - name: Run tests
         shell: bash
         run: |
-          export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release"
-          python3 setup.py bdist_wheel
-          ls -lh dist/
-
-      - name: Upload Wheel
-        uses: actions/upload-artifact@v2
-        with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-cpu
-          path: dist/*.whl
-
-      - name: Copy wheels to k2-fsa.org
-        shell: bash
-        run: |
-          user=${{ secrets.K2_USERNAME }}
-          server=${{ secrets.K2_HOST }}
-          port=${{ secrets.K2_PORT }}
-          echo "${{ secrets.K2_KEY }}" > id_rsa && chmod 600 id_rsa
-          scp -P $port -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i id_rsa dist/*.whl $user@$server:~/nightly/whl
-          rm id_rsa
+          cd build_release
+          # disable python tests for k2host
+          ctest -C Release --output-on-failure -E host
