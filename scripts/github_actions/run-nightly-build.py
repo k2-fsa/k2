@@ -17,8 +17,6 @@ def get_last_commit_date() -> datetime:
 def main():
     last_commit_date_utc = get_last_commit_date()
     now_utc = datetime.utcnow()
-    print("false")
-    return
     if last_commit_date_utc + timedelta(days=1) > now_utc:
         print("true")
     else:
