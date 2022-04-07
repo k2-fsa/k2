@@ -26,14 +26,28 @@ on:
     # day of the month (1-31)
     # month (1-12)
     # day of the week (0-6)
-    # nightly build at 14:00 UTC time every day
-    - cron: "0 14 * * *"
+    # nightly build at 23:50 UTC time every day
+    - cron: "50 23 * * *"
 
 env:
   BUILD_TYPE: Release
 
 jobs:
+  enable_nightly_build:
+    runs-on:ubuntu-latest
+    outputs:
+      enabled: ${{ steps.set-enabled.outputs.enabled }}
+    steps:
+      - name: Set enabled
+        id: set-enabled
+        run: |
+          enabled=$(python scripts/github_actions/run-nightly-build.py)
+          echo "enabled: $enabled"
+          echo "::set-output name=enabled::${enabled}"
+
   generate_build_matrix:
+    needs: enable_nightly_build
+    if: ${{ needs.enable_nightly_build.outputs.enabled }} == 'true'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -92,6 +106,7 @@ jobs:
           export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release"
           python3 setup.py bdist_wheel
           ls -lh dist/
+          pip install ./dist/*.whl
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
