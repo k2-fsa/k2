@@ -1,6 +1,9 @@
 name: nightly-cuda-ubuntu
 
 on:
+  push:
+    branches:
+      - fix-nightly-cpu-windows-build
   schedule:
     # minute (0-59)
     # hour (0-23)
@@ -31,7 +34,7 @@ jobs:
 
   nightly:
     needs: enable_nightly_build
-    if: ${{ needs.enable_nightly_build.outputs.enabled }} == 'true'
+    if: needs.enable_nightly_build.outputs.enabled == 'true'
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false

@@ -17,6 +17,9 @@
 name: nightly_cpu_macos
 
 on:
+  push:
+    branches:
+      - fix-nightly-cpu-windows-build
   schedule:
     # minute (0-59)
     # hour (0-23)
@@ -47,7 +50,7 @@ jobs:
 
   generate_build_matrix:
     needs: enable_nightly_build
-    if: ${{ needs.enable_nightly_build.outputs.enabled }} == 'true'
+    if: needs.enable_nightly_build.outputs.enabled == 'true'
     # see https://github.com/pytorch/pytorch/pull/50633
     runs-on: ubuntu-latest
     outputs:
