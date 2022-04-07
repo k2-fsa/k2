@@ -98,6 +98,7 @@ jobs:
           ls -lh dist/
 
       - name: Copy wheels to k2-fsa.org
+        if: ${{ github.repository_owner == 'k2-fsa' }}
         uses: horochx/deploy-via-scp@v1.0.1
         with:
           host: ${{ secrets.K2_HOST }}

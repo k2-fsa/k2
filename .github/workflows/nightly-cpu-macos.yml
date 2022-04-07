@@ -102,6 +102,7 @@ jobs:
           path: dist/*.whl
 
       - name: Copy wheels to k2-fsa.org
+        if: ${{ github.repository_owner == 'k2-fsa' }}
         run: |
           user=${{ secrets.K2_USERNAME }}
           server=${{ secrets.K2_HOST }}

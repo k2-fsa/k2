@@ -17,6 +17,9 @@
 name: nightly_cpu_windows
 
 on:
+  push:
+    branches:
+      - fix-nightly-cpu-windows-build
   schedule:
     # minute (0-59)
     # hour (0-23)
@@ -83,29 +86,6 @@ jobs:
           cmake --version
           cmake --help
 
-      - name: Configure CMake
-        shell: bash
-        run: |
-          mkdir build_release
-          cd build_release
-          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
-          ls -lh
-          cat k2/csrc/version.h
-          cat CMakeCache.txt
-
-      - name: Build k2
-        run: |
-          cd build_release
-          cmake --build . --target _k2 --config Release -- -m
-          ls -lh lib/*/*
-          ls -lh bin/*/*
-
-      - name: Display generated files
-        shell: bash
-        run: |
-          cd build_release
-          ls -lh lib/*/*
-
       - name: Build wheel
         shell: bash
         run: |
@@ -120,6 +100,7 @@ jobs:
           path: dist/*.whl
 
       - name: Copy wheels to k2-fsa.org
+        if: ${{ github.repository_owner == 'k2-fsa' }}
         shell: bash
         run: |
           user=${{ secrets.K2_USERNAME }}
@@ -128,3 +109,34 @@ jobs:
           echo "${{ secrets.K2_KEY }}" > id_rsa && chmod 600 id_rsa
           scp -P $port -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i id_rsa dist/*.whl $user@$server:~/nightly/whl
           rm id_rsa
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          mkdir build_release
+          cd build_release
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
+          ls -lh
+          cat k2/csrc/version.h
+          cat CMakeCache.txt
+
+      - name: Build k2
+        shell: bash
+        run: |
+          cd build_release
+          cmake --build . --target _k2 --config Release -- -m
+          cmake --build . --target ALL_BUILD --config Release
+
+      - name: Display generated files
+        shell: bash
+        run: |
+          cd build_release
+          ls -lh lib/*/*
+          ls -lh bin/*/*
+
+      - name: Run tests
+        shell: bash
+        run: |
+          cd build_release
+          # disable python tests for k2host
+          ctest -C Release --output-on-failure -E host
