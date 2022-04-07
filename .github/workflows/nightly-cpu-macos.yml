@@ -31,7 +31,7 @@ env:
 
 jobs:
   enable_nightly_build:
-    runs-on:ubuntu-latest
+    runs-on: ubuntu-latest
     outputs:
       enabled: ${{ steps.set-enabled.outputs.enabled }}
     steps:
