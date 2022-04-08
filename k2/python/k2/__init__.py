@@ -1,4 +1,18 @@
 import torch  # noqa
+from .torch_version import k2_torch_cuda_version
+from .torch_version import k2_torch_version
+
+if torch.__version__.split("+")[0] != k2_torch_version.split("+")[0]:
+    raise ImportError(
+        f"k2 was built using PyTorch {k2_torch_version}\n"
+        f"But you are using PyTorch {torch.__version__} to run it"
+    )
+if k2_torch_cuda_version != "" and torch.cuda.version != k2_torch_cuda_version:
+    raise ImportError(
+        f"k2 was built using CUDA {k2_torch_cuda_version}\n"
+        f"But you are using CUDA {torch.cuda.version} to run it."
+    )
+
 try:
     from _k2 import DeterminizeWeightPushingType
     from _k2 import simple_ragged_index_select
