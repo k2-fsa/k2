@@ -264,6 +264,10 @@ if(K2_USE_PYTORCH)
   add_definitions(-DK2_USE_PYTORCH)
   add_definitions(-DTORCH_API_INCLUDE_EXTENSION_H)
   include(torch)
+  configure_file(
+    ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py.in
+    ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py @ONLY
+  )
 endif()
 
 if(K2_WITH_CUDA)
