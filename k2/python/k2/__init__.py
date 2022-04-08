@@ -7,10 +7,15 @@ if torch.__version__.split("+")[0] != k2_torch_version.split("+")[0]:
         f"k2 was built using PyTorch {k2_torch_version}\n"
         f"But you are using PyTorch {torch.__version__} to run it"
     )
-if k2_torch_cuda_version != "" and torch.cuda.version != k2_torch_cuda_version:
+
+if (
+    k2_torch_cuda_version != ""
+    and torch.version.cuda is not None
+    and torch.version.cuda != k2_torch_cuda_version
+):
     raise ImportError(
         f"k2 was built using CUDA {k2_torch_cuda_version}\n"
-        f"But you are using CUDA {torch.cuda.version} to run it."
+        f"But you are using CUDA {torch.version.cuda} to run it."
     )
 
 try:
@@ -18,6 +23,7 @@ try:
     from _k2 import simple_ragged_index_select
 except ImportError as e:
     import sys
+
     major_v, minor_v = sys.version_info[:2]
     raise ImportError(
         str(e) + "\nNote: If you're using anaconda and importing k2 on MacOS,"
@@ -32,6 +38,7 @@ from . import autograd_utils
 from . import dense_fsa_vec
 from . import fsa
 from . import utils
+
 #
 from .autograd import intersect_dense
 from .autograd import intersect_dense_pruned
