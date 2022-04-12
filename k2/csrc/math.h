@@ -29,11 +29,15 @@ namespace k2 {
 
 // Currently, only used in k2/csrc/rnnt_decode.cu
 // See https://github.com/k2-fsa/k2/pull/951#issuecomment-1096650842
-#ifndef _MSC_VER
-#define K2_POW pow
-#else
-#define K2_POW powf
-#endif
+__host__ __device__ __forceinline__ int64_t Pow(int64_t base, int64_t exponent) {
+  int64_t exp = 0;
+  int64_t result = 1;
+  while(exp < exponent) {
+    result *= base;
+    exp++;
+  }
+  return result;
+}
 
 /*
   Returns index of highest bit set, in range -1..30.
