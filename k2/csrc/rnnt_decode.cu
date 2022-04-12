@@ -159,8 +159,8 @@ void RnntDecodingStreams::GetContexts(RaggedShape *shape,
         int64_t state_value = states_values_data[state_idx01x],
                 context_state = state_value / num_graph_states,
                 exp = decoder_history_len - col,
-                state = context_state % (int64_t)powf(vocab_size, exp);
-        state = state / (int64_t)powf(vocab_size, exp - 1);
+                state = context_state % (int64_t)pow(vocab_size, exp);
+        state = state / (int64_t)pow(vocab_size, exp - 1);
         contexts_acc(row, col) = state;
       });
 }
@@ -508,12 +508,16 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
         int64_t this_state = this_states_values_data[idx012];
         double this_score = this_scores_data[idx012];
 
+        int64_t this_context_state = this_state / num_graph_states;
+        int32_t this_graph_state = this_state % num_graph_states;
+
         // handle the implicit epsilon self-loop
         if (idx3 == 0) {
           states_data[arc_idx] = this_state;
           // we assume termination symbol to be 0 here.
           scores_data[arc_idx] = this_score + logprobs_acc(idx01, 0);
           ArcInfo ai;
+          ai.graph_state_idx0 = this_graph_state;
           ai.graph_arc_idx01 = -1;
           ai.score = logprobs_acc(idx01, 0);
           arcs_data[arc_idx] = ai;
@@ -523,9 +527,7 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
         const Arc *graph_arcs_data = graphs_arcs_data[idx0];
         const int32_t *graph_row_split1_data = graph_row_splits1_ptr_data[idx0];
 
-        int64_t this_context_state = this_state / num_graph_states;
-        int32_t this_graph_state = this_state % num_graph_states,
-                graph_idx0x = graph_row_split1_data[this_graph_state],
+        int32_t graph_idx0x = graph_row_split1_data[this_graph_state],
                 graph_idx01 = graph_idx0x + idx3 - 1;  // minus 1 here as
                                                        // epsilon self-loop
                                                        // takes the position 0.
@@ -540,7 +542,7 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
           // can be done with `358 % 10^2`, then we append 6 to 58, that can be
           // done with `58 * 10 + 6`.
           context_state = this_context_state %
-                          (int64_t)powf(vocab_size, decoder_history_len - 1);
+                          (int64_t)pow(vocab_size, decoder_history_len - 1);
           context_state = context_state * vocab_size + arc.label;
         }
 
@@ -553,6 +555,7 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
         scores_data[arc_idx] = this_score + arc_score + log_prob;
 
         ArcInfo ai;
+        ai.graph_state_idx0 = arc.dest_state;
         ai.graph_arc_idx01 = graph_idx01;
         ai.score = arc_score + log_prob;
         arcs_data[arc_idx] = ai;
@@ -718,6 +721,57 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
 
   auto last_frame_shape = prev_frames_[frames - 1]->shape;
 
+  Array1<int32_t> num_graph_arcs(c_, last_frame_shape.NumElements() + 1);
+  Array1<int32_t> num_keep_arcs(c_, last_frame_shape.NumElements() + 1);
+  const int32_t *lfs_row_ids2_data = last_frame_shape.RowIds(2).Data(),
+                *lfs_row_ids1_data = last_frame_shape.RowIds(1).Data();
+  const int32_t *const *graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
+  const Arc *const *graphs_arcs_data = graphs_.values.Data();
+  const ArcInfo *last_frame_arc_data = prev_frames_[frames - 1]->values.Data();
+  int32_t *num_graph_arcs_data = num_graph_arcs.Data(),
+          *num_keep_arcs_data = num_keep_arcs.Data();
+
+  K2_EVAL(
+      c_, last_frame_shape.NumElements(), lambda_num_arcs, (int32_t idx012) {
+        // initialization purpose, to avoid a extra kernel.
+        num_keep_arcs_data[idx012] = 0;
+        int32_t idx01 = lfs_row_ids2_data[idx012],
+                idx0 = lfs_row_ids1_data[idx01];
+        const int32_t *graph_row_splits1_data =
+            graph_row_splits1_ptr_data[idx0];
+        ArcInfo ai = last_frame_arc_data[idx012];
+        int32_t num_arcs = graph_row_splits1_data[ai.graph_state_idx0 + 1] -
+                           graph_row_splits1_data[ai.graph_state_idx0];
+        num_graph_arcs_data[idx012] = num_arcs;
+      });
+  ExclusiveSum(num_graph_arcs, &num_graph_arcs);
+  auto state_expand_shape = RaggedShape2(&num_graph_arcs, nullptr, -1);
+
+  const int32_t *ses_row_ids1_data = state_expand_shape.RowIds(1).Data(),
+                *ses_row_splits1_data = state_expand_shape.RowSplits(1).Data();
+
+  K2_EVAL(
+      c_, state_expand_shape.NumElements(), lambda_keep_arc, (int32_t idx0123) {
+        int32_t idx012 = ses_row_ids1_data[idx0123],
+                idx012x = ses_row_splits1_data[idx012],
+                idx3 = idx0123 - idx012x, idx01 = lfs_row_ids2_data[idx012],
+                idx0 = lfs_row_ids1_data[idx01];
+        const int32_t *graph_row_splits1_data =
+            graph_row_splits1_ptr_data[idx0];
+        const Arc *graph_arcs_data = graphs_arcs_data[idx0];
+        ArcInfo ai = last_frame_arc_data[idx012];
+        int32_t graph_idx0x = graph_row_splits1_data[ai.graph_state_idx0],
+                graph_idx01 = graph_idx0x + idx3;
+        Arc arc = graph_arcs_data[graph_idx01];
+        if (arc.label == -1) num_keep_arcs_data[idx012] = 1;
+      });
+
+  ExclusiveSum(num_keep_arcs, &num_keep_arcs);
+  auto pre_state_arc_shape = RaggedShape2(&num_keep_arcs, nullptr, -1);
+
+  // auto pre_final_arcs_shape = ComposeRaggedShapes(
+  // RemoveAxis(last_frame_shape, 1), pre_state_arc_shape);
+
   auto pre_final_arcs_shape = ComposeRaggedShapes(
       RemoveAxis(last_frame_shape, 1),
       RegularRaggedShape(c_, last_frame_shape.NumElements(), 1));
@@ -770,14 +824,13 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
 
   Array1<Arc> arcs_out(c_, num_arcs);
   Arc *arcs_out_data = arcs_out.Data();
-  Arc **graphs_arcs_data = graphs_.values.Data();
 
   K2_EVAL(
       c_, num_arcs, lambda_set_arcs, (int32_t oarc_idx0123) {
         int32_t oarc_idx012 = oshape_row_ids3[oarc_idx0123],  // state
-                oarc_idx01 = oshape_row_ids2[oarc_idx012],  // frame
-                oarc_idx0 = oshape_row_ids1[oarc_idx01],  // stream
-                oarc_idx0x = oshape_row_splits1[oarc_idx0],
+            oarc_idx01 = oshape_row_ids2[oarc_idx012],        // frame
+            oarc_idx0 = oshape_row_ids1[oarc_idx01],          // stream
+            oarc_idx0x = oshape_row_splits1[oarc_idx0],
                 oarc_idx0xx = oshape_row_splits2[oarc_idx0x],
                 oarc_idx1 = oarc_idx01 - oarc_idx0x,
                 oarc_idx01x_next = oshape_row_splits2[oarc_idx01 + 1];

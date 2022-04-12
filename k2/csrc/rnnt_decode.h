@@ -96,6 +96,7 @@ struct ArcInfo {
   // arc, or -1 if this arc is a "termination symbol" (these do not appear in
   // the graph).
   int32_t graph_arc_idx01;
+  int32_t graph_state_idx0;
 
   // The score on the arc; contains both the graph score (if any) and the score
   // from the RNN-T joiner.
