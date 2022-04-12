@@ -27,6 +27,14 @@
 
 namespace k2 {
 
+// Currently, only used in k2/csrc/rnnt_decode.cu
+// See https://github.com/k2-fsa/k2/pull/951#issuecomment-1096650842
+#ifndef _MSC_VER
+#define K2_POW pow
+#else
+#define K2_POW powf
+#endif
+
 /*
   Returns index of highest bit set, in range -1..30.
   HighestBitSet(0) = -1,
