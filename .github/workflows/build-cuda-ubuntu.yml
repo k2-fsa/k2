@@ -16,33 +16,57 @@
 
 # refer to https://github.com/actions/starter-workflows/pull/47/files
 
-name: run-tests
+name: build-cuda-ubuntu
 
 on:
   push:
     branches:
       - master
-      - v2.0-pre
   pull_request:
     types: [labeled]
 
+env:
+  BUILD_TYPE: Release
+
 jobs:
-  run-tests:
+  generate_build_matrix:
+    # see https://github.com/pytorch/pytorch/pull/50633
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Generating build matrix
+        id: set-matrix
+        run: |
+          # outputting for debugging purposes
+          python scripts/github_actions/generate_build_matrix.py --enable-cuda
+          MATRIX=$(python scripts/github_actions/generate_build_matrix.py --enable-cuda --test-only-latest-torch)
+          echo "::set-output name=matrix::${MATRIX}"
+
+  build-cuda-ubuntu:
     if: github.event.label.name == 'ready' || github.event_name == 'push'
-    runs-on: ${{ matrix.os }}
+    needs: generate_build_matrix
+    runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04]
-        cuda: ["10.2"]
-        gcc: ["7"]
-        torch: ["1.11.0"]
-        python-version: ["3.10"]
-        build_type: ["Release", "Debug"]
+        ${{ fromJson(needs.generate_build_matrix.outputs.matrix) }}
 
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - uses: szenius/set-timezone@v1.0
+        with:
+          timezoneLinux: "Asia/Shanghai"
+
+      - name: Display date and time
+        run: date
 
       - name: Install CUDA Toolkit ${{ matrix.cuda }}
         env:
@@ -59,16 +83,16 @@ jobs:
           which nvcc
           nvcc --version
 
-      - name: Install GCC ${{ matrix.gcc }}
+      - name: Install GCC 7
         run: |
-          sudo apt-get install -y gcc-${{ matrix.gcc }} g++-${{ matrix.gcc }}
-          echo "CC=/usr/bin/gcc-${{ matrix.gcc }}" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
-          echo "CUDAHOSTCXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
+          sudo apt-get install -y gcc-7 g++-7
+          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
+          echo "CUDAHOSTCXX=/usr/bin/g++-7" >> $GITHUB_ENV
 
-      - name: Display GCC version
+      - name: Install git lfs
         run: |
-          gcc --version
+          sudo apt-get install -y git-lfs
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -84,17 +108,12 @@ jobs:
           torch: ${{ matrix.torch }}
         shell: bash
         run: |
-          python3 -m pip install -qq --upgrade pip six
-          python3 -m pip install -qq bs4 requests tqdm typing_extensions
-          python3 -m pip install -qq dataclasses graphviz
-          sudo apt-get -qq install graphviz
+          python3 -m pip install -q --upgrade pip
+          python3 -m pip install -q wheel twine typing_extensions
+          python3 -m pip install -q bs4 requests tqdm
 
           ./scripts/github_actions/install_torch.sh
           python3 -c "import torch; print('torch version:', torch.__version__)"
-
-      - name: Install git lfs
-        run: |
-          sudo apt-get install -y git-lfs
 
       - name: Download cudnn 8.0
         env:
@@ -108,34 +127,21 @@ jobs:
           pwd
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
           cat k2/csrc/version.h
+          cat CMakeCache.txt
 
-      - name: ${{ matrix.build_type }} Build
+      - name: Build k2
         shell: bash
         run: |
-          echo "number of cores: $(nproc)"
-          cd build
-          # we cannot use -j here because of limited RAM
-          # of the VM provided by GitHub actions
-          make VERBOSE=1 -j2
+          export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
+          export K2_MAKE_ARGS="-j2"
+          python3 setup.py bdist_wheel
+          ls -lh dist/
+          ls -lh build/*
 
-      - name: Display Build Information
-        shell: bash
-        run: |
-          export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
-          python3 -m k2.version
-
-      - name: Run Tests
-        shell: bash
-        run: |
-          cd build
-          ctest --output-on-failure
-          # default log level is INFO
-          ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=TRACE ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=DEBUG ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=INFO ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=WARNING ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=ERROR ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=FATAL ./bin/cu_log_test --gtest_filter="Log.Cpu"
+      - name: Upload Wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: gcc-7-cuda-${{ matrix.cuda }}-torch-${{ matrix.torch }}-python-${{ matrix.python-version }}
+          path: dist/*.whl

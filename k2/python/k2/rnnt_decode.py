@@ -179,7 +179,7 @@ class RnntDecodingStreams(object):
             src = self.src_streams[i].fsa
             for name, value in src.named_tensor_attr(include_scores=False):
                 if name not in tensor_attr_info:
-                    filler = 0.0
+                    filler = 0
                     if isinstance(value, Tensor):
                         filler = float(src.get_filler(name))
                         dtype = value.dtype

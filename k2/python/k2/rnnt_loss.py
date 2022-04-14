@@ -471,7 +471,7 @@ def _adjust_pruning_lower_bound(
     # make the transformed tensor to be non-decreasing
     s_begin = k2.monotonic_lower_bound(s_begin)
     # make start symbol to be zero.
-    s_begin = torch.where(s_begin < 0, 0, s_begin)
+    s_begin = torch.clamp(s_begin, min=0)
     # do the magic transformation again to recover s_begin
     s_begin = -(
         s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device)
@@ -568,7 +568,7 @@ def get_rnnt_prune_ranges(
 
     s_begin_padding = boundary[:, 2].reshape(B, 1) - s_range + 1
     # handle the cases when `len(symbols) < s_range`
-    s_begin_padding = torch.where(s_begin_padding >= 0, s_begin_padding, 0)
+    s_begin_padding = torch.clamp(s_begin_padding, min=0)
 
     s_begin = torch.where(mask, s_begin, s_begin_padding)
 
@@ -592,9 +592,9 @@ def do_rnnt_pruning(
 
     Args:
       am:
-        The encoder output, with shape (B, T, C)
+        The encoder output, with shape (B, T, encoder_dim)
       lm:
-        The prediction network output, with shape (B, S + 1, C)
+        The prediction network output, with shape (B, S + 1, decoder_dim)
       ranges:
         A tensor containing the symbol indexes for each frame that we want to
         keep. Its shape is (B, T, s_range), see the docs in
@@ -603,26 +603,28 @@ def do_rnnt_pruning(
     Returns:
       Return the pruned am and lm with shape (B, T, s_range, C)
     """
-    # am (B, T, C)
-    # lm (B, S + 1, C)
+    # am (B, T, encoder_dm)
+    # lm (B, S + 1, decoder_dim)
     # ranges (B, T, s_range)
     assert ranges.shape[0] == am.shape[0]
     assert ranges.shape[0] == lm.shape[0]
     assert am.shape[1] == ranges.shape[1]
     (B, T, s_range) = ranges.shape
-    (B, S1, C) = lm.shape
+    (B, S1, decoder_dim) = lm.shape
+    encoder_dim = am.shape[-1]
+    assert am.shape == (B, T, encoder_dim)
     S = S1 - 1
 
-    # (B, T, s_range, C)
-    am_pruning = am.unsqueeze(2).expand((B, T, s_range, C))
+    # (B, T, s_range, encoder_dim)
+    am_pruned = am.unsqueeze(2).expand((B, T, s_range, encoder_dim))
 
-    # (B, T, s_range, C)
-    lm_pruning = torch.gather(
-        lm.unsqueeze(1).expand((B, T, S + 1, C)),
+    # (B, T, s_range, decoder_dim)
+    lm_pruned = torch.gather(
+        lm.unsqueeze(1).expand((B, T, S + 1, decoder_dim)),
         dim=2,
-        index=ranges.reshape((B, T, s_range, 1)).expand((B, T, s_range, C)),
+        index=ranges.reshape((B, T, s_range, 1)).expand((B, T, s_range, decoder_dim)),
     )
-    return am_pruning, lm_pruning
+    return am_pruned, lm_pruned
 
 
 def _roll_by_shifts(src: torch.Tensor, shifts: torch.LongTensor):

@@ -59,7 +59,7 @@ static void PybindTopSort(py::module &m) {
 static void PybindLinearFsa(py::module &m) {
   m.def(
       "linear_fsa",
-      [](RaggedAny &labels, torch::optional<torch::Device> = {}) -> FsaVec {
+      [](RaggedAny &labels, py::object = py::none()) -> FsaVec {
         DeviceGuard guard(labels.any.Context());
         return LinearFsas(labels.any.Specialize<int32_t>());
       },
@@ -68,48 +68,26 @@ static void PybindLinearFsa(py::module &m) {
   m.def(
       "linear_fsa",
       [](const std::vector<int32_t> &labels,
-         torch::optional<torch::Device> device = {}) -> Fsa {
-        ContextPtr context =
-            GetContext(device.value_or(torch::Device(torch::kCPU)));
+         py::object device = py::str("cpu")) -> Fsa {
+        std::string device_str = device.is_none() ? "cpu" : py::str(device);
+        ContextPtr context = GetContext(torch::Device(device_str));
         DeviceGuard guard(context);
         Array1<int32_t> array(context, labels);
         return LinearFsa(array);  //
       },
-      py::arg("labels"), py::arg("device") = py::none());
-
-  m.def(
-      "linear_fsa",
-      [](const std::vector<int32_t> &labels,
-         torch::optional<std::string> device = {}) -> Fsa {
-        ContextPtr context = GetContext(torch::Device(device.value_or("cpu")));
-        DeviceGuard guard(context);
-        Array1<int32_t> array(context, labels);
-        return LinearFsa(array);  //
-      },
-      py::arg("labels"), py::arg("device") = py::none());
+      py::arg("labels"), py::arg("device") = py::str("cpu"));
 
   m.def(
       "linear_fsa",
       [](const std::vector<std::vector<int32_t>> &labels,
-         torch::optional<torch::Device> device = {}) -> FsaVec {
-        ContextPtr context =
-            GetContext(device.value_or(torch::Device(torch::kCPU)));
+         py::object device = py::str("cpu")) -> FsaVec {
+        std::string device_str = device.is_none() ? "cpu" : py::str(device);
+        ContextPtr context = GetContext(torch::Device(device_str));
         DeviceGuard guard(context);
         Ragged<int32_t> ragged = CreateRagged2<int32_t>(labels).To(context);
         return LinearFsas(ragged);
       },
-      py::arg("labels"), py::arg("device") = py::none());
-
-  m.def(
-      "linear_fsa",
-      [](const std::vector<std::vector<int32_t>> &labels,
-         torch::optional<std::string> device = {}) -> FsaVec {
-        ContextPtr context = GetContext(torch::Device(device.value_or("cpu")));
-        DeviceGuard guard(context);
-        Ragged<int32_t> ragged = CreateRagged2<int32_t>(labels).To(context);
-        return LinearFsas(ragged);
-      },
-      py::arg("labels"), py::arg("device") = py::none());
+      py::arg("labels"), py::arg("device") = py::str("cpu"));
 }
 
 static void PybindIntersect(py::module &m) {
@@ -481,7 +459,7 @@ static void PybindRemoveEpsilonSelfLoops(py::module &m) {
       py::arg("src"), py::arg("need_arc_map") = true);
 }
 
-static void PybindExpandArcs(py::module &m) {
+/*static*/ void PybindExpandArcs(py::module &m) {
   // See doc-string below.
   m.def(
       "expand_arcs",
@@ -718,59 +696,34 @@ static void PybindCtcGraph(py::module &m) {
 static void PybindCtcTopo(py::module &m) {
   m.def(
       "ctc_topo",
-      [](int32_t max_token, torch::optional<torch::Device> device = {},
+      [](int32_t max_token, py::object device = py::str("cpu"),
          bool modified = false) -> std::pair<Fsa, torch::Tensor> {
-        ContextPtr context = GetContext(device.value_or(torch::Device("cpu")));
+        std::string device_str = device.is_none() ? "cpu" : py::str(device);
+        ContextPtr context = GetContext(torch::Device(device_str));
         DeviceGuard guard(context);
         Array1<int32_t> aux_labels;
         Fsa fsa = CtcTopo(context, max_token, modified, &aux_labels);
         torch::Tensor tensor = ToTorch(aux_labels);
         return std::make_pair(fsa, tensor);
       },
-      py::arg("max_token"), py::arg("device") = py::none(),
-      py::arg("modified") = false);
-
-  m.def(
-      "ctc_topo",
-      [](int32_t max_token, torch::optional<std::string> device = {},
-         bool modified = false) -> std::pair<Fsa, torch::Tensor> {
-        ContextPtr context = GetContext(torch::Device(device.value_or("cpu")));
-        DeviceGuard guard(context);
-        Array1<int32_t> aux_labels;
-        Fsa fsa = CtcTopo(context, max_token, modified, &aux_labels);
-        torch::Tensor tensor = ToTorch(aux_labels);
-        return std::make_pair(fsa, tensor);
-      },
-      py::arg("max_token"), py::arg("device") = py::none(),
+      py::arg("max_token"), py::arg("device") = py::str("cpu"),
       py::arg("modified") = false);
 }
 
 static void PybindTrivialGraph(py::module &m) {
   m.def(
       "trivial_graph",
-      [](int32_t max_token, torch::optional<torch::Device> device = {})
-          -> std::pair<Fsa, torch::Tensor> {
-        ContextPtr context = GetContext(device.value_or(torch::Device("cpu")));
+      [](int32_t max_token,
+         py::object device = py::str("cpu")) -> std::pair<Fsa, torch::Tensor> {
+        std::string device_str = device.is_none() ? "cpu" : py::str(device);
+        ContextPtr context = GetContext(torch::Device(device_str));
         DeviceGuard guard(context);
         Array1<int32_t> aux_labels;
         Fsa fsa = TrivialGraph(context, max_token, &aux_labels);
         torch::Tensor tensor = ToTorch(aux_labels);
         return std::make_pair(fsa, tensor);
       },
-      py::arg("max_token"), py::arg("device") = py::none());
-
-  m.def(
-      "trivial_graph",
-      [](int32_t max_token, torch::optional<std::string> device = {})
-          -> std::pair<Fsa, torch::Tensor> {
-        ContextPtr context = GetContext(torch::Device(device.value_or("cpu")));
-        DeviceGuard guard(context);
-        Array1<int32_t> aux_labels;
-        Fsa fsa = TrivialGraph(context, max_token, &aux_labels);
-        torch::Tensor tensor = ToTorch(aux_labels);
-        return std::make_pair(fsa, tensor);
-      },
-      py::arg("max_token"), py::arg("device") = py::none());
+      py::arg("max_token"), py::arg("device") = py::str("cpu"));
 }
 
 static void PybindLevenshteinGraph(py::module &m) {

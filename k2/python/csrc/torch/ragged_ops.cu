@@ -152,8 +152,9 @@ static void PybindNormalizePerSublist(py::module &m, const char *name) {
                         (out.NumElements(),).
  */
 template <typename T>
-static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out, bool use_log,
-                                                 torch::Tensor out_grad) {
+/*static*/ torch::Tensor NormalizePerSublistBackward(Ragged<T> &out,
+                                                     bool use_log,
+                                                     torch::Tensor out_grad) {
   NVTX_RANGE(K2_FUNC);
   DeviceGuard guard(out.Context());
   K2_CHECK_EQ(out_grad.dim(), 1)
@@ -397,7 +398,7 @@ void PybindRaggedOps(py::module &m) {
   PybindArgMaxPerSublist<int32_t>(m);
   PybindCat<int32_t>(m);
   PybindCat<float>(m);
-  PybindCat<Arc>(m);
+  PybindCat<k2::Arc>(m);
   PybindCreateRagged2<int32_t>(m);
   PybindCreateRagged2<float>(m);
   PybindGetLayer(m);

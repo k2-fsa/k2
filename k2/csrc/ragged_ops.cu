@@ -421,8 +421,12 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   ExclusiveSum(*new_offsets, new_offsets);
 }
 
-static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
-                              Array1<int32_t> *elem_indexes /*=nullptr*/) {
+// Don't make it static to fix the following error on Windows.
+// Error : On Windows, the enclosing parent function ("IndexAxis0") for an
+// extended __host__ __device__ lambda cannot have internal or no linkage
+/*static*/ RaggedShape IndexAxis0(RaggedShape &src,
+                                  const Array1<int32_t> &new2old,
+                                  Array1<int32_t> *elem_indexes /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   K2_CHECK(IsCompatible(src, new2old));
@@ -679,8 +683,8 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
   *row_ids = row_ids_ptrs.To(ctx);
 }
 
-static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
-                              Array1<uint32_t> *merge_map /* == nullptr*/) {
+/*static*/ RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
+                                  Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   if (num_srcs == 1) {
     if (merge_map)
@@ -1128,7 +1132,7 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
     RaggedShape, 1,2,4 to construct the second output RaggedShape, 6 and a empty
     list to construct the third output RaggedShape.
  */
-static void SelectAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
+/*static*/ void SelectAxis0(RaggedShape &src, const Ragged<int32_t> &indexes,
     std::vector<RaggedShape> *out, std::vector<Array1<int32_t>> *split_map) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
@@ -1475,8 +1479,8 @@ Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
   return Ragged<int32_t>(ans_ragged_shape, counts);
 }
 
-static Array1<int32_t> GetTransposeReorderingCpu(Ragged<int32_t> &src,
-                                                 int32_t num_cols) {
+/*static*/ Array1<int32_t> GetTransposeReorderingCpu(Ragged<int32_t> &src,
+                                                     int32_t num_cols) {
   NVTX_RANGE(K2_FUNC);
   std::vector<std::vector<int32_t>> column_indexes(num_cols);  // [column][row]
   const int32_t *values_data = src.values.Data();
@@ -1496,8 +1500,9 @@ static Array1<int32_t> GetTransposeReorderingCpu(Ragged<int32_t> &src,
   return ans;
 }
 
-static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
-                                                           int32_t num_cols) {
+#ifndef _MSC_VER
+/*static*/ Array1<int32_t> GetTransposeReorderingThreeAxesCuda(
+    Ragged<int32_t> &src, int32_t num_cols) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 3);
   ContextPtr &context = src.Context();
@@ -1541,6 +1546,7 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
                                          lambda_comp, *mgpu_context));
   return ans;
 }
+#endif
 
 
 /*
@@ -1565,6 +1571,37 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   if (device_type == kCpu) return GetTransposeReorderingCpu(src, num_cols);
 
   K2_CHECK_EQ(device_type, kCuda);
+
+#ifdef _MSC_VER
+  // See https://github.com/k2-fsa/k2/pull/753
+  // and
+  // https://github.com/k2-fsa/k2/pull/571
+  int32_t num_buckets = num_cols;
+  int32_t num_elements = src.values.Dim();
+  int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
+
+  Array1<int32_t> ans = Range(context, num_elements, 0);
+
+  cudaStream_t stream = context->GetCudaStream();
+
+  size_t temp_storage_bytes = 0;
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+      nullptr, temp_storage_bytes, src.values.Data(),
+      static_cast<int32_t *>(nullptr), ans.Data(), ans.Data(), num_elements, 0,
+      log_buckets, stream));
+
+  Array1<int8_t> d_temp_storage(
+      context, temp_storage_bytes + num_elements * sizeof(int32_t));
+
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+      d_temp_storage.Data() + sizeof(int32_t) * num_elements,
+      temp_storage_bytes, src.values.Data(),
+      reinterpret_cast<int32_t *>(d_temp_storage.Data()), ans.Data(),
+      ans.Data(), num_elements, 0, log_buckets, stream));
+
+  return ans;
+
+#else
   (void)GetTransposeReorderingThreeAxesCuda;  // remove compiler warnings
 
 #if __CUDACC_VER_MAJOR__ > 10 ||   \
@@ -1599,7 +1636,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
 
   // CheckGetTransposeReordering(src, ans);
   return ans;
-#else
+#else  // __CUDACC_VER_MAJOR__
   if (src.NumAxes() == 3) {
     Array1<int32_t> ans = GetTransposeReorderingThreeAxesCuda(src, num_cols);
     // CheckGetTransposeReordering(src, ans);
@@ -1638,6 +1675,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   // CheckGetTransposeReordering(src, ans);
   return ans;
 #endif
+#endif  // _MSC_VER
 }
 
 RaggedShape ChangeSublistSize(const RaggedShape &src, int32_t size_delta) {

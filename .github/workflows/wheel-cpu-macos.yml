@@ -1,11 +1,11 @@
 # Copyright (c)  2021  Xiaomi Corporation (authors: Fangjun Kuang)
 
-name: Publish to PyPI macOS - stable
+name: Publish to PyPI - macOS CPU
 
 on:
   push:
-    branches:
-      - wheel-stable
+    tags:
+      - '*'
 
 env:
   BUILD_TYPE: Release
@@ -34,7 +34,6 @@ jobs:
         run: python -c "import sys; print(sys.version)"
 
       - name: Install PyTorch ${{ matrix.torch }}
-        if: startsWith(matrix.os, 'macos')
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip
@@ -61,6 +60,7 @@ jobs:
           path: dist/*.whl
 
       - name: Publish wheels to PyPI
+        if: ${{ github.repository_owner == 'k2-fsa' }}
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}

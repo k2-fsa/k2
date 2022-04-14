@@ -3024,17 +3024,6 @@ TEST(RaggedTest, TestPadRagged) {
   TestPadRagged<double>();
 }
 
-TEST(RaggedTest, ToVecVecInt) {
-  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    Ragged<int32_t> src(c, "[[1 2 3] [] [4 0 5 6]]");
-    std::vector<std::vector<int32_t>> v = src.ToVecVec();
-    ASSERT_EQ(v.size(), 3u);
-    EXPECT_EQ(v[0], (std::vector<int32_t>{1, 2, 3}));
-    EXPECT_TRUE(v[1].empty());
-    EXPECT_EQ(v[2], (std::vector<int32_t>{4, 0, 5, 6}));
-  }
-}
-
 template <typename T>
 static void TestPruneRagged() {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {

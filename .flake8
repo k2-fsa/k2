@@ -14,6 +14,7 @@ exclude =
   get_version.py
   build,
   k2/python/host,
+  k2/python/k2/__init__.py,
   k2/python/k2/ctc_loss.py,
   docs
 
