@@ -55,7 +55,7 @@ class TestLinearFsa(unittest.TestCase):
             expected_labels0 = [0, 2, 0, 5, 0, 8, 0, -1]
             expected_labels1 = [0, 1, 0, 2, 0, -1]
             expected_labels2 = [0, 3, 0, 2, 0, -1]
-            expected_labels = expected_labels0 + expected_labels1 + expected_labels2
+            expected_labels = expected_labels0 + expected_labels1 + expected_labels2  # noqa
             assert dst.labels.tolist() == expected_labels
 
 

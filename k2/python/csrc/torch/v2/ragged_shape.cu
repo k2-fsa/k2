@@ -66,7 +66,9 @@ void PybindRaggedShape(py::module &m) {
 
   shape.def(
       "to",
-      [](const RaggedShape &self, torch::Device device) -> RaggedShape {
+      [](const RaggedShape &self, py::object _device) -> RaggedShape {
+        std::string device_str = _device.is_none() ? "cpu" : py::str(_device);
+        torch::Device device = torch::Device(device_str);
         DeviceGuard guard(self.Context());
 
         if (device.type() == torch::kCPU) return self.To(GetCpuContext());
@@ -166,10 +168,8 @@ void PybindRaggedShape(py::module &m) {
 
         torch::Device device(device_type, self.Context()->GetDeviceId());
 
-        PyObject *ptr = THPDevice_New(device);
-
-        // takes ownership
-        return py::reinterpret_steal<py::object>(ptr);
+        auto torch_device = py::module::import("torch").attr("device");
+        return torch_device(device.str());
       },
       kRaggedShapeDeviceDoc);
 
