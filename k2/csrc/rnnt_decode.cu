@@ -159,8 +159,8 @@ void RnntDecodingStreams::GetContexts(RaggedShape *shape,
         int64_t state_value = states_values_data[state_idx01x],
                 context_state = state_value / num_graph_states,
                 exp = decoder_history_len - col,
-                state = context_state % (int64_t)pow(vocab_size, exp);
-        state = state / (int64_t)pow(vocab_size, exp - 1);
+                state = context_state % Pow(vocab_size, exp);
+        state = state / Pow(vocab_size, exp - 1);
         contexts_acc(row, col) = state;
       });
 }
@@ -540,7 +540,7 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
           // can be done with `358 % 10^2`, then we append 6 to 58, that can be
           // done with `58 * 10 + 6`.
           context_state = this_context_state %
-                          (int64_t)pow(vocab_size, decoder_history_len - 1);
+                          Pow(vocab_size, decoder_history_len - 1);
           context_state = context_state * vocab_size + arc.label;
         }
 

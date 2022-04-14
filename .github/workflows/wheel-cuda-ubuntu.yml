@@ -1,17 +1,17 @@
 # Copyright (c)  2021  Xiaomi Corporation (authors: Fangjun Kuang)
 
-name: Publish to PyPI - stable
+name: Publish to PyPI - Ubuntu CUDA
 
 on:
   push:
-    branches:
-      - wheel-stable
+    tags:
+      - '*'
 
 env:
   BUILD_TYPE: Release
 
 jobs:
-  PyPI:
+  PyPI_CUDA_Ubuntu:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -93,6 +93,7 @@ jobs:
           ls -lh dist/
 
       - name: Publish wheels to PyPI
+        if: ${{ github.repository_owner == 'k2-fsa' }}
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}

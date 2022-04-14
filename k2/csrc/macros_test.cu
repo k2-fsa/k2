@@ -27,7 +27,7 @@
 
 namespace k2 {
 
-static void TestEval() {
+/*static*/ void TestEval() {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     Array1<int32_t> array = Range(c, 3, 0);
     int32_t *array_data = array.Data();
@@ -46,7 +46,7 @@ static void TestEval() {
   }
 }
 
-static void TestEval2() {
+/*static*/ void TestEval2() {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     Array1<int32_t> array1 = Range(c, 6, 0);
     Array2<int32_t> array(array1, 2, 3);
