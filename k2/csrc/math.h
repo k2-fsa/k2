@@ -29,7 +29,7 @@ namespace k2 {
 
 // Currently, only used in k2/csrc/rnnt_decode.cu
 // See https://github.com/k2-fsa/k2/pull/951#issuecomment-1096650842
-__host__ __device__ __forceinline__ int64_t Pow(int64_t base,
+K2_CUDA_HOSTDEV __forceinline__ int64_t Pow(int64_t base,
                                                 int64_t exponent) {
   K2_CHECK_GE(exponent, 0);
   int64_t exp = 0;
