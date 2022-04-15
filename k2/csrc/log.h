@@ -288,7 +288,7 @@ inline bool DisableChecks() {
    environment variable `K2_MAX_CPU_MEM_ALLOCATE`. Return the default value
    (i.e. 200GB) if the variable does not set.
  */
-inline int32_t MaxCpuMemAllocate() {
+inline int64_t MaxCpuMemAllocate() {
   static std::once_flag init_flag;
   // 200GB in bytes, 200 * 1024 * 1024 * 1024
   static int64_t max_cpu_mem_allocate = 214748364800L;
