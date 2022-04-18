@@ -86,7 +86,14 @@ void Invert(FsaClass *lattice) {
     // The invert is trivial, just swap the labels and aux_labels.
     // No new arcs are added.
     auto aux_labels = lattice->GetTensorAttr("aux_labels").clone();
-    lattice->SetTensorAttr("aux_labels", lattice->Labels().clone());
+    auto labels = lattice->Labels().clone();
+
+    // FixFinalLabels
+    auto minus_one =
+        torch::tensor(-1, torch::device(labels.device()).dtype(labels.dtype()));
+    aux_labels = torch::where(labels == -1, minus_one, aux_labels);
+
+    lattice->SetTensorAttr("aux_labels", labels);
     lattice->SetLabels(aux_labels);
   } else {
     K2_CHECK(lattice->HasRaggedTensorAttr("aux_labels"));
@@ -260,6 +267,31 @@ FsaClass IntersectDevice(FsaClass &a_fsas, FsaClass &b_fsas,
   ans.CopyAttrs(a_fsas, Array1ToTorch(arc_map_a));
   ans.CopyAttrs(b_fsas, Array1ToTorch(arc_map_b));
   return ans;
+}
+
+FsaClass LinearFsaWithSelfLoops(FsaClass &fsas) {
+  RaggedShape shape;
+  if (fsas.fsa.NumAxes() == 2) {
+    // A single Fsa
+    auto shape0 =
+        RegularRaggedShape(fsas.fsa.Context(), 1, fsas.fsa.TotSize(0));
+    shape = ComposeRaggedShapes(shape0, fsas.fsa.shape);
+  } else {
+    shape = fsas.fsa.shape;
+  }
+
+  shape = RemoveAxis(shape, 1);  // remove the state axis
+
+  auto labels = Ragged<int32_t>(
+      shape, Array1FromTorch<int32_t>(fsas.Labels().contiguous()));
+  labels = RemoveValuesLeq(labels, 0);
+
+  auto linear_fsa = LinearFsas(labels);
+  FsaVec ans;
+  AddEpsilonSelfLoops(linear_fsa, &ans);
+
+  if (fsas.fsa.NumAxes() == 2) ans = ans.RemoveAxis(0);
+  return FsaClass(ans);
 }
 
 }  // namespace k2

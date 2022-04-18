@@ -374,7 +374,8 @@ inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 #else
-#define K2_CHECK_CUDA_ERROR(...) K2_LOG(FATAL) << "K2 compiled without CUDA support"
+#define K2_CHECK_CUDA_ERROR(...) \
+  K2_LOG(FATAL) << "k2 compiled without CUDA support"
 #endif
 
 // The parameter of `K2_CUDA_SAFE_CALL` should be cuda function call or kernel
@@ -396,7 +397,8 @@ inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
 // Use a separate K2_CUDA_SAFE_CALL() for CPU
 // because the kernel invocation syntax <<< >>>
 // is not valid C++
-#define K2_CUDA_SAFE_CALL(...) K2_LOG(FATAL) << "K2 compiled without CUDA support"
+#define K2_CUDA_SAFE_CALL(...) \
+  K2_LOG(FATAL) << "k2 compiled without CUDA support"
 #endif
 
 // ------------------------------------------------------------

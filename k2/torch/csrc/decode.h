@@ -79,6 +79,22 @@ Ragged<int32_t> GetTexts(FsaClass &lattice);
 void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
                            FsaClass *lattice);
 
+/** Get the best path of a given lattice.
+
+    @param lattice  The given lattice.
+    @param use_max  True to use max operation to select the hypothesis with the
+                    largest log_prob when there are duplicate hypotheses; False
+                    to use log-add.
+    @param num_paths  Number of paths to sample when generating Nbest. Only used
+                      when use_max equals to false.
+    @param nbest_scale  The scale value applying to lattice.score before
+                        sampling. Only used when use_max equals to false.
+
+    @return  Return the lattice containing the best paths for each Fsa.
+ */
+FsaClass GetBestPaths(FsaClass &lattice, bool use_max, int32_t num_paths,
+                      float nbest_scale);
+
 /** Advance a chunk of frames for rnnt decoding.
 
     @param streams  The rnnt decoding streams.

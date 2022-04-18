@@ -46,9 +46,9 @@ C10_DEFINE_string(lg, "", "Path to LG.pt. Needed if --use_lg is true");
 C10_DEFINE_string(word_table, "",
                   "Path to words.txt. Needed if --use_lg is true");
 // Rnnt decoding related
-C10_DEFINE_double(beam, 4, "beam in RnntDecodingStreams");
-C10_DEFINE_int(max_states, 32, "max_states in RnntDecodingStreams");
-C10_DEFINE_int(max_contexts, 4, "max_contexts in RnntDecodingStreams");
+C10_DEFINE_double(beam, 8.0, "beam in RnntDecodingStreams");
+C10_DEFINE_int(max_states, 64, "max_states in RnntDecodingStreams");
+C10_DEFINE_int(max_contexts, 8, "max_contexts in RnntDecodingStreams");
 // fbank related
 C10_DEFINE_int(sample_rate, 16000, "Expected sample rate of wave files");
 C10_DEFINE_double(frame_shift_ms, 10.0,
@@ -57,6 +57,14 @@ C10_DEFINE_double(frame_length_ms, 25.0,
                   "Frame length in ms for computing Fbank");
 C10_DEFINE_int(num_bins, 80, "Number of triangular bins for computing Fbank");
 C10_DEFINE_int(max_num_streams, 2, "Max number of decoding streams");
+C10_DEFINE_bool(
+    use_max, true,
+    "True to use max operation to select the hypothesis with the largest "
+    "log_prob when there are duplicate hypotheses; False to use log-add.");
+C10_DEFINE_int(num_paths, 200,
+               "Number of paths to sample when generating Nbest");
+C10_DEFINE_double(nbest_scale, 0.8,
+                  "The scale value applying to lattice.score before sampling");
 
 static void CheckArgs() {
 #if !defined(K2_WITH_CUDA)
@@ -212,7 +220,8 @@ int main(int argc, char *argv[]) {
   // at a time.
   auto input_lengths =
       torch::from_blob(num_frames.data(), {num_waves}, torch::kLong)
-          .to(torch::kInt).to(device);
+          .to(torch::kInt)
+          .to(device);
 
   K2_LOG(INFO) << "Compute encoder outs";
   // the output for module.encoder.forward() is a tuple of 2 tensors
@@ -293,7 +302,8 @@ int main(int argc, char *argv[]) {
     k2::FsaClass lattice(ofsa);
     lattice.CopyAttrs(current_graphs, out_map);
 
-    lattice = k2::ShortestPath(lattice);
+    lattice = k2::GetBestPaths(lattice, FLAGS_use_max, FLAGS_num_paths,
+                               FLAGS_nbest_scale);
 
     auto ragged_aux_labels = k2::GetTexts(lattice);
 

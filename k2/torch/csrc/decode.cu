@@ -15,6 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <limits>
+
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/ragged_ops.h"
@@ -101,6 +104,65 @@ void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
     am_scores = lattice->Scores() - lm_scores;
     torch::Tensor scores = am_scores / ngram_lm_scale + lm_scores;
     lattice->SetScores(scores);
+  }
+}
+
+FsaClass GetBestPaths(FsaClass &lattice, bool use_max, int32_t num_paths,
+                      float nbest_scale) {
+  if (use_max) {
+    return ShortestPath(lattice);
+  } else {
+    K2_CHECK(lattice.HasTensorAttr("aux_labels") ||
+             lattice.HasRaggedTensorAttr("aux_labels"));
+    Nbest nbest = Nbest::FromLattice(lattice, num_paths, nbest_scale);
+
+    auto word_fsa = nbest.fsa;
+    Invert(&word_fsa);
+
+    // delete token IDs, as it is not needed.
+    if (word_fsa.HasTensorAttr("aux_labels"))
+      word_fsa.DeleteTensorAttr("aux_labels");
+    if (word_fsa.HasRaggedTensorAttr("aux_labels"))
+      word_fsa.DeleteRaggedTensorAttr("aux_labels");
+    word_fsa.Scores().zero_();
+
+    auto word_fsa_with_self_loops = LinearFsaWithSelfLoops(word_fsa);
+
+    auto inv_lattice = lattice;
+    Invert(&inv_lattice);
+    ArcSort(&inv_lattice);
+
+    Array1<int32_t> path_to_utt_map;
+    if (inv_lattice.fsa.Dim0() == 1) {
+      path_to_utt_map =
+          Array1<int32_t>(nbest.shape.Context(), nbest.shape.TotSize(1), 0);
+    } else {
+      path_to_utt_map = nbest.shape.RowIds(1);
+    }
+
+    auto path_lattice = IntersectDevice(inv_lattice, word_fsa_with_self_loops,
+                                        path_to_utt_map, true);
+    Connect(&path_lattice);
+    TopSort(&path_lattice);
+
+    using FloatType = double;
+    Array1<FloatType> tot_scores =
+        GetTotScores<FloatType>(path_lattice, true /*log_semiring*/);
+    auto ragged_tot_scores = Ragged<FloatType>(nbest.shape, tot_scores);
+
+    Array1<int32_t> best_hyp_indexes(ragged_tot_scores.Context(),
+                                     ragged_tot_scores.Dim0());
+    ArgMaxPerSublist<FloatType>(ragged_tot_scores,
+                                -std::numeric_limits<FloatType>::infinity(),
+                                &best_hyp_indexes);
+
+    Array1<int32_t> indexes_map;
+    auto raw_fsa =
+        Index(nbest.fsa.fsa, 0 /*axis*/, best_hyp_indexes, &indexes_map);
+
+    FsaClass best_path = FsaClass(raw_fsa);
+    best_path.CopyAttrs(nbest.fsa, Array1ToTorch<int32_t>(indexes_map));
+    return best_path;
   }
 }
 
