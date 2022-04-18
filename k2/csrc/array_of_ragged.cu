@@ -72,7 +72,7 @@ Array1OfRaggedShape::Array1OfRaggedShape(RaggedShape *srcs, int32_t num_srcs,
   row_ids_ = row_ids_.To(c_);
 
   if (populate_meta_) {
-    // Initialize meat_row_splits_
+    // Initialize meta_row_splits_
     // We populate this on CPU and transfer to GPU.
     meta_row_splits_ =
         Array2<int32_t>(GetCpuContext(), num_axes_, num_srcs_ + 1);
