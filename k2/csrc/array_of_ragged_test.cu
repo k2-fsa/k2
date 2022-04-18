@@ -39,7 +39,8 @@ void TestArray1OfRaggedConstruct() {
                           0 /*min_num_elements*/, 100 /*max_num_elements*/)
               .To(c, true /*copy_all*/));
     }
-    auto array_of_ragged = Array1OfRagged<T>(raggeds.data(), num_srcs);
+    auto array_of_ragged =
+        Array1OfRagged<T>(raggeds.data(), num_srcs, true /*populate_meta*/);
     for (int32_t j = 1; j < num_axes; ++j) {
       const int32_t **row_splits = array_of_ragged.shape.RowSplits(j);
       const int32_t **row_ids = array_of_ragged.shape.RowIds(j);
