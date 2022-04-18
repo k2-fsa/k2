@@ -170,6 +170,9 @@ class BuildExtension(build_ext):
                 print(f'Copying {so} to {self.build_lib}/')
                 shutil.copy(f'{so}', f'{self.build_lib}/')
 
+        print(f'Copying {k2_dir}/k2/python/k2/torch_version.py to {self.build_lib}/k2')  # noqa
+        shutil.copy(f'{k2_dir}/k2/python/k2/torch_version.py', f'{self.build_lib}/k2')  # noqa
+
 
 def get_long_description():
     with open('README.md', 'r') as f:

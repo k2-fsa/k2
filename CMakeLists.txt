@@ -268,6 +268,7 @@ if(K2_USE_PYTORCH)
     ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py.in
     ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py @ONLY
   )
+  message(STATUS "Generated ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py")
 endif()
 
 if(K2_WITH_CUDA)
