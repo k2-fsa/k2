@@ -680,6 +680,12 @@ def get_rnnt_logprobs_pruned(
         {0..C-1}.
       ranges:
         A tensor containing the symbol ids for each frame that we want to keep.
+        It is a LongTensor of shape ``[B][T][s_range]``, where ``ranges[b,t,0]``
+        contains the begin symbol ``0 <= s <= S - s_range +1``, such that
+        ``logits[b,t,:,:]`` represents the logits with positions
+        ``s, s + 1, ... s + s_range - 1``.
+        See docs in :func:`get_rnnt_prune_ranges` for more details of what ranges
+        contains.
       termination_symbol:
         the termination symbol, with 0 <= termination_symbol < C
       boundary:
@@ -812,6 +818,12 @@ def rnnt_loss_pruned(
         of the sequence.
       ranges:
         A tensor containing the symbol ids for each frame that we want to keep.
+        It is a LongTensor of shape ``[B][T][s_range]``, where ``ranges[b,t,0]``
+        contains the begin symbol ``0 <= s <= S - s_range +1``, such that
+        ``logits[b,t,:,:]`` represents the logits with positions
+        ``s, s + 1, ... s + s_range - 1``.
+        See docs in :func:`get_rnnt_prune_ranges` for more details of what ranges
+        contains.
       termination_symbol:
         The identity of the termination symbol, must be in {0..C-1}
       boundary:

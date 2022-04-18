@@ -41,8 +41,9 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         Computing mutual information between two sequences of real vectors.
         Args:
           px:
-            A torch.Tensor of some floating point type, with shape
-            ``[B][S][T+1]`` where ``B`` is the batch size, ``S`` is the
+            A torch.Tensor of some floating point type, with shape ``[B][S][T]``
+            if modified, ``[B][S][T+1]`` if not modified.
+            where ``B`` is the batch size, ``S`` is the
             length of the ``x`` sequence (including representations of
             ``EOS`` symbols but not ``BOS`` symbols), and ``S`` is the
             length of the ``y`` sequence (including representations of
@@ -99,7 +100,8 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
           boundary:
             If supplied, a torch.LongTensor of shape ``[B][4]``, where each
             row contains ``[s_begin, t_begin, s_end, t_end]``,
-            with ``0 <= s_begin <= s_end < S`` and ``0 <= t_begin <= t_end < T``
+            with ``0 <= s_begin <= s_end <= S`` and
+            ``0 <= t_begin <= t_end < T``
             (this implies that empty sequences are allowed).
             If not supplied, the values ``[0, 0, S, T]`` will be assumed.
             These are the beginning and one-past-the-last positions in the
@@ -239,7 +241,7 @@ def mutual_information_recursion(
       boundary:
         If supplied, a torch.LongTensor of shape ``[B][4]``, where each
         row contains ``[s_begin, t_begin, s_end, t_end]``,
-        with ``0 <= s_begin <= s_end < S`` and ``0 <= t_begin <= t_end < T``
+        with ``0 <= s_begin <= s_end <= S`` and ``0 <= t_begin <= t_end < T``
         (this implies that empty sequences are allowed).
         If not supplied, the values ``[0, 0, S, T]`` will be assumed.
         These are the beginning and one-past-the-last positions in the ``x`` and
@@ -326,7 +328,7 @@ def joint_mutual_information_recursion(
         the sequence must be the same length as px.
       boundary:
         optionally, a LongTensor of shape [B][4] containing rows
-        [s_begin, t_begin, s_end, t_end], with 0 <= s_begin <= s_end < S
+        [s_begin, t_begin, s_end, t_end], with 0 <= s_begin <= s_end <= S
         and 0 <= t_begin <= t_end < T, defaulting to [0, 0, S, T].
         These are the beginning and one-past-the-last positions in the x
         and y sequences respectively, and can be used if not all
