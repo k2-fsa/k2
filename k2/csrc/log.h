@@ -283,6 +283,22 @@ inline bool DisableChecks() {
   return disable_checks;
 }
 
+/*
+   Get the max cpu memory (in bytes) can be allocated at a time through the
+   environment variable `K2_MAX_CPU_MEM_ALLOCATE`. Return the default value
+   (i.e. 200GB) if the variable does not set.
+ */
+inline int64_t MaxCpuMemAllocate() {
+  static std::once_flag init_flag;
+  // 200GB in bytes, 200 * 1024 * 1024 * 1024
+  static int64_t max_cpu_mem_allocate = 214748364800L;
+  std::call_once(init_flag, []() {
+    char *env_str = std::getenv("K2_MAX_CPU_MEM_ALLOCATE");
+    if (env_str != nullptr) max_cpu_mem_allocate = std::atol(env_str);
+  });
+  return max_cpu_mem_allocate;
+}
+
 inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
 #if defined(__CUDA_ARCH__)
   return DEBUG;
@@ -374,7 +390,8 @@ inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 #else
-#define K2_CHECK_CUDA_ERROR(...) K2_LOG(FATAL) << "K2 compiled without CUDA support"
+#define K2_CHECK_CUDA_ERROR(...) \
+  K2_LOG(FATAL) << "k2 compiled without CUDA support"
 #endif
 
 // The parameter of `K2_CUDA_SAFE_CALL` should be cuda function call or kernel
@@ -396,7 +413,8 @@ inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
 // Use a separate K2_CUDA_SAFE_CALL() for CPU
 // because the kernel invocation syntax <<< >>>
 // is not valid C++
-#define K2_CUDA_SAFE_CALL(...) K2_LOG(FATAL) << "K2 compiled without CUDA support"
+#define K2_CUDA_SAFE_CALL(...) \
+  K2_LOG(FATAL) << "k2 compiled without CUDA support"
 #endif
 
 // ------------------------------------------------------------

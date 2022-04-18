@@ -58,6 +58,7 @@ def main():
     disable_debug = _k2.version.disable_debug
     sync_kernels = os.getenv('K2_SYNC_KERNELS', None) is not None
     disable_checks = os.getenv('K2_DISABLE_CHECKS', None) is not None
+    max_cpu_mem_allocate = os.getenv('K2_MAX_CPU_MEM_ALLOCATE', 214748364800)
 
     print(f'''
 k2 version: {version}
@@ -79,6 +80,7 @@ With CUDA: {with_cuda}
 Disable debug: {disable_debug}
 Sync kernels : {sync_kernels}
 Disable checks: {disable_checks}
+Max cpu memory allocate: {max_cpu_mem_allocate}
     ''')
 
 
