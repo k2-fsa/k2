@@ -41,7 +41,6 @@ namespace k2 {
   wrapper that saves you the trouble of creating arrays of pointers.
  */
 
-
 /*
   Array1OfRaggedShape is a convenience function that gives you easy access
   to pointers-of-pointers for an array of ragged shapes.
@@ -57,6 +56,12 @@ class Array1OfRaggedShape {
       srcs: pointers to the source shapes, a CPU pointer
       num_srcs: the number of source shapes.  All shapes must have the
                 same NumAxes() and must be on the same device.
+      populate_meta: Whether to populate meta_row_splits_ and meta_row_id_.
+                     meta_row_splits_ and meta_row_id_ are useful at some time,
+                     but it will be impossible for `int32_t` to hold all the
+                     elements of source shapes when num_srcs is large. Users
+                     could decide whether to use them at their need.
+                     Not to use them by default.
 
    TODO: we'll likely, later, add optional args which dictate which of
    the MetaRowSplits() and MetaRowIds() are to be pre-populated; this should
@@ -64,9 +69,8 @@ class Array1OfRaggedShape {
    axes.
 
   */
-  Array1OfRaggedShape(RaggedShape *srcs,
-                     int32_t num_srcs);
-
+  Array1OfRaggedShape(RaggedShape *srcs, int32_t num_srcs,
+                      bool populate_meta = false);
 
   int32_t NumSrcs() const { return num_srcs_; }
   int32_t NumAxes() const { return num_axes_; }
@@ -81,34 +85,29 @@ class Array1OfRaggedShape {
   // Returns device-accessible vector of row-splits for a particular
   // axis, indexed by 0 <= src < num_srcs.
   const int32_t **RowSplits(int32_t axis) {
-      K2_CHECK_LT(static_cast<uint32_t>(axis),
-                  static_cast<uint32_t>(num_axes_));
-      return row_splits_.Row(axis - 1).Data();
+    K2_CHECK_LT(static_cast<uint32_t>(axis), static_cast<uint32_t>(num_axes_));
+    return row_splits_.Row(axis - 1).Data();
   }
 
   // Returns device-accessible array of row-ids for the individual shapes
   // indexed [axis-1][src], with 0 <= src < num_srcs.  The shape of this
   // Array2 is [NumAxes() - 1][NumSrcs()].
-  const Array2<const int32_t*> *RowIds() const { return &row_ids_; }
-
+  const Array2<const int32_t *> *RowIds() const { return &row_ids_; }
 
   // Returns device-accessible vector of row-splits for a particular
   // axis, indexed by 0 <= src < num_srcs.
   const int32_t **RowIds(int32_t axis) {
-      K2_CHECK_LT(static_cast<uint32_t>(axis),
-                  static_cast<uint32_t>(num_axes_));
-      return row_ids_.Row(axis - 1).Data();
+    K2_CHECK_LT(static_cast<uint32_t>(axis), static_cast<uint32_t>(num_axes_));
+    return row_ids_.Row(axis - 1).Data();
   }
-
 
   /* Return the  total size on this axis, which is the sum of the TotSize() of
      the individual shapes.  Requires 0 <= axis < NumAxes() and
      for axis=0 the returned value is the same as Dim0().
   */
   int32_t TotSize(int32_t axis) const {
-      K2_CHECK_LT(static_cast<uint32_t>(axis),
-                  static_cast<uint32_t>(num_axes_));
-      return tot_sizes_[axis];
+    K2_CHECK_LT(static_cast<uint32_t>(axis), static_cast<uint32_t>(num_axes_));
+    return tot_sizes_[axis];
   }
 
   // equivalent to TotSize(0).
@@ -129,13 +128,21 @@ class Array1OfRaggedShape {
      to GPU, this will be faster than invoking an extra kernel in normal cases
      when the NumSrcs() is small.  [Also: see GetRowInfoMulti()].
    */
-  const Array2<int32_t> &MetaRowSplits() const { return meta_row_splits_; }
+  const Array2<int32_t> &MetaRowSplits() const {
+    K2_CHECK(populate_meta_) << "To use this function, you need to initialize "
+                                "the object with populate_meta equaling true";
+    return meta_row_splits_;
+  }
 
   // could POSSIBLY add this so this code could be used in functions like
   // Stack(). would be like MetaRowSplits but with an extra 1st row containing
   // 0,1,2,... We could perhaps create it with 1 extra initial row so this is
   // always convenient to output.
-  const Array2<int32_t> &Offsets() const { return offsets_; }
+  const Array2<int32_t> &Offsets() const {
+    K2_CHECK(populate_meta_) << "To use this function, you need to initialize "
+                                "the object with populate_meta equaling true";
+    return offsets_;
+  }
 
   /*
     Returns the meta-row-splits for a particular axis, with
@@ -146,8 +153,9 @@ class Array1OfRaggedShape {
     Note: in ragged_opts.cu we refer to this as composed_row_splits
   */
   Array1<int32_t> MetaRowSplits(int32_t axis) {
-    K2_CHECK_LT(static_cast<uint32_t>(axis),
-                static_cast<uint32_t>(num_axes_));
+    K2_CHECK(populate_meta_) << "To use this function, you need to initialize "
+                                "the object with populate_meta equaling true";
+    K2_CHECK_LT(static_cast<uint32_t>(axis), static_cast<uint32_t>(num_axes_));
     return meta_row_splits_.Row(axis);
   }
 
@@ -161,9 +169,11 @@ class Array1OfRaggedShape {
 
      Note: in ragged_ops.cu we refer to this as composed_row_ids.
   */
-  Array1<const int32_t*> MetaRowIds() {
-    Array1<const int32_t*> ans(GetCpuContext(), num_axes_);
-    const int32_t* *ans_data = ans.Data();
+  Array1<const int32_t *> MetaRowIds() {
+    K2_CHECK(populate_meta_) << "To use this function, you need to initialize "
+                                "the object with populate_meta equaling true";
+    Array1<const int32_t *> ans(GetCpuContext(), num_axes_);
+    const int32_t **ans_data = ans.Data();
     for (int32_t i = 0; i < num_axes_; ++i) {
       ans_data[i] = meta_row_ids_[i].Data();
     }
@@ -180,8 +190,9 @@ class Array1OfRaggedShape {
     concatenated array would come from.
   */
   const Array1<int32_t> &MetaRowIds(int32_t axis) const {
-    K2_CHECK_LT(static_cast<uint32_t>(axis),
-                static_cast<uint32_t>(num_axes_));
+    K2_CHECK(populate_meta_) << "To use this function, you need to initialize "
+                                "the object with populate_meta equaling true";
+    K2_CHECK_LT(static_cast<uint32_t>(axis), static_cast<uint32_t>(num_axes_));
     return meta_row_ids_[axis];
   }
 
@@ -190,16 +201,16 @@ class Array1OfRaggedShape {
   int32_t num_srcs_;
   int32_t num_axes_;
 
+  bool populate_meta_;
+
   Array2<const int32_t *> row_splits_;  // shape [num_axes_ - 1][num_srcs_]
   Array2<const int32_t *> row_ids_;     // shape [num_axes_ - 1][num_srcs_]
-  Array1<int32_t> tot_sizes_;           // dim num_axes_
+  Array1<int32_t> tot_sizes_;           // dim num_axes_, a CPU Array.
 
-  Array2<int32_t> meta_row_splits_;     // shape [num_axes_][num_srcs_ + 1]
-  Array2<int32_t> offsets_;             // shape [num_axes_][num_srcs_ + 1]
-  std::vector<Array1<int32_t> > meta_row_ids_;  // dim num_axes_
+  Array2<int32_t> meta_row_splits_;  // shape [num_axes_][num_srcs_ + 1]
+  Array2<int32_t> offsets_;          // shape [num_axes_][num_srcs_ + 1]
+  std::vector<Array1<int32_t>> meta_row_ids_;  // dim num_axes_
 };
-
-
 
 /*
   Array1OfRagged<T> is a 1-dimensional array of Ragged<T>.
@@ -226,7 +237,8 @@ struct Array1OfRagged {
   Array1OfRagged() = default;
 
   // The 'srcs' should have the same number of axes.
-  Array1OfRagged(Ragged<T> *srcs, int32_t num_srcs) {
+  Array1OfRagged(Ragged<T> *srcs, int32_t num_srcs,
+                 bool populate_meta = false) {
     K2_CHECK_GT(num_srcs, 0);
     K2_CHECK(srcs);
     values = Array1<T *>(GetCpuContext(), num_srcs);
@@ -236,11 +248,10 @@ struct Array1OfRagged {
       shapes[i] = srcs[i].shape;
       values_data[i] = srcs[i].values.Data();
     }
-    shape = Array1OfRaggedShape(shapes.data(), num_srcs);
+    shape = Array1OfRaggedShape(shapes.data(), num_srcs, populate_meta);
     values = values.To(shape.Context());
   }
 };
-
 
 }  // namespace k2
 
