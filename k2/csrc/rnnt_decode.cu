@@ -311,14 +311,10 @@ Renumbering RnntDecodingStreams::DoFisrtPassPruning(
           return;
         }
 
-        // prune the arcs pointing to the final state.
-        if (arc.label == -1) {
-          pass1_keep_data[idx0123] = 0;
-          return;
-        }
+        double log_prob = 0.0;  // make final probability 1.
+        if (arc.label != -1) log_prob = logprobs_acc(idx01, arc.label);
 
         double this_score = scores_data[idx012], arc_score = arc.score,
-               log_prob = logprobs_acc(idx01, arc.label),
                score = this_score + arc_score + log_prob,
                max_score = max_scores_per_stream_data[idx0];
         // prune with beam
@@ -508,18 +504,15 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
         int64_t this_state = this_states_values_data[idx012];
         double this_score = this_scores_data[idx012];
 
-        int64_t this_context_state = this_state / num_graph_states;
-        int32_t this_graph_state = this_state % num_graph_states;
-
         // handle the implicit epsilon self-loop
         if (idx3 == 0) {
           states_data[arc_idx] = this_state;
           // we assume termination symbol to be 0 here.
           scores_data[arc_idx] = this_score + logprobs_acc(idx01, 0);
           ArcInfo ai;
-          ai.graph_state_idx0 = this_graph_state;
           ai.graph_arc_idx01 = -1;
           ai.score = logprobs_acc(idx01, 0);
+          ai.label = 0;
           arcs_data[arc_idx] = ai;
           return;
         }
@@ -527,15 +520,17 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
         const Arc *graph_arcs_data = graphs_arcs_data[idx0];
         const int32_t *graph_row_split1_data = graph_row_splits1_ptr_data[idx0];
 
-        int32_t graph_idx0x = graph_row_split1_data[this_graph_state],
+        int64_t this_context_state = this_state / num_graph_states;
+        int32_t this_graph_state = this_state % num_graph_states,
+                graph_idx0x = graph_row_split1_data[this_graph_state],
                 graph_idx01 = graph_idx0x + idx3 - 1;  // minus 1 here as
                                                        // epsilon self-loop
                                                        // takes the position 0.
         Arc arc = graph_arcs_data[graph_idx01];
         int64_t context_state = this_context_state;
 
-        // non epsilon transitions, update context_state
-        if (arc.label != 0) {
+        // non epsilon transitions and non final arc, update context_state
+        if (arc.label != 0 && arc.label != -1) {
           // Think about that vocab_size=10, decoder_history_len=3,
           // this_context_state=358, arc.label=6, we need to update
           // context_state to 586. First, we need to extract 58 from 358, that
@@ -550,14 +545,15 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
         int64_t state = context_state * num_graph_states + arc.dest_state;
         states_data[arc_idx] = state;
 
-        double arc_score = arc.score, log_prob = logprobs_acc(idx01, arc.label);
+        double log_prob = 0.0;  // make final arc probability 1.
+        if (arc.label != -1) log_prob = logprobs_acc(idx01, arc.label);
 
-        scores_data[arc_idx] = this_score + arc_score + log_prob;
+        scores_data[arc_idx] = this_score + arc.score + log_prob;
 
         ArcInfo ai;
-        ai.graph_state_idx0 = arc.dest_state;
         ai.graph_arc_idx01 = graph_idx01;
-        ai.score = arc_score + log_prob;
+        ai.score = arc.score + log_prob;
+        ai.label = arc.label;
         arcs_data[arc_idx] = ai;
       });
 
@@ -721,65 +717,43 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
 
   auto last_frame_shape = prev_frames_[frames - 1]->shape;
 
-  Array1<int32_t> num_graph_arcs(c_, last_frame_shape.NumElements() + 1);
-  Array1<int32_t> num_keep_arcs(c_, last_frame_shape.NumElements() + 1);
-  const int32_t *lfs_row_ids2_data = last_frame_shape.RowIds(2).Data(),
-                *lfs_row_ids1_data = last_frame_shape.RowIds(1).Data();
-  const int32_t *const *graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
-  const Arc *const *graphs_arcs_data = graphs_.values.Data();
+  Array1<int32_t> num_final_arcs(c_, last_frame_shape.NumElements() + 1);
   const ArcInfo *last_frame_arc_data = prev_frames_[frames - 1]->values.Data();
-  int32_t *num_graph_arcs_data = num_graph_arcs.Data(),
-          *num_keep_arcs_data = num_keep_arcs.Data();
+  int32_t *num_final_arcs_data = num_final_arcs.Data();
 
   K2_EVAL(
-      c_, last_frame_shape.NumElements(), lambda_num_arcs, (int32_t idx012) {
-        // initialization purpose, to avoid a extra kernel.
-        num_keep_arcs_data[idx012] = 0;
-        int32_t idx01 = lfs_row_ids2_data[idx012],
-                idx0 = lfs_row_ids1_data[idx01];
-        const int32_t *graph_row_splits1_data =
-            graph_row_splits1_ptr_data[idx0];
+      c_, last_frame_shape.NumElements(), lambda_set_final_arcs,
+      (int32_t idx012) {
         ArcInfo ai = last_frame_arc_data[idx012];
-        int32_t num_arcs = graph_row_splits1_data[ai.graph_state_idx0 + 1] -
-                           graph_row_splits1_data[ai.graph_state_idx0];
-        num_graph_arcs_data[idx012] = num_arcs;
+        if (ai.label == -1)
+          num_final_arcs_data[idx012] = 1;
+        else
+          num_final_arcs_data[idx012] = 0;
       });
-  ExclusiveSum(num_graph_arcs, &num_graph_arcs);
-  auto state_expand_shape = RaggedShape2(&num_graph_arcs, nullptr, -1);
 
-  const int32_t *ses_row_ids1_data = state_expand_shape.RowIds(1).Data(),
-                *ses_row_splits1_data = state_expand_shape.RowSplits(1).Data();
+  ExclusiveSum(num_final_arcs, &num_final_arcs);
+  auto final_arcs_shape = RaggedShape2(&num_final_arcs, nullptr, -1);
+
+  auto final_arcs = Array1<ArcInfo>(c_, final_arcs_shape.NumElements());
+  const int32_t *fas_row_ids1_data = final_arcs_shape.RowIds(1).Data();
+  const ArcInfo *last_frame_data = prev_frames_[frames - 1]->values.Data();
+  ArcInfo *final_arcs_data = final_arcs.Data();
 
   K2_EVAL(
-      c_, state_expand_shape.NumElements(), lambda_keep_arc, (int32_t idx0123) {
-        int32_t idx012 = ses_row_ids1_data[idx0123],
-                idx012x = ses_row_splits1_data[idx012],
-                idx3 = idx0123 - idx012x, idx01 = lfs_row_ids2_data[idx012],
-                idx0 = lfs_row_ids1_data[idx01];
-        const int32_t *graph_row_splits1_data =
-            graph_row_splits1_ptr_data[idx0];
-        const Arc *graph_arcs_data = graphs_arcs_data[idx0];
-        ArcInfo ai = last_frame_arc_data[idx012];
-        int32_t graph_idx0x = graph_row_splits1_data[ai.graph_state_idx0],
-                graph_idx01 = graph_idx0x + idx3;
-        Arc arc = graph_arcs_data[graph_idx01];
-        if (arc.label == -1) num_keep_arcs_data[idx012] = 1;
+      c_, final_arcs_shape.NumElements(), lambda_set_final_arcs,
+      (int32_t idx01) {
+        int32_t idx0 = fas_row_ids1_data[idx01];
+        ArcInfo ai = last_frame_data[idx0];
+        final_arcs_data[idx01] = ai;
       });
 
-  ExclusiveSum(num_keep_arcs, &num_keep_arcs);
-  auto pre_state_arc_shape = RaggedShape2(&num_keep_arcs, nullptr, -1);
-
-  // auto pre_final_arcs_shape = ComposeRaggedShapes(
-  // RemoveAxis(last_frame_shape, 1), pre_state_arc_shape);
-
-  auto pre_final_arcs_shape = ComposeRaggedShapes(
-      RemoveAxis(last_frame_shape, 1),
-      RegularRaggedShape(c_, last_frame_shape.NumElements(), 1));
+  final_arcs_shape = ComposeRaggedShapes(last_frame_shape, final_arcs_shape);
+  final_arcs_shape = RemoveAxis(final_arcs_shape, 2);
 
   auto stream_state_shape = RegularRaggedShape(c_, num_streams_, 1);
   auto state_arc_shape =
       RegularRaggedShape(c_, stream_state_shape.NumElements(), 0);
-  auto final_arcs_shape =
+  auto last_arcs_shape =
       ComposeRaggedShapes(stream_state_shape, state_arc_shape);
 
   RaggedShape oshape;
@@ -791,19 +765,20 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
 
   {
     // each of these have 3 axes.
-    std::vector<RaggedShape *> arcs_shapes(frames + 2);
-    for (int32_t t = 0; t < frames; ++t) {
+    std::vector<RaggedShape *> arcs_shapes(frames + 1);
+    for (int32_t t = 0; t < frames - 1; ++t) {
       arcs_shapes[t] = &(prev_frames_[t]->shape);
       arcs_data_ptrs_data[t] = prev_frames_[t]->values.Data();
     }
 
-    arcs_shapes[frames] = &pre_final_arcs_shape;
-    arcs_shapes[frames + 1] = &final_arcs_shape;
+    arcs_data_ptrs_data[frames - 1] = final_arcs.Data();
+    arcs_shapes[frames - 1] = &final_arcs_shape;
+    arcs_shapes[frames] = &last_arcs_shape;
 
     // oshape is a 4-axis ragged tensor which is indexed:
     //   oshape[stream][t][state_idx][arc_idx]
     int32_t axis = 1;
-    oshape = Stack(axis, frames + 2, arcs_shapes.data(), &oshape_merge_map);
+    oshape = Stack(axis, frames + 1, arcs_shapes.data(), &oshape_merge_map);
   }
 
   int32_t num_arcs = oshape.NumElements();
@@ -824,6 +799,8 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
 
   Array1<Arc> arcs_out(c_, num_arcs);
   Arc *arcs_out_data = arcs_out.Data();
+  const int32_t *const *graph_row_splits1_ptr_data = graphs_.shape.RowSplits(1);
+  const Arc *const *graphs_arcs_data = graphs_.values.Data();
 
   K2_EVAL(
       c_, num_arcs, lambda_set_arcs, (int32_t oarc_idx0123) {
@@ -836,39 +813,41 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
                 oarc_idx01x_next = oshape_row_splits2[oarc_idx01 + 1];
 
         int32_t m = oshape_merge_map_data[oarc_idx0123],
-                // actually we won't get t == frames + 1
+                // actually we won't get t == frames
                 // here since those frames have no arcs.
-            t = m % (frames + 2),
+            t = m % (frames + 1),
                 // arc_idx012 into prev_frames_ arcs on time t, index of the arc
                 // on that frame.
-            arcs_idx012 = m / (frames + 2);
+            arcs_idx012 = m / (frames + 1);
 
         K2_CHECK_EQ(t, oarc_idx1);
 
-        ArcInfo arc_info;
+        const ArcInfo *arcs_data = arcs_data_ptrs_data[t];
+        ArcInfo arc_info = arcs_data[arcs_idx012];
         Arc arc;
 
-        // all arcs in t == frames point to final state
-        if (t == frames) {
+        // all arcs in t == frames - 1 point to final state
+        if (t == frames - 1) {
           arc.src_state = oarc_idx012 - oarc_idx0xx;
           arc.dest_state = oarc_idx01x_next - oarc_idx0xx;
           arc.label = -1;
           arc.score = 0;
-          arc_info.graph_arc_idx01 = -1;
         } else {
           const Arc *graph_arcs_data = graphs_arcs_data[oarc_idx0];
-          const ArcInfo *arcs_data = arcs_data_ptrs_data[t];
-
-          arc_info = arcs_data[arcs_idx012];
           arc.src_state = oarc_idx012 - oarc_idx0xx;
+
           // Note: the idx1 w.r.t. the frame's `arcs` is an idx2 w.r.t.
           // `oshape`.
           int32_t dest_state_idx012 = oarc_idx01x_next + arc_info.dest_state;
           arc.dest_state = dest_state_idx012 - oarc_idx0xx;
 
           // graph_arc_idx01 == -1 means this is a implicit epsilon self-loop
-          if (arc_info.graph_arc_idx01 == -1) {
+          // arc_info.label == -1 means this is the final arc before last frame
+          // this is non-accessible arc, we set its label to 0 here to make the
+          // generated lattice a valid k2 fsa.
+          if (arc_info.graph_arc_idx01 == -1 || arc_info.label == -1) {
             arc.label = 0;
+            arc_info.graph_arc_idx01 = -1;
           } else {
             arc.label = graph_arcs_data[arc_info.graph_arc_idx01].label;
           }

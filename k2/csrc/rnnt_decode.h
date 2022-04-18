@@ -96,11 +96,14 @@ struct ArcInfo {
   // arc, or -1 if this arc is a "termination symbol" (these do not appear in
   // the graph).
   int32_t graph_arc_idx01;
-  int32_t graph_state_idx0;
 
   // The score on the arc; contains both the graph score (if any) and the score
   // from the RNN-T joiner.
   float score;
+
+  // label of this arc (i.e. the label of the associated arc in the decoding
+  // graph. We keep it here to make identifying final arcs easier.
+  int32_t label;
 
   // dest_state is the state index within the array of states on the next frame;
   // it would be an (idx1 or idx2) depending whether this is part of an

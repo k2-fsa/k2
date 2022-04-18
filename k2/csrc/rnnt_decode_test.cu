@@ -21,6 +21,7 @@
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/rnnt_decode.h"
 
 namespace k2 {
@@ -37,13 +38,20 @@ TEST(RnntDecodeStream, CreateRnntDecodeStream) {
   }
 }
 
+static void ApplyLog(Ragged<float> &probs) {
+  float *probs_data = probs.values.Data();
+  K2_EVAL(
+      probs.Context(), probs.NumElements(), lambda_set_log,
+      (int32_t i) { probs_data[i] = logf(probs_data[i]); });
+}
+
 // This test does not do any checking, just to make sure it runs normally.
 TEST(RnntDecodingStreams, Basic) {
-  for (const auto &c : {GetCpuContext(), GetCudaContext()}) {
+  for (auto c : {GetCpuContext(), GetCudaContext()}) {
     int32_t vocab_size = 6;
     auto config =
-        RnntDecodingConfig(vocab_size, 2 /*decoder_history_len*/, 8.0f /*beam*/,
-                           2 /*max_states*/, 3 /*max_contexts*/);
+        RnntDecodingConfig(vocab_size, 2 /*decoder_history_len*/, 5.0f /*beam*/,
+                           8 /*max_states*/, 4 /*max_contexts*/);
 
     Array1<int32_t> aux_labels;
     auto trivial_graph = std::make_shared<Fsa>(TrivialGraph(c, 5, &aux_labels));
@@ -60,11 +68,6 @@ TEST(RnntDecodingStreams, Basic) {
     }
     auto streams = RnntDecodingStreams(streams_vec, config);
 
-    K2_LOG(INFO) << "states : " << streams.States();
-    K2_LOG(INFO) << "scores : " << streams.Scores();
-    K2_LOG(INFO) << "num_graph_states : " << streams.NumGraphStates();
-
-    float mean = 5, std = 3;
     RaggedShape context_shape;
     Array2<int32_t> context;
 
@@ -72,40 +75,44 @@ TEST(RnntDecodingStreams, Basic) {
 
     for (int32_t i = 0; i < steps; ++i) {
       streams.GetContexts(&context_shape, &context);
-      K2_LOG(INFO) << "context_shape : " << context_shape;
-      K2_LOG(INFO) << "context : " << context;
-      auto logprobs = RandGaussianArray2<float>(c, context_shape.NumElements(),
-                                                vocab_size, mean, std);
-      K2_LOG(INFO) << "logprobs : " << logprobs;
+
+      auto probs = Ragged<float>(
+          RegularRaggedShape(c, context_shape.NumElements(), vocab_size),
+          RandUniformArray1<float>(c, context_shape.NumElements() * vocab_size,
+                                   0, 1));
+
+      probs = NormalizePerSublist<float>(probs, false /*use_log*/);
+
+      ApplyLog(probs);
+
+      auto logprobs =
+          Array2<float>(probs.values, context_shape.NumElements(), vocab_size);
+
       streams.Advance(logprobs);
-      K2_LOG(INFO) << "states : " << streams.States();
-      K2_LOG(INFO) << "scores : " << streams.Scores();
     }
     streams.TerminateAndFlushToStreams();
 
-    std::vector<int32_t> num_frames(num_streams, steps);
-    Array1<int32_t> out_map;
-    FsaVec ofsa;
-    streams.FormatOutput(num_frames, &ofsa, &out_map);
-    K2_LOG(INFO) << "ofsa : " << ofsa;
-    K2_LOG(INFO) << "out map : " << out_map;
-    std::vector<Fsa> fsas;
-    Unstack(ofsa, 0, &fsas);
-    for (size_t i = 0; i < fsas.size(); ++i) {
-      K2_LOG(INFO) << FsaToString(fsas[i]);
-    }
-
-    // different num frames
-    num_frames = std::vector<int32_t>({2, 5, 4});
-    streams.FormatOutput(num_frames, &ofsa, &out_map);
-    K2_LOG(INFO) << "ofsa : " << ofsa;
-    K2_LOG(INFO) << "out map : " << out_map;
-    Unstack(ofsa, 0, &fsas);
-    for (size_t i = 0; i < fsas.size(); ++i) {
-      K2_LOG(INFO) << FsaToString(fsas[i]);
+    for (auto num_frames : {std::vector<int32_t>(num_streams, steps),
+                             std::vector<int32_t>({2, 5, 4})}) {
+      Array1<int32_t> out_map;
+      FsaVec ofsa;
+      streams.FormatOutput(num_frames, &ofsa, &out_map);
+      Array1<int32_t> properties;
+      int32_t property;
+      GetFsaVecBasicProperties(ofsa, &properties, &property);
+      if (!(property & kFsaPropertiesValid)) {
+        std::vector<Fsa> fsas;
+        Unstack(ofsa, 0, &fsas);
+        auto cpu_properties = properties.To(GetCpuContext());
+        for (int32_t i = 0; i < cpu_properties.Dim(); ++i) {
+          K2_LOG(INFO) << (cpu_properties[i] & kFsaPropertiesValid);
+          K2_LOG(INFO) << FsaToString(fsas[i]);
+        }
+      }
+      K2_CHECK(property & kFsaPropertiesValid);
     }
   }
 }
-
 }  // namespace rnnt_decoding
+
 }  // namespace k2
