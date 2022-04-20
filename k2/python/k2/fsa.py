@@ -932,7 +932,7 @@ class Fsa(object):
 
         self.__dict__['_properties'] = None
 
-        # Fix aux_labels in the final arcs to be -1, or the inverted fsa might
+        # Fix aux_labels in the final arcs to be -1, or the inverted fsa will
         # be invalid.
         self.aux_labels = torch.where(self.labels == -1, -1, self.aux_labels)
 
