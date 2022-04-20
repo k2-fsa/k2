@@ -44,6 +44,20 @@ namespace k2 {
 FsaClass CtcTopo(int32_t max_token, bool modified = false,
                  torch::Device device = torch::kCPU);
 
+/*
+  Create a trivial graph which has only two states. On state 0, there are
+  `max_token` self loops(i.e. a loop for each symbol from 1 to max_token), and
+  state 1 is the final state.
+
+    @param [in] max_token  The maximum token ID (inclusive). We assume that
+                           token IDs are contiguous (from 1 to `max_token`).
+    @param device  A torch.device indicating what device the returned Fsa will
+                   be. Default torch::CPU.
+    @return    Returns the expected trivial graph on the given device.
+               Note the returned graph does not contain arcs with label being 0.
+ */
+FsaClass TrivialGraph(int32_t max_token, torch::Device device = torch::kCPU);
+
 /* Intersect a DenseFsaVec constructed from nnet_output with an FsaClass, i.e.,
    decoding graphs.
 
@@ -91,6 +105,22 @@ FsaClass IntersectDensePruned(FsaClass &graphs, DenseFsaVec &dense,
  */
 FsaClass ShortestPath(FsaClass &lattice);
 
+
+/*
+  Return array of total scores (one per FSA)
+      @param [in] fsas   Input FsaVec (must have 3 axes)
+      @param [in] log_semiring   If true, combine path with LogAdd
+                  (i.e., mathematically, `log(exp(a)+exp(b))`); if false,
+                   combine as `max(a,b)`.
+      @return  Returns array of total scores, of dimension fsas.fsa.Dim0(),
+                which will contain the scores in the final-states of
+                `forward_scores`, or -infinity for FSAs that had no
+                states.
+*/
+template <typename FloatType>
+Array1<FloatType> GetTotScores(FsaClass &fsa, bool log_semiring = true);
+
+
 /** Swap the labels and aux labels of a lattice.
 
    Caution: This is an in-place operation.
@@ -132,6 +162,20 @@ FsaClass IntersectDevice(FsaClass &a_fsas, FsaClass &b_fsas,
                          const Array1<int32_t> &b_to_a_map,
                          bool sorted_match_a);
 
+/** Create a linear FSA with epsilon self-loops by first removing epsilon
+    transitions from the input linear FSA.
+
+      @param [in] fsas  An FSA or an FsaVec. It MUST be a linear FSA or a vector
+                        of linear FSAs.
+      @return  Return an FSA or FsaVec, where each FSA contains epsilon
+               self-loops but contains no epsilon transitions for arcs that are
+               not self-loops.
+ */
+FsaClass LinearFsaWithSelfLoops(FsaClass &fsas);
 }  // namespace k2
+
+#define IS_IN_K2_TORCH_CSRC_FSA_ALGO_H_
+#include "k2/torch/csrc/fsa_algo_inl.h"
+#undef IS_IN_K2_TORCH_CSRC_FSA_ALGO_H_
 
 #endif  // K2_TORCH_CSRC_FSA_ALGO_H_

@@ -29,15 +29,6 @@ add_executable(hlg_decode ${hlg_decode_srcs})
 set_property(TARGET hlg_decode PROPERTY CXX_STANDARD 14)
 target_link_libraries(hlg_decode ${bin_dep_libs})
 
-set(online_decode_srcs online_decode.cu)
-if(NOT K2_WITH_CUDA)
-  transform(OUTPUT_VARIABLE online_decode_srcs SRCS ${online_decode_srcs})
-endif()
-
-add_executable(online_decode ${online_decode_srcs})
-set_property(TARGET online_decode PROPERTY CXX_STANDARD 14)
-target_link_libraries(online_decode ${bin_dep_libs})
-
 #-------------------------------------------
 #       HLG decoding + n-gram LM rescoring
 #-------------------------------------------
@@ -59,3 +50,30 @@ endif()
 add_executable(attention_rescore ${attention_rescore_srcs})
 set_property(TARGET attention_rescore PROPERTY CXX_STANDARD 14)
 target_link_libraries(attention_rescore ${bin_dep_libs})
+
+
+#-------------------------------------------
+#       online decoding
+#-------------------------------------------
+set(online_decode_srcs online_decode.cu)
+if(NOT K2_WITH_CUDA)
+  transform(OUTPUT_VARIABLE online_decode_srcs SRCS ${online_decode_srcs})
+endif()
+
+add_executable(online_decode ${online_decode_srcs})
+set_property(TARGET online_decode PROPERTY CXX_STANDARD 14)
+target_link_libraries(online_decode ${bin_dep_libs})
+
+
+#-------------------------------------------
+#      rnnt demo
+#-------------------------------------------
+set(rnnt_demo_srcs rnnt_demo.cu)
+if(NOT K2_WITH_CUDA)
+  transform(OUTPUT_VARIABLE rnnt_demo_srcs SRCS ${rnnt_demo_srcs})
+endif()
+
+add_executable(rnnt_demo ${rnnt_demo_srcs})
+set_property(TARGET rnnt_demo PROPERTY CXX_STANDARD 14)
+target_link_libraries(rnnt_demo ${bin_dep_libs})
+

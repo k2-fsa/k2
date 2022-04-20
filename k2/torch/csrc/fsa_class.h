@@ -26,6 +26,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
@@ -177,6 +178,28 @@ struct FsaClass {
    */
   void CopyAttrs(FsaClass &src, torch::Tensor arc_map);
 
+  /** Propagate attributes from a list of source FsaClasses via ragged tensor
+      arc_map. We assume that each sublist in arc_map contains the indexes into
+      arcs (as idx01) of corresponding Fsa in the list of source FsaClasses.
+      And we propagate the attributes from the source FsaClass to the
+      corresponding Fsa(i.e. sub Fsa of raw FsaVec in current FsaClass object)
+      via the indexes in the corresponding sublist of arc_map.
+
+      Caution: The raw fsa in current object MUST be an 3 axes FsaVec, and it
+               MUST satisfy `fsa.Numelements() == arc_map.Numelements()` and
+               `fsa.Dim0() == arc_map.Dim0()`.
+
+      Note: The attributes of current object is a union of the attributes
+            of all the source FsaClasses. For example, srcs[0] has attributes
+            attr1, attr2; srcs[1] has attributes attr1, attr3; srcs[2] has
+            attributes attr3, attr4; then current FsaClass object has attributes
+            attr1, attr2, attr3, attr4 after propagation.
+
+    @param srcs  A vector of the source FsaClasses.
+    @param arc_map  The arc_map (as idx01) to select items in attributes.
+   */
+  void CopyAttrs(std::vector<FsaClass> &srcs, Ragged<int32_t> &arc_map);
+
   /** Associate an tensor attribute with a value directly.
 
     @param name  The attribute name.
@@ -212,6 +235,16 @@ struct FsaClass {
      */
   void CopyTensorAttrs(FsaClass &src, torch::Tensor arc_map);
 
+
+  /** Propagate tensor attributes from a list of source FsaClasses via ragged
+      tensor arc_map.
+      See docs in CopyAttrs that has same arguments for more details.
+
+      @param srcs  A vector of the source FsaClasses.
+      @param arc_map  The arc_map (as idx01) to select items in attributes.
+   */
+  void CopyTensorAttrs(std::vector<FsaClass> &srcs, Ragged<int32_t> &arc_map);
+
   /** Propagate ragged tensor attributes from source FsaClass via tensor
     arc_map.
 
@@ -219,6 +252,16 @@ struct FsaClass {
     @param arc_map  The arc_map (as idx012) to select items in attributes.
    */
   void CopyRaggedTensorAttrs(FsaClass &src, torch::Tensor arc_map);
+
+  /** Propagate ragged tensor attributes from a list of source FsaClasses via
+      ragged tensor arc_map.
+      See docs in CopyAttrs that has same arguments for more details.
+
+      @param srcs  A vector of the source FsaClasses.
+      @param arc_map  The arc_map (as idx01) to select items in attributes.
+   */
+  void CopyRaggedTensorAttrs(std::vector<FsaClass> &srcs,
+                             Ragged<int32_t> &arc_map);
 };
 
 }  // namespace k2

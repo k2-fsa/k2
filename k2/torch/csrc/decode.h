@@ -22,6 +22,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/ragged.h"
+#include "k2/csrc/rnnt_decode.h"
 #include "k2/torch/csrc/fsa_class.h"
 #include "torch/script.h"
 
@@ -77,6 +78,40 @@ Ragged<int32_t> GetTexts(FsaClass &lattice);
  */
 void WholeLatticeRescoring(FsaClass &G, float ngram_lm_scale,
                            FsaClass *lattice);
+
+/** Get the best path of a given lattice.
+
+    @param lattice  The given lattice.
+    @param use_max  True to use max operation to select the hypothesis with the
+                    largest log_prob when there are duplicate hypotheses; False
+                    to use log-add.
+    @param num_paths  Number of paths to sample when generating Nbest. Only used
+                      when use_max equals to false.
+    @param nbest_scale  The scale value applying to lattice.score before
+                        sampling. Only used when use_max equals to false.
+
+    @return  Return the lattice containing the best paths for each Fsa.
+ */
+FsaClass GetBestPaths(FsaClass &lattice, bool use_max, int32_t num_paths,
+                      float nbest_scale);
+
+/** Advance a chunk of frames for rnnt decoding.
+
+    @param streams  The rnnt decoding streams.
+    @param module  Jit script module containing "decoder_forword" and
+                   "joiner_forward" methods.
+    @param encoder_outs  The output of rnnt encoder which has a shape of
+                         (B, T, C), B (i.e. the batch size) equals to
+                         streams.NumStreams(). T is the chunk size. C is the
+                         embedding dimension.
+
+    Note: streams.TerminateAndFlushToStreams() will be invoked in this function,
+          so all the decoding results will be flushed back to the individual
+          streams belonging to the corresponding sequences.
+ */
+void DecodeOneChunk(rnnt_decoding::RnntDecodingStreams &streams,
+                    torch::jit::script::Module module,
+                    torch::Tensor encoder_outs);
 
 }  // namespace k2
 

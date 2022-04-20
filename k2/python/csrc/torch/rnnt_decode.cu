@@ -31,6 +31,7 @@
 #include "k2/csrc/rnnt_decode.h"
 #include "k2/python/csrc/torch/rnnt_decode.h"
 #include "k2/python/csrc/torch/torch_util.h"
+#include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
 static void PybindRnntDecodingConfig(py::module &m) {
@@ -91,8 +92,8 @@ static void PybindRnntDecodingStream(py::module &m) {
   stream.def("__str__", [](const PyClass &self) -> std::string {
     std::ostringstream os;
     os << "RnntDecodingStream : {\n"
-       << "  num graph states : " << self.graph->Dim0() << "\n"
-       << "  num graph arcs : " << self.graph->NumElements() << "\n"
+       << "  num graph states : " << self.graph.Dim0() << "\n"
+       << "  num graph arcs : " << self.graph.NumElements() << "\n"
        << "  num contexts : " << self.states.Dim0() << "\n"
        << "  num states : " << self.states.NumElements() << "\n"
        << "  num prev frames : " << self.prev_frames.size() << "\n"
@@ -101,9 +102,9 @@ static void PybindRnntDecodingStream(py::module &m) {
   });
 
   m.def("create_rnnt_decoding_stream",
-        [](Fsa &graph) -> std::shared_ptr<PyClass> {
+        [](const Fsa &graph) -> std::shared_ptr<PyClass> {
           DeviceGuard guard(graph.Context());
-          return rnnt_decoding::CreateStream(std::make_shared<Fsa>(graph));
+          return rnnt_decoding::CreateStream(graph);
         });
 }
 
@@ -116,7 +117,7 @@ static void PybindRnntDecodingStreams(py::module &m) {
          const rnnt_decoding::RnntDecodingConfig &config)
           -> std::unique_ptr<PyClass> {
         K2_CHECK_GE(srcs.size(), 1);
-        DeviceGuard guard(srcs[0]->graph->Context());
+        DeviceGuard guard(srcs[0]->graph.Context());
         return std::make_unique<PyClass>(srcs, config);
       }));
 
@@ -145,13 +146,12 @@ static void PybindRnntDecodingStreams(py::module &m) {
   streams.def(
       "format_output",
       [](PyClass &self,
-         std::vector<int32_t> &num_frames) -> std::pair<FsaVec, torch::Tensor> {
+         std::vector<int32_t> &num_frames) -> std::pair<FsaVec, RaggedAny> {
         DeviceGuard guard(self.Context());
         FsaVec ofsa;
-        Array1<int32_t> out_map;
+        Ragged<int32_t> out_map;
         self.FormatOutput(num_frames, &ofsa, &out_map);
-        torch::Tensor out_map_tensor = ToTorch<int32_t>(out_map);
-        return std::make_pair(ofsa, out_map_tensor);
+        return std::make_pair(ofsa, RaggedAny(out_map.Generic()));
       });
 }
 

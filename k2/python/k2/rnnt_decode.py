@@ -199,13 +199,11 @@ class RnntDecodingStreams(object):
         # combine the attributes propagating from different decoding graphs
         for name, info in tensor_attr_info.items():
             values = list()
-            start = 0
             for i in range(self.num_streams):
                 src = self.src_streams[i].fsa
                 device = self.device
                 num_arcs = fsa[i].num_arcs
-                arc_map = out_map[start:start + num_arcs]
-                start = start + num_arcs
+                arc_map = out_map[i]
                 if hasattr(src, name):
                     value = getattr(src, name)
                     if info["tensor_type"] == "Tensor":

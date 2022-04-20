@@ -288,6 +288,8 @@ if(K2_WITH_CUDA)
 endif()
 
 include(googletest)
+include(sentencepiece)
+include(kaldifeat)
 
 if(K2_WITH_CUDA AND NOT WIN32)
   string(APPEND CMAKE_CUDA_FLAGS " --compiler-options -Wall ")
