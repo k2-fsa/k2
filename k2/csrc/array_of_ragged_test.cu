@@ -39,10 +39,12 @@ void TestArray1OfRaggedConstruct() {
                           0 /*min_num_elements*/, 100 /*max_num_elements*/)
               .To(c, true /*copy_all*/));
     }
-    auto array_of_ragged = Array1OfRagged<T>(raggeds.data(), num_srcs);
+    auto array_of_ragged =
+        Array1OfRagged<T>(raggeds.data(), num_srcs, true /*populate_meta*/);
     for (int32_t j = 1; j < num_axes; ++j) {
       const int32_t **row_splits = array_of_ragged.shape.RowSplits(j);
       const int32_t **row_ids = array_of_ragged.shape.RowIds(j);
+
       Array1<int32_t *> expected_row_splits(GetCpuContext(), num_srcs);
       Array1<int32_t *> expected_row_ids(GetCpuContext(), num_srcs);
       int32_t **expected_row_splits_data = expected_row_splits.Data();
@@ -55,6 +57,7 @@ void TestArray1OfRaggedConstruct() {
       expected_row_ids = expected_row_ids.To(c);
       expected_row_splits_data = expected_row_splits.Data();
       expected_row_ids_data = expected_row_ids.Data();
+
       Array1<int32_t> flags(c, 2, 1);
       int32_t *flags_data = flags.Data();
       K2_EVAL(
@@ -67,6 +70,38 @@ void TestArray1OfRaggedConstruct() {
     for (int32_t i = 0; i < num_srcs; ++i) {
       K2_CHECK_EQ(array_of_ragged.values[i], raggeds[i].values.Data());
     }
+
+    for (int32_t j = 0; j < num_axes; ++j) {
+      Array1<int32_t> meta_row_splits(array_of_ragged.shape.MetaRowSplits(j));
+      Array1<int32_t> meta_row_ids(array_of_ragged.shape.MetaRowIds(j));
+      Array1<int32_t> offsets(
+          array_of_ragged.shape.Offsets().RowArange(j + 1, j + 2).Row(0));
+
+      Array1<int32_t> expected_meta_row_splits(GetCpuContext(), num_srcs + 1);
+      int32_t *expected_meta_row_splits_data = expected_meta_row_splits.Data();
+      for (int32_t i = 0; i < num_srcs; ++i) {
+        expected_meta_row_splits_data[i] = raggeds[i].TotSize(j);
+      }
+      ExclusiveSum(expected_meta_row_splits, &expected_meta_row_splits);
+      expected_meta_row_splits = expected_meta_row_splits.To(c);
+      Array1<int32_t> expected_meta_row_ids(c,
+                                            array_of_ragged.shape.TotSize(j));
+      RowSplitsToRowIds(expected_meta_row_splits, &expected_meta_row_ids);
+
+      K2_CHECK(Equal(meta_row_splits, expected_meta_row_splits));
+      K2_CHECK(Equal(meta_row_ids, expected_meta_row_ids));
+      K2_CHECK(Equal(offsets, expected_meta_row_splits));
+    }
+
+    Array1<int32_t> expected_offsets_1st_row(GetCpuContext(), num_srcs + 1);
+    int32_t *expected_offsets_1st_row_data = expected_offsets_1st_row.Data();
+    for (int32_t i = 0; i <= num_srcs; ++i) {
+      expected_offsets_1st_row_data[i] = i;
+    }
+    expected_offsets_1st_row = expected_offsets_1st_row.To(c);
+    Array1<int32_t> offsets_1st_row(
+        array_of_ragged.shape.Offsets().RowArange(0, 1).Row(0));
+    K2_CHECK(Equal(offsets_1st_row, expected_offsets_1st_row));
   }
 }
 

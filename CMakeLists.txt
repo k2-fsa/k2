@@ -45,7 +45,7 @@ message(STATUS "Enabled languages: ${languages}")
 
 project(k2 ${languages})
 
-set(K2_VERSION "1.14")
+set(K2_VERSION "1.15.1")
 
 # ----------------- Supported build types for K2 project -----------------
 set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
@@ -268,6 +268,7 @@ if(K2_USE_PYTORCH)
     ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py.in
     ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py @ONLY
   )
+  message(STATUS "Generated ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py")
 endif()
 
 if(K2_WITH_CUDA)

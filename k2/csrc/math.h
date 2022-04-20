@@ -27,6 +27,20 @@
 
 namespace k2 {
 
+// Currently, only used in k2/csrc/rnnt_decode.cu
+// See https://github.com/k2-fsa/k2/pull/951#issuecomment-1096650842
+K2_CUDA_HOSTDEV __forceinline__ int64_t Pow(int64_t base,
+                                                int64_t exponent) {
+  K2_CHECK_GE(exponent, 0);
+  int64_t exp = 0;
+  int64_t result = 1;
+  while (exp < exponent) {
+    result *= base;
+    exp++;
+  }
+  return result;
+}
+
 /*
   Returns index of highest bit set, in range -1..30.
   HighestBitSet(0) = -1,
@@ -106,12 +120,12 @@ int32_t RandIntGeometric(int32_t min, int32_t max);
  type, but for types float and double it "fixes" the broken behavior of
  the C++ standard w.r.t. infinity allowing infinities to be parsed.
 */
-template<class T> struct InputFixer {
+template <class T>
+struct InputFixer {
   T t;
   // cast operator
   operator T() const { return t; }
 };
-
 
 namespace internal {
 template <typename Real>
@@ -119,16 +133,16 @@ Real FixedRead(std::istream &is);
 }
 
 template <typename T>
-inline std::istream &operator >>(std::istream &is, InputFixer<T> &f) {
+inline std::istream &operator>>(std::istream &is, InputFixer<T> &f) {
   return is >> f.t;
 }
 template <>
-inline std::istream &operator >>(std::istream &is, InputFixer<float> &f) {
+inline std::istream &operator>>(std::istream &is, InputFixer<float> &f) {
   f.t = internal::FixedRead<float>(is);
   return is;
 }
 template <>
-inline std::istream &operator >>(std::istream &is, InputFixer<double> &f) {
+inline std::istream &operator>>(std::istream &is, InputFixer<double> &f) {
   f.t = internal::FixedRead<double>(is);
   return is;
 }

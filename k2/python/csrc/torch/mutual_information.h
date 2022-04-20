@@ -38,7 +38,7 @@ namespace k2 {
         it can be thought of as the log-odds ratio of generating the next x in
         the sequence, i.e.
         xy[b][s][t] is the log of
-          p(x_s | x_0..x_{s-1}, y_0..y_{s-1}) / p(x_s),
+          p(x_s | x_0..x_{s-1}, y_0..y_{t-1}) / p(x_s),
         i.e. the log-prob of generating x_s given subsequences of
         lengths (s, t), divided by the prior probability of generating x_s.
         (See mutual_information.py for more info).
@@ -72,7 +72,7 @@ namespace k2 {
                and (boundary[b][2], boundary[b][3]) otherwise.
                `ans` represents the mutual information between each pair of
                sequences (i.e. x[b] and y[b], although the sequences are not
-               supplied directy to this function).
+               supplied directly to this function).
 
    The block-dim and grid-dim must both be 1-dimensional, and the block-dim must
    be at least 128.
