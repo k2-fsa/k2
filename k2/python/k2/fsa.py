@@ -930,9 +930,16 @@ class Fsa(object):
             raise RuntimeError('current invert_ method only supports case '
                                'where aux_labels is a tensor')
 
+        self.__dict__['_properties'] = None
+
+        # Fix aux_labels in the final arcs to be -1, or the inverted fsa might
+        # be invalid.
+        self.aux_labels = torch.where(self.labels == -1, -1, self.aux_labels)
+
         self.rename_tensor_attribute_('labels', '__temp')
         self.rename_tensor_attribute_('aux_labels', 'labels')
         self.rename_tensor_attribute_('__temp', 'aux_labels')
+        self.properties
         return self
 
         # TODO(dan), maybe: instead of using the generic approach above, we
