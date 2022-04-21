@@ -38,16 +38,16 @@ class WaveReader {
   /** Construct a wave reader from a wave filename, encoded in PCM format.
 
       @param filename  Path to a wave file. Must be mono and PCM encoded.
-                       Note: Samples are divided by 32768 so that they are
-                       in the range [-1, 1)
+      @param normalizer Divide audio samples by this number.
    */
-  explicit WaveReader(const std::string &filename);
+  explicit WaveReader(const std::string &filename, float normalizer = 32768);
 
   /** Construct a wave reader from a input stream.
+   *
     See the help in the above function. You can open a file
     with a std::ifstream and pass it to this function.
    */
-  explicit WaveReader(std::istream &is);
+  explicit WaveReader(std::istream &is, float normalizer = 32768);
 
   /// Return a 1-D tensor with dtype torch.float32
   const torch::Tensor &Data() const { return data_; }
@@ -57,7 +57,6 @@ class WaveReader {
  private:
   /// A 1-D tensor with dtype torch.float32
   torch::Tensor data_;
-
   float sample_rate_;
 };
 
@@ -66,15 +65,17 @@ class WaveReader {
     @param filename Path to a wave file. It MUST be single channel, PCM encoded.
     @param expected_sample_rate  Expected sample rate of the wave file. If the
                                sample rate don't match, it throws an exception.
+    @param normalizer Divide audio samples by this number.
 
-    @return Return a 1-D torch tensor with dtype torch.float32. Samples are
-    normalized to the range [-1, 1).
+    @return Return a 1-D torch tensor with dtype torch.float32.
  */
-torch::Tensor ReadWave(const std::string &filename, float expected_sample_rate);
+torch::Tensor ReadWave(const std::string &filename, float expected_sample_rate,
+                       float normalizer = 32768);
 
 /// Same `ReadWave` above. It supports reading a list of wave files.
 std::vector<torch::Tensor> ReadWave(const std::vector<std::string> &filenames,
-                                    float expected_sample_rate);
+                                    float expected_sample_rate,
+                                    float normalizer = 32768);
 
 }  // namespace k2
 

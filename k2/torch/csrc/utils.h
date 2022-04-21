@@ -226,6 +226,13 @@ torch::Tensor IndexSelect(torch::Tensor src, torch::Tensor index,
   return TensorToTorch(ans);
 }
 
+/// Read a file line by line.
+std::vector<std::string> ReadLines(const std::string &filename);
+
+/// Split a string by a delimiter. The split parts are returned in a vector.
+std::vector<std::string> SplitStringToVector(const std::string &s,
+                                             const char *delim);
+
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_UTILS_H_

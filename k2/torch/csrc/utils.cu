@@ -159,4 +159,32 @@ torch::Tensor TensorToTorch(Tensor &tensor) {
       [saved_region = tensor.GetRegion()](void *) {}, options);
 }
 
+std::vector<std::string> SplitStringToVector(const std::string &s,
+                                             const char *delim) {
+  std::vector<std::string> fields;
+  size_t start = 0;
+  size_t pos = 0;
+  while ((pos = s.find_first_of(delim, start)) != std::string::npos) {
+    if (pos != start) {
+      fields.push_back(s.substr(start, pos - start));
+    }
+    start = pos + 1;
+  }
+  if (start < s.size()) {
+    fields.push_back(s.substr(start));
+  }
+  return fields;
+}
+
+std::vector<std::string> ReadLines(const std::string &filename) {
+  std::vector<std::string> ans;
+
+  std::ifstream is(filename);
+  std::string line;
+  while (std::getline(is, line)) {
+    ans.push_back(std::move(line));
+  }
+  return ans;
+}
+
 }  // namespace k2
