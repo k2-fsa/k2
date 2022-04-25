@@ -32,7 +32,6 @@
 #define K2_CSRC_LOG_H_
 
 #include <cassert>
-#include <csignal>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
