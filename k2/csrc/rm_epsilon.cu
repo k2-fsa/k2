@@ -767,9 +767,9 @@ void ComputeEpsilonClosure(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
   // We repeatedly call ComputeEpsilonClosureOneIter() until there is no further
   // change in the FsaVec (this can be by simple comparison on arcs vector,
   // since thanks to sorting the order is deterministic).
-  Array1<Arc> epsilon_fsa_arcs = epsilon_fsa.values;
+  Array1<Arc> &epsilon_fsa_arcs = epsilon_fsa.values;
   ComputeEpsilonClosureOneIter(epsilon_fsa, closure_fsa, arc_map);
-  Array1<Arc> closure_fsa_arcs = closure_fsa->values;
+  Array1<Arc> &closure_fsa_arcs = closure_fsa->values;
   // note function `Equal` for Array1 requires the input two arrays have the
   // same size.
   while (epsilon_fsa_arcs.Dim() != closure_fsa_arcs.Dim() ||
