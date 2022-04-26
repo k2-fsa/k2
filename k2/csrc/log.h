@@ -107,6 +107,15 @@ std::string GetStackTrace();
  */
 K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel();
 
+inline bool EnableAbort() {
+  static std::once_flag init_flag;
+  static bool enable_abort = false;
+  std::call_once(init_flag, []() {
+    enable_abort = (std::getenv("K2_ABORT") != nullptr);
+  });
+  return enable_abort;
+}
+
 class Logger {
  public:
   K2_CUDA_HOSTDEV Logger(const char *filename, const char *func_name,
@@ -179,11 +188,16 @@ class Logger {
         printf("\n\n%s\n", stack_trace.c_str());
       }
       fflush(nullptr);
+      if (EnableAbort()) {
+        abort();
+	// raise(SIGTERM);
+      }
+      throw std::runtime_error(kErrMsg);
       // abort();
       //
       // NOTE: abort() will terminate the program immediately without
       // printing the Python stack backtrace.
-      throw std::runtime_error(kErrMsg);
+      // throw std::runtime_error(kErrMsg);
 #endif
     }
   }
