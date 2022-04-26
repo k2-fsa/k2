@@ -189,7 +189,7 @@ class Logger {
       }
       fflush(nullptr);
       if (EnableAbort()) {
-      	abort();
+        abort();
 	// raise(SIGTERM);
       }
       throw std::runtime_error(kErrMsg);
