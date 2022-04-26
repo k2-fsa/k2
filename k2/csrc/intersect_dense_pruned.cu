@@ -579,7 +579,7 @@ class MultiGraphDenseIntersectPruned {
           // Do less pruning on the final few frames, to ensure we don't prune
           // away final states.
           if (t + 5 < final_t) {
-              current_min_active = min(min_active, max_active / 2);
+              current_min_active = max(min_active, max_active / 2);
           }
           if (active_states <= max_active) {
             // Not constrained by max_active...
