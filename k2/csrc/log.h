@@ -192,9 +192,7 @@ class Logger {
       	abort();
 	// raise(SIGTERM);
       }
-      else {
-     	throw std::runtime_error(kErrMsg);
-      }
+      throw std::runtime_error(kErrMsg);
       // abort();
       //
       // NOTE: abort() will terminate the program immediately without
