@@ -598,13 +598,14 @@ class MultiGraphDenseIntersectPruned {
             }
           } else {
             // We violated the max_active constraint -> decrease beam
-            if (dynamic_beam > default_beam) dynamic_beam = default_beam;
+            // if (dynamic_beam > default_beam) dynamic_beam = default_beam;
             // Decrease the beam as long as we have more than
             // max_active active states.
             dynamic_beam *= 0.8;
           }
           // no pruning on last frame; we want all final-arcs.
-          if (t == final_t) dynamic_beam = 1.0e+10;
+          // -1 because t starts from 0.
+          if (t == final_t - 1) dynamic_beam = 1.0e+10;
 
           dynamic_beams_data[i] = dynamic_beam;
           cutoffs_data[i] = best_loglike - dynamic_beam;
