@@ -443,6 +443,26 @@ class TestGetArcPost(unittest.TestCase):
                 assert torch.allclose(fsa1.grad, scores1.grad, atol=1e-5)
                 assert torch.allclose(fsa2.grad, scores2.grad, atol=1e-5)
 
+    def test_simple_fsa_vec_2(self):
+        # test https://github.com/k2-fsa/k2/issues/969
+        s = '''
+        0 1 1 0.1
+        1 2 3 0.2
+        2 3 -1 0.3
+        3
+        '''
+        for device in self.devices:
+            for use_double_scores in [True, False]:
+                for log_semiring in [True, False]:
+                    fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
+                    fsas = k2.Fsa.from_fsas([fsa])
+
+                    arc_post = fsas.get_arc_post(
+                        use_double_scores=use_double_scores,
+                        log_semiring=log_semiring)
+                    arc_post = arc_post.sum()
+                    (-arc_post).backward()
+
 
 if __name__ == '__main__':
     unittest.main()
