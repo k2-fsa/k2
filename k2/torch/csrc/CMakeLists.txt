@@ -10,6 +10,7 @@ set(k2_torch_srcs
   fsa_algo.cu
   fsa_class.cu
   nbest.cu
+  parse_options.cu
   symbol_table.cu
   utils.cu
   wave_reader.cu
@@ -27,6 +28,7 @@ set(k2_torch_test_srcs
   dense_fsa_vec_test.cu
   deserialization_test.cu
   fsa_class_test.cu
+  parse_options_test.cu
   wave_reader_test.cu
 )
 

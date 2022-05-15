@@ -250,7 +250,7 @@ int main(int argc, char *argv[]) {
     torch::IValue supervision(sup);
 
     // cut nnet_output into chunks
-    using namespace torch::indexing;
+    using namespace torch::indexing;  // NOLINT
     auto sub_nnet_output =
         nnet_output.index({Slice(), Slice(start, end), Slice()});
 
