@@ -259,4 +259,20 @@ TEST(ParseOptions, Duplicates) {
   EXPECT_EQ(po.NumArgs(), 0);
 }
 
+TEST(ParseOptions, DoubleDash) {
+  int32_t a = 10;
+
+  const char *const argv[] = {"./a.out", "--i=3", "--", "--foo=bar", "baz"};
+  int32_t argc = sizeof(argv) / sizeof(argv[0]);
+
+  ParseOptions po("Test double dash");
+  po.Register("i", &a, "My integer option");
+  po.Read(argc, argv);
+
+  EXPECT_EQ(a, 3);
+  EXPECT_EQ(po.NumArgs(), 2);
+  EXPECT_EQ(po.GetArg(1), "--foo=bar");
+  EXPECT_EQ(po.GetArg(2), "baz");
+}
+
 }  // namespace k2
