@@ -275,4 +275,29 @@ TEST(ParseOptions, DoubleDash) {
   EXPECT_EQ(po.GetArg(2), "baz");
 }
 
+TEST(ReadConfigFromFile, OneOption) {
+  std::string filename = "my-options-for-parse-options.txt";
+  {
+    std::ofstream of(filename);
+
+    of << "--my-bool=1\n";
+    of << "--my-i32=-100\n";
+    of << "--my-u32=1000\n";
+    of << "--my-f=-0.5\n";
+    of << "--my-d=3.5\n";
+    of << "--my-s=hello world\n";
+  }
+  MyOptions opts;
+  ReadConfigFromFile(filename, &opts);
+
+  EXPECT_EQ(opts.b, true);
+  EXPECT_EQ(opts.i32, -100);
+  EXPECT_EQ(opts.u32, 1000);
+  EXPECT_EQ(opts.f, -0.5);
+  EXPECT_EQ(opts.d, 3.5);
+  EXPECT_EQ(opts.s, "hello world");
+
+  remove(filename.c_str());
+}
+
 }  // namespace k2
