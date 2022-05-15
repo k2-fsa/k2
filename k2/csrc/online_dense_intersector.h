@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 
-#ifndef K2_CSRC_ONLINE_DENSE_INTERSECTER_H_
-#define K2_CSRC_ONLINE_DENSE_INTERSECTER_H_
+#ifndef K2_CSRC_ONLINE_DENSE_INTERSECTOR_H_
+#define K2_CSRC_ONLINE_DENSE_INTERSECTOR_H_
 
 #include "k2/csrc/fsa.h"
 
@@ -53,40 +53,39 @@ class MultiGraphDenseIntersectPruned;
                            always succeed.  This determines the hash size.
 */
 class OnlineDenseIntersecter {
-  public:
-    OnlineDenseIntersecter(FsaVec &a_fsas, int32_t num_seqs, float search_beam,
-                      float output_beam, int32_t min_states,
-                      int32_t max_states);
+ public:
+  OnlineDenseIntersecter(FsaVec &a_fsas, int32_t num_seqs, float search_beam,
+                         float output_beam, int32_t min_states,
+                         int32_t max_states);
 
-    /* Does intersection/composition for current chunk of nnet_output(given
-       by a DenseFsaVec), but doesn't produce any output; the output is
-       provided when you call FormatOutput().
+  /* Does intersection/composition for current chunk of nnet_output(given
+     by a DenseFsaVec), but doesn't produce any output; the output is
+     provided when you call FormatOutput().
 
-         @param [in] b_fsas  The neural-net output, with each frame containing
-                             the log-likes of each phone.
-         @param [in] is_final Whether this is the final chunk of the nnet_output,
-                              After calling this function with is_final is true,
-                              means decoding finished.
-     */
-    void Intersect(DenseFsaVec &b_fsas, bool is_final);
+       @param [in] b_fsas  The neural-net output, with each frame containing
+                           the log-likes of each phone.
+       @param [in] is_final Whether this is the final chunk of the nnet_output,
+                            After calling this function with is_final is true,
+                            means decoding finished.
+   */
+  void Intersect(DenseFsaVec &b_fsas, bool is_final);
 
-    /* Format partial/final result of the intersection.
+  /* Format partial/final result of the intersection.
 
-       @param [out] out  The FsaVec to contain the output lattice of the
-                         intersection result.
-       @param[out] arc_map_a  Will be set to a vector with Dim() equal to
-                              the number of arcs in `out`, whose elements
-                              contain the corresponding arc_idx012 in decoding
-                              graph (i.e. a_fsas).
-       @param [in] is_final True for final result, false for partial resutl.
-     */
-    void FormatOutput(FsaVec *out, Array1<int32_t> *arc_map_a, bool is_final);
-    ~OnlineDenseIntersecter();
+     @param [out] out  The FsaVec to contain the output lattice of the
+                       intersection result.
+     @param[out] arc_map_a  Will be set to a vector with Dim() equal to
+                            the number of arcs in `out`, whose elements
+                            contain the corresponding arc_idx012 in decoding
+                            graph (i.e. a_fsas).
+     @param [in] is_final True for final result, false for partial resutl.
+   */
+  void FormatOutput(FsaVec *out, Array1<int32_t> *arc_map_a, bool is_final);
+  ~OnlineDenseIntersecter();
 
-  private:
-    MultiGraphDenseIntersectPruned *impl_;
+ private:
+  MultiGraphDenseIntersectPruned *impl_;
 };
 };  // namespace k2
 
-#endif  // K2_CSRC_ONLINE_DENSE_INTERSECTER_H_
-
+#endif  // K2_CSRC_ONLINE_DENSE_INTERSECTOR_H_

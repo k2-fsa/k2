@@ -43,4 +43,4 @@ Array1<FloatType> GetTotScores(FsaClass &fsa, bool log_semiring /* = true*/) {
 }
 
 }  // namespace k2
-#endif
+#endif  // K2_TORCH_CSRC_FSA_ALGO_INL_H_
