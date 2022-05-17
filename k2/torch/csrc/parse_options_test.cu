@@ -19,7 +19,6 @@
 #include <fstream>
 
 #include "gtest/gtest.h"
-#include "k2/csrc/log.h"
 #include "k2/torch/csrc/parse_options.h"
 
 namespace k2 {

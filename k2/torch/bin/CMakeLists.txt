@@ -64,7 +64,6 @@ add_executable(online_decode ${online_decode_srcs})
 set_property(TARGET online_decode PROPERTY CXX_STANDARD 14)
 target_link_libraries(online_decode ${bin_dep_libs})
 
-
 #-------------------------------------------
 #      rnnt demo
 #-------------------------------------------
@@ -77,3 +76,14 @@ add_executable(rnnt_demo ${rnnt_demo_srcs})
 set_property(TARGET rnnt_demo PROPERTY CXX_STANDARD 14)
 target_link_libraries(rnnt_demo ${bin_dep_libs})
 
+#-------------------------------------------
+#      pruned stateless transducer
+#-------------------------------------------
+set(pruned_stateless_transducer_srcs pruned_stateless_transducer.cu)
+if(NOT K2_WITH_CUDA)
+  transform(OUTPUT_VARIABLE pruned_stateless_transducer_srcs SRCS ${pruned_stateless_transducer_srcs})
+endif()
+
+add_executable(pruned_stateless_transducer ${pruned_stateless_transducer_srcs})
+set_property(TARGET pruned_stateless_transducer PROPERTY CXX_STANDARD 14)
+target_link_libraries(pruned_stateless_transducer ${bin_dep_libs})
