@@ -47,6 +47,10 @@ std::vector<std::vector<int32_t>> GreedySearch(
     const torch::jit::Module &model, const torch::Tensor &encoder_out,
     const torch::Tensor &encoder_out_lens);
 
+std::vector<std::vector<int32_t>> ModifiedBeamSearch(
+    const torch::jit::Module &model, const torch::Tensor &encoder_out,
+    const torch::Tensor &encoder_out_lens, int32_t num_acitve_paths = 4);
+
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_BEAM_SEARCH_H_

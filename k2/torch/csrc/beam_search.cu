@@ -19,10 +19,14 @@
 #ifndef K2_TORCH_CSRC_BEAM_SEARCH_H_
 #define K2_TORCH_CSRC_BEAM_SEARCH_H_
 
+#include <deque>
 #include <vector>
 
+#include "k2/csrc/array.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/ragged_ops.h"
 #include "k2/torch/csrc/beam_search.h"
+#include "k2/torch/csrc/hypothesis.h"
 #include "torch/all.h"
 
 namespace k2 {
@@ -45,6 +49,45 @@ static void BuildDecoderInput(const std::vector<std::vector<int32_t>> &hyps,
     std::copy(start, end, p);
     p += context_size;
   }
+}
+
+static torch::Tensor BuildDecoderInput(const std::vector<Hypothesis> hyps,
+                                       int32_t context_size) {
+  int32_t num_hyps = hyps.size();
+  torch::Tensor decoder_input =
+      torch::empty({num_hyps, context_size},
+                   torch::dtype(torch::kLong)
+                       .memory_format(torch::MemoryFormat::Contiguous));
+
+  int64_t *p = decoder_input.data_ptr<int64_t>();
+  for (const auto &h : hyps) {
+    auto start = h.ys.end() - context_size;
+    auto end = h.ys.end();
+
+    std::copy(start, end, p);
+    p += context_size;
+  }
+}
+
+/** Return a ragged shape with axes [utt][num_hyps].
+ *
+ * @param hyps hyps.size() == batch_size. Each entry contains the active
+ *              hypotheses of an utterance.
+ * @return Return a ragged shape with 2 axes [utt][num_hyps]. Note that the
+ *         shape is on CPU.
+ */
+static RaggedShape GetHypsShape(const std::vector<Hypotheses> &hyps) {
+  int32_t num_utt = hyps.size();
+  Array1<int32_t> row_splits(GetCpuContext(), num_utt + 1);
+  int32_t *row_splits_data = row_splits.Data();
+
+  for (int32_t i = 0; i != num_utt; ++i) {
+    row_splits_data[i] = hyps[i].Size();
+  }
+
+  ExclusiveSum(row_splits, &row_splits);
+
+  return RaggedShape2(&row_splits, nullptr, row_splits.Back());
 }
 
 std::vector<std::vector<int32_t>> GreedySearch(
@@ -155,6 +198,135 @@ std::vector<std::vector<int32_t>> GreedySearch(
   }
 
   return ans;
+}
+
+std::vector<std::vector<int32_t>> ModifiedBeamSearch(
+    const torch::jit::Module &model, const torch::Tensor &encoder_out,
+    const torch::Tensor &encoder_out_lens, int32_t num_acitve_paths /*=4*/) {
+  K2_CHECK_EQ(encoder_out.dim(), 3);
+  K2_CHECK_EQ(encoder_out.scalar_type(), torch::kFloat);
+
+  K2_CHECK_EQ(encoder_out_lens.dim(), 1);
+  K2_CHECK_EQ(encoder_out_lens.scalar_type(), torch::kLong);
+  K2_CHECK(encoder_out_lens.is_cpu());
+
+  torch::nn::utils::rnn::PackedSequence packed_seq =
+      torch::nn::utils::rnn::pack_padded_sequence(encoder_out, encoder_out_lens,
+                                                  /*batch_first*/ true,
+                                                  /*enforce_sorted*/ false);
+  torch::jit::Module decoder = model.attr("decoder").toModule();
+  torch::jit::Module joiner = model.attr("joiner").toModule();
+  torch::jit::Module decoder_proj = joiner.attr("decoder_proj").toModule();
+
+  auto projected_encoder_out = joiner.attr("encoder_proj")
+                                   .toModule()
+                                   .run_method("forward", packed_seq.data())
+                                   .toTensor();
+
+  int32_t blank_id = decoder.attr("blank_id").toInt();
+
+  int32_t unk_id = blank_id;
+  if (decoder.hasattr("unk_id")) {
+    unk_id = decoder.attr("unk_id").toInt();
+  }
+
+  int32_t context_size = decoder.attr("context_size").toInt();
+  int32_t batch_size = encoder_out_lens.size(0);
+
+  torch::Device device = encoder_out.device();
+
+  std::vector<int32_t> blanks(context_size, blank_id);
+  Hypotheses blank_hyp({{blanks, 0}});
+
+  std::deque<Hypotheses> finalized;
+  std::vector<Hypotheses> cur(batch_size, blank_hyp);
+  std::vector<Hypothesis> prev;
+
+  using torch::indexing::Slice;
+  auto batch_sizes_accessor = packed_seq.batch_sizes().accessor<int64_t, 1>();
+  int32_t num_batches = packed_seq.batch_sizes().numel();
+  int32_t offset = 0;
+  for (int32_t i = 0; i != num_batches; ++i) {
+    int32_t cur_batch_size = batch_sizes_accessor[i];
+    int32_t start = offset;
+    int32_t end = start + cur_batch_size;
+    auto cur_encoder_out = projected_encoder_out.index({Slice(start, end)});
+    offset = end;
+
+    cur_encoder_out = cur_encoder_out.unsqueeze(1).unsqueeze(1);
+    // Now cur_encoder_out's shape is (cur_batch_size, 1, 1, joiner_dim)
+
+    if (cur_batch_size < cur.size()) {
+      for (int32_t k = static_cast<int32_t>(cur.size()) - 1;
+           k >= cur_batch_size; --k) {
+        finalized.push_front(std::move(cur[i]));
+      }
+      cur.erase(cur.begin() + cur_batch_size, cur.end());
+    }
+
+    auto hyps_shape = GetHypsShape(cur);
+
+    prev.clear();
+    prev.reserve(hyps_shape.TotSize(1));
+    for (auto &hyps : cur) {
+      for (auto &h : hyps) {
+        prev.push_back(std::move(h.second));
+      }
+    }
+    cur.clear();
+
+    torch::Tensor ys_log_probs = torch::empty(
+        {prev.size(), 1}, torch::dtype(torch::kFloat)
+                              .memory_format(torch::MemoryFormat::Contiguous));
+    float *p_ys_log_probs = ys_log_probs.data_ptr<float>();
+    for (int32_t i = 0; i != prev.size(); ++i) {
+      p_ys_log_probs[i] = prev[i].log_prob;
+    }
+
+    ys_log_probs = ys_log_probs.to(device);
+
+    auto decoder_input = BuildDecoderInput(prev, context_size).to(device);
+
+    auto decoder_out =
+        decoder.run_method("forward", decoder_input, /*need_pad*/ false)
+            .toTensor();
+    decoder_out = decoder_proj.run_method("forward", decoder_out).toTensor();
+    // decoder_out is of shape (num_hyps, 1, joiner_dim)
+
+    auto row_ids = hyps_shape.RowIds(1);
+    auto index =
+        torch::from_blob(row_ids.Data(), {row_ids.Dim()}, torch::kInt32)
+            .to(torch::device(device).dtype(torch::kLong));
+
+    cur_encoder_out = cur_encoder_out.index_select(
+        /*dim*/ 0,
+        /*index*/ index);  // (num_hyps, 1, 1, joiner_dim)
+    auto logits =
+        joiner
+            .run_method("forward", cur_encoder_out, decoder_out.unsqueeze(1),
+                        /*project_input*/ false)
+            .toTensor();
+    // logits' shape is (cur_batch_size, 1, 1, vocab_size)
+    logits = logits.squeeze(1).squeeze(1);
+    // now logits' shape is (cur_batch_size, vocab_size)
+
+    auto log_probs = logits.log_softmax(-1);
+
+    log_probs.add_(ys_log_probs);
+
+    int32_t vocab_size = log_probs.size(1);
+    log_probs = log_probs.reshape(-1);
+    auto row_splits = hyps_shape.RowSplits(1).Clone();
+
+    std::for_each(row_splits.Data(), row_splits.Data() + row_splits.Dim(),
+                  [vocab_size](int32_t &i) { i *= vocab_size; });
+
+    auto log_probs_shape =
+        RaggedShape2(&row_splits, nullptr, log_probs.numel());
+    // TODO: finish it
+  }
+
+  return {};
 }
 
 }  // namespace k2

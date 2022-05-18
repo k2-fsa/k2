@@ -147,6 +147,7 @@ int main(int argc, char *argv[]) {
   auto encoder_out_lens = outputs->elements()[1].toTensor();
 
   auto hyp_tokens = k2::GreedySearch(module, encoder_out, encoder_out_lens);
+  // k2::ModifiedBeamSearch(module, encoder_out, encoder_out_lens);
 
   sentencepiece::SentencePieceProcessor processor;
   auto status = processor.Load(bpe_model);
