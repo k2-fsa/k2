@@ -200,6 +200,7 @@ def rnnt_loss_simple(
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
     modified: bool = False,
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
     return_grad: bool = False,
 ) -> Union[Tensor, Tuple[Tensor, Tuple[Tensor, Tensor]]]:
@@ -226,6 +227,10 @@ def rnnt_loss_simple(
         Most likely you will want begin_symbol and begin_frame to be zero.
       modified: if True, each time a real symbol is consumed a frame will
          also be consumed, so at most 1 symbol can appear per frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -255,6 +260,24 @@ def rnnt_loss_simple(
         boundary=boundary,
         modified=modified,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if modified else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                [(T - 1) / 2 * delay_penalty] * B,
+                dtype=px.dtype,
+                device=px.device,
+            )
+        else:
+            offset = (boundary[:, 3] - 1) / 2 * delay_penalty
+        penalty = offset.reshape(B, 1, 1) - delay_penalty * torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty.to(px.dtype)
+        px += penalty
+
     scores_and_grads = mutual_information_recursion(
         px=px, py=py, boundary=boundary, return_grad=return_grad
     )
@@ -372,6 +395,7 @@ def rnnt_loss(
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
     modified: bool = False,
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
 ) -> Tensor:
     """A normal RNN-T loss, which uses a 'joiner' network output as input,
@@ -393,6 +417,10 @@ def rnnt_loss(
         Most likely you will want begin_symbol and begin_frame to be zero.
       modified: if True, each time a real symbol is consumed a frame will
           also be consumed, so at most 1 symbol can appear per frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -412,6 +440,24 @@ def rnnt_loss(
         boundary=boundary,
         modified=modified,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if modified else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                [(T - 1) / 2 * delay_penalty] * B,
+                dtype=px.dtype,
+                device=px.device,
+            )
+        else:
+            offset = (boundary[:, 3] - 1) / 2 * delay_penalty
+        penalty = offset.reshape(B, 1, 1) - delay_penalty * torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty.to(px.dtype)
+        px += penalty
+
     negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
     if reduction == "none":
         return -negated_loss
@@ -622,7 +668,9 @@ def do_rnnt_pruning(
     lm_pruned = torch.gather(
         lm.unsqueeze(1).expand((B, T, S + 1, decoder_dim)),
         dim=2,
-        index=ranges.reshape((B, T, s_range, 1)).expand((B, T, s_range, decoder_dim)),
+        index=ranges.reshape((B, T, s_range, 1)).expand(
+            (B, T, s_range, decoder_dim)
+        ),
     )
     return am_pruned, lm_pruned
 
@@ -803,6 +851,7 @@ def rnnt_loss_pruned(
     termination_symbol: int,
     boundary: Tensor = None,
     modified: bool = False,
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
 ) -> Tensor:
     """A RNN-T loss with pruning, which uses a pruned 'joiner' network output
@@ -833,6 +882,10 @@ def rnnt_loss_pruned(
         Most likely you will want begin_symbol and begin_frame to be zero.
       modified: if True, each time a real symbol is consumed a frame will
         also be consumed, so at most 1 symbol can appear per frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -852,6 +905,24 @@ def rnnt_loss_pruned(
         boundary=boundary,
         modified=modified,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if modified else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                [(T - 1) / 2 * delay_penalty] * B,
+                dtype=px.dtype,
+                device=px.device,
+            )
+        else:
+            offset = (boundary[:, 3] - 1) / 2 * delay_penalty
+        penalty = offset.reshape(B, 1, 1) - delay_penalty * torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty.to(px.dtype)
+        px += penalty
+
     negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
     if reduction == "none":
         return -negated_loss
@@ -1094,6 +1165,7 @@ def rnnt_loss_smoothed(
     am_only_scale: float = 0.1,
     boundary: Optional[Tensor] = None,
     modified: bool = False,
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
     return_grad: bool = False,
 ) -> Union[Tuple[Tensor, Tuple[Tensor, Tensor]], Tensor]:
@@ -1127,6 +1199,10 @@ def rnnt_loss_smoothed(
         Most likely you will want begin_symbol and begin_frame to be zero.
       modified: if True, each time a real symbol is consumed a frame will
         also be consumed, so at most 1 symbol can appear per frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -1159,6 +1235,24 @@ def rnnt_loss_smoothed(
         boundary=boundary,
         modified=modified,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if modified else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                [(T - 1) / 2 * delay_penalty] * B,
+                dtype=px.dtype,
+                device=px.device,
+            )
+        else:
+            offset = (boundary[:, 3] - 1) / 2 * delay_penalty
+        penalty = offset.reshape(B, 1, 1) - delay_penalty * torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty.to(px.dtype)
+        px += penalty
+
     scores_and_grads = mutual_information_recursion(
         px=px, py=py, boundary=boundary, return_grad=return_grad
     )
