@@ -266,17 +266,17 @@ def rnnt_loss_simple(
         T = T0 if modified else T0 - 1
         if boundary is None:
             offset = torch.tensor(
-                [(T - 1) / 2 * delay_penalty] * B,
+                (T - 1) / 2,
                 dtype=px.dtype,
                 device=px.device,
-            )
+            ).expand(B, 1, 1)
         else:
-            offset = (boundary[:, 3] - 1) / 2 * delay_penalty
-        penalty = offset.reshape(B, 1, 1) - delay_penalty * torch.arange(
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
             T0, device=px.device
         ).reshape(1, 1, T0)
-        penalty = penalty.to(px.dtype)
-        px += penalty
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
 
     scores_and_grads = mutual_information_recursion(
         px=px, py=py, boundary=boundary, return_grad=return_grad
@@ -446,17 +446,17 @@ def rnnt_loss(
         T = T0 if modified else T0 - 1
         if boundary is None:
             offset = torch.tensor(
-                [(T - 1) / 2 * delay_penalty] * B,
+                (T - 1) / 2,
                 dtype=px.dtype,
                 device=px.device,
-            )
+            ).expand(B, 1, 1)
         else:
-            offset = (boundary[:, 3] - 1) / 2 * delay_penalty
-        penalty = offset.reshape(B, 1, 1) - delay_penalty * torch.arange(
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
             T0, device=px.device
         ).reshape(1, 1, T0)
-        penalty = penalty.to(px.dtype)
-        px += penalty
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
 
     negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
     if reduction == "none":
@@ -911,17 +911,17 @@ def rnnt_loss_pruned(
         T = T0 if modified else T0 - 1
         if boundary is None:
             offset = torch.tensor(
-                [(T - 1) / 2 * delay_penalty] * B,
+                (T - 1) / 2,
                 dtype=px.dtype,
                 device=px.device,
-            )
+            ).expand(B, 1, 1)
         else:
-            offset = (boundary[:, 3] - 1) / 2 * delay_penalty
-        penalty = offset.reshape(B, 1, 1) - delay_penalty * torch.arange(
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
             T0, device=px.device
         ).reshape(1, 1, T0)
-        penalty = penalty.to(px.dtype)
-        px += penalty
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
 
     negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
     if reduction == "none":
@@ -1241,17 +1241,17 @@ def rnnt_loss_smoothed(
         T = T0 if modified else T0 - 1
         if boundary is None:
             offset = torch.tensor(
-                [(T - 1) / 2 * delay_penalty] * B,
+                (T - 1) / 2,
                 dtype=px.dtype,
                 device=px.device,
-            )
+            ).expand(B, 1, 1)
         else:
-            offset = (boundary[:, 3] - 1) / 2 * delay_penalty
-        penalty = offset.reshape(B, 1, 1) - delay_penalty * torch.arange(
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
             T0, device=px.device
         ).reshape(1, 1, T0)
-        penalty = penalty.to(px.dtype)
-        px += penalty
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
 
     scores_and_grads = mutual_information_recursion(
         px=px, py=py, boundary=boundary, return_grad=return_grad
