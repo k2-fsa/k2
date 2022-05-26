@@ -27,7 +27,7 @@ import k2
 import torch
 
 
-class TestConnect(unittest.TestCase):
+class TestReverse(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
