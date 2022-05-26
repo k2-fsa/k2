@@ -97,6 +97,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#remove-epsilon-and-add-self-loops">remove_epsilon_and_add_self_loops</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#remove-epsilon-self-loops">remove_epsilon_self_loops</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#replace-fsa">replace_fsa</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reverse">reverse</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#rnnt-loss">rnnt_loss</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#rnnt-loss-pruned">rnnt_loss_pruned</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#rnnt-loss-simple">rnnt_loss_simple</a></li>
@@ -476,7 +477,7 @@ lowest index in <cite>srcs</cite>.</p>
 <h2>closure<a class="headerlink" href="#closure" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.closure">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">closure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L684-L739"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.closure" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">closure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L704-L759"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.closure" title="Permalink to this definition"></a></dt>
 <dd><p>Compute the Kleene closure of the input FSA.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -713,7 +714,7 @@ that torch currently supports).</p>
 <h2>ctc_graph<a class="headerlink" href="#ctc-graph" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ctc_graph">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">ctc_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1016-L1052"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ctc_graph" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">ctc_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1036-L1072"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ctc_graph" title="Permalink to this definition"></a></dt>
 <dd><p>Construct ctc graphs from symbols.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -793,7 +794,7 @@ size. If <cite>reduction</cite> is <cite>mean</cite> or <cite>sum</cite>, return
 <h2>ctc_topo<a class="headerlink" href="#ctc-topo" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ctc_topo">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">ctc_topo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1055-L1092"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ctc_topo" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">ctc_topo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1075-L1112"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ctc_topo" title="Permalink to this definition"></a></dt>
 <dd><p>Create a CTC topology.</p>
 <p>A token which appears once on the right side (i.e. olabels) may
 appear multiple times on the left side (ilabels), possibly with
@@ -834,7 +835,7 @@ depending on whether <cite>standard</cite> is True or False.</p>
 <h2>determinize<a class="headerlink" href="#determinize" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.determinize">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">determinize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight_pushing_type=&lt;DeterminizeWeightPushingType.kNoWeightPushing:</span> <span class="pre">2&gt;</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L633-L681"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.determinize" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">determinize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight_pushing_type=&lt;DeterminizeWeightPushingType.kNoWeightPushing:</span> <span class="pre">2&gt;</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L653-L701"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.determinize" title="Permalink to this definition"></a></dt>
 <dd><p>Determinize the input Fsa.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
@@ -918,7 +919,7 @@ keep. Its shape is (B, T, s_range), see the docs in
 <h2>expand_ragged_attributes<a class="headerlink" href="#expand-ragged-attributes" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.expand_ragged_attributes">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">expand_ragged_attributes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ragged_attribute_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L865-L963"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.expand_ragged_attributes" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">expand_ragged_attributes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ragged_attribute_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L885-L983"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.expand_ragged_attributes" title="Permalink to this definition"></a></dt>
 <dd><p>Turn ragged labels attached to this FSA into linear (Tensor) labels,
 expanding arcs into sequences of arcs as necessary to achieve this.
 Supports autograd.  If <cite>fsas</cite> had no ragged attributes, returns <cite>fsas</cite>
@@ -1764,7 +1765,7 @@ a_arc_map and b_arc_map.</p>
 <h2>invert<a class="headerlink" href="#invert" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.invert">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L742-L777"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.invert" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L762-L797"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.invert" title="Permalink to this definition"></a></dt>
 <dd><p>Invert an FST, swapping the labels in the FSA with the auxiliary labels.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -1898,7 +1899,7 @@ sequence is “special”.</p>
 <h2>levenshtein_alignment<a class="headerlink" href="#levenshtein-alignment" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.levenshtein_alignment">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_alignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">refs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyp_to_ref_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sorted_match_ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1164-L1239"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_alignment" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_alignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">refs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyp_to_ref_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sorted_match_ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1184-L1259"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_alignment" title="Permalink to this definition"></a></dt>
 <dd><p>Get the levenshtein alignment of two FsaVecs</p>
 <p>This function supports both CPU and GPU. But it is very slow on CPU.</p>
 <dl class="field-list simple">
@@ -1963,7 +1964,7 @@ sequences of hyps. You can get the levenshtein distance by calling
 <h2>levenshtein_graph<a class="headerlink" href="#levenshtein-graph" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.levenshtein_graph">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ins_del_score</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">0.501</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1119-L1161"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_graph" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ins_del_score</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">0.501</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1139-L1181"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_graph" title="Permalink to this definition"></a></dt>
 <dd><p>Construct levenshtein graphs from symbols.</p>
 <p>See <a class="reference external" href="https://github.com/k2-fsa/k2/pull/828">https://github.com/k2-fsa/k2/pull/828</a> for more details about levenshtein
 graph.</p>
@@ -2288,7 +2289,7 @@ offsets into <code class="docutils literal notranslate"><span class="pre">px</sp
 <h2>prune_on_arc_post<a class="headerlink" href="#prune-on-arc-post" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.prune_on_arc_post">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">prune_on_arc_post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_prob</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L832-L862"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.prune_on_arc_post" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">prune_on_arc_post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_prob</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L852-L882"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.prune_on_arc_post" title="Permalink to this definition"></a></dt>
 <dd><p>Remove arcs whose posteriors are less than the given threshold.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -2369,7 +2370,7 @@ must be &gt;= min_num_fsas.</p></li>
 <h2>random_paths<a class="headerlink" href="#random-paths" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.random_paths">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">random_paths</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_paths</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L780-L829"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.random_paths" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">random_paths</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_paths</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L800-L849"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.random_paths" title="Permalink to this definition"></a></dt>
 <dd><p>Compute pseudo-random paths through the FSAs in this vector of FSAs
 (this object must have 3 axes, <cite>self.arcs.num_axes() == 3</cite>)</p>
 <div class="admonition caution">
@@ -2411,7 +2412,7 @@ i.e. arc indexes.</p>
 <h2>remove_epsilon<a class="headerlink" href="#remove-epsilon" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.remove_epsilon">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">remove_epsilon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L562-L596"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.remove_epsilon" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">remove_epsilon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L582-L616"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.remove_epsilon" title="Permalink to this definition"></a></dt>
 <dd><p>Remove epsilons (symbol zero) in the input Fsa.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -2444,7 +2445,7 @@ value for that attribute is not -1.</p>
 <h2>remove_epsilon_and_add_self_loops<a class="headerlink" href="#remove-epsilon-and-add-self-loops" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.remove_epsilon_and_add_self_loops">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">remove_epsilon_and_add_self_loops</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_filler</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L605-L630"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.remove_epsilon_and_add_self_loops" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">remove_epsilon_and_add_self_loops</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_filler</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L625-L650"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.remove_epsilon_and_add_self_loops" title="Permalink to this definition"></a></dt>
 <dd><p>Remove epsilons (symbol zero) in the input Fsa, and then add
 epsilon self-loops to all states in the input Fsa (usually as
 a preparation for intersection with treat_epsilons_specially=0).</p>
@@ -2497,7 +2498,7 @@ non-final state.</p>
 <h2>replace_fsa<a class="headerlink" href="#replace-fsa" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.replace_fsa">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">replace_fsa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol_begin_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L966-L1013"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.replace_fsa" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">replace_fsa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol_begin_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_arc_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L986-L1033"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.replace_fsa" title="Permalink to this definition"></a></dt>
 <dd><p>Replace arcs in index FSA with the corresponding fsas in a vector of
 FSAs(src). For arcs in <cite>index</cite> with label
 <cite>symbol_range_begin &lt;= label &lt; symbol_range_begin + src.Dim0()</cite> will be
@@ -2532,6 +2533,29 @@ If false, just returns new_fsas.</p></li>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="reverse">
+<h2>reverse<a class="headerlink" href="#reverse" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.reverse">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">reverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L562-L579"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.reverse" title="Permalink to this definition"></a></dt>
+<dd><p>Reverse the input Fsa.  If the input Fsa accepts string ‘x’ with weight
+‘x.weight’, then the reversed Fsa accepts the reverse of string ‘x’ with
+weight ‘x.weight.reverse’. As the Fsas of k2 run on the Log-semiring or
+Tropical-semiring, the ‘weight.reverse’ will equal to the orignal ‘weight’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The input FSA. It can be either a single FSA or an FsaVec.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>An instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code> which has been reversed.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2912,7 +2936,7 @@ a vector of FSAs if the input is a vector of FSAs.</p>
 <h2>trivial_graph<a class="headerlink" href="#trivial-graph" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.trivial_graph">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">trivial_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1095-L1116"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.trivial_graph" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">trivial_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1115-L1136"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.trivial_graph" title="Permalink to this definition"></a></dt>
 <dd><p>Create a trivial graph which has only two states. On state 0, there are
 <cite>max_token</cite> self loops(i.e. a loop for each symbol from 1 to max_token), and
 state 1 is the final state.</p>
@@ -2941,7 +2965,7 @@ Note: The returned graph does not contain arcs with label being 0.</p>
 <h2>union<a class="headerlink" href="#union" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.union">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">union</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1242-L1261"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.union" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">union</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1262-L1281"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.union" title="Permalink to this definition"></a></dt>
 <dd><p>Compute the union of a FsaVec.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>

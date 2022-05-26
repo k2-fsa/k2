@@ -243,6 +243,11 @@ replace_fsa
 
 .. autofunction:: replace_fsa
 
+reverse
+-------
+
+.. autofunction:: reverse
+
 rnnt_loss
 ---------
 
