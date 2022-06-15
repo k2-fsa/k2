@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "k2/csrc/ragged.h"
-#include "k2/python/csrc/torch/torch_util.h"
+#include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/v2/any.h"
 #include "k2/python/csrc/torch/v2/doc/any.h"
 #include "k2/python/csrc/torch/v2/doc/doc.h"

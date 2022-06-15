@@ -28,8 +28,8 @@
 
 #include "k2/csrc/device_guard.h"
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/ragged_ops.h"
-#include "k2/python/csrc/torch/torch_util.h"
 
 namespace k2 {
 
