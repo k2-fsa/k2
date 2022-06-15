@@ -31,6 +31,15 @@
 
 namespace k2 {
 
+static inline torch::Tensor FloorDivide(torch::Tensor a, int32_t b) {
+#if K2_TORCH_VERSION_MAJOR > 1 || \
+    (K2_TORCH_VERSION_MAJOR == 1 && K2_TORCH_VERSION_MINOR > 7)
+  return torch::div(a, b, /*rounding_mode*/ "trunc");
+#else
+  return torch::floor_divide(a, b);
+#endif
+}
+
 /**
  * Construct the decoder input from the current hypothesis.
  *
@@ -67,6 +76,8 @@ static torch::Tensor BuildDecoderInput(const std::vector<Hypothesis> hyps,
     std::copy(start, end, p);
     p += context_size;
   }
+
+  return decoder_input;
 }
 
 /** Return a ragged shape with axes [utt][num_hyps].
@@ -140,11 +151,11 @@ std::vector<std::vector<int32_t>> GreedySearch(
   // decoder_out's shape is (batch_size, 1, joiner_dim)
 
   using torch::indexing::Slice;
-  auto batch_sizes_accessor = packed_seq.batch_sizes().accessor<int64_t, 1>();
+  auto batch_sizes_acc = packed_seq.batch_sizes().accessor<int64_t, 1>();
   int32_t num_batches = packed_seq.batch_sizes().numel();
   int32_t offset = 0;
   for (int32_t i = 0; i != num_batches; ++i) {
-    int32_t cur_batch_size = batch_sizes_accessor[i];
+    int32_t cur_batch_size = batch_sizes_acc[i];
     int32_t start = offset;
     int32_t end = start + cur_batch_size;
     auto cur_encoder_out = projected_encoder_out.index({Slice(start, end)});
@@ -164,10 +175,10 @@ std::vector<std::vector<int32_t>> GreedySearch(
     // logits' shape is (cur_batch_size, 1, 1, vocab_size)
     logits = logits.squeeze(1).squeeze(1);
     auto max_indices = logits.argmax(/*dim*/ -1).cpu();
-    auto max_indices_accessor = max_indices.accessor<int64_t, 1>();
+    auto max_indices_acc = max_indices.accessor<int64_t, 1>();
     bool emitted = false;
     for (int32_t k = 0; k != cur_batch_size; ++k) {
-      auto index = max_indices_accessor[k];
+      auto index = max_indices_acc[k];
       if (index != blank_id && index != unk_id) {
         emitted = true;
         hyps[k].push_back(index);
@@ -187,8 +198,8 @@ std::vector<std::vector<int32_t>> GreedySearch(
     }
   }
 
-  auto unsorted_indices_accessor =
-      packed_seq.unsorted_indices().accessor<int64_t, 1>();
+  auto unsorted_indices = packed_seq.unsorted_indices().cpu();
+  auto unsorted_indices_accessor = unsorted_indices.accessor<int64_t, 1>();
 
   std::vector<std::vector<int32_t>> ans(batch_size);
 
@@ -243,11 +254,11 @@ std::vector<std::vector<int32_t>> ModifiedBeamSearch(
   std::vector<Hypothesis> prev;
 
   using torch::indexing::Slice;
-  auto batch_sizes_accessor = packed_seq.batch_sizes().accessor<int64_t, 1>();
+  auto batch_sizes_acc = packed_seq.batch_sizes().accessor<int64_t, 1>();
   int32_t num_batches = packed_seq.batch_sizes().numel();
   int32_t offset = 0;
   for (int32_t i = 0; i != num_batches; ++i) {
-    int32_t cur_batch_size = batch_sizes_accessor[i];
+    int32_t cur_batch_size = batch_sizes_acc[i];
     int32_t start = offset;
     int32_t end = start + cur_batch_size;
     auto cur_encoder_out = projected_encoder_out.index({Slice(start, end)});
@@ -259,11 +270,13 @@ std::vector<std::vector<int32_t>> ModifiedBeamSearch(
     if (cur_batch_size < cur.size()) {
       for (int32_t k = static_cast<int32_t>(cur.size()) - 1;
            k >= cur_batch_size; --k) {
-        finalized.push_front(std::move(cur[i]));
+        finalized.push_front(std::move(cur[k]));
       }
       cur.erase(cur.begin() + cur_batch_size, cur.end());
     }
 
+    // Due to merging paths with identical token sequences,
+    // not all utterances have "num_acitve_paths" paths.
     auto hyps_shape = GetHypsShape(cur);
 
     prev.clear();
@@ -274,33 +287,34 @@ std::vector<std::vector<int32_t>> ModifiedBeamSearch(
       }
     }
     cur.clear();
+    cur.reserve(cur_batch_size);
 
-    torch::Tensor ys_log_probs = torch::empty(
-        {prev.size(), 1}, torch::dtype(torch::kFloat)
-                              .memory_format(torch::MemoryFormat::Contiguous));
-    float *p_ys_log_probs = ys_log_probs.data_ptr<float>();
-    for (int32_t i = 0; i != prev.size(); ++i) {
-      p_ys_log_probs[i] = prev[i].log_prob;
+    torch::Tensor ys_log_probs =
+        torch::empty({hyps_shape.TotSize(1), 1}, torch::dtype(torch::kFloat));
+
+    auto ys_log_probs_acc = ys_log_probs.accessor<float, 2>();
+    for (int32_t k = 0; k != prev.size(); ++k) {
+      ys_log_probs_acc[k][0] = prev[k].log_prob;
     }
-
-    ys_log_probs = ys_log_probs.to(device);
 
     auto decoder_input = BuildDecoderInput(prev, context_size).to(device);
 
     auto decoder_out =
         decoder.run_method("forward", decoder_input, /*need_pad*/ false)
             .toTensor();
+
     decoder_out = decoder_proj.run_method("forward", decoder_out).toTensor();
     // decoder_out is of shape (num_hyps, 1, joiner_dim)
 
     auto row_ids = hyps_shape.RowIds(1);
+
     auto index =
         torch::from_blob(row_ids.Data(), {row_ids.Dim()}, torch::kInt32)
             .to(torch::device(device).dtype(torch::kLong));
 
-    cur_encoder_out = cur_encoder_out.index_select(
-        /*dim*/ 0,
-        /*index*/ index);  // (num_hyps, 1, 1, joiner_dim)
+    cur_encoder_out = cur_encoder_out.index_select(/*dim*/ 0, /*index*/ index);
+    // cur_encoder_out is of shape (num_hyps, 1, 1, joiner_dim)
+
     auto logits =
         joiner
             .run_method("forward", cur_encoder_out, decoder_out.unsqueeze(1),
@@ -310,23 +324,66 @@ std::vector<std::vector<int32_t>> ModifiedBeamSearch(
     logits = logits.squeeze(1).squeeze(1);
     // now logits' shape is (cur_batch_size, vocab_size)
 
-    auto log_probs = logits.log_softmax(-1);
+    auto log_probs = logits.log_softmax(-1).cpu();
 
     log_probs.add_(ys_log_probs);
 
     int32_t vocab_size = log_probs.size(1);
     log_probs = log_probs.reshape(-1);
-    auto row_splits = hyps_shape.RowSplits(1).Clone();
+    auto row_splits = hyps_shape.RowSplits(1);
+    const int32_t *row_splits_data = row_splits.Data();
 
-    std::for_each(row_splits.Data(), row_splits.Data() + row_splits.Dim(),
-                  [vocab_size](int32_t &i) { i *= vocab_size; });
+    for (int32_t k = 0; k != cur_batch_size; ++k) {
+      int32_t start = row_splits_data[k];
+      int32_t end = row_splits_data[k + 1];
 
-    auto log_probs_shape =
-        RaggedShape2(&row_splits, nullptr, log_probs.numel());
-    // TODO: finish it
+      torch::Tensor values, indexes;
+      std::tie(values, indexes) =
+          log_probs.slice(/*dim*/ 0, start * vocab_size, end * vocab_size)
+              .topk(/*k*/ num_acitve_paths, /*dim*/ 0,
+                    /*largest*/ true, /*sorted*/ true);
+
+      auto topk_hyp_indexes = FloorDivide(indexes, vocab_size);
+      auto topk_token_indexes = torch::remainder(indexes, vocab_size);
+
+      auto values_acc = values.accessor<float, 1>();
+      auto topk_hyp_indexes_acc = topk_hyp_indexes.accessor<int64_t, 1>();
+      auto topk_token_indexes_acc = topk_token_indexes.accessor<int64_t, 1>();
+
+      Hypotheses hyps;
+      for (int32_t j = 0; j != values.numel(); ++j) {
+        int32_t hyp_idx = topk_hyp_indexes_acc[j];
+        Hypothesis new_hyp = prev[start + hyp_idx];  // note: hyp_idx is 0 based
+
+        int32_t new_token = topk_token_indexes_acc[j];
+        if (new_token != blank_id && new_token != unk_id) {
+          new_hyp.ys.push_back(new_token);
+        }
+
+        // We already added log_prob of the path to log_probs before, so
+        // we use values_acc[j] here directly.
+        new_hyp.log_prob = values_acc[j];
+        hyps.Add(std::move(new_hyp));
+      }
+      cur.push_back(std::move(hyps));
+    }
   }
 
-  return {};
+  for (auto &h : finalized) {
+    cur.push_back(std::move(h));
+  }
+
+  auto unsorted_indices = packed_seq.unsorted_indices().cpu();
+  auto unsorted_indices_accessor = unsorted_indices.accessor<int64_t, 1>();
+
+  std::vector<std::vector<int32_t>> ans(batch_size);
+  for (int32_t i = 0; i != batch_size; ++i) {
+    Hypothesis hyp = cur[unsorted_indices_accessor[i]].GetMostProbable(true);
+    torch::ArrayRef<int32_t> arr(hyp.ys);
+    ans[i] = arr.slice(context_size).vec();
+  }
+
+  return ans;
 }
 
 }  // namespace k2

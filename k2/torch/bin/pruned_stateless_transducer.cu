@@ -35,6 +35,7 @@ Usage:
     --nn-model=/path/to/cpu_jit.pt \
     --bpe-model=/path/to/bpe.model \
     --use-gpu=true \
+    --decoding-method=modified_beam_search \
     /path/to/foo.wav \
     /path/to/bar.wav
 )";
@@ -73,7 +74,10 @@ int main(int argc, char *argv[]) {
   std::string nn_model;   // path to the torch jit model file
   std::string bpe_model;  // path to the BPE model file
   bool use_gpu = false;   // true to use GPU for decoding; false to use CPU.
-                          //
+  std::string decoding_method = "greedy_search";  // Supported methods are:
+                                                  // greedy_search,
+                                                  // modified_beam_search
+
   kaldifeat::FbankOptions fbank_opts;
   fbank_opts.frame_opts.dither = 0;
   RegisterFrameExtractionOptions(&po, &fbank_opts.frame_opts);
@@ -90,7 +94,18 @@ int main(int argc, char *argv[]) {
               "the environment variable CUDA_VISIBLE_DEVICES to control "
               "which GPU device to use.");
 
+  po.Register(
+      "decoding-method", &decoding_method,
+      "Decoding method to use."
+      "Currently implemented methods are: greedy_search, modified_beam_search");
+
   po.Read(argc, argv);
+
+  K2_CHECK(decoding_method == "greedy_search" ||
+           decoding_method == "modified_beam_search")
+      << "Currently supported decoding methods are: "
+         "greedy_search, modified_beam_search. "
+      << "Given: " << decoding_method;
 
   torch::Device device(torch::kCPU);
   if (use_gpu) {
@@ -146,8 +161,15 @@ int main(int argc, char *argv[]) {
   auto encoder_out = outputs->elements()[0].toTensor();
   auto encoder_out_lens = outputs->elements()[1].toTensor();
 
-  auto hyp_tokens = k2::GreedySearch(module, encoder_out, encoder_out_lens);
-  // k2::ModifiedBeamSearch(module, encoder_out, encoder_out_lens);
+  K2_LOG(INFO) << "Using " << decoding_method;
+
+  std::vector<std::vector<int32_t>> hyp_tokens;
+  if (decoding_method == "greedy_search") {
+    hyp_tokens = k2::GreedySearch(module, encoder_out, encoder_out_lens.cpu());
+  } else {
+    hyp_tokens =
+        k2::ModifiedBeamSearch(module, encoder_out, encoder_out_lens.cpu());
+  }
 
   sentencepiece::SentencePieceProcessor processor;
   auto status = processor.Load(bpe_model);
