@@ -79,6 +79,7 @@ set(context_srcs
   thread_pool.cu
   timer.cu
   top_sort.cu
+  torch_util.cu
   utils.cu
   nbest.cu
 )
@@ -236,4 +237,27 @@ endforeach()
 
 if(K2_ENABLE_BENCHMARK)
   add_subdirectory(benchmark)
+endif()
+
+if(K2_USE_PYTORCH)
+  set(k2_torch_api_srcs torch_api.cu)
+  if(NOT K2_WITH_CUDA)
+    transform(OUTPUT_VARIABLE k2_torch_api_srcs SRCS ${k2_torch_api_srcs})
+  endif()
+  add_library(k2_torch_api ${k2_torch_api_srcs})
+  target_link_libraries(k2_torch_api PUBLIC context)
+
+  add_executable(torch_api_test torch_api_test.cc)
+  target_link_libraries(torch_api_test PRIVATE k2_torch_api gtest gtest_main)
+
+  # NOTE: We set the working directory here so that
+  # it works also on windows. The reason is that
+  # the required DLLs are inside ${TORCH_DIR}/lib
+  # and they can be found by the exe if the current
+  # working directory is ${TORCH_DIR}\lib
+  add_test(NAME "Test.torch_api_test"
+    COMMAND
+    $<TARGET_FILE:torch_api_test>
+    WORKING_DIRECTORY ${TORCH_DIR}/lib
+  )
 endif()
