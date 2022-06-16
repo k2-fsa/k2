@@ -36,15 +36,4 @@ target_include_directories(_k2 PRIVATE ${CMAKE_SOURCE_DIR})
 target_include_directories(_k2 PRIVATE ${CMAKE_BINARY_DIR})
 set_target_properties(_k2 PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-if(APPLE)
-  # See https://github.com/k2-fsa/k2/issues/836
-  # This block adds the directory of _k2.cpython-*.so to runpath
-  # so that there is no need to use DYLD_LIBRARY_PATH on macOS
-  execute_process(
-    COMMAND "${PYTHON_EXECUTABLE}" -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())"
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    OUTPUT_VARIABLE PYTHON_SITE_PACKAGE_DIR
-  )
-  message(STATUS "PYTHON_SITE_PACKAGE_DIR: ${PYTHON_SITE_PACKAGE_DIR}")
-  target_link_libraries(_k2 PRIVATE "-Wl,-rpath,${PYTHON_SITE_PACKAGE_DIR}")
-endif()
+target_link_libraries(_k2 PRIVATE "-Wl,-rpath,${k2_rpath_origin}/k2/lib")

@@ -1,3 +1,3 @@
 add_subdirectory(csrc)
 add_subdirectory(tests)
-add_subdirectory(host)
+# add_subdirectory(host)

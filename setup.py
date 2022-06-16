@@ -38,6 +38,7 @@ import setuptools
 import shutil
 import sys
 
+from pathlib import Path
 from setuptools.command.build_ext import build_ext
 
 import get_version
@@ -97,6 +98,10 @@ class BuildExtension(build_ext):
         make_args = os.environ.get('K2_MAKE_ARGS', '')
         system_make_args = os.environ.get('MAKEFLAGS', '')
 
+        extra_cmake_args = ' -DK2_ENABLE_BENCHMARK=OFF '
+        extra_cmake_args += ' -DK2_ENABLE_TESTS=OFF '
+        extra_cmake_args += f' -DCMAKE_INSTALL_PREFIX={Path(self.build_lib).resolve()}/k2 '  # noqa
+
         if cmake_args == '':
             cmake_args = '-DCMAKE_BUILD_TYPE=Release'
 
@@ -117,18 +122,27 @@ class BuildExtension(build_ext):
             print(f'Setting PYTHON_EXECUTABLE to {sys.executable}')
             cmake_args += f' -DPYTHON_EXECUTABLE={sys.executable}'
 
+        cmake_args += extra_cmake_args
+
         if is_windows():
             build_cmd = f'''
                 cmake {cmake_args} -B {self.build_temp} -S {k2_dir}
                 cmake --build {self.build_temp} --target _k2 --config Release -- -m
+                cmake --build {self.build_temp} --target install --config Release -- -m
             '''
             print(f'build command is:\n{build_cmd}')
             ret = os.system(f'cmake {cmake_args} -B {self.build_temp} -S {k2_dir}')
             if ret != 0:
                 raise Exception('Failed to build k2')
+
             ret = os.system(f'cmake --build {self.build_temp} --target _k2 --config Release -- -m')
             if ret != 0:
                 raise Exception('Failed to build k2')
+
+            ret = os.system(f'cmake --build {self.build_temp} --target install --config Release -- -m')
+            if ret != 0:
+                raise Exception('Failed to build k2')
+
         else:
             build_cmd = f'''
                 cd {self.build_temp}
@@ -137,7 +151,7 @@ class BuildExtension(build_ext):
 
                 cat k2/csrc/version.h
 
-                make {make_args} _k2
+                make {make_args} _k2 install
             '''
             print(f'build command is:\n{build_cmd}')
 
@@ -145,30 +159,15 @@ class BuildExtension(build_ext):
             if ret != 0:
                 raise Exception('Failed to build k2')
 
-        lib_so = glob.glob(f'{self.build_temp}/lib/*k2*.so')
+        # for Linux and macOS
+        lib_so = glob.glob(f'{self.build_temp}/lib/_k2*.so')
+
+        # for Windows
+        lib_so += glob.glob(f'{self.build_temp}/lib/_k2*.pyd')
+
         for so in lib_so:
             print(f'Copying {so} to {self.build_lib}/')
             shutil.copy(f'{so}', f'{self.build_lib}/')
-
-        if is_macos():
-            lib_so = glob.glob(f'{self.build_temp}/lib/*k2*.dylib')
-            for so in lib_so:
-                print(f'Copying {so} to {self.build_lib}/')
-                shutil.copy(f'{so}', f'{self.build_lib}/')
-        elif is_windows():
-            # bin/Release/_k2.cp38-win_amd64.pyd
-            lib_so = glob.glob(f'{self.build_temp}/**/*k2*.pyd',
-                               recursive=True)
-            for so in lib_so:
-                print(f'Copying {so} to {self.build_lib}/')
-                shutil.copy(f'{so}', f'{self.build_lib}/')
-
-            # lib/Release/{_k2,k2_log,k2context,k2fsa}.lib
-            lib_so = glob.glob(f'{self.build_temp}/**/*k2*.lib',
-                               recursive=True)
-            for so in lib_so:
-                print(f'Copying {so} to {self.build_lib}/')
-                shutil.copy(f'{so}', f'{self.build_lib}/')
 
         print(f'Copying {k2_dir}/k2/python/k2/torch_version.py to {self.build_lib}/k2')  # noqa
         shutil.copy(f'{k2_dir}/k2/python/k2/torch_version.py', f'{self.build_lib}/k2')  # noqa

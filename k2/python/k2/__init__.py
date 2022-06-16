@@ -1,3 +1,5 @@
+from pathlib import Path as _Path
+
 import torch  # noqa
 from .torch_version import k2_torch_cuda_version
 from .torch_version import k2_torch_version
@@ -113,3 +115,5 @@ from .utils import to_tensor
 from .utils import random_fsa
 from .utils import random_fsa_vec
 from _k2.version import with_cuda
+
+cmake_prefix_path = _Path(__file__).parent / "share" / "cmake"
