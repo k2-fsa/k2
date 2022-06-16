@@ -37,7 +37,6 @@ function(download_moderngpu)
   message(STATUS "moderngpu is downloaded to ${moderngpu_SOURCE_DIR}")
   add_library(moderngpu INTERFACE)
   target_include_directories(moderngpu INTERFACE ${moderngpu_SOURCE_DIR}/src)
-  target_compile_options(moderngpu INTERFACE -lineinfo --expt-extended-lambda -use_fast_math -Xptxas=-w)
 endfunction()
 
 download_moderngpu()

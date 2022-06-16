@@ -241,8 +241,11 @@ if(K2_WITH_CUDA)
 
   message(STATUS "K2_COMPUTE_ARCHS: ${K2_COMPUTE_ARCHS}")
 
+  # Flags for moderngpu
+  set(K2_MODERN_GPU_FLAGS " -lineinfo --expt-extended-lambda -use_fast_math -Xptxas=-w ")
+
   foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${K2_MODERN_GPU_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
     set(CMAKE_CUDA_ARCHITECTURES "${COMPUTE_ARCH}-real;${COMPUTE_ARCH}-virtual;${CMAKE_CUDA_ARCHITECTURES}")
   endforeach()
 # ========= Settings for CUB end=========

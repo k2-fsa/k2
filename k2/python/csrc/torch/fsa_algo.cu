@@ -30,8 +30,8 @@
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host_shim.h"
 #include "k2/csrc/rm_epsilon.h"
+#include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
-#include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {

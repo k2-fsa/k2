@@ -28,8 +28,8 @@
 #include "k2/csrc/nbest.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/tensor_ops.h"
+#include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/nbest.h"
-#include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
@@ -47,11 +47,11 @@ static void PybindGetBestMatchingStats(py::module &m) {
         Array1<int32_t> counts_array = FromTorch<int32_t>(counts);
         Array1<float> mean, var;
         Array1<int32_t> counts_out, ngram_order;
-        GetBestMatchingStats(tokens, scores_array, counts_array,
-                             eos, min_token, max_token, max_order,
-                             &mean, &var, &counts_out, &ngram_order);
-        return std::make_tuple(ToTorch(mean), ToTorch(var),
-                               ToTorch(counts_out), ToTorch(ngram_order));
+        GetBestMatchingStats(tokens, scores_array, counts_array, eos, min_token,
+                             max_token, max_order, &mean, &var, &counts_out,
+                             &ngram_order);
+        return std::make_tuple(ToTorch(mean), ToTorch(var), ToTorch(counts_out),
+                               ToTorch(ngram_order));
       },
       py::arg("tokens"), py::arg("scores"), py::arg("counts"), py::arg("eos"),
       py::arg("min_token"), py::arg("max_token"), py::arg("max_order"));
@@ -59,6 +59,4 @@ static void PybindGetBestMatchingStats(py::module &m) {
 
 }  // namespace k2
 
-void PybindNbest(py::module &m) {
-  k2::PybindGetBestMatchingStats(m);
-}
+void PybindNbest(py::module &m) { k2::PybindGetBestMatchingStats(m); }

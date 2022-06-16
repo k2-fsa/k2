@@ -18,8 +18,8 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_TORCH_UTIL_H_
-#define K2_PYTHON_CSRC_TORCH_TORCH_UTIL_H_
+#ifndef K2_CSRC_TORCH_UTIL_H_
+#define K2_CSRC_TORCH_UTIL_H_
 
 #include <string>
 
@@ -258,4 +258,4 @@ inline ContextPtr GetContext(torch::Tensor tensor) {
 
 }  // namespace k2
 
-#endif  // K2_PYTHON_CSRC_TORCH_TORCH_UTIL_H_
+#endif  // K2_CSRC_TORCH_UTIL_H_
