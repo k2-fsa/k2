@@ -23,6 +23,7 @@
 #ifndef K2_TORCH_CSRC_PARSE_OPTIONS_H_
 #define K2_TORCH_CSRC_PARSE_OPTIONS_H_
 
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>

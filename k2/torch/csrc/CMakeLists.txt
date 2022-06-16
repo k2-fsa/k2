@@ -3,12 +3,14 @@ include_directories(${CMAKE_SOURCE_DIR})
 # it is located in k2/csrc/cmake/transform.cmake
 include(transform)
 set(k2_torch_srcs
+  beam_search.cu
   decode.cu
   dense_fsa_vec.cu
   deserialization.cu
   features.cu
   fsa_algo.cu
   fsa_class.cu
+  hypothesis.cu
   nbest.cu
   parse_options.cu
   symbol_table.cu
@@ -28,6 +30,7 @@ set(k2_torch_test_srcs
   dense_fsa_vec_test.cu
   deserialization_test.cu
   fsa_class_test.cu
+  hypothesis_test.cu
   parse_options_test.cu
   wave_reader_test.cu
 )
