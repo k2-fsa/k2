@@ -162,7 +162,7 @@ if(K2_ENABLE_TESTS OR K2_ENABLE_BENCHMARK)
   endif()
 
   add_library(test_utils ${test_utils_srcs})
-  target_link_libraries(test_utils PUBLIC context)
+  target_link_libraries(test_utils PUBLIC context gtest)
 endif()
 
 if(K2_ENABLE_TESTS)
