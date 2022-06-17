@@ -270,10 +270,6 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
-if(K2_ENABLE_TESTS)
-  enable_testing()
-  include(googletest)
-endif()
 
 include(pybind11)
 if(K2_USE_PYTORCH)
@@ -302,6 +298,11 @@ endif()
 
 if(K2_WITH_CUDA)
   include(moderngpu)
+endif()
+
+if(K2_ENABLE_TESTS)
+  enable_testing()
+  include(googletest)
 endif()
 
 
