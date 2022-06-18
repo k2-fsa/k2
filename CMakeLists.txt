@@ -277,10 +277,10 @@ if(K2_USE_PYTORCH)
   add_definitions(-DTORCH_API_INCLUDE_EXTENSION_H)
   include(torch)
   configure_file(
-    ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py.in
-    ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py @ONLY
+    ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py.in
+    ${PROJECT_BINARY_DIR}/torch_version.py @ONLY
   )
-  message(STATUS "Generated ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py")
+  message(STATUS "Generated ${PROJECT_BINARY_DIR}/torch_version.py")
 endif()
 
 if(K2_WITH_CUDA)
@@ -397,4 +397,9 @@ install(FILES
   ${PROJECT_BINARY_DIR}/k2ConfigVersion.cmake
   ${PROJECT_BINARY_DIR}/k2Config.cmake
   DESTINATION share/cmake/k2
+)
+
+install(FILES
+  ${PROJECT_BINARY_DIR}/torch_version.py
+  DESTINATION ./
 )

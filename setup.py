@@ -159,19 +159,6 @@ class BuildExtension(build_ext):
             if ret != 0:
                 raise Exception('Failed to build k2')
 
-        # for Linux and macOS
-        lib_so = glob.glob(f'{self.build_temp}/lib/_k2*.so')
-
-        # for Windows
-        lib_so += glob.glob(f'{self.build_temp}/lib/_k2*.pyd')
-
-        for so in lib_so:
-            print(f'Copying {so} to {self.build_lib}/')
-            shutil.copy(f'{so}', f'{self.build_lib}/')
-
-        print(f'Copying {k2_dir}/k2/python/k2/torch_version.py to {self.build_lib}/k2')  # noqa
-        shutil.copy(f'{k2_dir}/k2/python/k2/torch_version.py', f'{self.build_lib}/k2')  # noqa
-
 
 def get_long_description():
     with open('README.md', 'r') as f:
