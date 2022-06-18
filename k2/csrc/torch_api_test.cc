@@ -25,7 +25,7 @@
 
 namespace k2 {
 
-TEST(ExclusiveSum, shared_memory) {
+TEST(ExclusiveSum, SharedMemory) {
   auto src = torch::tensor({2, 3, 0}, torch::kInt);
   ExclusiveSum(src, &src);
 
@@ -33,7 +33,7 @@ TEST(ExclusiveSum, shared_memory) {
   EXPECT_TRUE(torch::allclose(src, expected));
 }
 
-TEST(ExclusiveSum, not_shared_memory) {
+TEST(ExclusiveSum, NotSharedMemory) {
   auto src = torch::tensor({2, 3, 0}, torch::kInt);
   auto dst = torch::empty_like(src);
   ExclusiveSum(src, &dst);

@@ -21,7 +21,7 @@
 #
 # and the following imported targets:
 #
-#   k2_torch_api
+#   k2_torch_api, k2_log, k2context, k2fsa
 
 # This file is modified from pytorch/cmake/TorchConfig.cmake.in
 
@@ -33,7 +33,7 @@ set(K2_TORCH_VERSION_MAJOR @K2_TORCH_VERSION_MAJOR@)
 set(K2_TORCH_VERSION_MINOR @K2_TORCH_VERSION_MINOR@)
 set(K2_VERSION @K2_VERSION@)
 set(K2_GIT_SHA1 @K2_GIT_SHA1@)
-set(K2_GIT_DATE @K2_GIT_DATE@)
+set(K2_GIT_DATE "@K2_GIT_DATE@")
 
 if(DEFINED ENV{K2_INSTALL_PREFIX})
   set(K2_INSTALL_PREFIX $ENV{K2_INSTALL_PREFIX})
@@ -44,20 +44,33 @@ else()
 endif()
 
 set(K2_INCLUDE_DIRS ${K2_INSTALL_PREFIX}/include)
+
 set(K2_LIBRARIES k2_torch_api k2_log k2context k2fsa)
 
-list(APPEND K2_LIBRARIES "-L${K2_INSTALL_PREFIX}/lib")
+foreach(lib IN LISTS K2_LIBRARIES)
+  find_library(location_${lib} ${lib} PATHS "${K2_INSTALL_PREFIX}/lib")
 
-find_library(K2_LIBRARY k2_torch_api PATHS "${K2_INSTALL_PREFIX}/lib")
-add_library(k2_torch_api SHARED IMPORTED)
+  if(NOT MSVC)
+    add_library(${lib} SHARED IMPORTED)
+  else()
+    add_library(${lib} STATIC IMPORTED)
+  endif()
 
-set_target_properties(k2_torch_api PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${K2_INCLUDE_DIRS}"
-    IMPORTED_LOCATION "${K2_LIBRARY}"
-    INTERFACE_COMPILE_OPTIONS @CMAKE_CXX_FLAGS@
-    CXX_STANDARD 14
-)
-target_compile_definitions(k2_torch_api INTERFACE -DHAVE_K2_TORCH_API_H=1)
+  set_target_properties(${lib} PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${K2_INCLUDE_DIRS}"
+      IMPORTED_LOCATION "${location_${lib}}"
+      CXX_STANDARD 14
+  )
+
+  set_property(TARGET ${lib} PROPERTY INTERFACE_COMPILE_OPTIONS @CMAKE_CXX_FLAGS@)
+  target_compile_definitions(${lib} INTERFACE -DHAVE_K2_TORCH_API_H=1)
+endforeach()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(k2 DEFAULT_MSG K2_LIBRARY)
+
+find_package_handle_standard_args(k2 DEFAULT_MSG
+  location_k2_torch_api
+  location_k2_log
+  location_k2context
+  location_k2fsa
+)

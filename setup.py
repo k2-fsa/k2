@@ -58,6 +58,17 @@ if sys.version_info < (3, 6):
           'and is no longer supported by k2.')
     sys.exit(-1)
 
+
+cmake_path = shutil.which('cmake')
+if cmake_path is None:
+    raise Exception('Please install CMake before you proceed.')
+
+print(f'cmake_path: {cmake_path}')
+
+ret = os.system('cmake --version')
+if ret != 0:
+    raise Exception('Failed to get CMake version')
+
 try:
     from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 

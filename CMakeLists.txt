@@ -11,6 +11,8 @@ endif()
 
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
+message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
+
 # see https://cmake.org/cmake/help/latest/policy/CMP0111.html
 #
 # This is to suppress the warnings for importing PyTorch.
@@ -274,11 +276,10 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(pybind11)
 if(K2_USE_PYTORCH)
   add_definitions(-DK2_USE_PYTORCH)
-  add_definitions(-DTORCH_API_INCLUDE_EXTENSION_H)
   include(torch)
   configure_file(
     ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py.in
-    ${PROJECT_BINARY_DIR}/torch_version.py @ONLY
+    ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py @ONLY
   )
   message(STATUS "Generated ${PROJECT_BINARY_DIR}/torch_version.py")
 endif()
@@ -400,6 +401,6 @@ install(FILES
 )
 
 install(FILES
-  ${PROJECT_BINARY_DIR}/torch_version.py
+  ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py
   DESTINATION ./
 )

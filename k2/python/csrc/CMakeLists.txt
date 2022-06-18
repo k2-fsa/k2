@@ -9,6 +9,7 @@ set(k2_srcs
 )
 
 if(K2_USE_PYTORCH)
+  add_definitions(-DTORCH_API_INCLUDE_EXTENSION_H)
   add_subdirectory(torch)
   set(k2_srcs ${k2_srcs} ${torch_srcs})
 else()
@@ -28,7 +29,6 @@ if(WIN32)
   set_property(TARGET pybind11::windows_extras PROPERTY INTERFACE_COMPILE_OPTIONS "")
 endif()
 
-
 pybind11_add_module(_k2 ${k2_srcs})
 target_link_libraries(_k2 PRIVATE context)
 target_link_libraries(_k2 PRIVATE fsa)
@@ -37,6 +37,19 @@ target_include_directories(_k2 PRIVATE ${CMAKE_BINARY_DIR})
 set_target_properties(_k2 PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 target_link_libraries(_k2 PRIVATE "-Wl,-rpath,${k2_rpath_origin}/k2/lib")
+
+if(UNIX AND NOT APPLE)
+  # It causes errors on macOS
+  target_link_libraries(_k2 PRIVATE ${TORCH_DIR}/lib/libtorch_python.so)
+  # CAUTION: It is PYTHON_LIBRARY on unix
+  target_link_libraries(_k2 PRIVATE ${PYTHON_LIBRARY})
+  message(STATUS "PYTHON_LIBRARY: ${PYTHON_LIBRARY}")
+elseif(WIN32)
+  target_link_libraries(_k2 PRIVATE ${TORCH_DIR}/lib/torch_python.lib)
+  # CAUTION: It is PYTHON_LIBRARIES on Windows
+  target_link_libraries(_k2 PRIVATE ${PYTHON_LIBRARIES})
+  message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
+endif()
 
 install(TARGETS _k2
   DESTINATION ../

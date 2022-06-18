@@ -24,6 +24,7 @@
 #define K2_PYTHON_CSRC_TORCH_H_
 
 #include "k2/csrc/log.h"
+#include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch.h"
 #include "torch/extension.h"
 
@@ -68,6 +69,50 @@ struct type_caster<torch::ScalarType> {
 
 }  // namespace detail
 }  // namespace pybind11
+
+namespace k2 {
+/* Transfer an object to a specific device.
+
+   Note: If the object is already on the given device, itself
+   is returned; otherwise, a new object is created and returned.
+
+   @param [in] pyclass  The given object. It should have two methods:
+                        `Context()` and `To()`.
+   @param [in] device   It is an instance of `torch.device`.
+
+   @return  Return an object on the given `device`.
+ */
+template <typename PyClass>
+PyClass To(PyClass &pyclass, py::object device) {
+  std::string device_type = static_cast<py::str>(device.attr("type"));
+  K2_CHECK(device_type == "cpu" || device_type == "cuda")
+      << "Unsupported device type: " << device_type;
+
+  ContextPtr &context = pyclass.Context();
+  if (device_type == "cpu") {
+    // CPU to CPU
+    if (context->GetDeviceType() == kCpu) return pyclass;
+
+    // CUDA to CPU
+    DeviceGuard guard(context);
+    return pyclass.To(GetCpuContext());
+  }
+
+  auto index_attr = static_cast<py::object>(device.attr("index"));
+  int32_t device_index = 0;
+  if (!index_attr.is_none()) device_index = static_cast<py::int_>(index_attr);
+
+  if (context->GetDeviceType() == kCuda &&
+      context->GetDeviceId() == device_index)
+    // CUDA to CUDA
+    return pyclass;
+
+  // CPU to CUDA
+  DeviceGuard guard(device_index);
+  return pyclass.To(GetCudaContext(device_index));
+}
+
+}  // namespace k2
 
 void PybindTorch(py::module &m);
 
