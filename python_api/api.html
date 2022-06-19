@@ -2185,7 +2185,7 @@ computed by this function.</p>
 <li><p><strong>px</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>) – <p>A torch.Tensor of some floating point type, with shape <code class="docutils literal notranslate"><span class="pre">[B][S][T+1]</span></code>,
 where <code class="docutils literal notranslate"><span class="pre">B</span></code> is the batch size, <code class="docutils literal notranslate"><span class="pre">S</span></code> is the length of the <code class="docutils literal notranslate"><span class="pre">x</span></code> sequence
 (including representations of <code class="docutils literal notranslate"><span class="pre">EOS</span></code> symbols but not <code class="docutils literal notranslate"><span class="pre">BOS</span></code> symbols),
-and <code class="docutils literal notranslate"><span class="pre">S</span></code> is the length of the <code class="docutils literal notranslate"><span class="pre">y</span></code> sequence (including representations
+and <code class="docutils literal notranslate"><span class="pre">T</span></code> is the length of the <code class="docutils literal notranslate"><span class="pre">y</span></code> sequence (including representations
 of <code class="docutils literal notranslate"><span class="pre">EOS</span></code> symbols but not <code class="docutils literal notranslate"><span class="pre">BOS</span></code> symbols).  In the mutual information
 application, <code class="docutils literal notranslate"><span class="pre">px[b][s][t]</span></code> would represent the following log odds
 ratio; ignoring the b index on the right to make the notation more
@@ -2207,7 +2207,7 @@ which might include some or all of the other sequences as well as this
 one.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>we don’t require <code class="docutils literal notranslate"><span class="pre">px</span></code> and py to be contiguous, but the
+<p>we don’t require <code class="docutils literal notranslate"><span class="pre">px</span></code> and <code class="docutils literal notranslate"><span class="pre">py</span></code> to be contiguous, but the
 code assumes for optimization purposes that the <code class="docutils literal notranslate"><span class="pre">T</span></code> axis has
 stride 1.</p>
 </div>
