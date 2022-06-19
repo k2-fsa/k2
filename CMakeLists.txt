@@ -11,6 +11,8 @@ endif()
 
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
+message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
+
 # see https://cmake.org/cmake/help/latest/policy/CMP0111.html
 #
 # This is to suppress the warnings for importing PyTorch.
@@ -48,16 +50,16 @@ project(k2 ${languages})
 set(K2_VERSION "1.15.1")
 
 # ----------------- Supported build types for K2 project -----------------
-set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
-set(DEFAULT_BUILD_TYPE "Debug")
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${ALLOWABLE_BUILD_TYPES}")
+set(K2_ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
+set(K2_DEFAULT_BUILD_TYPE "Release")
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${K2_ALLOWABLE_BUILD_TYPES}")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   # CMAKE_CONFIGURATION_TYPES: with config type values from other generators (IDE).
-  message(STATUS "No CMAKE_BUILD_TYPE given, default to Debug")
-  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}")
-elseif(NOT CMAKE_BUILD_TYPE IN_LIST ALLOWABLE_BUILD_TYPES)
+  message(STATUS "No CMAKE_BUILD_TYPE given, default to ${K2_DEFAULT_BUILD_TYPE}")
+  set(CMAKE_BUILD_TYPE "${K2_DEFAULT_BUILD_TYPE}")
+elseif(NOT CMAKE_BUILD_TYPE IN_LIST K2_ALLOWABLE_BUILD_TYPES)
   message(FATAL_ERROR "Invalid build type: ${CMAKE_BUILD_TYPE}, \
-    choose one from ${ALLOWABLE_BUILD_TYPES}")
+    choose one from ${K2_ALLOWABLE_BUILD_TYPES}")
 endif()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
@@ -74,6 +76,7 @@ option(K2_USE_PYTORCH "Whether to build with PyTorch" ON)
 option(K2_ENABLE_BENCHMARK "Whether to enable benchmark" ON)
 option(K2_WITH_CUDA "Whether to build k2 with CUDA" ${_K2_WITH_CUDA})
 option(K2_ENABLE_NVTX "Whether to build k2 with the NVTX library" ON)
+option(K2_ENABLE_TESTS "Whether to build tests" ON)
 
 if(NOT K2_WITH_CUDA)
   message(STATUS "Set K2_ENABLE_NVTX to OFF since K2_WITH_CUDA is OFF")
@@ -98,8 +101,15 @@ endif()
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
 set(BUILD_RPATH_USE_ORIGIN TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-set(CMAKE_INSTALL_RPATH "$ORIGIN")
-set(CMAKE_BUILD_RPATH "$ORIGIN")
+
+if(NOT APPLE)
+  set(k2_rpath_origin "$ORIGIN")
+else()
+  set(k2_rpath_origin "@loader_path")
+endif()
+
+set(CMAKE_INSTALL_RPATH ${k2_rpath_origin})
+set(CMAKE_BUILD_RPATH ${k2_rpath_origin})
 
 if(UNIX AND NOT APPLE)
   execute_process(COMMAND
@@ -259,19 +269,19 @@ if(Valgrind_FOUND)
   include(Dart)
   message(STATUS "To check memory, run `ctest -R <NAME> -D ExperimentalMemCheck`")
 endif()
-enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+
+
 include(pybind11)
 if(K2_USE_PYTORCH)
   add_definitions(-DK2_USE_PYTORCH)
-  add_definitions(-DTORCH_API_INCLUDE_EXTENSION_H)
   include(torch)
   configure_file(
-    ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py.in
-    ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py @ONLY
+    ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py.in
+    ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py @ONLY
   )
-  message(STATUS "Generated ${CMAKE_SOURCE_DIR}/k2/python/k2/torch_version.py")
+  message(STATUS "Generated ${PROJECT_BINARY_DIR}/torch_version.py")
 endif()
 
 if(K2_WITH_CUDA)
@@ -291,7 +301,11 @@ if(K2_WITH_CUDA)
   include(moderngpu)
 endif()
 
-include(googletest)
+if(K2_ENABLE_TESTS)
+  enable_testing()
+  include(googletest)
+endif()
+
 
 if(K2_WITH_CUDA AND NOT WIN32)
   string(APPEND CMAKE_CUDA_FLAGS " --compiler-options -Wall ")
@@ -364,4 +378,29 @@ endif()
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 
+include(GNUInstallDirs)
+
 add_subdirectory(k2)
+
+configure_file(
+  ${PROJECT_SOURCE_DIR}/cmake/k2ConfigVersion.cmake.in
+  ${PROJECT_BINARY_DIR}/k2ConfigVersion.cmake
+  @ONLY
+)
+
+configure_file(
+  ${PROJECT_SOURCE_DIR}/cmake/k2Config.cmake.in
+  ${PROJECT_BINARY_DIR}/k2Config.cmake
+  @ONLY
+)
+
+install(FILES
+  ${PROJECT_BINARY_DIR}/k2ConfigVersion.cmake
+  ${PROJECT_BINARY_DIR}/k2Config.cmake
+  DESTINATION share/cmake/k2
+)
+
+install(FILES
+  ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py
+  DESTINATION ./
+)

@@ -140,100 +140,91 @@ if(K2_USE_PYTORCH)
     target_include_directories(context PUBLIC ${TORCH_DIR}/include/torch/csrc/api/include)
   endif()
 
-  if(UNIX AND NOT APPLE)
-    # It causes errors on macOS
-    target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/libtorch_python.so)
-    # CAUTION: It is PYTHON_LIBRARY on unix
-    target_link_libraries(context PUBLIC ${PYTHON_LIBRARY})
-    message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARY}")
-  elseif(WIN32)
-    target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/torch_python.lib)
-    # CAUTION: It is PYTHON_LIBRARIES on Windows
-    target_link_libraries(context PUBLIC ${PYTHON_LIBRARIES})
-    message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
-  endif()
 endif()
 target_include_directories(context PUBLIC ${PYTHON_INCLUDE_DIRS})
 
-#---------------------------- Test K2 CUDA sources ----------------------------
+if(K2_ENABLE_TESTS OR K2_ENABLE_BENCHMARK)
+  set(test_utils_srcs test_utils.cu)
+  if(NOT K2_WITH_CUDA)
+    transform(OUTPUT_VARIABLE test_utils_srcs SRCS ${test_utils_srcs})
+  endif()
 
-set(test_utils_srcs test_utils.cu)
-if(NOT K2_WITH_CUDA)
-  transform(OUTPUT_VARIABLE test_utils_srcs SRCS ${test_utils_srcs})
+  add_library(test_utils ${test_utils_srcs})
+  target_link_libraries(test_utils PUBLIC context gtest)
 endif()
 
-add_library(test_utils ${test_utils_srcs})
-target_link_libraries(test_utils PUBLIC context gtest)
+if(K2_ENABLE_TESTS)
+  #---------------------------- Test K2 CUDA sources ----------------------------
+  # please sort the source files alphabetically
+  set(cuda_test_srcs
+    algorithms_test.cu
+    array_of_ragged_test.cu
+    array_ops_test.cu
+    array_test.cu
+    connect_test.cu
+    dtype_test.cu
+    fsa_algo_test.cu
+    fsa_test.cu
+    fsa_utils_test.cu
+    hash_test.cu
+    host_shim_test.cu
+    intersect_test.cu
+    log_test.cu
+    macros_test.cu
+    math_test.cu
+    nbest_test.cu
+    nvtx_test.cu
+    pinned_context_test.cu
+    ragged_shape_test.cu
+    ragged_test.cu
+    ragged_utils_test.cu
+    rand_test.cu
+    reverse_test.cu
+    rm_epsilon_test.cu
+    rnnt_decode_test.cu
+    tensor_ops_test.cu
+    tensor_test.cu
+    thread_pool_test.cu
+    top_sort_test.cu
+    utils_test.cu
+  )
+  if(NOT K2_WITH_CUDA)
+    transform(OUTPUT_VARIABLE cuda_test_srcs SRCS ${cuda_test_srcs})
+  endif()
 
-# please sort the source files alphabetically
-set(cuda_test_srcs
-  algorithms_test.cu
-  array_of_ragged_test.cu
-  array_ops_test.cu
-  array_test.cu
-  connect_test.cu
-  dtype_test.cu
-  fsa_algo_test.cu
-  fsa_test.cu
-  fsa_utils_test.cu
-  hash_test.cu
-  host_shim_test.cu
-  intersect_test.cu
-  log_test.cu
-  macros_test.cu
-  math_test.cu
-  nbest_test.cu
-  nvtx_test.cu
-  pinned_context_test.cu
-  ragged_shape_test.cu
-  ragged_test.cu
-  ragged_utils_test.cu
-  rand_test.cu
-  reverse_test.cu
-  rm_epsilon_test.cu
-  rnnt_decode_test.cu
-  tensor_ops_test.cu
-  tensor_test.cu
-  thread_pool_test.cu
-  top_sort_test.cu
-  utils_test.cu
-)
-if(NOT K2_WITH_CUDA)
-  transform(OUTPUT_VARIABLE cuda_test_srcs SRCS ${cuda_test_srcs})
+  # utility function to add gtest
+  function(k2_add_cuda_test source)
+    # TODO(haowen): add prefix `cu` for now to avoid name conflicts
+    # with files in k2/csrc/, will remove this finally.
+    get_filename_component(name ${source} NAME_WE)
+    set(target_name "cu_${name}")
+    add_executable(${target_name} "${source}")
+    set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    target_link_libraries(${target_name}
+      PRIVATE
+      context
+      fsa  # for code in k2/csrc/host
+      gtest
+      gtest_main
+      test_utils
+    )
+
+    # NOTE: We set the working directory here so that
+    # it works also on windows. The reason is that
+    # the required DLLs are inside ${TORCH_DIR}/lib
+    # and they can be found by the exe if the current
+    # working directory is ${TORCH_DIR}\lib
+    add_test(NAME "Test.Cuda.${target_name}"
+      COMMAND
+      $<TARGET_FILE:${target_name}>
+      WORKING_DIRECTORY ${TORCH_DIR}/lib
+    )
+  endfunction()
+
+  foreach(source IN LISTS cuda_test_srcs)
+    k2_add_cuda_test(${source})
+  endforeach()
 endif()
-
-# utility function to add gtest
-function(k2_add_cuda_test source)
-  # TODO(haowen): add prefix `cu` for now to avoid name conflicts
-  # with files in k2/csrc/, will remove this finally.
-  get_filename_component(name ${source} NAME_WE)
-  set(target_name "cu_${name}")
-  add_executable(${target_name} "${source}")
-  set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  target_link_libraries(${target_name}
-    PRIVATE
-    context
-    fsa  # for code in k2/csrc/host
-    gtest
-    gtest_main
-    test_utils
-  )
-
-  # NOTE: We set the working directory here so that
-  # it works also on windows. The reason is that
-  # the required DLLs are inside ${TORCH_DIR}/lib
-  # and they can be found by the exe if the current
-  # working directory is ${TORCH_DIR}\lib
-  add_test(NAME "Test.Cuda.${target_name}"
-    COMMAND
-    $<TARGET_FILE:${target_name}>
-    WORKING_DIRECTORY ${TORCH_DIR}/lib
-  )
-endfunction()
-
-foreach(source IN LISTS cuda_test_srcs)
-  k2_add_cuda_test(${source})
-endforeach()
 
 if(K2_ENABLE_BENCHMARK)
   add_subdirectory(benchmark)
@@ -247,17 +238,26 @@ if(K2_USE_PYTORCH)
   add_library(k2_torch_api ${k2_torch_api_srcs})
   target_link_libraries(k2_torch_api PUBLIC context)
 
-  add_executable(torch_api_test torch_api_test.cc)
-  target_link_libraries(torch_api_test PRIVATE k2_torch_api gtest gtest_main)
+  if(K2_ENABLE_TESTS)
+    add_executable(torch_api_test torch_api_test.cc)
+    target_link_libraries(torch_api_test PRIVATE k2_torch_api gtest gtest_main)
 
-  # NOTE: We set the working directory here so that
-  # it works also on windows. The reason is that
-  # the required DLLs are inside ${TORCH_DIR}/lib
-  # and they can be found by the exe if the current
-  # working directory is ${TORCH_DIR}\lib
-  add_test(NAME "Test.torch_api_test"
-    COMMAND
-    $<TARGET_FILE:torch_api_test>
-    WORKING_DIRECTORY ${TORCH_DIR}/lib
-  )
+    # NOTE: We set the working directory here so that
+    # it works also on windows. The reason is that
+    # the required DLLs are inside ${TORCH_DIR}/lib
+    # and they can be found by the exe if the current
+    # working directory is ${TORCH_DIR}\lib
+    add_test(NAME "Test.torch_api_test"
+      COMMAND
+      $<TARGET_FILE:torch_api_test>
+      WORKING_DIRECTORY ${TORCH_DIR}/lib
+    )
+  endif()
 endif()
+
+install(TARGETS k2_log k2_torch_api context
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+install(FILES torch_api.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/k2
+)
