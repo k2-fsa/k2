@@ -46,12 +46,17 @@ list(APPEND CMAKE_PREFIX_PATH "${K2_CMAKE_PREFIX_PATH}")
 find_package(k2 REQUIRED)
 ```
 
-**Note**: You also have to link with `${${TORCH_LIBRARIES}`. You can
+**Note**: You also have to link with `${TORCH_LIBRARIES}`. You can
 find example usage in [./CMakeLists.txt](./CMakeLists.txt).
 
 # Steps to run this project
 
-(Assume you have installed k2)
+Assume you have installed k2. The following shows you how to run this
+project on Linux, macOS, and Windows.
+
+## Linux/macOS
+
+If you are using Linux or macOS, you can do:
 
 ```bash
 cd /path/to/k2-torch-api-test
@@ -67,4 +72,17 @@ or simply use
 ```bash
 cd /path/to/k2-torch-api-test
 make
+```
+
+## Windows
+
+If you are using Windows, you can do:
+
+```bash
+cd /path/to/k2-torch-api-test
+mkdir build
+cd build
+cmake ..
+cmake --build . --target ALL_BUILD --config Release
+ctest -C Release --output-on-failure
 ```
