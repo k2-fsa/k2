@@ -45,7 +45,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
             if modified, ``[B][S][T+1]`` if not modified.
             where ``B`` is the batch size, ``S`` is the
             length of the ``x`` sequence (including representations of
-            ``EOS`` symbols but not ``BOS`` symbols), and ``S`` is the
+            ``EOS`` symbols but not ``BOS`` symbols), and ``T`` is the
             length of the ``y`` sequence (including representations of
             ``EOS`` symbols but not  ``BOS`` symbols).  In the mutual
             information application, ``px[b][s][t]`` would represent the
@@ -69,7 +69,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
             well as this one.
 
             Note:
-              we don't require ``px`` and py to be contiguous, but the
+              we don't require ``px`` and ``py`` to be contiguous, but the
               code assumes for optimization purposes that the ``T`` axis has
               stride 1.
 
@@ -201,7 +201,7 @@ def mutual_information_recursion(
         A torch.Tensor of some floating point type, with shape ``[B][S][T+1]``,
         where ``B`` is the batch size, ``S`` is the length of the ``x`` sequence
         (including representations of ``EOS`` symbols but not ``BOS`` symbols),
-        and ``S`` is the length of the ``y`` sequence (including representations
+        and ``T`` is the length of the ``y`` sequence (including representations
         of ``EOS`` symbols but not ``BOS`` symbols).  In the mutual information
         application, ``px[b][s][t]`` would represent the following log odds
         ratio; ignoring the b index on the right to make the notation more
@@ -223,7 +223,7 @@ def mutual_information_recursion(
         one.
 
         Note:
-          we don't require ``px`` and py to be contiguous, but the
+          we don't require ``px`` and ``py`` to be contiguous, but the
           code assumes for optimization purposes that the ``T`` axis has
           stride 1.
 
