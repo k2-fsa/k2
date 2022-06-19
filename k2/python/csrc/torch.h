@@ -23,6 +23,8 @@
 #ifndef K2_PYTHON_CSRC_TORCH_H_
 #define K2_PYTHON_CSRC_TORCH_H_
 
+#include <string>
+
 #include "k2/csrc/log.h"
 #include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch.h"
