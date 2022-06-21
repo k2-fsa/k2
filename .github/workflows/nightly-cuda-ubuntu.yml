@@ -1,6 +1,9 @@
 name: nightly-cuda-ubuntu
 
 on:
+  push:
+    branches:
+      - nightly
   schedule:
     # minute (0-59)
     # hour (0-23)
@@ -15,6 +18,7 @@ env:
 
 jobs:
   enable_nightly_build:
+    if: github.repository == 'k2-fsa/k2'
     runs-on: ubuntu-latest
     outputs:
       enabled: ${{ steps.set-enabled.outputs.enabled }}
@@ -31,7 +35,7 @@ jobs:
 
   nightly:
     needs: enable_nightly_build
-    if: needs.enable_nightly_build.outputs.enabled == 'true'
+    if: needs.enable_nightly_build.outputs.enabled == 'true' || github.event_name == 'push'
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
