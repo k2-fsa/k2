@@ -35,8 +35,6 @@
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 
-// Caution: see also utils.h where there is EvalWithRedirect that's very related
-// to this.
 namespace k2 {
 
 

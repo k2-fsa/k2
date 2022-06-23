@@ -23,6 +23,7 @@
 #include "moderngpu/context.hxx"
 #include "moderngpu/kernel_load_balance.hxx"
 #include "moderngpu/kernel_mergesort.hxx"
+#include "moderngpu/kernel_scan.hxx"
 #include "moderngpu/kernel_segsort.hxx"
 #include "moderngpu/kernel_sortedsearch.hxx"
 #endif
