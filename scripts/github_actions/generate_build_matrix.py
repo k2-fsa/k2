@@ -79,9 +79,13 @@ def generate_build_matrix(enable_cuda, test_only_latest_torch):
             "python-version": ["3.7", "3.8", "3.9", "3.10"],
             "cuda": ["10.2", "11.3", "11.5"],
         },
+        "1.12.0": {
+            "python-version": ["3.7", "3.8", "3.9", "3.10"],
+            "cuda": ["10.2", "11.3", "11.6"],
+        },
     }
     if test_only_latest_torch:
-        latest = "1.11.0"
+        latest = "1.12.0"
         matrix = {latest: matrix[latest]}
 
     ans = []
