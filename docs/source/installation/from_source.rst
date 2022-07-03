@@ -7,6 +7,13 @@ Install from source
 
     It supports Linux (CPU + CUDA), macOS (CPU), and Windows (CPU + CUDA).
 
+.. hint::
+
+  You can pass the option ``-DK2_WITH_CUDA=OFF`` to ``cmake`` to build
+  a CPU only version of k2. In that case, you have to install a CPU version
+  of PyTorch; otherwise, you will get a CMake configuration error, saying
+  that cuDNN cannot be found.
+
 The following versions of Python, CUDA, and PyTorch are known to work.
 
     - |source_python_versions|

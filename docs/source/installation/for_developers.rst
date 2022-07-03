@@ -13,7 +13,7 @@ First, you have to install CMake, CUDA toolkit (with cuDNN), and PyTorch:
   - CMake 3.11.0 and 3.18.0 are known to work. Other CMake versions may work
     but they are not tested.
 
-  - Install PyTorch. PyTorch 1.4.x and above are known to work. Other PyTorch
+  - Install PyTorch. PyTorch 1.6.x and above are known to work. Other PyTorch
     versions may work, but they are not tested.
 
   - Install CUDA toolkit and cuDNN. CUDA 10.1 and above are known to work.
@@ -74,7 +74,9 @@ To build a debug version, use:
 .. HINT::
 
   You can pass the option ``-DK2_WITH_CUDA=OFF`` to ``cmake`` to build
-  a CPU only version of k2.
+  a CPU only version of k2. In that case, you have to install a CPU version
+  of PyTorch; otherwise, you will get a CMake configuration error, saying
+  that cuDNN cannot be found.
 
   It is much faster to build a CPU version than that of building a CUDA
   version. When you are adding new features to k2, we recommend you to
