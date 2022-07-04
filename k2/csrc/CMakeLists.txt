@@ -255,6 +255,17 @@ if(K2_USE_PYTORCH)
   endif()
 endif()
 
+file(MAKE_DIRECTORY
+  DESTINATION
+    ${PROJECT_BINARY_DIR}/include/k2
+)
+
+file(COPY
+  torch_api.h
+  DESTINATION
+    ${PROJECT_BINARY_DIR}/include/k2
+)
+
 install(TARGETS k2_log k2_torch_api context
   DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
