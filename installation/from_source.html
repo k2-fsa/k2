@@ -89,12 +89,19 @@
 <p class="admonition-title">Hint</p>
 <p>It supports Linux (CPU + CUDA), macOS (CPU), and Windows (CPU + CUDA).</p>
 </div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>You can pass the option <code class="docutils literal notranslate"><span class="pre">-DK2_WITH_CUDA=OFF</span></code> to <code class="docutils literal notranslate"><span class="pre">cmake</span></code> to build
+a CPU only version of k2. In that case, you have to install a CPU version
+of PyTorch; otherwise, you will get a CMake configuration error, saying
+that cuDNN cannot be found.</p>
+</div>
 <p>The following versions of Python, CUDA, and PyTorch are known to work.</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><img alt="Supported python versions" src="../_images/python_ge_3.6-blue.svg" /></p></li>
 <li><p><img alt="Supported cuda versions" src="../_images/cuda_ge_10.1-orange.svg" /></p></li>
-<li><p><img alt="Supported pytorch versions" src="installation/images/pytorch_ge_1.6.0-green.svg" /></p></li>
+<li><p><img alt="Supported pytorch versions" src="../_images/pytorch_ge_1.6.0-green.svg" /></p></li>
 </ul>
 </div></blockquote>
 <p>Before compiling k2, some preparation work has to be done:</p>
