@@ -263,7 +263,7 @@ class OpenFstStreamReader {
     int32_t src_state, dest_state, label;
     line_is >> src_state >> dest_state >> label;
     if (!line_is.good()) {
-      // Our only hope of parsing othis is that `line` was empty, or a
+      // Our only hope of parsing this is that `line` was empty, or a
       // final-state; try that.
       if (!ProcessFinalProbOrEmpty(line)) {
         K2_LOG(FATAL) << "Invalid line: " << line;
@@ -291,9 +291,8 @@ class OpenFstStreamReader {
       line_is >> cost;
       if (!line_is.eof()) line_is >> std::ws;
     }
-    if (!line_is.eof() || line_is.fail() || src_state < 0 || dest_state < 0) {
+    if (!line_is.eof() || src_state < 0 || dest_state < 0) {
       K2_LOG(FATAL) << "Invalid line: " << line << ", eof=" << line_is.eof()
-                    << ", fail=" << line_is.fail()
                     << ", src_state=" << src_state
                     << ", dest_state=" << dest_state;
     }
