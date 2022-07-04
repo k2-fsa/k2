@@ -66,8 +66,7 @@ foreach(lib IN LISTS K2_LIBRARIES)
       CXX_STANDARD 14
   )
 
-  set_property(TARGET ${lib} PROPERTY INTERFACE_COMPILE_OPTIONS @CMAKE_CXX_FLAGS@)
-  target_compile_definitions(${lib} INTERFACE -DHAVE_K2_TORCH_API_H=1)
+  set_property(TARGET ${lib} PROPERTY INTERFACE_COMPILE_OPTIONS @CMAKE_CXX_FLAGS@ -DHAVE_K2_TORCH_API_H=1)
 endforeach()
 
 include(FindPackageHandleStandardArgs)
