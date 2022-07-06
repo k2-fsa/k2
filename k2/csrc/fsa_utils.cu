@@ -200,14 +200,12 @@ static Fsa K2FsaFromStream(std::istringstream &is,
     return ans;
 }
 
-// `expected` must not be whitespace.  expect (read) `expected, set failbit if
-// not.
+// `expected` must not be whitespace.  expect (read) `expected
 void ExpectChar(std::istream &is, char expected) {
   is >> std::ws;
   char ch;
   is >> ch;
-  if (ch != expected)
-    is.setstate(std::ios::failbit);
+  K2_CHECK_EQ(ch, expected);
 }
 
 
@@ -291,7 +289,7 @@ class OpenFstStreamReader {
       line_is >> cost;
       if (!line_is.eof()) line_is >> std::ws;
     }
-    if (!line_is.eof() || line_is.fail() || src_state < 0 || dest_state < 0) {
+    if (!line_is.eof() || src_state < 0 || dest_state < 0) {
       K2_LOG(FATAL) << "Invalid line: " << line << ", eof=" << line_is.eof()
                     << ", fail=" << line_is.fail()
                     << ", src_state=" << src_state
