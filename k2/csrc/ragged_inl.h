@@ -25,7 +25,7 @@
 #define K2_CSRC_RAGGED_INL_H_
 
 #ifndef IS_IN_K2_CSRC_RAGGED_H_
-#error "this file is supposed to be included only by ragged_ops.h"
+#error "this file is supposed to be included only by ragged.h"
 #endif
 
 
