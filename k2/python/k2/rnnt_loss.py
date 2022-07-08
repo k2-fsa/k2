@@ -505,8 +505,118 @@ def get_rnnt_prune_ranges(
     of symbols given a particular frame.
 
     Note:
-      For the generated tensor ranges, ranges[:, 0] is a monotonic increasing
-      tensor from 0 to `len(symbols)` and it satisfies
+      For the generated tensor ranges (assuming batch size is 1), ranges[:, 0]
+      is a monotonic increasing tensor from 0 to `len(symbols)` and it satisfies
+      `ranges[t+1, 0] - ranges[t, 0] < s_range` which means we won't skip any
+      symbols.
+
+    Args:
+      px_grad:
+        The gradient of px, see docs in `mutual_information_recursion` for more
+        details of px.
+      py_grad:
+        The gradient of py, see docs in `mutual_information_recursion` for more
+        details of py.
+      boundary:
+        a LongTensor of shape [B, 4] with elements interpreted as
+        [begin_symbol, begin_frame, end_symbol, end_frame]
+      s_range:
+        How many symbols to keep for each frame.
+    Returns:
+      A tensor contains the kept symbols indexes for each frame, with shape
+      (B, T, s_range).
+    """
+    (B, S, T1) = px_grad.shape
+    T = py_grad.shape[-1]
+    assert T1 in [T, T + 1]
+    S1 = S + 1
+    assert py_grad.shape == (B, S1, T)
+    assert boundary.shape == (B, 4)
+
+    if T1 == T:
+        assert s_range >= 1
+    else:
+        assert s_range >= 2
+
+    if s_range > S:
+        s_range = S
+
+    blk_grad = torch.as_strided(
+        py_grad, (B, S1 - s_range + 1, s_range, T), (S1 * T, T, T, 1)
+    )
+    # (B, S1 - s_range + 1, T)
+    blk_sum_grad = torch.sum(blk_grad, axis=2)
+
+    px_pad = torch.zeros((B, 1, T1), dtype=px_grad.dtype, device=px_grad.device)
+    px_grad_pad = torch.cat((px_pad, px_grad), dim=1)
+
+    # (B, S1 - s_range + 1, T)
+    final_grad = blk_sum_grad - px_grad_pad[:, : -(s_range - 1), :-1]
+
+    # (B, T)
+    s_begin = torch.argmax(final_grad, axis=1)
+    s_begin = s_begin[:, :T]
+
+    # Handle the values of s_begin in padding positions.
+    # -1 here means we fill the position of the last frame of real data with
+    # padding value which is `len(symbols) - s_range + 1`.
+    # This is to guarantee that we reach the last symbol at last frame of real
+    # data.
+    mask = torch.arange(0, T, device=px_grad.device).reshape(1, T).expand(B, T)
+    mask = mask < boundary[:, 3].reshape(B, 1) - 1
+
+    s_begin_padding = boundary[:, 2].reshape(B, 1) - s_range + 1
+    # handle the cases when `len(symbols) < s_range`
+    s_begin_padding = torch.clamp(s_begin_padding, min=0)
+
+    s_begin = torch.where(mask, s_begin, s_begin_padding)
+
+    # adjusting lower bound to make it satisfied some constrains, see docs in
+    # `adjust_pruning_lower_bound` for more details of these constrains.
+    # T1 == T here means we are using the modified version of transducer,
+    # the third constrain becomes `s_begin[i + 1] - s_begin[i] < 2`, because
+    # it only emits one symbol per frame.
+    # If S == s_range, the s_begin only contains zeros and padding values, no
+    # need to adjust them.
+    if S != s_range:
+        s_begin = _adjust_pruning_lower_bound(
+            s_begin, 2 if T1 == T else s_range
+        )
+
+    ranges = s_begin.reshape((B, T, 1)).expand((B, T, s_range)) + torch.arange(
+        s_range, device=px_grad.device
+    )
+    return ranges
+
+
+def get_rnnt_prune_ranges_deprecated(
+    px_grad: torch.Tensor,
+    py_grad: torch.Tensor,
+    boundary: torch.Tensor,
+    s_range: int,
+) -> torch.Tensor:
+    """Get the pruning ranges of normal rnnt loss according to the grads
+    of px and py returned by mutual_information_recursion.
+
+    For each sequence with T frames, we will generate a tensor with the shape of
+    (T, s_range) containing the information that which symbols will be token
+    into consideration for each frame. For example, here is a sequence with 10
+    frames and the corresponding symbols are `[A B C D E F]`, if the s_range
+    equals 3, one possible ranges tensor will be::
+
+      [[0, 1, 2], [0, 1, 2], [0, 1, 2], [0, 1, 2], [1, 2, 3],
+       [1, 2, 3], [1, 2, 3], [3, 4, 5], [3, 4, 5], [3, 4, 5]]
+
+    which means we only consider `[A B C]` at frame 0, 1, 2, 3, and `[B C D]`
+    at frame 4, 5, 6, `[D E F]` at frame 7, 8, 9.
+
+    We can only consider limited number of symbols because frames and symbols
+    are monotonic aligned, theoretically it can only generate particular range
+    of symbols given a particular frame.
+
+    Note:
+      For the generated tensor ranges (assuming batch size is 1), ranges[:, 0]
+      is a monotonic increasing tensor from 0 to `len(symbols)` and it satisfies
       `ranges[t+1, 0] - ranges[t, 0] < s_range` which means we won't skip any
       symbols.
 
@@ -531,7 +641,12 @@ def get_rnnt_prune_ranges(
     assert T1 in [T, T + 1]
     assert py_grad.shape == (B, S + 1, T)
     assert boundary.shape == (B, 4)
-    assert s_range >= 1
+
+    if T1 == T:
+        assert s_range >= 1
+    else:
+        assert s_range >= 2
+
     if s_range > S:
         s_range = S
 
@@ -577,7 +692,13 @@ def get_rnnt_prune_ranges(
     # T1 == T here means we are using the modified version of transducer,
     # the third constrain becomes `s_begin[i + 1] - s_begin[i] < 2`, because
     # it only emits one symbol per frame.
-    s_begin = _adjust_pruning_lower_bound(s_begin, 2 if T1 == T else s_range)
+    # If S == s_range, the s_begin only contains zeros and padding values, no
+    # need to adjust them.
+    if S != s_range:
+        s_begin = _adjust_pruning_lower_bound(
+            s_begin, 2 if T1 == T else s_range
+        )
+
     ranges = s_begin.reshape((B, T, 1)).expand((B, T, s_range)) + torch.arange(
         s_range, device=px_grad.device
     )
@@ -622,7 +743,9 @@ def do_rnnt_pruning(
     lm_pruned = torch.gather(
         lm.unsqueeze(1).expand((B, T, S + 1, decoder_dim)),
         dim=2,
-        index=ranges.reshape((B, T, s_range, 1)).expand((B, T, s_range, decoder_dim)),
+        index=ranges.reshape((B, T, s_range, 1)).expand(
+            (B, T, s_range, decoder_dim)
+        ),
     )
     return am_pruned, lm_pruned
 
