@@ -67,7 +67,7 @@ class TestOnlineDenseIntersecter(unittest.TestCase):
                 )
                 supervision_segments = torch.tensor(
                     # seq_index, start_time, duration
-                    [[0, 0, chunk_size] for i in range(num_streams)],
+                    [[i, 0, chunk_size] for i in range(num_streams)],
                     dtype=torch.int32,
                 )
                 dense_fsa_vec = k2.DenseFsaVec(logits, supervision_segments)
