@@ -81,8 +81,10 @@ With CUDA: {with_cuda}
 Disable debug: {disable_debug}
 Sync kernels : {sync_kernels}
 Disable checks: {disable_checks}
-Max cpu memory allocate: {max_cpu_mem_allocate}
+Max cpu memory allocate: {max_cpu_mem_allocate} bytes (or {max_cpu_mem_allocate/1024/1024/1024} GB)
 k2 abort: {k2_abort}
+__file__: {__file__}
+_k2.__file__: {_k2.__file__}
     ''')
 
 
