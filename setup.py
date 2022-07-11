@@ -139,6 +139,7 @@ class BuildExtension(build_ext):
             build_cmd = f'''
                 cmake {cmake_args} -B {self.build_temp} -S {k2_dir}
                 cmake --build {self.build_temp} --target _k2 --config Release -- -m
+                cmake --build {self.build_temp} --target k2_torch_api --config Release -- -m
                 cmake --build {self.build_temp} --target install --config Release -- -m
             '''
             print(f'build command is:\n{build_cmd}')
@@ -150,10 +151,13 @@ class BuildExtension(build_ext):
             if ret != 0:
                 raise Exception('Failed to build k2')
 
+            ret = os.system(f'cmake --build {self.build_temp} --target k2_torch_api --config Release -- -m')
+            if ret != 0:
+                raise Exception('Failed to build k2_torch_api')
+
             ret = os.system(f'cmake --build {self.build_temp} --target install --config Release -- -m')
             if ret != 0:
                 raise Exception('Failed to build k2')
-
         else:
             build_cmd = f'''
                 cd {self.build_temp}
@@ -162,7 +166,7 @@ class BuildExtension(build_ext):
 
                 cat k2/csrc/version.h
 
-                make {make_args} _k2 install
+                make {make_args} _k2 k2_torch_api install
             '''
             print(f'build command is:\n{build_cmd}')
 
