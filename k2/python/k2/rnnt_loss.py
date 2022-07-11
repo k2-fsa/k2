@@ -593,12 +593,7 @@ def get_rnnt_prune_ranges(
     # T1 == T here means we are using the modified version of transducer,
     # the third constrain becomes `s_begin[i + 1] - s_begin[i] < 2`, because
     # it only emits one symbol per frame.
-    # If S == s_range, the s_begin only contains zeros and padding values, no
-    # need to adjust them.
-    if S != s_range:
-        s_begin = _adjust_pruning_lower_bound(
-            s_begin, 2 if T1 == T else s_range
-        )
+    s_begin = _adjust_pruning_lower_bound(s_begin, 2 if T1 == T else s_range)
 
     ranges = s_begin.reshape((B, T, 1)).expand((B, T, s_range)) + torch.arange(
         s_range, device=px_grad.device
@@ -722,12 +717,7 @@ def get_rnnt_prune_ranges_deprecated(
     # T1 == T here means we are using the modified version of transducer,
     # the third constrain becomes `s_begin[i + 1] - s_begin[i] < 2`, because
     # it only emits one symbol per frame.
-    # If S == s_range, the s_begin only contains zeros and padding values, no
-    # need to adjust them.
-    if S != s_range:
-        s_begin = _adjust_pruning_lower_bound(
-            s_begin, 2 if T1 == T else s_range
-        )
+    s_begin = _adjust_pruning_lower_bound(s_begin, 2 if T1 == T else s_range)
 
     ranges = s_begin.reshape((B, T, 1)).expand((B, T, s_range)) + torch.arange(
         s_range, device=px_grad.device

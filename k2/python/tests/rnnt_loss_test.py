@@ -68,7 +68,11 @@ def generate_mask(S: int, ranges: torch.Tensor) -> torch.Tensor:
     assert torch.all(ranges < S)
     B, T, s_range = ranges.shape
     mask = torch.cat(
-        [torch.zeros(B, T, s_range), torch.ones(B, T, S - s_range)], dim=2
+        [
+            torch.zeros((B, T, s_range), device=ranges.device),
+            torch.ones((B, T, S - s_range), device=ranges.device),
+        ],
+        dim=2,
     )
     index = (
         torch.arange(S, device=ranges.device)
