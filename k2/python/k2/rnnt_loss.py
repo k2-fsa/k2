@@ -134,6 +134,8 @@ def get_rnnt_logprobs(
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
     assert symbols.shape == (B, S)
+    assert S >= 1
+    assert T >= S
 
     # subtracting am_max and lm_max is to ensure the probs are in a good range
     # to do exp() without causing underflow or overflow.
@@ -331,6 +333,8 @@ def get_rnnt_logprobs_joint(
     (B, T, S1, C) = logits.shape
     S = S1 - 1
     assert symbols.shape == (B, S)
+    assert S >= 1
+    assert T >= S
 
     normalizers = torch.logsumexp(logits, dim=3)
     normalizers = normalizers.permute((0, 2, 1))
@@ -479,6 +483,9 @@ def _adjust_pruning_lower_bound(
     return s_begin
 
 
+# To get more insight of how we calculate pruning bounds, please read
+# chapter 3.2 (Pruning bounds) of our Pruned RNN-T paper
+# (https://arxiv.org/pdf/2206.13236.pdf)
 def get_rnnt_prune_ranges(
     px_grad: torch.Tensor,
     py_grad: torch.Tensor,
@@ -532,14 +539,23 @@ def get_rnnt_prune_ranges(
     S1 = S + 1
     assert py_grad.shape == (B, S1, T)
     assert boundary.shape == (B, 4)
+    assert S >= 1
+    assert T >= S
+
+    # s_range > S means we won't prune out any symbols. To make indexing with
+    # ranges runs normally, s_range should be equal to or less than ``S + 1``.
+    if s_range > S:
+        s_range = S + 1
 
     if T1 == T:
-        assert s_range >= 1
-    else:
-        assert s_range >= 2
+        assert (
+            s_range >= 1
+        ), "Pruning range for modified RNN-T should be equal to or greater than 1, or no valid paths could survive pruning."
 
-    if s_range > S:
-        s_range = S
+    else:
+        assert (
+            s_range >= 2
+        ), "Pruning range for standard RNN-T should be equal to or greater than 2, or no valid paths could survive pruning."
 
     blk_grad = torch.as_strided(
         py_grad, (B, S1 - s_range + 1, s_range, T), (S1 * T, T, T, 1)
@@ -548,10 +564,11 @@ def get_rnnt_prune_ranges(
     blk_sum_grad = torch.sum(blk_grad, axis=2)
 
     px_pad = torch.zeros((B, 1, T1), dtype=px_grad.dtype, device=px_grad.device)
+    # (B, S1, T)
     px_grad_pad = torch.cat((px_pad, px_grad), dim=1)
 
     # (B, S1 - s_range + 1, T)
-    final_grad = blk_sum_grad - px_grad_pad[:, : -(s_range - 1), :-1]
+    final_grad = blk_sum_grad - px_grad_pad[:, : S1 - s_range + 1, :T]
 
     # (B, T)
     s_begin = torch.argmax(final_grad, axis=1)
@@ -586,9 +603,13 @@ def get_rnnt_prune_ranges(
     ranges = s_begin.reshape((B, T, 1)).expand((B, T, s_range)) + torch.arange(
         s_range, device=px_grad.device
     )
+
     return ranges
 
 
+# This is a deprecated version of method to generate pruning bounds which is
+# less exact than the one above (i.e. the one we publish in our paper).
+# It will be deleted at some time, keeping it just for testing purpose.
 def get_rnnt_prune_ranges_deprecated(
     px_grad: torch.Tensor,
     py_grad: torch.Tensor,
@@ -641,14 +662,23 @@ def get_rnnt_prune_ranges_deprecated(
     assert T1 in [T, T + 1]
     assert py_grad.shape == (B, S + 1, T)
     assert boundary.shape == (B, 4)
+    assert S >= 1
+    assert T >= S
+
+    # s_range > S means we won't prune out any symbols. To make indexing with
+    # ranges runs normally, s_range should be equal to or less than ``S + 1``.
+    if s_range > S:
+        s_range = S + 1
 
     if T1 == T:
-        assert s_range >= 1
-    else:
-        assert s_range >= 2
+        assert (
+            s_range >= 1
+        ), "Pruning range for modified RNN-T should be equal to or greater than 1, or no valid paths could survive pruning."
 
-    if s_range > S:
-        s_range = S
+    else:
+        assert (
+            s_range >= 2
+        ), "Pruning range for standard RNN-T should be equal to or greater than 2, or no valid paths could survive pruning."
 
     px_pad = torch.zeros((B, 1, T1), dtype=px_grad.dtype, device=px_grad.device)
     py_pad = torch.zeros(
@@ -830,6 +860,8 @@ def get_rnnt_logprobs_pruned(
     (B, T, s_range, C) = logits.shape
     assert ranges.shape == (B, T, s_range)
     (B, S) = symbols.shape
+    assert S >= 1
+    assert T >= S
 
     normalizers = torch.logsumexp(logits, dim=3)
 
@@ -1092,6 +1124,8 @@ def get_rnnt_logprobs_smoothed(
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
     assert symbols.shape == (B, S)
+    assert S >= 1
+    assert T >= S
 
     # Caution: some parts of this code are a little less clear than they could
     # be due to optimizations.  In particular it may not be totally obvious that
