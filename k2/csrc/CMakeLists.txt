@@ -239,7 +239,11 @@ if(K2_USE_PYTORCH)
   target_link_libraries(k2_torch_api PUBLIC context)
 
   if(K2_ENABLE_TESTS)
-    add_executable(torch_api_test torch_api_test.cc)
+    set(k2_torch_api_test_srcs torch_api_test.cu)
+    if(NOT K2_WITH_CUDA)
+      transform(OUTPUT_VARIABLE k2_torch_api_test_srcs SRCS ${k2_torch_api_test_srcs})
+    endif()
+    add_executable(torch_api_test ${k2_torch_api_test_srcs})
     target_link_libraries(torch_api_test PRIVATE k2_torch_api gtest gtest_main)
 
     # NOTE: We set the working directory here so that
@@ -265,10 +269,19 @@ file(COPY
   DESTINATION
     ${PROJECT_BINARY_DIR}/include/k2
 )
+file(GLOB HEADER_LIST "*.h")
+file(COPY
+  ${HEADER_LIST}
+  DESTINATION
+    ${PROJECT_BINARY_DIR}/include/k2/csrc
+)
 
 install(TARGETS k2_log k2_torch_api context
   DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 install(FILES torch_api.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/k2
+)
+install(FILES ${HEADER_LIST}
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/k2/csrc
 )

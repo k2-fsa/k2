@@ -21,6 +21,7 @@
 
 #include <memory>
 
+#include "k2/csrc/rnnt_decode.h"
 #include "torch/script.h"
 
 namespace k2 {
