@@ -64,7 +64,6 @@ cmake_path = shutil.which('cmake')
 if cmake_path is None:
     raise Exception('Please install CMake before you proceed.')
 
-print(f'cmake_path: {cmake_path}')
 
 ret = check_call(['cmake', '--version'], stdout=DEVNULL, stderr=DEVNULL)
 if ret != 0:
@@ -98,6 +97,8 @@ def cmake_extension(name, *args, **kwargs) -> setuptools.Extension:
 class BuildExtension(build_ext):
 
     def build_extension(self, ext: setuptools.extension.Extension):
+        print(f'cmake_path: {cmake_path}')
+
         # build/temp.linux-x86_64-3.8
         os.makedirs(self.build_temp, exist_ok=True)
 
