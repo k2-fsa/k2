@@ -671,8 +671,8 @@ class TestRnntLoss(unittest.TestCase):
     # one all the time, both of them are local optimal bounds.
     def test_prune_ranges(self):
         B = 5
-        T = 100
-        S = 50
+        T = 200
+        S = 100
         C = 50
 
         frames = torch.randint(S + 1, T, (B,))
@@ -706,24 +706,24 @@ class TestRnntLoss(unittest.TestCase):
             )
 
             for r in range(2, 20, 5):
-                # (B, T, S + 1, C)
-                logits = am.unsqueeze(2) + lm.unsqueeze(1)
-                logits = logits.float()
-
                 new_ranges = k2.get_rnnt_prune_ranges(
                     px_grad=px_grad,
                     py_grad=py_grad,
                     boundary=boundary,
                     s_range=r,
                 )
+                am_pruned, lm_pruned = k2.do_rnnt_pruning(
+                    am=am,
+                    lm=lm,
+                    ranges=new_ranges,
+                )
 
-                mask = generate_mask(S + 1, new_ranges).unsqueeze(3)
+                logits = am_pruned + lm_pruned
 
-                logits_new = logits.masked_fill(mask, 0.0)
-
-                loss = k2.rnnt_loss(
-                    logits=logits_new,
+                loss = k2.rnnt_loss_pruned(
+                    logits=logits.float(),
                     symbols=symbols,
+                    ranges=new_ranges,
                     termination_symbol=terminal_symbol,
                     boundary=boundary,
                     reduction="none",
@@ -738,13 +738,17 @@ class TestRnntLoss(unittest.TestCase):
                     s_range=r,
                 )
 
-                mask = generate_mask(S + 1, old_ranges).unsqueeze(3)
+                am_pruned, lm_pruned = k2.do_rnnt_pruning(
+                    am=am,
+                    lm=lm,
+                    ranges=old_ranges,
+                )
+                logits = am_pruned + lm_pruned
 
-                logits_old = logits.masked_fill(mask, 0.0)
-
-                loss = k2.rnnt_loss(
-                    logits=logits_old,
+                loss = k2.rnnt_loss_pruned(
+                    logits=logits.float(),
                     symbols=symbols,
+                    ranges=old_ranges,
                     termination_symbol=terminal_symbol,
                     boundary=boundary,
                     reduction="none",
