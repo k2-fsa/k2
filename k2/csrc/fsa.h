@@ -187,12 +187,12 @@ struct DenseFsaVec {
 std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec);
 
 /*
-  Create an FSA from a Tensor.  The Tensor t is expected to be an N by 4 tensor of
-  int32_t, where N is the number of arcs (the format is src_state, dest_state,
-  symbol, cost).  The cost is not really an int32_t, it is a float.  This code
-  will print an error message and output 'true' to 'error', and return an empty
-  FSA (with no states or arcs) if t was not interpretable as a valid FSA.
-  These requirements for a valid FSA are:
+  Create an FSA from a Tensor.  The Tensor t is expected to be an N by 4 tensor
+  of int32_t, where N is the number of arcs (the format is src_state,
+  dest_state, symbol, cost).  The cost is not really an int32_t, it is a float.
+  This code will print an error message and output 'true' to 'error', and return
+  an empty FSA (with no states or arcs) if t was not interpretable as a valid
+  FSA. These requirements for a valid FSA are:
 
     - src_state values on the arcs must be non-decreasing
     - all arcs with -1 as the label must be to a single state (call this
@@ -333,9 +333,7 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error);
                        refer to a part of the `values` array of
                        the input `vec`.
  */
-inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) {
-  return vec.Index(0, i);
-}
+inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
 
 /*
   Create an FsaVec from a list of Fsas.  Caution: Fsa and FsaVec are really
@@ -384,19 +382,41 @@ int32_t GetFsaBasicProperties(const Fsa &fsa);
 void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
                               int32_t *tot_properties_out);
 
-// Return weights of `arcs` as a Tensor that shares the same memory
-// location
-Tensor WeightsOfArcsAsTensor(const Array1<Arc> &arcs);
-
 // Return weights of `arcs` as an Array1<float>; this will not share the same
 // memory location because Array1 does not support a stride.  However
 // it would be possible to get it as an Array2.
 inline Array1<float> WeightsOfArcsAsArray1(const Array1<Arc> &arcs) {
-  return Array1<float>(WeightsOfArcsAsTensor(arcs));
+  ContextPtr c = arcs.Context();
+  const Arc *arc_data = arcs.Data();
+  Array1<float> weights(c, arcs.Dim());
+  const float *ptr = reinterpret_cast<const float *>(arc_data);
+  float *weights_data = weights.Data();
+  int32_t stride = 4;
+  K2_EVAL(
+      c, arcs.Dim(), lambda_get_weights,
+      (int32_t i)->void { weights_data[i] = ptr[i * stride + 3]; });
+  return weights;
 }
 
 inline Array1<float> WeightsOfFsaAsArray1(const Ragged<Arc> &fsa) {
-  return Array1<float>(WeightsOfArcsAsTensor(fsa.values));
+  return WeightsOfArcsAsArray1(fsa.values);
+}
+
+inline Array1<int32_t> LabelsOfArcsAsArray1(const Array1<Arc> &arcs) {
+  ContextPtr c = arcs.Context();
+  const Arc *arc_data = arcs.Data();
+  Array1<int32_t> labels(c, arcs.Dim());
+  const int32_t *ptr = reinterpret_cast<const int32_t *>(arc_data);
+  int32_t *labels_data = labels.Data();
+  int32_t stride = 4;
+  K2_EVAL(
+      c, arcs.Dim(), lambda_get_labels,
+      (int32_t i)->void { labels_data[i] = ptr[i * stride + 3]; });
+  return labels;
+}
+
+inline Array1<int32_t> LabelsOfFsaAsArray1(const Ragged<Arc> &fsa) {
+  return LabelsOfArcsAsArray1(fsa.values);
 }
 
 }  // namespace k2

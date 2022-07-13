@@ -21,7 +21,12 @@
 
 #include <memory>
 
+#include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/ragged.h"
+#include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/rnnt_decode.h"
+#include "k2/csrc/torch_util.h"
 #include "torch/script.h"
 
 namespace k2 {
