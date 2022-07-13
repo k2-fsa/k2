@@ -36,6 +36,7 @@ import glob
 import os
 import setuptools
 import shutil
+from subprocess import DEVNULL, check_call
 import sys
 
 from pathlib import Path
@@ -65,7 +66,7 @@ if cmake_path is None:
 
 print(f'cmake_path: {cmake_path}')
 
-ret = os.system('cmake --version')
+ret = check_call(['cmake', '--version'], stdout=DEVNULL, stderr=DEVNULL)
 if ret != 0:
     raise Exception('Failed to get CMake version')
 
