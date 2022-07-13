@@ -95,20 +95,26 @@ class TestRaggedOps(unittest.TestCase):
             src = k2.RaggedTensor(s).to(device)
             value = random.randint(0, 1000)
             ans = src.pad('constant', value)
-            expected = torch.ones(
-                (5, 4), dtype=torch.int32, device=device) * value
-            expected[0, 0] = 1
-            expected[0, 1] = 2
-            expected[1, 0] = 3
-            expected[3, 0] = 4
-            expected[3, 1] = 5
-            expected[3, 2] = 6
-            expected[4, 0] = 7
-            expected[4, 1] = 8
-            expected[4, 2] = 9
-            expected[4, 3] = 10
+            expected = torch.tensor(
+                [[1, 2, value, value],
+                 [3, value, value, value],
+                 [value, value, value, value],
+                 [4, 5, 6, value],
+                 [7, 8, 9, 10]], dtype=torch.int32, device=device)
 
             assert torch.all(torch.eq(ans, expected))
+
+    def test_pad_empty(self):
+        s = '''
+            [ [ ] [ ] [ ] ]
+        '''
+        for device in self.devices:
+            src = k2.RaggedTensor(s).to(device)
+            value = random.randint(0, 1000)
+            ans = src.pad('constant', value)
+            assert ans.numel() == 0
+            assert ans.size() == (3, 0)
+
 
     def test_pad_float(self):
         s = '''
@@ -118,19 +124,12 @@ class TestRaggedOps(unittest.TestCase):
             src = k2.RaggedTensor(s).to(device)
             value = random.random() * 10
             ans = src.pad('constant', value)
-            expected = torch.ones(
-                (5, 4), dtype=torch.int32, device=device) * value
-            expected[0, 0] = 1.0
-            expected[0, 1] = 2.0
-            expected[1, 0] = 3.0
-            expected[3, 0] = 4.0
-            expected[3, 1] = 5.0
-            expected[3, 2] = 6.0
-            expected[4, 0] = 7.0
-            expected[4, 1] = 8.0
-            expected[4, 2] = 9.0
-            expected[4, 3] = 10.0
-
+            expected = torch.tensor(
+                [[1.0, 2.0, value, value],
+                 [3.0, value, value, value],
+                 [value, value, value, value],
+                 [4.0, 5.0, 6.0, value],
+                 [7.0, 8.0, 9.0, 10.0]], dtype=torch.float32, device=device)
             assert torch.allclose(ans, expected)
 
     def test_pad_replicate(self):

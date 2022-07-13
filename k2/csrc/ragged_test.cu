@@ -3016,6 +3016,20 @@ static void TestPadRagged() {
                                  100, 100, 100, 100, 5, 6, 7, 8};
       CheckArrayData(dst, expected);
     }
+    {
+      Ragged<T> src(c, "[ [ ] [ ] [ ] ]");
+      T padding_value = 100;
+      Array2<T> res = PadRagged(src, "constant", padding_value);
+      Array1<T> dst = res.Flatten();
+      K2_CHECK_EQ(dst.Dim(), 0);
+    }
+    {
+      Ragged<T> src(c, "[ [ ] [ ] [ ] ]");
+      T padding_value = 100;
+      Array2<T> res = PadRagged(src, "replicate", padding_value);
+      Array1<T> dst = res.Flatten();
+      K2_CHECK_EQ(dst.Dim(), 0);
+    }
   }
 }
 
