@@ -18,6 +18,8 @@
 
 #include <gtest/gtest.h>
 
+#include <vector>
+
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/test_utils.h"
