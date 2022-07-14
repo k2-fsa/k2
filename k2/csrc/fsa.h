@@ -391,7 +391,7 @@ inline Array1<float> WeightsOfArcsAsArray1(const Array1<Arc> &arcs) {
   Array1<float> weights(c, arcs.Dim());
   const float *ptr = reinterpret_cast<const float *>(arc_data);
   float *weights_data = weights.Data();
-  int32_t stride = 4;
+  int32_t stride = 4;  // Arc has 4 members
   K2_EVAL(
       c, arcs.Dim(), lambda_get_weights,
       (int32_t i)->void { weights_data[i] = ptr[i * stride + 3]; });
@@ -408,10 +408,10 @@ inline Array1<int32_t> LabelsOfArcsAsArray1(const Array1<Arc> &arcs) {
   Array1<int32_t> labels(c, arcs.Dim());
   const int32_t *ptr = reinterpret_cast<const int32_t *>(arc_data);
   int32_t *labels_data = labels.Data();
-  int32_t stride = 4;
+  int32_t stride = 4;  // Arc has 4 members
   K2_EVAL(
       c, arcs.Dim(), lambda_get_labels,
-      (int32_t i)->void { labels_data[i] = ptr[i * stride + 3]; });
+      (int32_t i)->void { labels_data[i] = ptr[i * stride + 2]; });
   return labels;
 }
 

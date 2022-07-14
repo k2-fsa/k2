@@ -120,4 +120,36 @@ TEST(FsaVecIO, FromAndToTensor) {
   }
 }
 
+TEST(FsaArcs, GetLabelsAndWeights) {
+  // src_state dst_state label cost
+  std::string s1 = R"(0 1 1 1
+    0 2 2 2
+    1 3 -1 1
+    1 2 2 2
+    2 3 -1 3
+    3
+  )";
+
+  std::string s2 = R"(0 1 1 1.5
+    1 2 2 2.5
+    2 3 -1 3.5
+    3
+  )";
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Fsa fsa1 = FsaFromString(s1);
+    Fsa fsa2 = FsaFromString(s2);
+
+    Fsa *fsa_array[] = {&fsa1, &fsa2};
+    FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+    fsa_vec = fsa_vec.To(context);
+    auto labels = LabelsOfFsaAsArray1(fsa_vec);
+    std::vector<int32_t> expected_labels = {1, 2, -1, 2, -1, 1, 2, -1};
+    CheckArrayData(labels, expected_labels);
+
+    auto weights = WeightsOfFsaAsArray1(fsa_vec);
+    std::vector<float> expected_weights = {1, 2, 1, 2, 3, 1.5, 2.5, 3.5};
+    CheckArrayData(weights, expected_weights);
+  }
+}
+
 }  // namespace k2

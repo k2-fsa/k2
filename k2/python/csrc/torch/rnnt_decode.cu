@@ -35,7 +35,7 @@
 namespace k2 {
 static void PybindRnntDecodingConfig(py::module &m) {
   using PyClass = rnnt_decoding::RnntDecodingConfig;
-  py::class_<PyClass> config(m, "RnntDecodingConfig");
+  py::class_<PyClass, std::shared_ptr<PyClass>> config(m, "RnntDecodingConfig");
   config.def(py::init<int32_t, int32_t, double, int32_t, int32_t>(),
              py::arg("vocab_size"), py::arg("decoder_history_len"),
              py::arg("beam"), py::arg("max_states"), py::arg("max_contexts"),

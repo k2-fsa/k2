@@ -21,6 +21,7 @@
 
 #include <memory>
 
+// TODO(WeiKang): Move the following lines to k2/csrc/all.h
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/ragged.h"
