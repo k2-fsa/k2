@@ -51,6 +51,11 @@ To build a release version, use:
   # It should print /some/path/k2/build_release/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
 
+  # If you are going to install https://github.com/k2-fsa/sherpa after installing k2
+  # Please run
+  export K2_INSTALL_PREFIX=/some/path/k2/build_release
+  # before you install sherpa
+
 To build a debug version, use:
 
 .. code-block:: bash
@@ -70,6 +75,11 @@ To build a debug version, use:
   python3 -c "import torch; import _k2; print(_k2.__file__)"
   # It should print /some/path/k2/build_debug/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
+
+  # If you are going to install https://github.com/k2-fsa/sherpa after installing k2
+  # Please run
+  export K2_INSTALL_PREFIX=/some/path/k2/build_debug
+  # before you install sherpa
 
 .. HINT::
 
