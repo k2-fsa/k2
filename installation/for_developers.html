@@ -127,6 +127,11 @@ python3 -c <span class="s2">&quot;import k2; print(k2.__file__)&quot;</span>
 python3 -c <span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
 <span class="c1"># It should print /some/path/k2/build_release/lib/_k2.cpython-38-x86_64-linux-gnu.so</span>
 <span class="c1"># (I assume that you&#39;re using Python 3.8, so there is a string 38 above)</span>
+
+<span class="c1"># If you are going to install https://github.com/k2-fsa/sherpa after installing k2</span>
+<span class="c1"># Please run</span>
+<span class="nb">export</span> <span class="nv">K2_INSTALL_PREFIX</span><span class="o">=</span>/some/path/k2/build_release
+<span class="c1"># before you install sherpa</span>
 </pre></div>
 </div>
 <p>To build a debug version, use:</p>
@@ -145,6 +150,11 @@ python3 -c <span class="s2">&quot;import k2; print(k2.__file__)&quot;</span>
 python3 -c <span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
 <span class="c1"># It should print /some/path/k2/build_debug/lib/_k2.cpython-38-x86_64-linux-gnu.so</span>
 <span class="c1"># (I assume that you&#39;re using Python 3.8, so there is a string 38 above)</span>
+
+<span class="c1"># If you are going to install https://github.com/k2-fsa/sherpa after installing k2</span>
+<span class="c1"># Please run</span>
+<span class="nb">export</span> <span class="nv">K2_INSTALL_PREFIX</span><span class="o">=</span>/some/path/k2/build_debug
+<span class="c1"># before you install sherpa</span>
 </pre></div>
 </div>
 <div class="admonition hint">
