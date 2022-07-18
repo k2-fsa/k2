@@ -86,6 +86,7 @@ torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
         auto ans_a = ans.accessor<scalar_t, 1>();
 
         int t_offset = (modified ? -1 : 0);
+        float py_scale = (modified ? 2 : 1);
         for (int b = 0; b < B; b++) {
           int s_begin = boundary_a[b][0];
           int t_begin = boundary_a[b][1];
@@ -103,7 +104,7 @@ torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
           }
           for (int t = t_begin + 1; t <= t_end; ++t)
             p_a[b][s_begin][t] =
-                p_a[b][s_begin][t - 1] + py_a[b][s_begin][t - 1];
+                p_a[b][s_begin][t - 1] + py_scale * py_a[b][s_begin][t - 1];
           for (int s = s_begin + 1; s <= s_end; ++s) {
             scalar_t p_s_t1 = p_a[b][s][t_begin];
             for (int t = t_begin + 1; t <= t_end; ++t) {
@@ -114,7 +115,7 @@ torch::Tensor MutualInformationCpu(torch::Tensor px, torch::Tensor py,
               // .. which obtains p_a[b][s][t - 1] from a register.
               p_a[b][s][t] = p_s_t1 = LogAdd<scalar_t>()(
                   p_a[b][s - 1][t + t_offset] + px_a[b][s - 1][t + t_offset],
-                  p_s_t1 + py_a[b][s][t - 1]);
+                  p_s_t1 + py_scale * py_a[b][s][t - 1]);
             }
           }
           ans_a[b] = p_a[b][s_end][t_end];
@@ -175,6 +176,7 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
         auto ans_grad_a = ans_grad.accessor<scalar_t, 1>();
         auto boundary_a = boundary.accessor<int64_t, 2>();
         int t_offset = (modified ? -1 : 0);
+        float py_scale = (modified ? 2 : 1);
 
         for (int b = 0; b < B; b++) {
           int s_begin = boundary_a[b][0];
@@ -190,7 +192,7 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
               // The statement we are backpropagating here is:
               // p_a[b][s][t] = LogAdd(
               //    p_a[b][s - 1][t + t_offset] + px_a[b][s - 1][t + t_offset],
-              //    p_a[b][s][t - 1] + py_a[b][s][t - 1]);
+              //    p_a[b][s][t - 1] + py_scale * py_a[b][s][t - 1]);
               // .. which obtains p_a[b][s][t - 1] from a register.
               scalar_t term1 = p_a[b][s - 1][t + t_offset] +
                                px_a[b][s - 1][t + t_offset],
@@ -211,17 +213,17 @@ std::vector<torch::Tensor> MutualInformationBackwardCpu(
               }
               px_grad_a[b][s - 1][t + t_offset] = term1_grad;
               p_grad_a[b][s - 1][t + t_offset] = term1_grad;
-              py_grad_a[b][s][t - 1] = term2_grad;
-              p_grad_a[b][s][t - 1] += term2_grad;
+              py_grad_a[b][s][t - 1] = py_scale * term2_grad;
+              p_grad_a[b][s][t - 1] += py_scale * term2_grad;
             }
           }
           for (int t = t_end; t > t_begin; --t) {
             // Backprop for:
             // p_a[b][s_begin][t] =
-            //     p_a[b][s_begin][t - 1] + py_a[b][s_begin][t - 1];
+            //     p_a[b][s_begin][t - 1] + py_scale * py_a[b][s_begin][t - 1];
             scalar_t this_p_grad = p_grad_a[b][s_begin][t];
-            p_grad_a[b][s_begin][t - 1] += this_p_grad;
-            py_grad_a[b][s_begin][t - 1] = this_p_grad;
+            p_grad_a[b][s_begin][t - 1] += py_scale * this_p_grad;
+            py_grad_a[b][s_begin][t - 1] = py_scale * this_p_grad;
           }
           if (!modified) {
             for (int s = s_end; s > s_begin; --s) {
