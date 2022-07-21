@@ -53,8 +53,7 @@ static void PybindTopSort(py::module &m) {
         if (need_arc_map) tensor = ToTorch(arc_map);
         return std::make_pair(sorted, tensor);
       },
-      py::arg("src"), py::arg("need_arc_map") = true,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("need_arc_map") = true);
 }
 
 static void PybindLinearFsa(py::module &m) {
@@ -64,17 +63,13 @@ static void PybindLinearFsa(py::module &m) {
         DeviceGuard guard(labels.any.Context());
         return LinearFsas(labels.any.Specialize<int32_t>());
       },
-      py::arg("labels"), py::arg("device") = py::none(),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("labels"), py::arg("device") = py::none());
 
   m.def(
       "linear_fsa",
       [](const std::vector<int32_t> &labels,
          py::object device = py::str("cpu")) -> Fsa {
         std::string device_str = device.is_none() ? "cpu" : py::str(device);
-        // We can not run python code with GIL released, so the above line
-        // should not be included into gil release scope
-        py::gil_scoped_release release;
         ContextPtr context = GetContext(torch::Device(device_str));
         DeviceGuard guard(context);
         Array1<int32_t> array(context, labels);
@@ -87,9 +82,6 @@ static void PybindLinearFsa(py::module &m) {
       [](const std::vector<std::vector<int32_t>> &labels,
          py::object device = py::str("cpu")) -> FsaVec {
         std::string device_str = device.is_none() ? "cpu" : py::str(device);
-        // We can not run python code with GIL released, so the above line
-        // should not be included into gil release scope
-        py::gil_scoped_release release;
         ContextPtr context = GetContext(torch::Device(device_str));
         DeviceGuard guard(context);
         Ragged<int32_t> ragged = CreateRagged2<int32_t>(labels).To(context);
@@ -157,7 +149,7 @@ static void PybindIntersect(py::module &m) {
       },
       py::arg("a_fsas"), py::arg("properties_a"), py::arg("b_fsas"),
       py::arg("properties_b"), py::arg("treat_epsilons_specially") = true,
-      py::arg("need_arc_map") = true, py::call_guard<py::gil_scoped_release>(),
+      py::arg("need_arc_map") = true,
       R"(
       If treat_epsilons_specially it will treat epsilons as epsilons; otherwise
       it will treat them as a real symbol.
@@ -200,8 +192,7 @@ static void PybindIntersectDevice(py::module &m) {
       },
       py::arg("a_fsas"), py::arg("properties_a"), py::arg("b_fsas"),
       py::arg("properties_b"), py::arg("b_to_a_map"),
-      py::arg("need_arc_map") = true, py::arg("sorted_match_a") = false,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("need_arc_map") = true, py::arg("sorted_match_a") = false);
 }
 
 static void PybindIntersectDensePruned(py::module &m) {
@@ -223,7 +214,7 @@ static void PybindIntersectDensePruned(py::module &m) {
       },
       py::arg("a_fsas"), py::arg("b_fsas"), py::arg("search_beam"),
       py::arg("output_beam"), py::arg("min_active_states"),
-      py::arg("max_active_states"), py::call_guard<py::gil_scoped_release>());
+      py::arg("max_active_states"));
 }
 
 static void PybindIntersectDense(py::module &m) {
@@ -254,8 +245,7 @@ static void PybindIntersectDense(py::module &m) {
       },
       py::arg("a_fsas"), py::arg("b_fsas"), py::arg("a_to_b_map"),
       py::arg("output_beam"), py::arg("max_states") = 15000000,
-      py::arg("max_arcs") = 1073741824 /* 2^30 */,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("max_arcs") = 1073741824 /* 2^30 */);
 }
 
 static void PybindConnect(py::module &m) {
@@ -272,8 +262,7 @@ static void PybindConnect(py::module &m) {
         if (need_arc_map) tensor = ToTorch(arc_map);
         return std::make_pair(out, tensor);
       },
-      py::arg("src"), py::arg("need_arc_map") = true,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("need_arc_map") = true);
 }
 
 static void PybindArcSort(py::module &m) {
@@ -289,8 +278,7 @@ static void PybindArcSort(py::module &m) {
         if (need_arc_map) tensor = ToTorch(arc_map);
         return std::make_pair(out, tensor);
       },
-      py::arg("src"), py::arg("need_arc_map") = true,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("need_arc_map") = true);
 }
 
 static void PybindShortestPath(py::module &m) {
@@ -312,8 +300,7 @@ static void PybindShortestPath(py::module &m) {
         FsaVec out = FsaVecFromArcIndexes(fsas, best_path_arc_indexes);
         return std::make_pair(out, RaggedAny(best_path_arc_indexes.Generic()));
       },
-      py::arg("fsas"), py::arg("entering_arcs"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("entering_arcs"));
 }
 
 static void PybindAddEpsilonSelfLoops(py::module &m) {
@@ -335,8 +322,7 @@ static void PybindAddEpsilonSelfLoops(py::module &m) {
         if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_pair(out, arc_map_tensor);
       },
-      py::arg("src"), py::arg("need_arc_map") = true,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("need_arc_map") = true);
 }
 
 static void PybindUnion(py::module &m) {
@@ -352,8 +338,7 @@ static void PybindUnion(py::module &m) {
         if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_pair(out, arc_map_tensor);
       },
-      py::arg("fsas"), py::arg("need_arc_map") = true,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("need_arc_map") = true);
 }
 
 static void PybindRemoveEpsilon(py::module &m) {
@@ -366,7 +351,7 @@ static void PybindRemoveEpsilon(py::module &m) {
         RemoveEpsilonHost(src, &dest, &arc_map);
         return std::make_pair(dest, RaggedAny(arc_map.Generic()));
       },
-      py::arg("src"), py::call_guard<py::gil_scoped_release>());
+      py::arg("src"));
   m.def(
       "remove_epsilon_device",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, RaggedAny> {
@@ -376,7 +361,7 @@ static void PybindRemoveEpsilon(py::module &m) {
         RemoveEpsilonDevice(src, &dest, &arc_map);
         return std::make_pair(dest, RaggedAny(arc_map.Generic()));
       },
-      py::arg("src"), py::call_guard<py::gil_scoped_release>());
+      py::arg("src"));
   m.def(
       "remove_epsilon",
       [](FsaOrVec &src, int32_t properties) -> std::pair<FsaOrVec, RaggedAny> {
@@ -386,8 +371,7 @@ static void PybindRemoveEpsilon(py::module &m) {
         RemoveEpsilon(src, properties, &dest, &arc_map);
         return std::make_pair(dest, RaggedAny(arc_map.Generic()));
       },
-      py::arg("src"), py::arg("properties"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("properties"));
   m.def(
       "remove_epsilon_and_add_self_loops",
       [](FsaOrVec &src, int32_t properties) -> std::pair<FsaOrVec, RaggedAny> {
@@ -397,8 +381,7 @@ static void PybindRemoveEpsilon(py::module &m) {
         RemoveEpsilonAndAddSelfLoops(src, properties, &dest, &arc_map);
         return std::make_pair(dest, RaggedAny(arc_map.Generic()));
       },
-      py::arg("src"), py::arg("properties"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("properties"));
 }
 
 static void PybindDeterminize(py::module &m) {
@@ -421,8 +404,7 @@ static void PybindDeterminize(py::module &m) {
         Determinize(src, weight_pushing_type, &dest, &arc_map);
         return std::make_pair(dest, RaggedAny(arc_map.Generic()));
       },
-      py::arg("src"), py::arg("weight_pushing_type"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("weight_pushing_type"));
 }
 
 static void PybindClosure(py::module &m) {
@@ -437,8 +419,7 @@ static void PybindClosure(py::module &m) {
         if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_pair(out, arc_map_tensor);
       },
-      py::arg("src"), py::arg("need_arc_map") = true,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("need_arc_map") = true);
 }
 
 static void PybindInvert(py::module &m) {
@@ -458,8 +439,7 @@ static void PybindInvert(py::module &m) {
         if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_tuple(dest, dest_aux_labels, arc_map_tensor);
       },
-      py::arg("src"), py::arg("src_aux_labels"), py::arg("need_arc_map"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("src_aux_labels"), py::arg("need_arc_map"));
 }
 
 static void PybindRemoveEpsilonSelfLoops(py::module &m) {
@@ -476,8 +456,7 @@ static void PybindRemoveEpsilonSelfLoops(py::module &m) {
         if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_pair(ans, arc_map_tensor);
       },
-      py::arg("src"), py::arg("need_arc_map") = true,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("need_arc_map") = true);
 }
 
 /*static*/ void PybindExpandArcs(py::module &m) {
@@ -621,7 +600,6 @@ static void PybindRemoveEpsilonSelfLoops(py::module &m) {
         return std::make_tuple(ans, ans_labels, ToTorch(fsas_arc_map));
       },
       py::arg("fsas"), py::arg("ragged_labels"),
-      py::call_guard<py::gil_scoped_release>(),
       R"(
     This function expands the arcs in an Fsa or FsaVec so that we can
     turn a list of attributes stored as ragged tensors into normal, linear
@@ -668,7 +646,6 @@ static void PybindFixFinalLabels(py::module &m) {
         }
       },
       py::arg("fsas"), py::arg("labels"),
-      py::call_guard<py::gil_scoped_release>(),
       R"(
        This function modifies, in-place, labels attached to arcs, so
       that they satisfy constraints on the placement of -1's: namely,
@@ -698,8 +675,7 @@ static void PybindReplaceFsa(py::module &m) {
         index_map_tensor = ToTorch(arc_map_index);
         return std::make_tuple(out, src_map_tensor, index_map_tensor);
       },
-      py::arg("src"), py::arg("index"), py::arg("symbol_begin_range"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("index"), py::arg("symbol_begin_range"));
 }
 
 static void PybindCtcGraph(py::module &m) {
@@ -714,8 +690,7 @@ static void PybindCtcGraph(py::module &m) {
         torch::Tensor tensor = ToTorch(aux_labels);
         return std::make_pair(graph, tensor);
       },
-      py::arg("symbols"), py::arg("modified") = false,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("symbols"), py::arg("modified") = false);
 }
 
 static void PybindCtcTopo(py::module &m) {
@@ -724,9 +699,6 @@ static void PybindCtcTopo(py::module &m) {
       [](int32_t max_token, py::object device = py::str("cpu"),
          bool modified = false) -> std::pair<Fsa, torch::Tensor> {
         std::string device_str = device.is_none() ? "cpu" : py::str(device);
-        // We can not run python code with GIL released, so the above line
-        // should not be included into gil release scope
-        py::gil_scoped_release release;
         ContextPtr context = GetContext(torch::Device(device_str));
         DeviceGuard guard(context);
         Array1<int32_t> aux_labels;
@@ -744,9 +716,6 @@ static void PybindTrivialGraph(py::module &m) {
       [](int32_t max_token,
          py::object device = py::str("cpu")) -> std::pair<Fsa, torch::Tensor> {
         std::string device_str = device.is_none() ? "cpu" : py::str(device);
-        // We can not run python code with GIL released, so the above line
-        // should not be included into gil release scope
-        py::gil_scoped_release release;
         ContextPtr context = GetContext(torch::Device(device_str));
         DeviceGuard guard(context);
         Array1<int32_t> aux_labels;
@@ -775,8 +744,7 @@ static void PybindLevenshteinGraph(py::module &m) {
         return std::make_tuple(graph, aux_labels_tensor, score_offsets_tensor);
       },
       py::arg("symbols"), py::arg("ins_del_score") = -0.501,
-      py::arg("need_score_offset") = true,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("need_score_offset") = true);
 }
 
 static void PybindReverse(py::module &m) {
@@ -794,8 +762,7 @@ static void PybindReverse(py::module &m) {
         if (need_arc_map) tensor = ToTorch(arc_map);
         return std::make_pair(reversed, tensor);
       },
-      py::arg("src"), py::arg("need_arc_map") = true,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("src"), py::arg("need_arc_map") = true);
 }
 
 }  // namespace k2

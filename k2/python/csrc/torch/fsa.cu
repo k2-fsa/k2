@@ -49,7 +49,7 @@ static void PybindFsaBasicProperties(py::module &m) {
         DeviceGuard guard(fsa.Context());
         return GetFsaBasicProperties(fsa);
       },
-      py::arg("fsa"), py::call_guard<py::gil_scoped_release>());
+      py::arg("fsa"));
 
   m.def(
       "get_fsa_vec_basic_properties",
@@ -60,7 +60,7 @@ static void PybindFsaBasicProperties(py::module &m) {
         GetFsaVecBasicProperties(fsa_vec, &properties, &tot_properties);
         return tot_properties;
       },
-      py::arg("fsa_vec"), py::call_guard<py::gil_scoped_release>());
+      py::arg("fsa_vec"));
   // We don't wrap the flag values from C++ to Python, we just reproduce in
   // Python directly.
 }
@@ -87,7 +87,7 @@ static void PybindFsaUtil(py::module &m) {
         K2_CHECK(!error);
         return fsa;
       },
-      py::arg("tensor"), py::call_guard<py::gil_scoped_release>());
+      py::arg("tensor"));
 
   m.def(
       "fsa_to_tensor",
@@ -104,7 +104,7 @@ static void PybindFsaUtil(py::module &m) {
           return {};
         }
       },
-      py::arg("fsa"), py::call_guard<py::gil_scoped_release>());
+      py::arg("fsa"));
 
   m.def(
       "fsa_to_str",
@@ -130,8 +130,7 @@ static void PybindFsaUtil(py::module &m) {
       },
       py::arg("fsa"), py::arg("openfst") = false,
       py::arg("extra_labels") = py::none(),
-      py::arg("ragged_labels") = py::none(),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("ragged_labels") = py::none());
 
   m.def(
       "fsa_from_str",
@@ -156,7 +155,6 @@ static void PybindFsaUtil(py::module &m) {
       },
       py::arg("s"), py::arg("num_extra_labels") = 0,
       py::arg("num_ragged_labels"), py::arg("openfst") = false,
-      py::call_guard<py::gil_scoped_release>(),
       "It returns a 3-tuple (fsa, extra_labels, ragged_labels).  "
       "`fsa` is the Fsa with 2 axes; `extra_labels` is None if num_extra_labels"
       " is 0, else a 2-D tensor of dtype torch.int32 and shape "
@@ -171,7 +169,7 @@ static void PybindFsaUtil(py::module &m) {
         DeviceGuard guard(fsa.Context());
         return FsaToFsaVec(fsa);
       },
-      py::arg("fsa"), py::call_guard<py::gil_scoped_release>());
+      py::arg("fsa"));
 
   m.def(
       "get_fsa_vec_element",
@@ -179,7 +177,7 @@ static void PybindFsaUtil(py::module &m) {
         DeviceGuard guard(vec.Context());
         return GetFsaVecElement(vec, i);
       },
-      py::arg("vec"), py::arg("i"), py::call_guard<py::gil_scoped_release>());
+      py::arg("vec"), py::arg("i"));
 
   m.def(
       "create_fsa_vec",
@@ -187,7 +185,7 @@ static void PybindFsaUtil(py::module &m) {
         DeviceGuard guard(fsas[0]->Context());
         return CreateFsaVec(fsas.size(), fsas.data());
       },
-      py::arg("fsas"), py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"));
 
   // returns RaggedAny with dtype torch.int32
   m.def(
@@ -196,8 +194,7 @@ static void PybindFsaUtil(py::module &m) {
         DeviceGuard guard(fsas.Context());
         return RaggedAny(GetStateBatches(fsas, transpose).Generic());
       },
-      py::arg("fsas"), py::arg("transpose") = true,
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("transpose") = true);
 
   m.def(
       "get_dest_states",
@@ -206,8 +203,7 @@ static void PybindFsaUtil(py::module &m) {
         Array1<int32_t> ans = GetDestStates(fsas, as_idx01);
         return ToTorch(ans);
       },
-      py::arg("fsas"), py::arg("as_idx01"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("as_idx01"));
 
   m.def(
       "get_incoming_arcs",
@@ -216,8 +212,7 @@ static void PybindFsaUtil(py::module &m) {
         Array1<int32_t> dest_states_array = FromTorch<int32_t>(dest_states);
         return RaggedAny(GetIncomingArcs(fsas, dest_states_array).Generic());
       },
-      py::arg("fsas"), py::arg("dest_states"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("dest_states"));
 
   m.def(
       "get_entering_arc_index_batches",
@@ -229,8 +224,7 @@ static void PybindFsaUtil(py::module &m) {
                              state_batches.any.Specialize<int32_t>())
                              .Generic());
       },
-      py::arg("fsas"), py::arg("incoming_arcs"), py::arg("state_batches"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("incoming_arcs"), py::arg("state_batches"));
 
   m.def(
       "get_leaving_arc_index_batches",
@@ -240,8 +234,7 @@ static void PybindFsaUtil(py::module &m) {
                              fsas, state_batches.any.Specialize<int32_t>())
                              .Generic());
       },
-      py::arg("fsas"), py::arg("state_batches"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("state_batches"));
 
   m.def(
       "is_rand_equivalent",
@@ -263,7 +256,7 @@ static void PybindFsaUtil(py::module &m) {
       py::arg("a"), py::arg("b"), py::arg("log_semiring"),
       py::arg("beam") = k2host::kFloatInfinity,
       py::arg("treat_epsilons_specially") = true, py::arg("delta") = 1e-6,
-      py::arg("npath") = 100, py::call_guard<py::gil_scoped_release>());
+      py::arg("npath") = 100);
 }
 
 template <typename T>
@@ -293,8 +286,7 @@ static void PybindGetForwardScores(py::module &m, const char *name) {
         return std::make_pair(ToTorch(scores), entering_arcs_tensor);
       },
       py::arg("fsas"), py::arg("state_batches"),
-      py::arg("entering_arc_batches"), py::arg("log_semiring"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("entering_arc_batches"), py::arg("log_semiring"));
 }
 
 template <typename T>
@@ -328,8 +320,7 @@ static void PybindBackpropGetForwardScores(py::module &m, const char *name) {
       },
       py::arg("fsas"), py::arg("state_batches"), py::arg("leaving_arc_batches"),
       py::arg("log_semiring"), py::arg("entering_arcs"),
-      py::arg("forward_scores"), py::arg("forward_scores_deriv"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("forward_scores"), py::arg("forward_scores_deriv"));
 }
 
 template <typename T>
@@ -346,7 +337,7 @@ static void PybindGetBackwardScores(py::module &m, const char *name) {
         return ToTorch(ans);
       },
       py::arg("fsas"), py::arg("state_batches"), py::arg("leaving_arc_batches"),
-      py::arg("log_semiring") = true, py::call_guard<py::gil_scoped_release>());
+      py::arg("log_semiring") = true);
 }
 
 template <typename T>
@@ -371,8 +362,7 @@ static void PybindBackpropGetBackwardScores(py::module &m, const char *name) {
       },
       py::arg("fsas"), py::arg("state_batches"),
       py::arg("entering_arc_batches"), py::arg("log_semiring"),
-      py::arg("backward_scores"), py::arg("backward_scores_deriv"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("backward_scores"), py::arg("backward_scores_deriv"));
 }
 
 template <typename T>
@@ -385,8 +375,7 @@ static void PybindGetTotScores(py::module &m, const char *name) {
         Array1<T> tot_scores = GetTotScores(fsas, forward_scores_array);
         return ToTorch(tot_scores);
       },
-      py::arg("fsas"), py::arg("forward_scores"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("forward_scores"));
 }
 
 static void PybindDenseFsaVec(py::module &m) {
@@ -410,8 +399,7 @@ static void PybindDenseFsaVec(py::module &m) {
 
         return std::make_unique<DenseFsaVec>(shape, scores_array);
       }),
-      py::arg("scores"), py::arg("row_splits"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("scores"), py::arg("row_splits"));
 
   pyclass.def(
       "dim0", [](PyClass &self) -> int32_t { return self.shape.Dim0(); },
@@ -450,7 +438,7 @@ static void PybindConvertDenseToFsaVec(py::module &m) {
         DeviceGuard guard(dense_fsa_vec.Context());
         return ConvertDenseToFsaVec(dense_fsa_vec);
       },
-      py::arg("dense_fsa_vec"), py::call_guard<py::gil_scoped_release>());
+      py::arg("dense_fsa_vec"));
 }
 
 template <typename T>
@@ -466,8 +454,7 @@ static void PybindGetArcPost(py::module &m, const char *name) {
             GetArcPost<T>(fsas, forward_scores_array, backward_scores_array);
         return ToTorch(arc_post);
       },
-      py::arg("fsas"), py::arg("forward_scores"), py::arg("backward_scores"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("forward_scores"), py::arg("backward_scores"));
 }
 
 template <typename T>
@@ -490,8 +477,7 @@ static void PybindBackpropGetArcPost(py::module &m, const char *name) {
         return std::make_pair(ToTorch(forward_scores_deriv),
                               ToTorch(backward_scores_deriv));
       },
-      py::arg("fsas"), py::arg("incoming_arcs"), py::arg("arc_post_deriv"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("incoming_arcs"), py::arg("arc_post_deriv"));
 }
 
 /* Compute the backward propagation of GetTotScores in tropical semiring.
@@ -609,14 +595,13 @@ template <typename T>
 static void PybindGetTotScoresTropicalBackward(py::module &m,
                                                const char *name) {
   m.def(name, &GetTotScoresTropicalBackward<T>, py::arg("fsas"),
-        py::arg("best_path_arc_indexes"), py::arg("tot_scores_grad"),
-        py::call_guard<py::gil_scoped_release>());
+        py::arg("best_path_arc_indexes"), py::arg("tot_scores_grad"));
 }
 
 template <typename T>
 static void PybindGetTotScoresLogBackward(py::module &m, const char *name) {
   m.def(name, &GetTotScoresLogBackward<T>, py::arg("fsas"), py::arg("arc_post"),
-        py::arg("tot_scores_grad"), py::call_guard<py::gil_scoped_release>());
+        py::arg("tot_scores_grad"));
 }
 
 template <typename T>
@@ -629,8 +614,7 @@ static void PybindGetArcCdf(py::module &m, const char *name) {
         Array1<T> ans = GetArcCdf(fsas, arc_post_array);
         return ToTorch(ans);
       },
-      py::arg("fsas"), py::arg("arc_post"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("fsas"), py::arg("arc_post"));
 }
 
 template <typename T>
@@ -649,8 +633,7 @@ static void PybindRandomPaths(py::module &m, const char *name) {
         return RaggedAny(ans.Generic());
       },
       py::arg("fsas"), py::arg("arc_cdf"), py::arg("num_paths"),
-      py::arg("tot_scores"), py::arg("state_batches"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("tot_scores"), py::arg("state_batches"));
 }
 
 template <typename T>
@@ -670,7 +653,7 @@ static void PybindPruneOnArcPost(py::module &m, const char *name) {
         return std::make_pair(ans, arc_map_tensor);
       },
       py::arg("fsas"), py::arg("arc_post"), py::arg("threshold_prob"),
-      py::arg("need_arc_map") = true, py::call_guard<py::gil_scoped_release>());
+      py::arg("need_arc_map") = true);
 }
 
 static void PybindRandomFsa(py::module &m) {
@@ -681,7 +664,7 @@ static void PybindRandomFsa(py::module &m) {
         return RandomFsa(acyclic, max_symbol, min_num_arcs, max_num_arcs);
       },
       py::arg("acyclic"), py::arg("max_symbol"), py::arg("min_num_arcs"),
-      py::arg("max_num_arcs"), py::call_guard<py::gil_scoped_release>());
+      py::arg("max_num_arcs"));
 
   m.def(
       "random_fsa_vec",
@@ -692,8 +675,7 @@ static void PybindRandomFsa(py::module &m) {
                             min_num_arcs, max_num_arcs);
       },
       py::arg("min_num_fsas"), py::arg("max_num_fsas"), py::arg("acyclic"),
-      py::arg("max_symbol"), py::arg("min_num_arcs"), py::arg("max_num_arcs"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("max_symbol"), py::arg("min_num_arcs"), py::arg("max_num_arcs"));
 }
 
 }  // namespace k2

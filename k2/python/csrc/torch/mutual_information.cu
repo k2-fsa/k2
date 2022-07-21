@@ -41,8 +41,7 @@ void PybindMutualInformation(py::module &m) {
 #endif
         }
       },
-      py::arg("px"), py::arg("py"), py::arg("boundary"), py::arg("p"),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("px"), py::arg("py"), py::arg("boundary"), py::arg("p"));
 
   m.def(
       "mutual_information_backward",
@@ -65,5 +64,5 @@ void PybindMutualInformation(py::module &m) {
         }
       },
       py::arg("px"), py::arg("py"), py::arg("boundary"), py::arg("p"),
-      py::arg("ans_grad"), py::call_guard<py::gil_scoped_release>());
+      py::arg("ans_grad"));
 }

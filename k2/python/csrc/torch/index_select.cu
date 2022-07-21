@@ -236,7 +236,7 @@ static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
 
 static void IndexSelect(py::module &m) {
   m.def("index_select", &IndexSelectWrapper, py::arg("src"), py::arg("index"),
-        py::arg("default_value") = 0, py::call_guard<py::gil_scoped_release>(),
+        py::arg("default_value") = 0,
         R"(
       Args:
         src:
@@ -257,8 +257,7 @@ static void IndexSelect(py::module &m) {
           - `ans[i] = default_value` if `index[i] == -1`
       )");
   m.def("simple_ragged_index_select", &SimpleRaggedIndexSelectWrapper,
-        py::arg("src"), py::arg("indexes"),
-        py::call_guard<py::gil_scoped_release>());
+        py::arg("src"), py::arg("indexes"));
 }
 
 }  // namespace k2
