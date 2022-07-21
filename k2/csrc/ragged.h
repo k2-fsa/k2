@@ -41,10 +41,10 @@ struct RaggedShapeLayer {
   RaggedShapeLayer() = default;
 
   RaggedShapeLayer(const RaggedShapeLayer &) = default;
-  RaggedShapeLayer &operator=(const RaggedShapeLayer &) = default;
+  RaggedShapeLayer& operator=(const RaggedShapeLayer &) = default;
 
   RaggedShapeLayer(RaggedShapeLayer &&) = default;
-  RaggedShapeLayer &operator=(RaggedShapeLayer &&) = default;
+  RaggedShapeLayer& operator=(RaggedShapeLayer &&) = default;
 
   // Search for "row_splits concept" in utils.h for explanation.  row_splits
   // is required; it must always be nonempty for a RaggedShapeLayer to be valid.
@@ -101,7 +101,9 @@ class RaggedShape {
 
   // Returns the number of elements that a ragged array with this shape would
   // have.
-  int32_t NumElements() const { return TotSize(NumAxes() - 1); }
+  int32_t NumElements() const {
+    return TotSize(NumAxes() - 1);
+  }
 
   /*
     Return the row-splits for axis `axis` with `0 < axis < NumAxes()`.
@@ -234,7 +236,9 @@ class RaggedShape {
 template <typename T, int MAX_DIM>
 struct SmallVec {
   T data[MAX_DIM];
-  __host__ __device__ T operator()(int32_t i) const { return data[i]; }
+  __host__ __device__ T operator()(int32_t i) const {
+    return data[i];
+  }
 };
 
 // call this variable `xxx_row_splits_acc`
@@ -402,23 +406,26 @@ struct Ragged {
     static_assert(std::is_same<T, Any>::value,
                   "generic arrays not supported here");
     K2_CHECK_EQ(values.GetDtype(), DtypeOf<U>::dtype);
-    return *reinterpret_cast<Ragged<U> *>(this);
+    return *reinterpret_cast<Ragged<U>*>(this);
   }
   template <typename U>
   const Ragged<U> &Specialize() const {
     static_assert(std::is_same<T, Any>::value,
                   "generic arrays not supported here");
     K2_CHECK_EQ(values.GetDtype(), DtypeOf<U>::dtype);
-    return *reinterpret_cast<const Ragged<U> *>(this);
+    return *reinterpret_cast<const Ragged<U>*>(this);
   }
 
   // Return a reference to this viewed as `Any` type (for when we
   // want a generic array without type information).
   // Reverse this with Specialize().
-  Ragged<Any> &Generic() { return *reinterpret_cast<Ragged<Any> *>(this); }
-  const Ragged<Any> &Generic() const {
-    return *reinterpret_cast<const Ragged<Any> *>(this);
+  Ragged<Any> &Generic() {
+    return *reinterpret_cast<Ragged<Any>*>(this);
   }
+  const Ragged<Any> &Generic() const {
+    return *reinterpret_cast<const Ragged<Any>*>(this);
+  }
+
 
   /*
     It is an error to call this if this.shape.NumAxes() <= 2.  This will return
@@ -484,42 +491,21 @@ struct Ragged {
   // If T == U, then the Ragged itself is returned; otherwise,
   // a new Ragged is returned.
   //
-#define ToType(type, name)                       \
-  Ragged<type> To##name() const {                \
-    Array1<type> new_values = values.To##name(); \
-    return Ragged<type>(shape, new_values);      \
+#define ToType(type, name)                                  \
+  Ragged<type> To##name() const {                           \
+    Array1<type> new_values = values.To##name();            \
+    return Ragged<type>(shape, new_values);                 \
   }
-  ToType(float, Float) ToType(double, Double) ToType(int32_t, Int)
-      ToType(int64_t, Long)
+ToType(float, Float)
+ToType(double, Double)
+ToType(int32_t, Int)
+ToType(int64_t, Long)
 #undef ToType
 
-      // There is no need to clone the shape because it's a kind of convention
-      // that Array1's that are the row_ids or row_splits of a Ragged object are
-      // not mutable so they can be re-used.
-      Ragged<T> Clone() const {
-    return Ragged<T>(shape, values.Clone());
-  }
-
-  // Convert a ragged tensor with 2 axes into a vector of vector.
-  //
-  // CAUTION: this->NumAxes() must be 2.
-  std::vector<std::vector<T>> ToVecVec() const {
-    K2_CHECK_EQ(NumAxes(), 2);
-    if (Context()->GetDeviceType() == kCuda) {
-      return this->To(GetCpuContext()).ToVecVec();
-    }
-    int32_t dim0 = this->Dim0();
-    std::vector<std::vector<T>> ans(dim0);
-    const int32_t *row_splits_data = RowSplits(1).Data();
-    const T *values_data = values.Data();
-    for (int32_t i = 0; i != dim0; ++i) {
-      int32_t len = row_splits_data[i + 1] - row_splits_data[i];
-      ans[i].resize(len);
-      std::copy(values_data + row_splits_data[i],
-                values_data + row_splits_data[i + 1], ans[i].begin());
-    }
-    return ans;
-  }
+  // There is no need to clone the shape because it's a kind of convention
+  // that Array1's that are the row_ids or row_splits of a Ragged object are
+  // not mutable so they can be re-used.
+  Ragged<T> Clone() const { return Ragged<T>(shape, values.Clone()); }
 };
 
 // e.g. will produce something like "[ [ 3 4 ] [ 1 ] ]".

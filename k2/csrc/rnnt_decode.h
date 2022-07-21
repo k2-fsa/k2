@@ -26,7 +26,6 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/array_of_ragged.h"
 #include "k2/csrc/array_ops.h"
-#include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/macros.h"
 

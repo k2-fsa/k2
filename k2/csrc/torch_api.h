@@ -26,7 +26,6 @@
 namespace k2 {
 
 class RaggedShape;
-
 using RaggedShapePtr = std::shared_ptr<RaggedShape>;
 
 /** Compute the exclusive sum of "src".
