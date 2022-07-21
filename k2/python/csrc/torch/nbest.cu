@@ -54,7 +54,8 @@ static void PybindGetBestMatchingStats(py::module &m) {
                                ToTorch(ngram_order));
       },
       py::arg("tokens"), py::arg("scores"), py::arg("counts"), py::arg("eos"),
-      py::arg("min_token"), py::arg("max_token"), py::arg("max_order"));
+      py::arg("min_token"), py::arg("max_token"), py::arg("max_order"),
+      py::call_guard<py::gil_scoped_release>());
 }
 
 }  // namespace k2

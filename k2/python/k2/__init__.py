@@ -23,7 +23,6 @@ if (
 try:
     from _k2 import DeterminizeWeightPushingType
     from _k2 import simple_ragged_index_select
-    from _k2 import create_rnnt_decoding_stream
 except ImportError as e:
     import sys
 

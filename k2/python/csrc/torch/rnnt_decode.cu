@@ -39,6 +39,7 @@ static void PybindRnntDecodingConfig(py::module &m) {
   config.def(py::init<int32_t, int32_t, double, int32_t, int32_t>(),
              py::arg("vocab_size"), py::arg("decoder_history_len"),
              py::arg("beam"), py::arg("max_states"), py::arg("max_contexts"),
+             py::call_guard<py::gil_scoped_release>(),
              R"(
              Construct a RnntDecodingConfig object, it contains the parameters
              needed by rnnt decoding.
@@ -100,47 +101,61 @@ static void PybindRnntDecodingStream(py::module &m) {
     return os.str();
   });
 
-  m.def("create_rnnt_decoding_stream",
-        [](Fsa &graph) -> std::shared_ptr<PyClass> {
-          DeviceGuard guard(graph.Context());
-          return rnnt_decoding::CreateStream(std::make_shared<Fsa>(graph));
-        });
+  m.def(
+      "create_rnnt_decoding_stream",
+      [](Fsa &graph) -> std::shared_ptr<PyClass> {
+        DeviceGuard guard(graph.Context());
+        return rnnt_decoding::CreateStream(std::make_shared<Fsa>(graph));
+      },
+      py::arg("graph"), py::call_guard<py::gil_scoped_release>());
 }
 
 static void PybindRnntDecodingStreams(py::module &m) {
   using PyClass = rnnt_decoding::RnntDecodingStreams;
   py::class_<PyClass> streams(m, "RnntDecodingStreams");
 
-  streams.def(py::init(
-      [](std::vector<std::shared_ptr<rnnt_decoding::RnntDecodingStream>> &srcs,
-         const rnnt_decoding::RnntDecodingConfig &config)
-          -> std::unique_ptr<PyClass> {
-        K2_CHECK_GE(srcs.size(), 1);
-        DeviceGuard guard(srcs[0]->graph->Context());
-        return std::make_unique<PyClass>(srcs, config);
-      }));
+  streams.def(
+      py::init(
+          [](std::vector<std::shared_ptr<rnnt_decoding::RnntDecodingStream>>
+                 &srcs,
+             const rnnt_decoding::RnntDecodingConfig &config)
+              -> std::unique_ptr<PyClass> {
+            K2_CHECK_GE(srcs.size(), 1);
+            DeviceGuard guard(srcs[0]->graph->Context());
+            return std::make_unique<PyClass>(srcs, config);
+          }),
+      py::arg("srcs"), py::arg("config"),
+      py::call_guard<py::gil_scoped_release>());
 
-  streams.def("advance", [](PyClass &self, torch::Tensor logprobs) -> void {
-    DeviceGuard guard(self.Context());
-    logprobs = logprobs.to(torch::kFloat);
-    Array2<float> logprobs_array = FromTorch<float>(logprobs, Array2Tag{});
-    self.Advance(logprobs_array);
-  });
+  streams.def(
+      "advance",
+      [](PyClass &self, torch::Tensor logprobs) -> void {
+        DeviceGuard guard(self.Context());
+        logprobs = logprobs.to(torch::kFloat);
+        Array2<float> logprobs_array = FromTorch<float>(logprobs, Array2Tag{});
+        self.Advance(logprobs_array);
+      },
+      py::arg("logprobs"), py::call_guard<py::gil_scoped_release>());
 
-  streams.def("get_contexts",
-              [](PyClass &self) -> std::pair<RaggedShape, torch::Tensor> {
-                DeviceGuard guard(self.Context());
-                RaggedShape shape;
-                Array2<int32_t> contexts;
-                self.GetContexts(&shape, &contexts);
-                torch::Tensor contexts_tensor = ToTorch<int32_t>(contexts);
-                return std::make_pair(shape, contexts_tensor);
-              });
+  streams.def(
+      "get_contexts",
+      [](PyClass &self) -> std::pair<RaggedShape, torch::Tensor> {
+        DeviceGuard guard(self.Context());
+        RaggedShape shape;
+        Array2<int32_t> contexts;
+        self.GetContexts(&shape, &contexts);
+        torch::Tensor contexts_tensor = ToTorch<int32_t>(contexts);
+        return std::make_pair(shape, contexts_tensor);
+      },
+      py::call_guard<py::gil_scoped_release>());
 
-  streams.def("terminate_and_flush_to_streams", [](PyClass &self) -> void {
-    DeviceGuard guard(self.Context());
-    self.TerminateAndFlushToStreams();
-  });
+  streams.def(
+      "terminate_and_flush_to_streams",
+      [](PyClass &self) -> void {
+        DeviceGuard guard(self.Context());
+        self.TerminateAndFlushToStreams();
+      },
+      py::call_guard<py::gil_scoped_release>());
 
   streams.def(
       "format_output",
@@ -152,7 +167,8 @@ static void PybindRnntDecodingStreams(py::module &m) {
         self.FormatOutput(num_frames, &ofsa, &out_map);
         torch::Tensor out_map_tensor = ToTorch<int32_t>(out_map);
         return std::make_pair(ofsa, out_map_tensor);
-      });
+      },
+      py::arg("num_frames"), py::call_guard<py::gil_scoped_release>());
 }
 
 }  // namespace k2

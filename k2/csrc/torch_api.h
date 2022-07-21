@@ -21,18 +21,12 @@
 
 #include <memory>
 
-// TODO(WeiKang): Move the following lines to k2/csrc/all.h
-#include "k2/csrc/fsa_algo.h"
-#include "k2/csrc/fsa_utils.h"
-#include "k2/csrc/ragged.h"
-#include "k2/csrc/ragged_ops.h"
-#include "k2/csrc/rnnt_decode.h"
-#include "k2/csrc/torch_util.h"
 #include "torch/script.h"
 
 namespace k2 {
 
 class RaggedShape;
+
 using RaggedShapePtr = std::shared_ptr<RaggedShape>;
 
 /** Compute the exclusive sum of "src".

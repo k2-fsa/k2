@@ -65,7 +65,8 @@ static void PybindMonotonicLowerBound(py::module &m) {
         // Unreachable code, to make compiler happy
         return torch::Tensor();
       },
-      py::arg("src"), py::arg("inplace") = false);
+      py::arg("src"), py::arg("inplace") = false,
+      py::call_guard<py::gil_scoped_release>());
 }
 
 }  // namespace k2

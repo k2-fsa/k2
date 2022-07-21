@@ -269,19 +269,10 @@ file(COPY
   DESTINATION
     ${PROJECT_BINARY_DIR}/include/k2
 )
-file(GLOB HEADER_LIST "*.h")
-file(COPY
-  ${HEADER_LIST}
-  DESTINATION
-    ${PROJECT_BINARY_DIR}/include/k2/csrc
-)
 
 install(TARGETS k2_log k2_torch_api context
   DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 install(FILES torch_api.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/k2
-)
-install(FILES ${HEADER_LIST}
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/k2/csrc
 )
