@@ -189,6 +189,8 @@ def get_rnnt_logprobs(
 
     if not modified:
         px = fix_for_boundary(px, boundary)
+    else:
+        px += py[:, 1:, :]
 
     return (px, py)
 
@@ -362,6 +364,8 @@ def get_rnnt_logprobs_joint(
 
     if not modified:
         px = fix_for_boundary(px, boundary)
+    else:
+        px += py[:, 1:, :]
 
     return (px, py)
 
@@ -792,6 +796,8 @@ def get_rnnt_logprobs_pruned(
 
     if not modified:
         px = fix_for_boundary(px, boundary)
+    else:
+        px += py[:, 1:, :]
 
     return (px, py)
 
@@ -1081,6 +1087,8 @@ def get_rnnt_logprobs_smoothed(
 
     if not modified:
         px_interp = fix_for_boundary(px_interp, boundary)
+    else:
+        px_interp += py_interp[:, 1:, :]
 
     return (px_interp, py_interp)
 
