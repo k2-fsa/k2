@@ -268,6 +268,7 @@ Renumbering RnntDecodingStreams::DoFisrtPassPruning(
   const double *scores_data = scores_.values.Data(),
                *max_scores_per_stream_data = max_scores_per_stream.Data();
   double beam = config_.beam;
+  double gamma_blank = config_.gamma_blank;
   // "uas" is short for unpruned_arcs_shape
   const int32_t *uas_row_ids3_data = unpruned_arcs_shape.RowIds(3).Data(),
                 *uas_row_splits3_data = unpruned_arcs_shape.RowSplits(3).Data(),
@@ -313,6 +314,12 @@ Renumbering RnntDecodingStreams::DoFisrtPassPruning(
 
         // prune the arcs pointing to the final state.
         if (arc.label == -1) {
+          pass1_keep_data[idx0123] = 0;
+          return;
+        }
+
+        //  blank_prob = exp(logprobs_acc(idx01, 0))
+        if (exp(logprobs_acc(idx01, 0)) > gamma_blank) {
           pass1_keep_data[idx0123] = 0;
           return;
         }

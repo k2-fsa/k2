@@ -43,7 +43,8 @@ TEST(RnntDecodingStreams, Basic) {
     int32_t vocab_size = 6;
     auto config =
         RnntDecodingConfig(vocab_size, 2 /*decoder_history_len*/, 8.0f /*beam*/,
-                           2 /*max_states*/, 3 /*max_contexts*/);
+                           2 /*max_states*/, 3 /*max_contexts*/,
+                           1.0f /*gamma_blank*/);
 
     Array1<int32_t> aux_labels;
     auto trivial_graph = std::make_shared<Fsa>(TrivialGraph(c, 5, &aux_labels));

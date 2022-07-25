@@ -36,9 +36,10 @@ namespace k2 {
 static void PybindRnntDecodingConfig(py::module &m) {
   using PyClass = rnnt_decoding::RnntDecodingConfig;
   py::class_<PyClass> config(m, "RnntDecodingConfig");
-  config.def(py::init<int32_t, int32_t, double, int32_t, int32_t>(),
+  config.def(py::init<int32_t, int32_t, double, int32_t, int32_t, double>(),
              py::arg("vocab_size"), py::arg("decoder_history_len"),
              py::arg("beam"), py::arg("max_states"), py::arg("max_contexts"),
+             py::arg("gamma_blank"),
              R"(
              Construct a RnntDecodingConfig object, it contains the parameters
              needed by rnnt decoding.
@@ -63,13 +64,19 @@ static void PybindRnntDecodingConfig(py::module &m) {
                  `max_contexts` is a limit on the number of distinct contexts
                  that we allow per frame, per stream; the number of contexts
                  will not be allowed to exceed this limit.
+               gamma_blank:
+                  `gamma_blank`, with range(0, 1], is used to filter out blank frames.
+                  If gamma_blank == 1.0, all frames are kept.
+                  If gamma_blank == 0.0, all frames are filtered out.
+                  Detailed by Algorithm 1 in https://arxiv.org/pdf/2101.06856.pdf
              )");
 
   config.def_readwrite("vocab_size", &PyClass::vocab_size)
       .def_readwrite("decoder_history_len", &PyClass::decoder_history_len)
       .def_readwrite("beam", &PyClass::beam)
       .def_readwrite("max_states", &PyClass::max_states)
-      .def_readwrite("max_contexts", &PyClass::max_contexts);
+      .def_readwrite("max_contexts", &PyClass::max_contexts)
+      .def_readwrite("gamma_blank", &PyClass::gamma_blank);
 
   config.def("__str__", [](const PyClass &self) -> std::string {
     std::ostringstream os;
@@ -79,6 +86,7 @@ static void PybindRnntDecodingConfig(py::module &m) {
        << "  beam : " << self.beam << "\n"
        << "  max_states : " << self.max_states << "\n"
        << "  max_contexts : " << self.max_contexts << "\n"
+       << "  gamma_blank: " << self.gamma_blank << "\n"
        << "}";
     return os.str();
   });

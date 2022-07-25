@@ -50,12 +50,14 @@ namespace rnnt_decoding {
 
 struct RnntDecodingConfig {
   RnntDecodingConfig(int32_t vocab_size, int32_t decoder_history_len,
-                     double beam, int32_t max_states, int32_t max_contexts)
+                     double beam, int32_t max_states, int32_t max_contexts,
+                     double gamma_blank)
       : vocab_size(vocab_size),
         decoder_history_len(decoder_history_len),
         beam(beam),
         max_states(max_states),
-        max_contexts(max_contexts) {
+        max_contexts(max_contexts),
+        gamma_blank(gamma_blank) {
     // num_context_states = pow(vocab_size, decoder_history_len);
   }
 
@@ -89,6 +91,12 @@ struct RnntDecodingConfig {
   // per frame, per stream; the number of contexts will not be allowed to
   // exceed this limit.
   int32_t max_contexts;
+
+  // `gamma_blank`, with range(0, 1], is used to filter out blank frames.
+  // If gamma_blank == 1.0, all frames are kept.
+  // If gamma_blank == 0.0, all frames are filtered out.
+  // Detailed by Algorithm 1 in https://arxiv.org/pdf/2101.06856.pdf
+  double gamma_blank;
 };
 
 struct ArcInfo {
