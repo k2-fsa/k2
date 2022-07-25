@@ -92,19 +92,41 @@
 <span id="install-using-conda"></span><h1>Install using conda (Linux/macOS)<a class="headerlink" href="#install-using-conda-linux-macos" title="Permalink to this headline"></a></h1>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
-<p>Windows is currently not supported.</p>
+<p>Windows is currently not supported via conda install.
+Please refer to <a class="reference internal" href="from_source.html#install-k2-from-source"><span class="std std-ref">Install from source</span></a>
+or <a class="reference internal" href="pip.html#install-using-pip-via-k2-fsa-org"><span class="std std-ref">Install using pip (k2-fsa.org)</span></a> if you
+want to install k2 on Windows.</p>
 </div>
 <p>All you need is the following line</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda install -c k2-fsa -c pytorch -c conda-forge k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.1 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
 </pre></div>
 </div>
 <p>to install the <strong>latest</strong> k2 with Python 3.8, CUDA 11.1, and PyTorch 1.8.1.</p>
-<p>You can change the versions of Python, CUDA, and PyTorch as you need.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>The above command is just an example. You can choose other versions of Python,
+cudatoolkit, and PyTorch as you want. For instance,</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda install -c k2-fsa -c pytorch -c conda-forge k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.9 <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.6 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.12.0
+</pre></div>
+</div>
+<p>The above command installs k2 with Python 3.9, cudatoolkit 11.6, and PyTorch 1.12.0</p>
+</div>
 <p>To Install a CPU version, use:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda install -c k2-fsa -c pytorch cpuonly k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
 </pre></div>
 </div>
-<div class="admonition hint">
+<p>We provide the following YouTube video showing how to install k2 via conda.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>To get the latest news of <a class="reference external" href="https://github.com/k2-fsa">next-gen Kaldi</a>, please subscribe
+the following YouTube channel by <a class="reference external" href="https://www.youtube.com/channel/UC_VaumpkmINz1pNkFXAN9mw">Nadira Povey</a>:</p>
+<blockquote>
+<div><p><a class="reference external" href="https://www.youtube.com/channel/UC_VaumpkmINz1pNkFXAN9mw">https://www.youtube.com/channel/UC_VaumpkmINz1pNkFXAN9mw</a></p>
+</div></blockquote>
+</div>
+<div class="video_wrapper" style="">
+<iframe allowfullscreen="true" src="https://www.youtube.com/embed/HerxbUHs-V4" style="border: 0; height: 345px; width: 560px">
+</iframe></div><div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <p>If you are using macOS and encounter the following error while
 running <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">-m</span> <span class="pre">k2.version</span></code> after installation:</p>
