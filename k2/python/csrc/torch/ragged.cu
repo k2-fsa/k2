@@ -38,8 +38,9 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   py::class_<PyClass> pyclass(m, name);
 
   pyclass.def(py::init([](const std::string &s) -> std::unique_ptr<PyClass> {
-    return std::make_unique<PyClass>(s);
-  }));
+                return std::make_unique<PyClass>(s);
+              }),
+              py::call_guard<py::gil_scoped_release>());
 
   pyclass.def(py::init([](const RaggedShape &shape,
                           torch::Tensor values) -> std::unique_ptr<PyClass> {
@@ -47,7 +48,8 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
                 K2_CHECK_EQ(shape.NumElements(), values.sizes()[0]);
                 return std::make_unique<PyClass>(shape, FromTorch<T>(values));
               }),
-              py::arg("shape"), py::arg("values"));
+              py::arg("shape"), py::arg("values"),
+              py::call_guard<py::gil_scoped_release>());
   pyclass.def(
       "to",
       [](const PyClass &self, py::object device) -> PyClass {
@@ -56,15 +58,21 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       },
       py::arg("device"));
 
-  pyclass.def("cpu", [](const PyClass &self) -> PyClass {
-    DeviceGuard guard(self.Context());
-    return self.To(GetCpuContext());
-  });
+  pyclass.def(
+      "cpu",
+      [](const PyClass &self) -> PyClass {
+        DeviceGuard guard(self.Context());
+        return self.To(GetCpuContext());
+      },
+      py::call_guard<py::gil_scoped_release>());
 
-  pyclass.def("clone", [](const PyClass &self) -> PyClass {
-    DeviceGuard guard(self.Context());
-    return self.Clone();
-  });
+  pyclass.def(
+      "clone",
+      [](const PyClass &self) -> PyClass {
+        DeviceGuard guard(self.Context());
+        return self.Clone();
+      },
+      py::call_guard<py::gil_scoped_release>());
 
   pyclass.def("is_cpu", [](const PyClass &self) -> bool {
     return self.Context()->GetDeviceType() == kCpu;
@@ -128,7 +136,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         int32_t offset = ans.values.Data() - self.values.Data();
         return std::make_pair(ans, offset);
       },
-      py::arg("axis"), py::arg("i"));
+      py::arg("axis"), py::arg("i"), py::call_guard<py::gil_scoped_release>());
 
   pyclass.def(
       "__eq__",
@@ -153,13 +161,16 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
     return os.str();
   });
 
-  pyclass.def("tot_sizes", [](const PyClass &self) -> std::vector<int32_t> {
-    DeviceGuard guard(self.Context());
-    int32_t num_axes = self.NumAxes();
-    std::vector<int32_t> ans(num_axes);
-    for (int32_t i = 0; i != num_axes; ++i) ans[i] = self.TotSize(i);
-    return ans;
-  });
+  pyclass.def(
+      "tot_sizes",
+      [](const PyClass &self) -> std::vector<int32_t> {
+        DeviceGuard guard(self.Context());
+        int32_t num_axes = self.NumAxes();
+        std::vector<int32_t> ans(num_axes);
+        for (int32_t i = 0; i != num_axes; ++i) ans[i] = self.TotSize(i);
+        return ans;
+      },
+      py::call_guard<py::gil_scoped_release>());
 
   pyclass.def(py::pickle(
       [](const PyClass &obj) {
@@ -229,7 +240,8 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         return std::make_pair(ans, value_indexes_tensor);
       },
       py::arg("src"), py::arg("axis"), py::arg("indexes"),
-      py::arg("need_value_indexes") = true);
+      py::arg("need_value_indexes") = true,
+      py::call_guard<py::gil_scoped_release>());
 
   m.def(
       "index",
@@ -238,7 +250,8 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         bool remove_axis = true;
         return Index(src, indexes, remove_axis);
       },
-      py::arg("src"), py::arg("indexes"));
+      py::arg("src"), py::arg("indexes"),
+      py::call_guard<py::gil_scoped_release>());
 }
 
 static void PybindRaggedImpl(py::module &m) {
@@ -252,7 +265,8 @@ static void PybindRaggedImpl(py::module &m) {
         Array1<int32_t> src_array = FromTorch<int32_t>(src);
         return Index(src_array, indexes);
       },
-      py::arg("src"), py::arg("indexes"));
+      py::arg("src"), py::arg("indexes"),
+      py::call_guard<py::gil_scoped_release>());
 }
 
 }  // namespace k2

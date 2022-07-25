@@ -68,6 +68,7 @@ void PybindRaggedShape(py::module &m) {
       "to",
       [](const RaggedShape &self, py::object _device) -> RaggedShape {
         std::string device_str = _device.is_none() ? "cpu" : py::str(_device);
+        py::gil_scoped_release release;
         torch::Device device = torch::Device(device_str);
         DeviceGuard guard(self.Context());
 
@@ -153,7 +154,8 @@ void PybindRaggedShape(py::module &m) {
         RaggedShape ans = self.Index(/*axis*/ 0, i, /*value_offset*/ nullptr);
         return ans;
       },
-      py::arg("i"), kRaggedShapeGetItemDoc);
+      py::arg("i"), py::call_guard<py::gil_scoped_release>(),
+      kRaggedShapeGetItemDoc);
 
   shape.def_property_readonly(
       "num_axes",
@@ -179,7 +181,8 @@ void PybindRaggedShape(py::module &m) {
         ContextPtr c = GetCpuContext();
         return RegularRaggedShape(c, dim0, dim1);
       },
-      py::arg("dim0"), py::arg("dim1"), kRaggedShapeRegularDoc);
+      py::arg("dim0"), py::arg("dim1"),
+      py::call_guard<py::gil_scoped_release>(), kRaggedShapeRegularDoc);
 
   m.attr("regular_ragged_shape") = shape.attr("regular_ragged_shape");
 
@@ -212,7 +215,7 @@ void PybindRaggedShape(py::module &m) {
         return std::make_pair(ans, value_indexes_tensor);
       },
       py::arg("axis"), py::arg("indexes"), py::arg("need_value_indexes") = true,
-      kRaggedShapeIndexDoc);
+      py::call_guard<py::gil_scoped_release>(), kRaggedShapeIndexDoc);
 
   shape.def(
       "compose",
@@ -220,7 +223,8 @@ void PybindRaggedShape(py::module &m) {
         DeviceGuard guard(self.Context());
         return ComposeRaggedShapes(self, other);
       },
-      py::arg("other"), kRaggedShapeComposeDoc);
+      py::arg("other"), py::call_guard<py::gil_scoped_release>(),
+      kRaggedShapeComposeDoc);
 
   shape.def(
       "remove_axis",
@@ -228,7 +232,8 @@ void PybindRaggedShape(py::module &m) {
         DeviceGuard guard(self.Context());
         return RemoveAxis(self, axis);
       },
-      py::arg("axis"), kRaggedShapeRemoveAxisDoc);
+      py::arg("axis"), py::call_guard<py::gil_scoped_release>(),
+      kRaggedShapeRemoveAxisDoc);
 
   m.def(
       "create_ragged_shape2",
@@ -258,12 +263,14 @@ void PybindRaggedShape(py::module &m) {
             row_ids.has_value() ? &array_row_ids : nullptr, cached_tot_size);
       },
       py::arg("row_splits") = py::none(), py::arg("row_ids") = py::none(),
-      py::arg("cached_tot_size") = -1, kCreateRaggedShape2Doc);
+      py::arg("cached_tot_size") = -1, py::call_guard<py::gil_scoped_release>(),
+      kCreateRaggedShape2Doc);
 
   m.def("random_ragged_shape", &RandomRaggedShape, "RandomRaggedShape",
         py::arg("set_row_ids") = false, py::arg("min_num_axes") = 2,
         py::arg("max_num_axes") = 4, py::arg("min_num_elements") = 0,
-        py::arg("max_num_elements") = 2000);
+        py::arg("max_num_elements") = 2000,
+        py::call_guard<py::gil_scoped_release>());
 }
 
 }  // namespace k2

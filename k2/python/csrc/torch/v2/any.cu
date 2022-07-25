@@ -44,6 +44,7 @@ void PybindRaggedAny(py::module &m) {
                       py::object device =
                           py::str("cpu")) -> std::unique_ptr<RaggedAny> {
             std::string device_str = device.is_none() ? "cpu" : py::str(device);
+            py::gil_scoped_release release;
             return std::make_unique<RaggedAny>(data, dtype,
                                                torch::Device(device_str));
           }),
@@ -52,12 +53,14 @@ void PybindRaggedAny(py::module &m) {
 
   any.def(py::init<py::list, py::object, const std::string &>(),
           py::arg("data"), py::arg("dtype") = py::none(),
-          py::arg("device") = "cpu", kRaggedAnyInitDataDeviceDoc);
+          py::arg("device") = "cpu", py::call_guard<py::gil_scoped_release>(),
+          kRaggedAnyInitDataDeviceDoc);
 
   any.def(py::init([](const std::string &s, py::object dtype = py::none(),
                       py::object device =
                           py::str("cpu")) -> std::unique_ptr<RaggedAny> {
             std::string device_str = device.is_none() ? "cpu" : py::str(device);
+            py::gil_scoped_release release;
             return std::make_unique<RaggedAny>(s, dtype, device_str);
           }),
           py::arg("s"), py::arg("dtype") = py::none(),
@@ -65,13 +68,15 @@ void PybindRaggedAny(py::module &m) {
 
   any.def(py::init<const std::string &, py::object, const std::string &>(),
           py::arg("s"), py::arg("dtype") = py::none(),
-          py::arg("device") = "cpu", kRaggedAnyInitStrDeviceDoc);
+          py::arg("device") = "cpu", py::call_guard<py::gil_scoped_release>(),
+          kRaggedAnyInitStrDeviceDoc);
 
   any.def(py::init<const RaggedShape &, torch::Tensor>(), py::arg("shape"),
-          py::arg("value"), kRaggedInitFromShapeAndTensorDoc);
+          py::arg("value"), py::call_guard<py::gil_scoped_release>(),
+          kRaggedInitFromShapeAndTensorDoc);
 
   any.def(py::init<torch::Tensor>(), py::arg("tensor"),
-          kRaggedAnyInitTensorDoc);
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnyInitTensorDoc);
 
   any.def(
       "__str__",
@@ -113,7 +118,8 @@ void PybindRaggedAny(py::module &m) {
         // Unreachable code
         return py::none();
       },
-      py::arg("i"), kRaggedAnyGetItemDoc);
+      py::arg("i"), py::call_guard<py::gil_scoped_release>(),
+      kRaggedAnyGetItemDoc);
 
   any.def(
       "__getitem__",
@@ -129,7 +135,8 @@ void PybindRaggedAny(py::module &m) {
 
         return self.Arange(/*axis*/ 0, istart, istop);
       },
-      py::arg("key"), kRaggedAnyGetItemSliceDoc);
+      py::arg("key"), py::call_guard<py::gil_scoped_release>(),
+      kRaggedAnyGetItemSliceDoc);
 
   any.def(
       "__getitem__",
@@ -148,17 +155,20 @@ void PybindRaggedAny(py::module &m) {
         // Unreachable code
         return {};
       },
-      py::arg("key"), kRaggedAnyGetItem1DTensorDoc);
+      py::arg("key"), py::call_guard<py::gil_scoped_release>(),
+      kRaggedAnyGetItem1DTensorDoc);
 
   any.def("index",
           static_cast<RaggedAny (RaggedAny::*)(RaggedAny &)>(&RaggedAny::Index),
-          py::arg("indexes"), kRaggedAnyRaggedIndexDoc);
+          py::arg("indexes"), py::call_guard<py::gil_scoped_release>(),
+          kRaggedAnyRaggedIndexDoc);
 
   any.def("index",
           static_cast<std::pair<RaggedAny, torch::optional<torch::Tensor>> (
               RaggedAny::*)(torch::Tensor, int32_t, bool)>(&RaggedAny::Index),
           py::arg("indexes"), py::arg("axis"),
-          py::arg("need_value_indexes") = false, kRaggedAnyTensorIndexDoc);
+          py::arg("need_value_indexes") = false,
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnyTensorIndexDoc);
 
   m.def(
       "index",
@@ -167,6 +177,7 @@ void PybindRaggedAny(py::module &m) {
         return indexes.Index(src, default_value);
       },
       py::arg("src"), py::arg("indexes"), py::arg("default_value") = py::none(),
+      py::call_guard<py::gil_scoped_release>(),
       kRaggedAnyIndexTensorWithRaggedDoc);
 
   m.def(
@@ -180,6 +191,7 @@ void PybindRaggedAny(py::module &m) {
       "to",
       [](RaggedAny &self, py::object device) -> RaggedAny {
         std::string device_str = device.is_none() ? "cpu" : py::str(device);
+        py::gil_scoped_release release;
         return self.To(torch::Device(device_str));
       },
       py::arg("device"), kRaggedAnyToDeviceDoc);
@@ -187,12 +199,14 @@ void PybindRaggedAny(py::module &m) {
   any.def("to",
           static_cast<RaggedAny (RaggedAny::*)(const std::string &) const>(
               &RaggedAny::To),
-          py::arg("device"), kRaggedAnyToDeviceStrDoc);
+          py::arg("device"), py::call_guard<py::gil_scoped_release>(),
+          kRaggedAnyToDeviceStrDoc);
 
   any.def("to",
           static_cast<RaggedAny (RaggedAny::*)(torch::ScalarType) const>(
               &RaggedAny::To),
-          py::arg("dtype"), kRaggedAnyToDtypeDoc);
+          py::arg("dtype"), py::call_guard<py::gil_scoped_release>(),
+          kRaggedAnyToDtypeDoc);
 
   any.def(
       "clone",
@@ -200,7 +214,7 @@ void PybindRaggedAny(py::module &m) {
         DeviceGuard guard(self.any.Context());
         return self.Clone();
       },
-      kRaggedAnyCloneDoc);
+      py::call_guard<py::gil_scoped_release>(), kRaggedAnyCloneDoc);
 
   any.def(
       "__eq__",
@@ -232,7 +246,7 @@ void PybindRaggedAny(py::module &m) {
           py::arg("requires_grad") = true, kRaggedAnyRequiresGradMethodDoc);
 
   any.def("sum", &RaggedAny::Sum, py::arg("initial_value") = 0,
-          kRaggedAnySumDoc);
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnySumDoc);
 
   any.def(
       "numel",
@@ -321,43 +335,49 @@ void PybindRaggedAny(py::module &m) {
   SetMethodDoc(&any, "__setstate__", kRaggedAnySetStateDoc);
 
   any.def("remove_axis", &RaggedAny::RemoveAxis, py::arg("axis"),
-          kRaggedAnyRemoveAxisDoc);
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnyRemoveAxisDoc);
 
   any.def("arange", &RaggedAny::Arange, py::arg("axis"), py::arg("begin"),
-          py::arg("end"), kRaggedAnyArangeDoc);
+          py::arg("end"), py::call_guard<py::gil_scoped_release>(),
+          kRaggedAnyArangeDoc);
 
   any.def("remove_values_leq", &RaggedAny::RemoveValuesLeq, py::arg("cutoff"),
+          py::call_guard<py::gil_scoped_release>(),
           kRaggedAnyRemoveValuesLeqDoc);
 
   any.def("remove_values_eq", &RaggedAny::RemoveValuesEq, py::arg("target"),
+          py::call_guard<py::gil_scoped_release>(),
           kRaggedAnyRemoveValuesEqDoc);
 
   any.def("argmax", &RaggedAny::ArgMax, py::arg("initial_value") = py::none(),
-          kRaggedAnyArgMaxDoc);
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnyArgMaxDoc);
 
   any.def("max", &RaggedAny::Max, py::arg("initial_value") = py::none(),
-          kRaggedAnyMaxDoc);
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnyMaxDoc);
 
   any.def("min", &RaggedAny::Min, py::arg("initial_value") = py::none(),
-          kRaggedAnyMinDoc);
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnyMinDoc);
 
   any.def_static("cat", &RaggedAny::Cat, py::arg("srcs"), py::arg("axis"),
-                 kRaggedCatDoc);
+                 py::call_guard<py::gil_scoped_release>(), kRaggedCatDoc);
   m.attr("cat") = any.attr("cat");
 
   any.def("unique", &RaggedAny::Unique, py::arg("need_num_repeats") = false,
-          py::arg("need_new2old_indexes") = false, kRaggedAnyUniqueDoc);
+          py::arg("need_new2old_indexes") = false,
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnyUniqueDoc);
 
   any.def("normalize", &RaggedAny::Normalize, py::arg("use_log"),
-          kRaggedAnyNormalizeDoc);
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnyNormalizeDoc);
 
   any.def("pad", &RaggedAny::Pad, py::arg("mode"), py::arg("padding_value"),
-          kRaggedAnyPadDoc);
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnyPadDoc);
 
-  any.def("tolist", &RaggedAny::ToList, kRaggedAnyToListDoc);
+  any.def("tolist", &RaggedAny::ToList,
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnyToListDoc);
 
   any.def("sort_", &RaggedAny::Sort, py::arg("descending") = false,
-          py::arg("need_new2old_indexes") = false, kRaggedAnySortDoc);
+          py::arg("need_new2old_indexes") = false,
+          py::call_guard<py::gil_scoped_release>(), kRaggedAnySortDoc);
 
   //==================================================
   //      k2.ragged.Tensor properties
@@ -455,6 +475,7 @@ void PybindRaggedAny(py::module &m) {
       [](py::list data, py::object dtype = py::none(),
          py::object device = py::str("cpu")) -> RaggedAny {
         std::string device_str = device.is_none() ? "cpu" : py::str(device);
+        py::gil_scoped_release release;
         return RaggedAny(data, dtype, torch::Device(device_str));
       },
       py::arg("data"), py::arg("dtype") = py::none(),
@@ -467,13 +488,14 @@ void PybindRaggedAny(py::module &m) {
         return RaggedAny(data, dtype, device);
       },
       py::arg("data"), py::arg("dtype") = py::none(), py::arg("device") = "cpu",
-      kCreateRaggedTensorDataDoc);
+      py::call_guard<py::gil_scoped_release>(), kCreateRaggedTensorDataDoc);
 
   m.def(
       "create_ragged_tensor",
       [](const std::string &s, py::object dtype = py::none(),
          py::object device = py::str("cpu")) -> RaggedAny {
         std::string device_str = device.is_none() ? "cpu" : py::str(device);
+        py::gil_scoped_release release;
         return RaggedAny(s, dtype, torch::Device(device_str));
       },
       py::arg("s"), py::arg("dtype") = py::none(),
@@ -486,12 +508,13 @@ void PybindRaggedAny(py::module &m) {
         return RaggedAny(s, dtype, device);
       },
       py::arg("s"), py::arg("dtype") = py::none(), py::arg("device") = "cpu",
-      kCreateRaggedTensorStrDoc);
+      py::call_guard<py::gil_scoped_release>(), kCreateRaggedTensorStrDoc);
 
   m.def(
       "create_ragged_tensor",
       [](torch::Tensor tensor) -> RaggedAny { return RaggedAny(tensor); },
-      py::arg("tensor"), kCreateRaggedTensorTensorDoc);
+      py::arg("tensor"), py::call_guard<py::gil_scoped_release>(),
+      kCreateRaggedTensorTensorDoc);
 }
 
 }  // namespace k2

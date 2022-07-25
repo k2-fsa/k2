@@ -51,7 +51,7 @@ static void PybindIndexAdd(torch::Tensor index, torch::Tensor value,
 void PybindIndexAdd(py::module &m) {
   // note it supports only 1-D and 2-D tensors.
   m.def("index_add", &k2::PybindIndexAdd, py::arg("index"), py::arg("value"),
-        py::arg("in_out"),
+        py::arg("in_out"), py::call_guard<py::gil_scoped_release>(),
         R"(
         Args:
           index:
