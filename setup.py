@@ -36,6 +36,7 @@ import glob
 import os
 import setuptools
 import shutil
+from subprocess import DEVNULL, check_call
 import sys
 
 from pathlib import Path
@@ -63,9 +64,8 @@ cmake_path = shutil.which('cmake')
 if cmake_path is None:
     raise Exception('Please install CMake before you proceed.')
 
-print(f'cmake_path: {cmake_path}')
 
-ret = os.system('cmake --version')
+ret = check_call(['cmake', '--version'], stdout=DEVNULL, stderr=DEVNULL)
 if ret != 0:
     raise Exception('Failed to get CMake version')
 
@@ -97,6 +97,8 @@ def cmake_extension(name, *args, **kwargs) -> setuptools.Extension:
 class BuildExtension(build_ext):
 
     def build_extension(self, ext: setuptools.extension.Extension):
+        print(f'cmake_path: {cmake_path}')
+
         # build/temp.linux-x86_64-3.8
         os.makedirs(self.build_temp, exist_ok=True)
 
@@ -139,6 +141,7 @@ class BuildExtension(build_ext):
             build_cmd = f'''
                 cmake {cmake_args} -B {self.build_temp} -S {k2_dir}
                 cmake --build {self.build_temp} --target _k2 --config Release -- -m
+                cmake --build {self.build_temp} --target k2_torch_api --config Release -- -m
                 cmake --build {self.build_temp} --target install --config Release -- -m
             '''
             print(f'build command is:\n{build_cmd}')
@@ -150,10 +153,13 @@ class BuildExtension(build_ext):
             if ret != 0:
                 raise Exception('Failed to build k2')
 
+            ret = os.system(f'cmake --build {self.build_temp} --target k2_torch_api --config Release -- -m')
+            if ret != 0:
+                raise Exception('Failed to build k2_torch_api')
+
             ret = os.system(f'cmake --build {self.build_temp} --target install --config Release -- -m')
             if ret != 0:
                 raise Exception('Failed to build k2')
-
         else:
             build_cmd = f'''
                 cd {self.build_temp}
@@ -162,7 +168,7 @@ class BuildExtension(build_ext):
 
                 cat k2/csrc/version.h
 
-                make {make_args} _k2 install
+                make {make_args} _k2 k2_torch_api install
             '''
             print(f'build command is:\n{build_cmd}')
 

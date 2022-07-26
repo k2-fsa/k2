@@ -1,3 +1,5 @@
+.. _install using pip via k2-fsa.org:
+
 Install using pip (k2-fsa.org)
 ==============================
 

@@ -48,7 +48,11 @@ set(K2_INCLUDE_DIRS ${K2_INSTALL_PREFIX}/include)
 set(K2_LIBRARIES k2_torch_api k2_log k2context k2fsa)
 
 foreach(lib IN LISTS K2_LIBRARIES)
-  find_library(location_${lib} ${lib} PATHS "${K2_INSTALL_PREFIX}/lib")
+  find_library(location_${lib} ${lib}
+    PATHS
+    "${K2_INSTALL_PREFIX}/lib"
+    "${K2_INSTALL_PREFIX}/lib64"
+  )
 
   if(NOT MSVC)
     add_library(${lib} SHARED IMPORTED)
@@ -62,8 +66,7 @@ foreach(lib IN LISTS K2_LIBRARIES)
       CXX_STANDARD 14
   )
 
-  set_property(TARGET ${lib} PROPERTY INTERFACE_COMPILE_OPTIONS @CMAKE_CXX_FLAGS@)
-  target_compile_definitions(${lib} INTERFACE -DHAVE_K2_TORCH_API_H=1)
+  set_property(TARGET ${lib} PROPERTY INTERFACE_COMPILE_OPTIONS @CMAKE_CXX_FLAGS@ -DHAVE_K2_TORCH_API_H=1)
 endforeach()
 
 include(FindPackageHandleStandardArgs)
