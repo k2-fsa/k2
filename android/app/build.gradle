@@ -89,15 +89,10 @@ afterEvaluate {
   publishing {
         publications {
             release(MavenPublication) {
-                groupId 'org.k2'
-                artifactId 'k2fsa'
-                version = '0.01'
+                groupId 'com.github.pkufool'
+                artifactId 'k2'
+                version = '1.17.2'
                 artifact("$buildDir/outputs/aar/app-release.aar")
-            }
-        }
-        repositories {
-            maven {
-                url "https://mvnrepository.com/"
             }
         }
     }
