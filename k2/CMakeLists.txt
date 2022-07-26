@@ -1,2 +1,4 @@
 add_subdirectory(csrc)
-add_subdirectory(python)
+if(K2_USE_PYTORCH)
+  add_subdirectory(python)
+endif()
