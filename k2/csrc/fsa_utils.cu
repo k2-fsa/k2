@@ -262,6 +262,16 @@ class OpenFstStreamReader {
     std::istringstream line_is(line);
     int32_t src_state, dest_state, label;
     line_is >> src_state >> dest_state >> label;
+
+    if (line_is.fail()) {
+      K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                    << ", fail=" << line_is.fail()
+                    << ", src_state=" << src_state
+                    << ", dest_state=" << dest_state
+                    << ", num_aux_labels=" << num_aux_labels_
+                    << ", num_ragged_labels=" << num_ragged_labels_;
+    }
+
     if (!line_is.good()) {
       // Our only hope of parsing othis is that `line` was empty, or a
       // final-state; try that.
@@ -271,25 +281,120 @@ class OpenFstStreamReader {
       return;
     }
     std::vector<int32_t> aux_labels(num_aux_labels_);
-    for (int32_t i = 0; i < num_aux_labels_; i++)
+    for (int32_t i = 0; i < num_aux_labels_; i++) {
       line_is >> aux_labels[i];
+      if (line_is.fail()) {
+        K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                     << ", fail=" << line_is.fail()
+                     << ", src_state=" << src_state
+                     << ", dest_state=" << dest_state
+                     << ", num_aux_labels=" << num_aux_labels_
+                     << ", num_ragged_labels=" << num_ragged_labels_
+                     << ", i=" << i;
+      }
+    }
     std::vector<std::vector<int32_t> > ragged_labels(num_ragged_labels_);
     for (int32_t i = 0; i < num_ragged_labels_; i++) {
       line_is >> std::ws;
+
+      if (line_is.fail()) {
+        K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                     << ", fail=" << line_is.fail()
+                     << ", src_state=" << src_state
+                     << ", dest_state=" << dest_state
+                     << ", num_aux_labels=" << num_aux_labels_
+                     << ", num_ragged_labels=" << num_ragged_labels_;
+      }
+
       ExpectChar(line_is, '[');  // sets failbit if not..
+                                 //
+      if (line_is.fail()) {
+        K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                     << ", fail=" << line_is.fail()
+                     << ", src_state=" << src_state
+                     << ", dest_state=" << dest_state
+                     << ", num_aux_labels=" << num_aux_labels_
+                     << ", num_ragged_labels=" << num_ragged_labels_;
+      }
+                                 //
       line_is >> std::ws;
+
+      if (line_is.fail()) {
+        K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                     << ", fail=" << line_is.fail()
+                     << ", src_state=" << src_state
+                     << ", dest_state=" << dest_state
+                     << ", num_aux_labels=" << num_aux_labels_
+                     << ", num_ragged_labels=" << num_ragged_labels_;
+      }
+
       while (line_is.peek() != ']' && line_is.good()) {
+        if (line_is.fail()) {
+          K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                       << ", fail=" << line_is.fail()
+                       << ", src_state=" << src_state
+                       << ", dest_state=" << dest_state
+                       << ", num_aux_labels=" << num_aux_labels_
+                       << ", num_ragged_labels=" << num_ragged_labels_;
+        }
+
         int32_t label;
         line_is >> label >> std::ws;
+
+        if (line_is.fail()) {
+          K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                       << ", fail=" << line_is.fail()
+                       << ", src_state=" << src_state
+                       << ", dest_state=" << dest_state
+                       << ", num_aux_labels=" << num_aux_labels_
+                       << ", num_ragged_labels=" << num_ragged_labels_;
+        }
+
         ragged_labels[i].push_back(label);
       }
       ExpectChar(line_is, ']');  // sets failbit if not..
+                                 //
+      if (line_is.fail()) {
+        K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                     << ", fail=" << line_is.fail()
+                     << ", src_state=" << src_state
+                     << ", dest_state=" << dest_state
+                     << ", num_aux_labels=" << num_aux_labels_
+                     << ", num_ragged_labels=" << num_ragged_labels_;
+      }
     }
     line_is >> std::ws;
+    if (line_is.fail()) {
+      K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                    << ", fail=" << line_is.fail()
+                    << ", src_state=" << src_state
+                    << ", dest_state=" << dest_state
+                    << ", num_aux_labels=" << num_aux_labels_
+                    << ", num_ragged_labels=" << num_ragged_labels_;
+    }
+
     float cost = 0.0;
     if (!line_is.eof()) {
       line_is >> cost;
+      if (line_is.fail()) {
+        K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                     << ", fail=" << line_is.fail()
+                     << ", src_state=" << src_state
+                     << ", dest_state=" << dest_state
+                     << ", num_aux_labels=" << num_aux_labels_
+                     << ", num_ragged_labels=" << num_ragged_labels_;
+      }
+
       if (!line_is.eof()) line_is >> std::ws;
+
+      if (line_is.fail()) {
+        K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                     << ", fail=" << line_is.fail()
+                     << ", src_state=" << src_state
+                     << ", dest_state=" << dest_state
+                     << ", num_aux_labels=" << num_aux_labels_
+                     << ", num_ragged_labels=" << num_ragged_labels_;
+      }
     }
     if (!line_is.eof() || line_is.fail() || src_state < 0 || dest_state < 0) {
       K2_LOG(FATAL) << "Invalid line: " << line << ", eof=" << line_is.eof()
