@@ -55,6 +55,10 @@ def generate_build_matrix(enable_cuda, test_only_latest_torch):
             "python-version": ["3.6", "3.7", "3.8", "3.9"],
             "cuda": ["10.1", "10.2", "11.1"],
         },
+        "1.8.2": {
+            "python-version": ["3.6", "3.7", "3.8", "3.9"],
+            "cuda": ["10.1", "10.2", "11.1"],
+        },
         "1.9.0": {
             "python-version": ["3.6", "3.7", "3.8", "3.9"],
             "cuda": ["10.2", "11.1"],

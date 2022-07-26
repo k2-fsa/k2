@@ -61,7 +61,7 @@ case ${torch} in
         ;;
     esac
     ;;
-  1.8.*)
+  1.8.0|1.8.1)
     case ${cuda} in
       10.1)
         package="torch==${torch}+cu101"
@@ -75,6 +75,22 @@ case ${torch} in
       11.1)
         package="torch==${torch}+cu111"
         url=https://download.pytorch.org/whl/torch_stable.html
+        ;;
+    esac
+    ;;
+  1.8.2)
+    case ${cuda} in
+      10.1)
+        package="torch==${torch}+cu101"
+        url=https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+        ;;
+      10.2)
+        package="torch==${torch}+cu102"
+        url=https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+        ;;
+      11.1)
+        package="torch==${torch}+cu111"
+        url=https://download.pytorch.org/whl/lts/1.8/torch_lts.html
         ;;
     esac
     ;;
