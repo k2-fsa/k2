@@ -1,4 +1,4 @@
 add_subdirectory(csrc)
-if(K2_USE_PYTORCH)
+if (NOT ANDROID)
   add_subdirectory(python)
 endif()

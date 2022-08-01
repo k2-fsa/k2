@@ -83,7 +83,6 @@ set(context_srcs
   nbest.cu
 )
 
-
 if(K2_USE_PYTORCH)
   list(APPEND context_srcs pytorch_context.cu torch_util.cu)
 else()
@@ -254,26 +253,33 @@ if(K2_USE_PYTORCH)
   endif()
 endif()
 
-file(GLOB HEADER_LIST "*.h")
+if (ANDROID)
+  file(GLOB HEADER_LIST "*.h")
 
-file(COPY
-  ${HEADER_LIST}
-  DESTINATION
-    ${PROJECT_BINARY_DIR}/include/k2/csrc
-)
+  file(MAKE_DIRECTORY
+    DESTINATION
+      ${PROJECT_BINARY_DIR}/include/k2/csrc
+  )
+
+  file(COPY
+    ${HEADER_LIST}
+    DESTINATION
+      ${PROJECT_BINARY_DIR}/include/k2/csrc
+  )
+endif()
 
 if(K2_USE_PYTORCH)
   file(MAKE_DIRECTORY
     DESTINATION
       ${PROJECT_BINARY_DIR}/include/k2
   )
-  
+
   file(COPY
     torch_api.h
     DESTINATION
       ${PROJECT_BINARY_DIR}/include/k2
   )
-  
+
   install(TARGETS k2_log k2_torch_api context
     DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )

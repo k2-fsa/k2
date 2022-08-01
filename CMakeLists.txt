@@ -83,11 +83,12 @@ if(NOT K2_WITH_CUDA)
   set(K2_ENABLE_NVTX OFF CACHE BOOL "" FORCE)
 endif()
 
-#if(NOT K2_USE_PYTORCH)
-#  message(FATAL_ERROR "\
-#    Please set K2_USE_PYTORCH to ON.
-#    Support for other frameworks will be added later")
-#endif()
+# ANDROID does not depend on Pytorch
+if(NOT ANDROID AND NOT K2_USE_PYTORCH)
+  message(FATAL_ERROR "\
+    Please set K2_USE_PYTORCH to ON.
+    Support for other frameworks will be added later")
+endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
@@ -272,8 +273,10 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
-
+if (NOT ANDROID)
 include(pybind11)
+endif()
+
 if(K2_USE_PYTORCH)
   add_definitions(-DK2_USE_PYTORCH)
   include(torch)
