@@ -136,8 +136,9 @@ def linear_fst_with_self_loops(fsts: k2.Fsa):
     transitions from the input linear FST.
 
 
-    Note: The main difference to func:`linear_fsa_with_self_loops` is that
-          aux_labels and scores are also kept here.
+    Note:
+      The main difference to func:`linear_fsa_with_self_loops` is that
+      aux_labels and scores are also kept here.
 
     Args:
       fsas:
@@ -172,15 +173,24 @@ def linear_fst_with_self_loops(fsts: k2.Fsa):
     # current src_arc will share the dest_arc of previous src_arc.
     new_arc_flag[1:] = non_epsilon_positions[0:-1]
 
-    dest_arc_row_ids = torch.cumsum(new_arc_flag, dim=0) - 1
-    dest_arc_row_ids = dest_arc_row_ids.to(torch.int32)
+    # Take fst1 in k2/python/tests/linear_fst_with_self_loops_test
+    # as an example.
+    # labels:       [1 2 0 0 0 0 -1]
+    # new_arc_flag: [1 1 1 0 0 0 0]
+    # torch.cumsum: [1 2 3 3 3 3 3]
+    # -1          : [0 1 2 2 2 2 2]
+    # The final result is the row_id of a dest_arc that
+    # eash aux_label/score belongs to.
+    dest_arc_row_ids = torch.cumsum(new_arc_flag, dim=0, dtype=torch.int32) - 1
 
     # Some dest_arc may correspond to a sequence of source arcs.
     # So the aux_label on these kind of dest_arc may contain multi tokens.
     # And the score on it is the sum of scores on those source arcs.
     #
     # Calculate aux_labels of each dest_arc.
-    dest_arc_shape = k2.ragged.create_ragged_shape2(row_ids=dest_arc_row_ids)
+    dest_arc_shape = \
+        k2.ragged.create_ragged_shape2(row_ids=dest_arc_row_ids,
+                                       cached_tot_size=dest_arc_row_ids.numel())
     dest_aux_labels = k2.RaggedTensor(dest_arc_shape,
                                       fsts.aux_labels.contiguous())
     dest_aux_labels = dest_aux_labels.remove_values_leq(0)
