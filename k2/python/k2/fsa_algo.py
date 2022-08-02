@@ -155,7 +155,7 @@ def linear_fst_with_self_loops(fsts: k2.Fsa):
     # 1. if the input label of PREVIOUS src_arc is non zero,
     #    there should be a new dest_arc in out_fst for CURRENT src_arc.
     # 2. if the input label of PREVIOUS arc is zero,
-    #    CURRENT arc will share the dest_arc in out_fst of PREVIOUS src_arc.
+    #    CURRENT arc will share the dest_arc in out_fst with PREVIOUS src_arc.
     # where src_arc is an arc in source fst,
     # and dest_arc is corresponding arc in generated fst(out_fst).
     #
