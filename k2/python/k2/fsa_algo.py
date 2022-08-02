@@ -180,7 +180,7 @@ def linear_fst_with_self_loops(fsts: k2.Fsa):
     # torch.cumsum: [1 2 3 3 3 3 3]
     # -1          : [0 1 2 2 2 2 2]
     # The final result is the row_id of a dest_arc that
-    # eash aux_label/score belongs to.
+    # each aux_label/score belongs to.
     dest_arc_row_ids = torch.cumsum(new_arc_flag, dim=0, dtype=torch.int32) - 1
 
     # Some dest_arc may correspond to a sequence of source arcs.
