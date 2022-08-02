@@ -153,7 +153,7 @@ def linear_fst_with_self_loops(fsts: k2.Fsa):
 
     # The idea to generate dest_arc_row_ids:
     # 1. if the input label of PREVIOUS src_arc is non zero,
-    #    there should be an new dest_arc in out_fst for CURRENT src_arc.
+    #    there should be a new dest_arc in out_fst for CURRENT src_arc.
     # 2. if the input label of PREVIOUS arc is zero,
     #    CURRENT arc will share the dest_arc in out_fst of PREVIOUS src_arc.
     # where src_arc is an arc in source fst,
