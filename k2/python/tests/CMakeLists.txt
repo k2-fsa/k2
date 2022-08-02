@@ -54,6 +54,7 @@ set(py_test_files
   linear_fsa_test.py
   linear_fsa_with_self_loops_test.py
   linear_fst_test.py
+  linear_fst_with_self_loops_test.py
   multi_gpu_test.py
   mutual_information_test.py
   nbest_test.py
