@@ -131,6 +131,91 @@ def linear_fst(labels: Union[List[int], List[List[int]]],
     return fsa
 
 
+def linear_fst_with_self_loops(fsts: k2.Fsa):
+    '''Create a linear FST with epsilon self-loops by first removing epsilon
+    transitions from the input linear FST.
+
+
+    Note: The main difference to func:`linear_fsa_with_self_loops` is that
+          aux_labels and scores are also kept here.
+
+    Args:
+      fsas:
+        An FST or an FstVec. It MUST be a linear FST or a vector of linear FSTs.
+    Returns:
+      Return an FST or FstVec, where each FST contains epsilon self-loops but
+      contains no epsilon transitions for arcs that are not self-loops.
+    '''
+    assert hasattr(fsts, "aux_labels")
+    non_epsilon_positions = fsts.labels != 0
+    new_arc_flag = torch.ones(len(fsts.labels),
+                              dtype=torch.int32).to(fsts.device)
+
+    # The idea to generate dest_arc_row_ids:
+    # 1. if the input label of PREVIOUS src_arc is non zero,
+    #    there should be an new dest_arc in out_fst for CURRENT src_arc.
+    # 2. if the input label of PREVIOUS arc is zero,
+    #    CURRENT arc will share the dest_arc in out_fst of PREVIOUS src_arc.
+    # where src_arc is an arc in source fst,
+    # and dest_arc is corresponding arc in generated fst(out_fst).
+    #
+    #
+    # Following line works as:
+    # for i in range(1, len(fsts.labels)):
+    #     if(fsts.labels[i - 1] == 0):
+    #         new_arc_flag[i] = 0
+    #
+    # new_arc_flag only contains 0 or 1.
+    # 1 means:
+    # create a new dest_arc in out_fst for current src_arc.
+    # 0 means:
+    # current src_arc will share the dest_arc of previous src_arc.
+    new_arc_flag[1:] = non_epsilon_positions[0:-1]
+
+    dest_arc_row_ids = torch.cumsum(new_arc_flag, dim=0) - 1
+    dest_arc_row_ids = dest_arc_row_ids.to(torch.int32)
+
+    # Some dest_arc may corresponds to a sequence of source arcs.
+    # So the aux_lable on these kind of dest_arc may contain multi tokens.
+    # And the score on it is the sum of scores on those source arcs.
+    #
+    # Calculate aux_labels of each dest_arc.
+    dest_arc_shape = k2.ragged.create_ragged_shape2(row_ids=dest_arc_row_ids)
+    dest_aux_labels = k2.RaggedTensor(dest_arc_shape,
+                                      fsts.aux_labels.contiguous())
+    dest_aux_labels = dest_aux_labels.remove_values_leq(0)
+
+    # Add scores from a sequence of source arcs.
+    arc_indexes = torch.arange(fsts.arcs.num_elements(), dtype=torch.int32).to(
+        fsts.device
+    )
+    arc_map = k2.RaggedTensor(dest_arc_shape, arc_indexes)
+    dest_scores = k2.ragged.index_and_sum(fsts.scores.contiguous(), arc_map)
+
+    if len(fsts.shape) == 2:
+        # A single FST
+        device = fsts.device
+        shape0 = _k2.RaggedShape.regular_ragged_shape(dim0=1,
+                                                      dim1=fsts.shape[0])
+        shape = shape0.to(device).compose(fsts.arcs.shape())
+    else:
+        shape = fsts.arcs.shape()
+
+    shape = shape.remove_axis(1)  # remove the state axis
+
+    labels = k2.RaggedTensor(shape, fsts.labels.contiguous())
+    labels = labels.remove_values_leq(0)
+    ans = k2.linear_fsa(labels)
+
+    ans.aux_labels = dest_aux_labels
+    ans.scores = dest_scores
+
+    ans = k2.add_epsilon_self_loops(ans)
+    if len(fsts.shape) == 2:
+        ans = ans[0]
+    return ans
+
+
 def top_sort(fsa: Fsa) -> Fsa:
     '''Sort an FSA topologically.
 
@@ -582,6 +667,9 @@ def reverse(fsa: Fsa) -> Fsa:
 def remove_epsilon(fsa: Fsa) -> Fsa:
     '''Remove epsilons (symbol zero) in the input Fsa.
 
+    Caution:
+        Call :func:`k2.connect` if you are using a GPU version.
+
     Args:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
@@ -592,6 +680,7 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
 
         `fsa` must be free of epsilon loops that have score
         greater than 0.
+
 
     Returns:
       The resulting Fsa is equivalent to the input `fsa` under the
@@ -627,6 +716,9 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa,
     '''Remove epsilons (symbol zero) in the input Fsa, and then add
     epsilon self-loops to all states in the input Fsa (usually as
     a preparation for intersection with treat_epsilons_specially=0).
+
+    Caution:
+        Call :func:`k2.connect` if you are using a GPU version.
 
     Args:
       fsa:
