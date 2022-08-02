@@ -188,6 +188,11 @@ linear_fst
 
 .. autofunction:: linear_fst
 
+linear_fst_with_self_loops
+--------------------------
+
+.. autofunction:: linear_fst_with_self_loops
+
 monotonic_lower_bound
 ---------------------
 
