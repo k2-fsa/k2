@@ -184,7 +184,7 @@ def linear_fst_with_self_loops(fsts: k2.Fsa):
     dest_arc_row_ids = torch.cumsum(new_arc_flag, dim=0, dtype=torch.int32) - 1
 
     # Some dest_arc may correspond to a sequence of source arcs.
-    # So the aux_label on these kind of dest_arc may contain multi tokens.
+    # So the aux_label on these kinds of dest_arc may contain multi tokens.
     # And the score on it is the sum of scores on those source arcs.
     #
     # Calculate aux_labels of each dest_arc.
