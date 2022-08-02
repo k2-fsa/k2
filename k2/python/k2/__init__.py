@@ -66,6 +66,7 @@ from .fsa_algo import levenshtein_graph
 from .fsa_algo import linear_fsa
 from .fsa_algo import linear_fsa_with_self_loops
 from .fsa_algo import linear_fst
+from .fsa_algo import linear_fst_with_self_loops
 from .fsa_algo import prune_on_arc_post
 from .fsa_algo import random_paths
 from .fsa_algo import remove_epsilon
