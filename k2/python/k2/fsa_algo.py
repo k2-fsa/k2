@@ -137,7 +137,7 @@ def linear_fst_with_self_loops(fsts: k2.Fsa):
 
 
     Note:
-      The main difference to func:`linear_fsa_with_self_loops` is that
+      The main difference to :func:`linear_fsa_with_self_loops` is that
       aux_labels and scores are also kept here.
 
     Args:
