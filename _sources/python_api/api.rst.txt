@@ -113,6 +113,11 @@ get_rnnt_prune_ranges
 
 .. autofunction:: get_rnnt_prune_ranges
 
+get_rnnt_prune_ranges_deprecated
+--------------------------------
+
+.. autofunction:: get_rnnt_prune_ranges_deprecated
+
 index_add
 ---------
 
