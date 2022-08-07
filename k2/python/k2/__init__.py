@@ -98,6 +98,7 @@ from .rnnt_loss import get_rnnt_logprobs_joint
 from .rnnt_loss import get_rnnt_logprobs_pruned
 from .rnnt_loss import get_rnnt_logprobs_smoothed
 from .rnnt_loss import get_rnnt_prune_ranges
+from .rnnt_loss import get_rnnt_prune_ranges_deprecated  # for testing purpose
 from .rnnt_loss import rnnt_loss
 from .rnnt_loss import rnnt_loss_pruned
 from .rnnt_loss import rnnt_loss_simple
