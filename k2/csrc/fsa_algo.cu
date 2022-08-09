@@ -2107,7 +2107,7 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
   // Second, figure out the number of arcs for each merged state.
   int32_t num_seqs = states.TotSize(0);
 
-  // Plus 1 here because we will applying ExclusiveSum on this array.
+  // Plus 1 here because we will apply ExclusiveSum on this array.
   Array1<int32_t> num_states_for_seqs(c, states.TotSize(0) + 1);
 
   // "ss" is short for "sorted states"
@@ -2136,7 +2136,7 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
   K2_CHECK_EQ(unique_states_shape.RowSplits(1).Dim() - 1 + num_seqs * 2,
               num_merged_states);
 
-  // Plus 1 here because we will applying ExclusiveSum on this array.
+  // Plus 1 here because we will apply ExclusiveSum on this array.
   Array1<int32_t> num_arcs_for_states(
       c, seqs_to_states_shape.NumElements() + 1);
 
