@@ -842,7 +842,7 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
   weight 'x.weight', then the reverse of 'src' accepts the reverse of string 'x'
   with weight 'x.weight.reverse'.
 
-  Implementation notss:
+  Implementation notes:
   The Fsa in k2 only has one start state 0, and the only final state with
   the largest state number whose in-coming arcs have "-1" as the label.
   So, 1) the start state of 'dest' will correspond to the final state of 'src'.
@@ -864,12 +864,50 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
     @param [out] dest  Output Fsa or FsaVec.  At exit, it will be equivalent
                        to the reverse Fsa of 'src'. Caution: the reverse will
                        ignore the "-1" label.
-                       
+
     @param [out,optional] arc_map  For each arc in `dest`, gives the index of
                           the corresponding arc in `src` that it corresponds to.
 
 */
 void Reverse(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
+
+/*
+ * Generate denominator lattice from sampled linear paths for RNN-T+MMI
+ * training.
+ *
+ * Implementation notes:
+ *   1) Generate "states" for each sampled symbol from their left_symbols and
+ *      the frame_ids they are sampled from.
+ *   2) Sort those "states" for each sequence and then merge the same "states".
+ *   3) Map all of the sampled symbols to the merged "states".
+ *   4) Remove duplicate arcs.
+ *
+ *  @param [in] sampled_paths  The sampled symbols, it has a regular shape of
+ *                [seq][num_path][path_length]. All its elements MUST satisfy
+ *                `0 <= value < vocab_size.
+ *  @param [in] frame_ids  It contains the frame indexes of at which frame we
+ *                sampled the symbols, which has same shape of sampled_paths.
+ *  @param [in] left_symbols The left_symbols of the sampled symbols, it has a
+ *                regular shape of [seq][num_path][path_length][context], the
+ *                first three indexes are the same as sampled_paths. Each
+ *                sublist along axis 3 has `context_size` elements. All its
+ *                elements MUST satisfy `0 <= value < vocab_size`.
+ *  @param [in] sampling_probs  It contains the probabilities of sampling each
+ *                symbol, which has the same shape as sampled_paths.
+ *  @param [in] vocab_size The vocabulary size.
+ *  @param [in] context_size  The number of left symbols.
+ *  @param [out] arc_map  For each arc in the return Fsa, gives the orignal
+ *                 index (idx012) in sampled_paths that it corresponds to.
+ *
+ *  @return  Return the generated lattice.
+ */
+FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
+                                  Ragged<int32_t> &frame_ids,
+                                  Ragged<int32_t> &left_symbols,
+                                  Ragged<float> &sampling_probs,
+                                  int32_t vocab_size,
+                                  int32_t context_size,
+                                  Array1<int32_t> *arc_map);
 
 }  // namespace k2
 

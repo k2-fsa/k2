@@ -1381,3 +1381,57 @@ def union(fsas: Fsa) -> Fsa:
     out_fsa = k2.utils.fsa_from_unary_function_tensor(fsas, ragged_arc,
                                                       arc_map)
     return out_fsa
+
+
+def generate_denominator_lattice(
+    sampled_paths: torch.Tensor,
+    frame_ids: torch.Tensor,
+    left_symbols: torch.Tensor,
+    sampling_probs: torch.Tensor,
+    path_scores: torch.Tensor,
+    vocab_size: int,
+    context_size: int,
+) -> Fsa:
+    """Generate denominator lattice from sampled linear paths for RNN-T+MMI
+    training.
+
+    Args:
+      sampled_paths:
+        The sampled symbols, it has a shape of (seq, num_path, path_length).
+        All its elements MUST satisfy `0 <= value < vocab_size.
+      frame_ids:
+        It contains the frame indexes of at which frame we sampled the symbols,
+        which has same shape of sampled_paths.
+      left_symbols:
+        The left_symbols of the sampled symbols, it has a shape of
+        (seq, num_path, path_length, context_size), the first three indexes are
+        the same as sampled_paths. All its elements MUST satisfy
+        `0 <= value < vocab_size`.
+      sampling_probs:
+        It contains the probabilities of sampling each symbol, which has a
+        same shape as sampled_paths. Normally comes from the output of
+        "predictor" head.
+      path_scores:
+        It contains the scores of each sampled symbol, which has a same shape as
+        sampled_paths. It might contain the output of hybrid head and the extra
+        language model output. Note: Autograd is supported for this tensor.
+      vocab_size:
+        The vocabulary size.
+      context_size:
+        The number of left symbols.
+    """
+    ragged_arc, arc_map = _k2.generate_denominator_lattice(
+        sampled_paths=k2.RaggedTensor(sampled_paths),
+        frame_ids=k2.RaggedTensor(frame_ids),
+        left_symbols=k2.RaggedTensor(left_symbols),
+        sampling_probs=k2.RaggedTensor(sampling_probs),
+        vocab_size=vocab_size,
+        context_size=context_size,
+    )
+    lattice = Fsa(ragged_arc)
+    a_value = getattr(lattice, "scores")
+    # Enable autograd for path_scores
+    b_value = index_select(path_scores.flatten(), arc_map)
+    value = a_value + b_value
+    setattr(lattice, "scores", value)
+    return lattice
