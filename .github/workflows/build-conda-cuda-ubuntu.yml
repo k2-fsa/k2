@@ -20,6 +20,8 @@ name: build_conda_cuda_ubuntu
 
 on:
   push:
+    branches:
+      - not-for-merge
     tags:
       - '*'
 
@@ -119,9 +121,19 @@ jobs:
           K2_CUDA_VERSION: ${{ matrix.cuda }}
           K2_PYTHON_VERSION: ${{ matrix.python-version}}
           K2_TORCH_VERSION: ${{ matrix.torch }}
-          K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
+          # K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
           K2_IS_GITHUB_ACTIONS: 1
           K2_IS_FOR_CONDA: 1
         run: |
           export K2_BUILD_TYPE=$K2_BUILD_TYPE
           ./scripts/build_conda.sh
+
+      - name: Display generated files
+        run: |
+          ls -lh /usr/share/miniconda/envs/k2/conda-bld/linux-64
+
+      - name: Upload generated files
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-cuda-${{ matrix.cuda }}-python-${{ matrix.python-version }}-${{ matrix.os }}
+          path: /usr/share/miniconda/envs/k2/conda-bld/linux-64/*.tar.bz2

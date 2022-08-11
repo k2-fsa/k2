@@ -30,6 +30,8 @@ name: build_conda_cpu_ubuntu
 
 on:
   push:
+    branches:
+      - not-for-merge
     tags:
       - '*'
 
@@ -99,7 +101,7 @@ jobs:
         env:
           K2_PYTHON_VERSION: ${{ matrix.python-version}}
           K2_TORCH_VERSION: ${{ matrix.torch }}
-          K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
+          # K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
           K2_IS_GITHUB_ACTIONS: 1
           K2_IS_FOR_CONDA: 1
         run: |
