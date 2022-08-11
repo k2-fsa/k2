@@ -357,8 +357,6 @@ def get_rnnt_logprobs_joint(
         logits[:, :, :, termination_symbol].permute((0, 2, 1)).clone()
     )  # [B][S+1][T]
     py -= normalizers
-    px = px.contiguous()
-    py = py.contiguous()
 
     if not modified:
         px = fix_for_boundary(px, boundary)
@@ -786,9 +784,6 @@ def get_rnnt_logprobs_pruned(
     py = _roll_by_shifts(py, ranges[:, :, 0])
     # (B, S + 1, T)
     py = py.permute((0, 2, 1))
-
-    px = px.contiguous()
-    py = py.contiguous()
 
     if not modified:
         px = fix_for_boundary(px, boundary)

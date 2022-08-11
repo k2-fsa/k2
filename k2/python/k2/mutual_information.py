@@ -287,9 +287,10 @@ def mutual_information_recursion(
         for s_begin, t_begin, s_end, t_end in boundary.tolist():
             assert 0 <= s_begin <= s_end <= S
             assert 0 <= t_begin <= t_end <= T
-    # The following assertions are for efficiency
-    assert px.is_contiguous()
-    assert py.is_contiguous()
+
+    # The following statements are for efficiency
+    px, py = px.contiguous(), py.contiguous()
+
     pxy_grads = [None, None]
     scores = MutualInformationRecursionFunction.apply(px, py, pxy_grads,
                                                       boundary, return_grad)
@@ -380,8 +381,9 @@ def joint_mutual_information_recursion(
             assert 0 <= s_begin <= s_end <= S
             assert 0 <= t_begin <= t_end <= T
 
+    # The following statements are for efficiency
     px_tot, py_tot = px_tot.contiguous(), py_tot.contiguous()
-    # The following assertions are for efficiency
+
     assert px_tot.ndim == 3
     assert py_tot.ndim == 3
 
