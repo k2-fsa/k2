@@ -285,7 +285,7 @@ class OpenFstStreamReader {
       }
       ExpectChar(line_is, ']');  // sets failbit if not..
     }
-    line_is >> std::ws;
+    if (!line_is.eof()) line_is >> std::ws;
     float cost = 0.0;
     if (!line_is.eof()) {
       line_is >> cost;
