@@ -363,7 +363,8 @@ class OpenFstStreamReader {
                      << ", num_ragged_labels=" << num_ragged_labels_;
       }
     }
-    line_is >> std::ws;
+    if (!line_is.eof()) line_is >> std::ws;
+
     if (line_is.fail()) {
       K2_LOG(INFO) << "Invalid line: " << line << ", eof=" << line_is.eof()
                     << ", fail=" << line_is.fail()

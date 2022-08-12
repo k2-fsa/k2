@@ -29,30 +29,15 @@ env:
   K2_BUILD_TYPE: Release
 
 jobs:
-  generate_build_matrix:
-    # see https://github.com/pytorch/pytorch/pull/50633
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Generating build matrix
-        id: set-matrix
-        run: |
-          # outputting for debugging purposes
-          python scripts/github_actions/generate_build_matrix.py
-          MATRIX=$(python scripts/github_actions/generate_build_matrix.py --enable-cuda)
-          echo "::set-output name=matrix::${MATRIX}"
 
   build_conda_cuda_ubuntu:
-    needs: generate_build_matrix
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
       matrix:
-        ${{ fromJson(needs.generate_build_matrix.outputs.matrix) }}
+        python-version: ["3.9"]
+        torch: ["1.12.0"]
+        cuda: ["11.3"]
 
     steps:
       # refer to https://github.com/actions/checkout
