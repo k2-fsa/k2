@@ -866,15 +866,6 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
   *dest = tmp;
 }
 
-// TODO(fangjun): use the following method suggested by Dan
-//
-// ... incidentally, it's possible to further optimize this so the run
-// time is less than linear, by using methods similar to what I use
-// in GetStateBatches(); imagine computing a table that instead of
-// the best traceback, is the best 2-step traceback; and then the 4-step
-// traceback, and so on. There's no need for this right now, since the
-// forward-pass algorithm is already at least linear-time in the length
-// of this path. But we can consider it for the future.
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
                              const Array1<int32_t> &entering_arcs) {
   NVTX_RANGE(K2_FUNC);
@@ -895,6 +886,9 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
   Array1<int32_t> state_best_arc_index_array(context, num_states, -1);
   int32_t *state_best_arc_index_array_data = state_best_arc_index_array.Data();
 
+#if 0
+  // This is a simple version of the kernel that demonstrates what we're trying
+  // to do with the more complex code.
   K2_EVAL(
       context, num_fsas, lambda_set_num_best_arcs, (int32_t fsas_idx0) {
         int32_t state_idx01 = row_splits1_data[fsas_idx0];
@@ -921,6 +915,193 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
         }
         num_best_arcs_per_fsa_data[fsas_idx0] = num_arcs;
       });
+#else
+  // Comparing with previous simple version,
+  // the run time of following code is less than linear,
+  // by using methods similar to that in GetStateBatches();
+  // imagine computing a table that including the entering arc,
+  // then the entering arc of 2-step traceback;
+  // and then the entering arc of 4-step traceback, and so on.
+
+  // We can tune `log_power` as a tradeoff between work done and clock time on
+  // GPU.
+  int32_t log_power = (context->GetDeviceType() == kCpu ? 0 : 4);
+
+  int32_t max_num_states = fsas.shape.MaxSize(1);
+  // The following avoids doing too much extra work accumulating powers
+  // of 'entering_arcs' for very small problem sizes.
+  while (log_power > 0 && (1 << (1 + log_power)) > max_num_states) log_power--;
+
+  Array2<int32_t> entering_arcs_powers(context, log_power + 1, num_states);
+  const int32_t stride = entering_arcs_powers.ElemStride0();
+  int32_t *entering_arcs_powers_data = entering_arcs_powers.Data();
+
+  const int32_t *row_ids1_data = fsas.RowIds(1).Data(),
+                *row_splits2_data = fsas.RowSplits(2).Data();
+
+  // Row 0 tracks entering arc of 1-step traceback for each state.
+  context->CopyDataTo(
+      entering_arcs.Dim() * entering_arcs.ElementSize(),
+      entering_arcs_data,
+      context,
+      entering_arcs_powers_data);
+
+  // Row 1 tracks entering arc of 2-step traceback for each state;
+  // Row 2 tracks entering arc of 4-step traceback for each state, and so on.
+  for (int32_t power = 1; power <= log_power; power++) {
+    const int32_t *src_data =
+      entering_arcs_powers.Data() + (power - 1) * stride;
+    int32_t *dest_data =
+      entering_arcs_powers.Data() + power * stride;
+
+    K2_EVAL(
+        context, num_states, lambda_set_entering_arcs_powers,
+        (int32_t state_idx01)->void {
+          int32_t fsas_idx0 = row_ids1_data[state_idx01];
+          // The first state of current fsas_idx0.
+          int32_t begin_state_idx01 = row_splits1_data[fsas_idx0];
+          int32_t cur_index = src_data[state_idx01];
+
+          if (cur_index != -1) {
+            int32_t cur_state =
+              arcs_data[cur_index].src_state + begin_state_idx01;
+            cur_index = src_data[cur_state];
+          }
+          dest_data[state_idx01] = cur_index;
+        });
+  }
+
+  // jobs_per_fsa tells us how many separate chains of states we'll follow for
+  // each FSA.
+  // jobs_multiple is a kind of trick to ensure any given warp doesn't
+  // issue more memory requests than it can handle at a time (we drop
+  // some threads).
+  int32_t jobs_per_fsa = (1 << log_power),
+          jobs_multiple = (context->GetDeviceType() == kCuda ? 8 : 1);
+  while (jobs_multiple > 1 && jobs_per_fsa * jobs_multiple * num_fsas > 10000)
+    jobs_multiple /= 2;  // Likely won't get here.  Just reduce multiple if
+                         // num-jobs is ridiculous.
+
+  auto entering_arcs_powers_acc = entering_arcs_powers.Accessor();
+  K2_EVAL2(
+      context, num_fsas, jobs_per_fsa * jobs_multiple,
+      lambda_set_numbert_best_arcs2, (int32_t fsas_idx0, int32_t j) {
+        if (j % jobs_multiple != 0)
+          return;  // a trick to avoid too much random
+                   // memory access for any given warp
+        int32_t task_idx =
+            j / jobs_multiple;  // Now 0 <= task_idx < jobs_per_fsa.
+
+        int32_t begin_state_idx01 = row_splits1_data[fsas_idx0];
+
+        int32_t end_state_idx01 = row_splits1_data[fsas_idx0 + 1];
+
+        int32_t begin_arc_idx012 = row_splits2_data[begin_state_idx01];
+        int32_t end_arc_idx012 = row_splits2_data[end_state_idx01];
+
+        int32_t num_states_this_fsa = end_state_idx01 - begin_state_idx01;
+        int32_t num_arcs_this_fsa = end_arc_idx012 - begin_arc_idx012;
+        if (num_arcs_this_fsa == 0 || num_states_this_fsa == 0) {
+          // This fsa is empty, so there is no shortest path available.
+          num_best_arcs_per_fsa_data[fsas_idx0] = 0;
+          return;
+        }
+
+        int32_t least_num_best_arcs_this_fsa = task_idx + 1;
+
+        if (least_num_best_arcs_this_fsa > num_arcs_this_fsa ||
+            least_num_best_arcs_this_fsa >= num_states_this_fsa) return;
+
+        // Eventually,
+        // num_best_arcs_this_fsa[fsa_idx0] = cur_num_best_states_this_fsa + 1.
+        // cur_num_best_states_this_fsa is 0-based to make it easier
+        // to compute offset(i.e. "p" in following code) of arc index.
+        int32_t cur_num_best_states_this_fsa = 0;
+
+        // Initialized for task_idx == 0.
+        int32_t cur_dest_state_idx01 = end_state_idx01 - 1;
+        int32_t cur_index = entering_arcs_powers_acc(0, cur_dest_state_idx01);
+
+        // Initialized for task_idx > 0.
+        for (int32_t m = 0; m < log_power; ++m) {
+          int32_t n = 1 << m;
+          if ((task_idx & n) != 0) {
+            cur_num_best_states_this_fsa += n;
+            cur_index = entering_arcs_powers_acc(m, cur_dest_state_idx01);
+            if (cur_index == -1) return;
+
+            // The new dest_state is the src_state of cur_index.
+            // It's not a typo cur_dest_state_idx01 is assigned with src_state.
+            cur_dest_state_idx01 =
+              arcs_data[cur_index].src_state + begin_state_idx01;
+          }
+        }
+
+        // In previous for loop, cur_dest_state_idx01 is assigned to the
+        // "first" state for each task_idx.
+        // To get shortest path, the original fsa is visited in a reversed way,
+        // so the "first" states here are "tailing" states in original fsa.
+        // e.g.:
+        // For task_idx = 0,
+        // the "first" state is the final state in original fsa,
+        // i.e. end_state_idx01 - 1.
+        //
+        // For task_idx = 1, the "first" state is a penultimate state,
+        // i.e. the one that owns the "entering arc" to the final state.
+        //
+        // cur_idx is the "entering arc" of the "first" state for each task_idx.
+        cur_index = entering_arcs_powers_acc(0, cur_dest_state_idx01);
+        if (cur_index == -1) return;
+        int32_t cur_src_state_idx01 =
+          arcs_data[cur_index].src_state + begin_state_idx01;
+
+        K2_CHECK_EQ(cur_num_best_states_this_fsa, task_idx);
+
+        // cur_num_best_states_this_fsa is 0-based.
+        // It's slightly easier to compute the storage offset(i.e. p)
+        // for arc_index than 1-based.
+        int32_t *p = state_best_arc_index_array_data + end_state_idx01 - 1
+          - cur_num_best_states_this_fsa;
+
+        // Used to detect states whose entering_arc_idx == -1
+        // and calculate num_best_arcs_per_fsa[fsa_idx0].
+        int32_t next_num_best_states_this_fsa = cur_num_best_states_this_fsa;
+        int32_t prev_src_state_idx01 = cur_src_state_idx01;
+
+        while (1) {
+          if (cur_index == -1) {
+            // If exactly one step would also be enough to take us past the
+            // boundary.
+            if (entering_arcs_powers_acc(0, prev_src_state_idx01) == -1) {
+              // cur_num_best_states is 0-based.
+              // "+ 1" makes it 1-based.
+              num_best_arcs_per_fsa_data[fsas_idx0] =
+                cur_num_best_states_this_fsa + 1;
+            }
+            return;
+          } else {
+            // Storage cur_index and calculate the new offset for
+            // a step with "jobs_per_fsa" arcs.
+            *p = cur_index;
+            p -= jobs_per_fsa;
+
+            // Cache current environment before trying
+            // a step with "jobs_per_fsa" arcs.
+            cur_num_best_states_this_fsa = next_num_best_states_this_fsa;
+            next_num_best_states_this_fsa += jobs_per_fsa;
+            prev_src_state_idx01 = cur_src_state_idx01;
+
+            // Try a step with "jobs_per_fsa" arcs.
+            cur_index =
+              entering_arcs_powers_acc(log_power, cur_src_state_idx01);
+            cur_dest_state_idx01 =
+              arcs_data[cur_index].dest_state + begin_state_idx01;
+            cur_src_state_idx01 =
+              arcs_data[cur_index].src_state + begin_state_idx01;
+          }
+        }
+      });
+#endif
   ExclusiveSum(num_best_arcs_per_fsa, &num_best_arcs_per_fsa);
 
   RaggedShape shape = RaggedShape2(&num_best_arcs_per_fsa, nullptr, -1);
