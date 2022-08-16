@@ -113,5 +113,5 @@ jobs:
       - name: Upload generated files
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-macos-10.15
           path: /usr/local/miniconda/envs/k2/conda-bld/osx-64/*.tar.bz2
