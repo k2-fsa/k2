@@ -1089,15 +1089,12 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
             // a step with "jobs_per_fsa" arcs.
             cur_num_best_states_this_fsa = next_num_best_states_this_fsa;
             next_num_best_states_this_fsa += jobs_per_fsa;
-            prev_src_state_idx01 = cur_src_state_idx01;
+            prev_src_state_idx01 =
+              arcs_data[cur_index].src_state + begin_state_idx01;
 
             // Try a step with "jobs_per_fsa" arcs.
             cur_index =
-              entering_arcs_powers_acc(log_power, cur_src_state_idx01);
-            cur_dest_state_idx01 =
-              arcs_data[cur_index].dest_state + begin_state_idx01;
-            cur_src_state_idx01 =
-              arcs_data[cur_index].src_state + begin_state_idx01;
+              entering_arcs_powers_acc(log_power, prev_src_state_idx01);
           }
         }
       });
