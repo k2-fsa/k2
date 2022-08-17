@@ -1389,6 +1389,7 @@ def generate_denominator_lattice(
     left_symbols: torch.Tensor,
     sampling_probs: torch.Tensor,
     path_scores: torch.Tensor,
+    boundary: torch.Tensor,
     vocab_size: int,
     context_size: int,
 ) -> Fsa:
@@ -1415,6 +1416,8 @@ def generate_denominator_lattice(
         It contains the scores of each sampled symbol, which has a same shape as
         sampled_paths. It might contain the output of hybrid head and the extra
         language model output. Note: Autograd is supported for this tensor.
+      boundary:
+        It contains the number of frames for each sequence.
       vocab_size:
         The vocabulary size.
       context_size:
@@ -1425,6 +1428,7 @@ def generate_denominator_lattice(
         frame_ids=k2.RaggedTensor(frame_ids),
         left_symbols=k2.RaggedTensor(left_symbols),
         sampling_probs=k2.RaggedTensor(sampling_probs),
+        boundary=boundary,
         vocab_size=vocab_size,
         context_size=context_size,
     )
@@ -1432,6 +1436,6 @@ def generate_denominator_lattice(
     a_value = getattr(lattice, "scores")
     # Enable autograd for path_scores
     b_value = index_select(path_scores.flatten(), arc_map)
-    value = a_value + b_value
+    value = b_value - a_value
     setattr(lattice, "scores", value)
     return lattice

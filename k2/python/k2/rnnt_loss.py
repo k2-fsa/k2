@@ -366,6 +366,175 @@ def get_rnnt_logprobs_joint(
     return (px, py)
 
 
+def get_rnnt_logprobs_joint_for_numerator(
+    logits: Tensor,
+    symbols: Tensor,
+    termination_symbol: int,
+    boundary: Optional[Tensor] = None,
+    normalized: int = True,
+    modified: bool = False,
+) -> Tuple[Tensor, Tensor]:
+    """Reduces RNN-T problem to a compact, standard form that can then be given
+    (with boundaries) to mutual_information_recursion().
+    This function is called from rnnt_loss().
+
+    Args:
+      logits:
+        The output of joiner network, with shape (B, T, S + 1, C),
+        i.e. batch, time_seq_len, symbol_seq_len+1, num_classes
+      symbols:
+        A LongTensor of shape [B][S], containing the symbols at each position
+        of the sequence.
+      termination_symbol:
+        The identity of the termination symbol, must be in {0..C-1}
+      boundary:
+        a optional LongTensor of shape [B, 4] with elements interpreted as
+        [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
+        [0, 0, S, T]
+        if boundary is not supplied.
+        Most likely you will want begin_symbol and begin_frame to be zero.
+      modified: if True, each time a real symbol is consumed a frame will
+          also be consumed, so at most 1 symbol can appear per frame.
+    Returns:
+      (px, py) (the names are quite arbitrary)::
+
+          px: logprobs, of shape [B][S][T+1]
+          py: logprobs, of shape [B][S+1][T]
+
+      in the recursion::
+
+         p[b,0,0] = 0.0
+         if !modified:
+            p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
+                               p[b,s,t-1] + py[b,s,t-1])
+         if modified:
+            p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
+                               p[b,s,t-1] + py[b,s,t-1])
+      .. where p[b][s][t] is the "joint score" of the pair of subsequences of
+      length s and t respectively.  px[b][s][t] represents the probability of
+      extending the subsequences of length (s,t) by one in the s direction,
+      given the particular symbol, and py[b][s][t] represents the probability
+      of extending the subsequences of length (s,t) by one in the t direction,
+      i.e. of emitting the termination/next-frame symbol.
+
+      if !modified, px[:,:,T] equals -infinity, meaning on the
+      "one-past-the-last" frame we cannot emit any symbols.
+      This is simply a way of incorporating
+      the probability of the termination symbol on the last frame.
+    """
+    assert logits.ndim == 4
+    (B, T, S1, C) = logits.shape
+    S = S1 - 1
+    assert symbols.shape == (B, S)
+
+    px = torch.gather(
+        logits, dim=3, index=symbols.reshape(B, 1, S, 1).expand(B, T, S, 1)
+    ).squeeze(-1)
+    px = px.permute((0, 2, 1))
+
+    if not modified:
+        px = torch.cat(
+            (
+                px,
+                torch.full(
+                    (B, S, 1), float("-inf"), device=px.device, dtype=px.dtype
+                ),
+            ),
+            dim=2,
+        )  # now: [B][S][T+1], index [:,:,T] has -inf..
+
+    py = (
+        logits[:, :, :, termination_symbol].permute((0, 2, 1)).clone()
+    )  # [B][S+1][T]
+
+    if normalized:
+        normalizers = torch.logsumexp(logits, dim=3)
+        normalizers = normalizers.permute((0, 2, 1))
+        px[:, :, :T] -= normalizers[:, :S, :]
+        py -= normalizers
+
+    px = px.contiguous()
+    py = py.contiguous()
+
+    if not modified:
+        px = fix_for_boundary(px, boundary)
+
+    return (px, py)
+
+
+def rnnt_loss_for_numerator(
+    logits: Tensor,
+    symbols: Tensor,
+    external_lm: Tensor,
+    termination_symbol: int,
+    boundary: Optional[Tensor] = None,
+    modified: bool = False,
+    normalized: bool = True,
+    reduction: Optional[str] = "mean",
+) -> Tensor:
+    """A normal RNN-T loss, which uses a 'joiner' network output as input,
+    i.e. a 4 dimensions tensor.
+
+    Args:
+      logits:
+        The output of joiner network, with shape (B, T, S + 1, C),
+        i.e. batch, time_seq_len, symbol_seq_len+1, num_classes
+      symbols:
+        The symbol sequences, a LongTensor of shape [B][S], and elements
+        in {0..C-1}.
+      external_lm:
+        External language model network, with shape (B, S + 1, C).
+      termination_symbol:
+        the termination symbol, with 0 <= termination_symbol < C
+      boundary:
+        a optional LongTensor of shape [B, 4] with elements interpreted as
+        [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
+        [0, 0, S, T] if boundary is not supplied.
+        Most likely you will want begin_symbol and begin_frame to be zero.
+      modified: if True, each time a real symbol is consumed a frame will
+          also be consumed, so at most 1 symbol can appear per frame.
+      normalized:
+        True to do log_softmax normalization, otherwise not.
+      reduction:
+        Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
+        `none`: no reduction will be applied.
+        `mean`: apply `torch.mean` over the batches.
+        `sum`: the output will be summed.
+        Default: `mean`
+
+    Returns:
+      If recursion is `none`, returns a tensor of shape (B,), containing the
+      total RNN-T loss values for each element of the batch, otherwise a scalar
+      with the reduction applied.
+    """
+    px, py = get_rnnt_logprobs_joint_for_numerator(
+        logits=logits,
+        symbols=symbols,
+        termination_symbol=termination_symbol,
+        boundary=boundary,
+        normalized=normalized,
+        modified=modified,
+    )
+
+    B, S, T1 = px.shape
+    px_external_lm = torch.gather(
+        external_lm[:, :S], dim=2, index=symbols.unsqueeze(-1)
+    )  # [B][S][1]
+    px += px_external_lm
+
+    negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
+    if reduction == "none":
+        return -negated_loss
+    elif reduction == "mean":
+        return -torch.mean(negated_loss)
+    elif reduction == "sum":
+        return -torch.sum(negated_loss)
+    else:
+        assert (
+            False
+        ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+
+
 def rnnt_loss(
     logits: Tensor,
     symbols: Tensor,

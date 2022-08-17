@@ -67,7 +67,7 @@ def _roll_by_shifts(
 
 
 def simulate_importance_sampling(
-    batch_size: int,
+    boundary: torch.Tensor,
     vocab_size: int,
     path_length: int,
     num_paths: int,
@@ -77,8 +77,9 @@ def simulate_importance_sampling(
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Args:
-      batch_size:
-        The number of sequence.
+      boundary:
+        It is a tensor with shape (B,), containing the number of frames for
+        each sequence.
       vocab_size:
         Vocabulary size.
       path_length:
@@ -106,9 +107,13 @@ def simulate_importance_sampling(
         frame ids at which we sampled the symbols.
     """
     # we sample paths from frame 0
+    batch_size = boundary.numel()
+
     t_index = torch.zeros(
         (batch_size, num_paths), dtype=torch.int64, device=device
     )
+
+    t_index_max = boundary.view(batch_size, 1).expand(batch_size, num_paths)
 
     left_symbols = torch.tensor(
         [blank_id], dtype=torch.int64, device=device
@@ -142,11 +147,20 @@ def simulate_importance_sampling(
         # update (t, s) for each path
         # index == 0 means the sampled symbol is blank
         t_mask = index == 0
-        #         t_index = torch.where(t_mask, t_index + 1, t_index)
+        # t_index = torch.where(t_mask, t_index + 1, t_index)
         t_index = t_index + 1
+
+        final_mask = t_index >= t_index_max
+        reach_final = torch.any(final_mask)
+        if reach_final:
+            new_t_index = torch.randint(0, torch.min(t_index_max) - 1, (1,)).item()
+            t_index.masked_fill_(final_mask, new_t_index)
+
         current_symbols = torch.cat([left_symbols, index.unsqueeze(2)], dim=2)
         left_symbols = _roll_by_shifts(current_symbols, t_mask.to(torch.int64))
         left_symbols = left_symbols[:, :, 1:]
+        if reach_final:
+            left_symbols.masked_fill_(final_mask.unsqueeze(2), blank_id)
 
     # sampled_paths : (batch_size, num_paths, path_lengths)
     sampled_paths = torch.stack(sampled_paths_list, dim=2).int()
@@ -172,13 +186,14 @@ class TestConnect(unittest.TestCase):
     def test(self):
         context_size = 2
         batch_size, num_paths, path_length, vocab_size = 2, 3, 10, 10
+        boundary_ = torch.tensor([6, 9], dtype=torch.int32)
         (
             sampled_paths_,
             frame_ids_,
             sampling_probs_,
             left_symbols_,
         ) = simulate_importance_sampling(
-            batch_size=batch_size,
+            boundary=boundary_,
             vocab_size=vocab_size,
             num_paths=num_paths,
             path_length=path_length,
@@ -188,6 +203,7 @@ class TestConnect(unittest.TestCase):
             (batch_size, num_paths, path_length), dtype=torch.float
         )
         for device in self.devices:
+            boundary = boundary_.to(device)
             sampled_paths = sampled_paths_.to(device)
             sampling_probs = sampling_probs_.to(device)
             frame_ids = frame_ids_.to(device)
@@ -199,12 +215,13 @@ class TestConnect(unittest.TestCase):
                 frame_ids=frame_ids,
                 left_symbols=left_symbols,
                 sampling_probs=sampling_probs,
+                boundary=boundary,
                 path_scores=path_scores,
                 vocab_size=vocab_size,
                 context_size=context_size,
             )
-            fsa = k2.connect(k2.top_sort(fsa))
             print(fsa)
+            fsa = k2.connect(k2.top_sort(fsa))
             scores = torch.sum(
                 fsa.get_tot_scores(log_semiring=True, use_double_scores=False)
             )

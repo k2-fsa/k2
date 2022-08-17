@@ -1995,6 +1995,7 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
                                   Ragged<int32_t> &frame_ids,
                                   Ragged<int32_t> &left_symbols,
                                   Ragged<float> &sampling_probs,
+                                  Array1<int32_t> &boundary,
                                   int32_t vocab_size,
                                   int32_t context_size,
                                   Array1<int32_t> *arc_map) {
@@ -2009,6 +2010,7 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
   K2_DCHECK_EQ(sampled_paths.NumElements(),
       left_symbols.NumElements() * context_size);
   K2_DCHECK_EQ(sampled_paths.NumElements(), sampling_probs.NumElements());
+  K2_DCHECK_EQ(sampled_paths.TotSize(0), boundary.Dim());
   for (int32_t i = 0; i < 3; ++i) {
     K2_DCHECK_EQ(sampled_paths.TotSize(i), frame_ids.TotSize(i));
     K2_DCHECK_EQ(sampled_paths.TotSize(i), left_symbols.TotSize(i));
@@ -2123,9 +2125,12 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
               us_idx0 = us_row_ids1_data[ss_idx0x],
               us_idx0_next_minus_1 = us_row_ids1_data[ss_idx0x_next - 1],
               num_unique_states = us_idx0_next_minus_1 - us_idx0 + 1;
-      // Plus 2 here, because we need a super dest_state for the last sampled
-      // symbol of each path, and a final state needed by k2.
-      num_states_for_seqs_data[idx0] = num_unique_states + 2;
+      // Plus 3 here, because we need a super dest_state for the states sampled
+      // on the last frame (this dest_state will point to the final state),
+      // a fake super dest_state for the last states of linear paths that
+      // are not sampled on the last frames (this fake dest_state will be
+      // removed by connect operation), and a final state needed by k2.
+      num_states_for_seqs_data[idx0] = num_unique_states + 3;
   });
 
   ExclusiveSum(num_states_for_seqs, &num_states_for_seqs);
@@ -2133,7 +2138,7 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
       &num_states_for_seqs, nullptr, -1);
   int32_t num_merged_states = seqs_to_states_shape.NumElements();
 
-  K2_CHECK_EQ(unique_states_shape.RowSplits(1).Dim() - 1 + num_seqs * 2,
+  K2_CHECK_EQ(unique_states_shape.RowSplits(1).Dim() - 1 + num_seqs * 3,
               num_merged_states);
 
   // Plus 1 here because we will apply ExclusiveSum on this array.
@@ -2153,15 +2158,17 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
       int32_t idx0 = sts_row_ids1_data[idx01],
               idx0x_next = sts_row_splits1_data[idx0 + 1],
               num_arcs = 0;
-      // The final state for each sequence.
+      // The final arc for each sequence.
       if (idx01 == idx0x_next - 2) num_arcs = 1;
-      if (idx01 < idx0x_next - 2) {
-          // Minus idx0 * 2, because we add extra two states for each sequence.
-          int32_t us_idx0 = idx01 - idx0 * 2,
+      if (idx01 < idx0x_next - 3) {
+          // Minus idx0 * 3, because we add extra three states for each sequence.
+          int32_t us_idx0 = idx01 - idx0 * 3,
                   us_idx0x = us_row_splits1_data[us_idx0],
                   us_idx0x_next = us_row_splits1_data[us_idx0 + 1];
           num_arcs = us_idx0x_next - us_idx0x;
      }
+     // idx01 == idx0x_next - 3 (i.e. the fake super dest_state) and
+     // idx01 == idx0x_next -1 (i.e. the final state) don't have arcs.
      num_arcs_for_states_data[idx01] = num_arcs;
   });
 
@@ -2185,6 +2192,7 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
                 *arcs_shape_row_splits1_data = arcs_shape.RowSplits(1).Data(),
                 *arcs_shape_row_ids2_data = arcs_shape.RowIds(2).Data(),
                 *states_row_ids2_data = states.RowIds(2).Data(),
+                *boundary_data = boundary.Data(),
                 *ss_row_ids1_data = sorted_states.RowIds(1).Data();
   const float *sampling_probs_data = sampling_probs.values.Data();
   Array1<Arc> arcs(c, num_arcs);
@@ -2233,37 +2241,50 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
 
           arc.score = -logf(1 - powf(1 - sampling_prob, repeat_num));
 
-          // Final state of the last sequence, it will point to the added super
-          // dest_state.
+          K2_DCHECK_LT(frame_ids_data[states_idx012], boundary_data[idx0]);
+
+          int32_t idx0x_next = arcs_shape_row_splits1_data[idx0 + 1];
+
+          // Handle the final state of last sequence.
           if (states_idx012 == num_states - 1) {
-            int32_t idx0x_next = arcs_shape_row_splits1_data[idx0 + 1];
-            arc.dest_state = idx0x_next - idx0x - 2;
+            // If current state is on final frame, it will point to the added
+            // super dest_state.
+            if (frame_ids_data[states_idx012] == boundary_data[idx0] - 1) {
+              arc.dest_state = idx0x_next - idx0x - 2;
+            } else {
+              // point to the fake added dest_state.
+              arc.dest_state = idx0x_next - idx0x - 3;
+            }
           } else {
             // states_idx01 is path index
             int32_t states_idx01 = states_row_ids2_data[states_idx012],
                     states_idx01_next =
-                      states_row_ids2_data[states_idx012 + 1],
-                    frame_id = frame_ids_data[states_idx012],
-                    frame_id_next = frame_ids_data[states_idx012 + 1];
-            // The first condition means this is the final state of each
-            // sequence.
-            // The second condition means we reach final frame at this state,
-            // the next state will be a start state of another path.
-            // So, this state points to the added super dest_state.
-            if (states_idx01 != states_idx01_next ||
-                (states_idx01 == states_idx01_next &&
-                 frame_id_next < frame_id)) {
-              int32_t idx0x_next =
-                arcs_shape_row_splits1_data[idx0 + 1];
-              arc.dest_state = idx0x_next - idx0x - 2;
+                      states_row_ids2_data[states_idx012 + 1];
+            if (states_idx01 != states_idx01_next) {
+              // If current state is on final frame, it will point to the added
+              // super dest_state.
+              if (frame_ids_data[states_idx012] == boundary_data[idx0] - 1) {
+                arc.dest_state = idx0x_next - idx0x - 2;
+              } else {
+                // point to the fake added dest_state.
+                arc.dest_state = idx0x_next - idx0x - 3;
+              }
             } else {
-              // states_idx012 + 1 is the index of original consecutive state.
-              // "ss" is short for "sorted states"
-              // "us" is short for "unique states".
-              int32_t ss_idx01_next =
-                sorted_states_old2new_data[states_idx012 + 1],
-                      us_idx0_next = us_row_ids1_data[ss_idx01_next];
-              arc.dest_state = us_idx0_next +  2 * idx0 - idx0x;
+              // If current state is on final frame, it will point to the added
+              // super dest_state.
+              if (frame_ids_data[states_idx012] == boundary_data[idx0] - 1 &&
+                  frame_ids_data[states_idx012 + 1] != boundary_data[idx0] - 1) {
+                arc.dest_state = idx0x_next - idx0x - 2;
+              } else {
+                // states_idx012 + 1 is the index of original consecutive state.
+                // "ss" is short for "sorted states"
+                // "us" is short for "unique states".
+                int32_t ss_idx01_next =
+                  sorted_states_old2new_data[states_idx012 + 1],
+                        us_idx0_next = us_row_ids1_data[ss_idx01_next];
+                // Plus 3 * idx0, because we add 3 state for each sequence
+                arc.dest_state = us_idx0_next +  3 * idx0 - idx0x;
+              }
             }
           }
         }

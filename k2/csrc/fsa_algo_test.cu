@@ -1414,16 +1414,11 @@ TEST(FsaAlgo, TestGenerateDenominatorLattice) {
                                     "    [ 0.2 0.2 0.2 0.1 0.2 0.1 0.2 0.2 ] "
                                     "    [ 0.1 0.1 0.2 0.2 0.3 0.3 0.3 0.3 ] ] "
                                     "]");
-    Ragged<float> path_scores(c, "[ [ [ 1 1 1 1 1 1 1 1 ] "
-                                 "    [ 1 2 2 1 2 2 1 2 ] "
-                                 "    [ 1 1 1 3 3 3 3 3 ] ] "
-                                 "  [ [ 1 1 1 1 1 1 1 1 ] "
-                                 "    [ 1 2 1 2 2 2 2 2 ] "
-                                 "    [ 1 1 1 2 3 3 3 3 ] ] ]");
+    Array1<int32_t> boundary(c, "[ 3 4 ]");
 
     Array1<int32_t> arc_map;
     FsaVec lattice = GenerateDenominatorLattice(
-        sampled_paths, frame_ids, left_symbols, sampling_probs,
+        sampled_paths, frame_ids, left_symbols, sampling_probs, boundary,
         10 /*vocab_size*/, 2 /*context_size*/, &arc_map);
     K2_LOG(INFO) << arc_map;
     K2_LOG(INFO) << lattice;

@@ -894,6 +894,7 @@ void Reverse(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
  *                elements MUST satisfy `0 <= value < vocab_size`.
  *  @param [in] sampling_probs  It contains the probabilities of sampling each
  *                symbol, which has the same shape as sampled_paths.
+ *  @param [in] boundary  It contains the number of frames for each sequence.
  *  @param [in] vocab_size The vocabulary size.
  *  @param [in] context_size  The number of left symbols.
  *  @param [out] arc_map  For each arc in the return Fsa, gives the orignal
@@ -905,6 +906,7 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
                                   Ragged<int32_t> &frame_ids,
                                   Ragged<int32_t> &left_symbols,
                                   Ragged<float> &sampling_probs,
+                                  Array1<int32_t> &boundary,
                                   int32_t vocab_size,
                                   int32_t context_size,
                                   Array1<int32_t> *arc_map);
