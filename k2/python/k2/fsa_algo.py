@@ -1436,6 +1436,6 @@ def generate_denominator_lattice(
     a_value = getattr(lattice, "scores")
     # Enable autograd for path_scores
     b_value = index_select(path_scores.flatten(), arc_map)
-    value = b_value - a_value
+    value = b_value + a_value
     setattr(lattice, "scores", value)
     return lattice

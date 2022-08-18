@@ -100,7 +100,6 @@ from .rnnt_loss import get_rnnt_logprobs_pruned
 from .rnnt_loss import get_rnnt_logprobs_smoothed
 from .rnnt_loss import get_rnnt_prune_ranges
 from .rnnt_loss import rnnt_loss
-from .rnnt_loss import rnnt_loss_for_numerator
 from .rnnt_loss import rnnt_loss_pruned
 from .rnnt_loss import rnnt_loss_simple
 from .rnnt_loss import rnnt_loss_smoothed
