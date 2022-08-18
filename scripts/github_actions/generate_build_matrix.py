@@ -89,7 +89,7 @@ def generate_build_matrix(enable_cuda, test_only_latest_torch):
         },
     }
     if test_only_latest_torch:
-        latest = "1.12.1"
+        latest = "1.12.0"
         matrix = {latest: matrix[latest]}
 
     ans = []
