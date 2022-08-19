@@ -5,7 +5,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Installation &mdash; k2 1.18 documentation</title>
+  <title>FAQs &mdash; k2 1.18 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -20,8 +20,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Install using conda (Linux/macOS)" href="conda.html" />
-    <link rel="prev" title="k2" href="../index.html" /> 
+    <link rel="next" title="Core concepts in k2" href="../core_concepts/index.html" />
+    <link rel="prev" title="For developers" href="for_developers.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -44,14 +44,18 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Installation</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="conda.html">Install using conda (Linux/macOS)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pip.html">Install using pip (k2-fsa.org)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pip_pypi.html">Install using pip (pypi.org)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="from_source.html">Install from source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="for_developers.html">For developers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="faqs.html">FAQs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#reporting-issues">Reporting issues</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">FAQs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#importerror-lib64-libm-so-6-version-glibc-2-27-not-found">ImportError: /lib64/libm.so.6: version `GLIBC_2.27’ not found</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#error-downloading-https-github-com-pybind-pybind11-archive-v2-6-0-tar-gz-failed">error: Downloading https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz failed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#reporting-issues">Reporting issues</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
@@ -73,9 +77,10 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>Installation</li>
+          <li><a href="index.html">Installation</a> &raquo;</li>
+      <li>FAQs</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/installation/index.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/installation/faqs.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
   </ul>
   <hr/>
@@ -83,66 +88,31 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="installation">
-<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline"></a></h1>
-<div class="admonition hint">
-<p class="admonition-title">Hint</p>
-<p>You don’t need GPUs to build, install, and run k2.</p>
+  <section id="faqs">
+<h1>FAQs<a class="headerlink" href="#faqs" title="Permalink to this headline"></a></h1>
+<section id="importerror-lib64-libm-so-6-version-glibc-2-27-not-found">
+<h2>ImportError: /lib64/libm.so.6: version <a href="#id1"><span class="problematic" id="id2">`</span></a>GLIBC_2.27’ not found<a class="headerlink" href="#importerror-lib64-libm-so-6-version-glibc-2-27-not-found" title="Permalink to this headline"></a></h2>
+<p>If you have this issue, it is very likely that you used <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span></code>
+to install k2.</p>
+<p>The conda package is compiled using Ubuntu 18.04. If your system
+is too old, you will get such an issue.</p>
+<p>The most straightforward way to fix it is to <a class="reference internal" href="from_source.html#install-k2-from-source"><span class="std std-ref">Install from source</span></a>.</p>
+</section>
+<section id="error-downloading-https-github-com-pybind-pybind11-archive-v2-6-0-tar-gz-failed">
+<h2>error: Downloading <a class="reference external" href="https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz">https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz</a> failed<a class="headerlink" href="#error-downloading-https-github-com-pybind-pybind11-archive-v2-6-0-tar-gz-failed" title="Permalink to this headline"></a></h2>
+<p>If you have no access to the Internet, you will get such an issue when installing
+k2 from source.</p>
+<p>Please try to find a machine that has access to the Internet, download pybind11,
+and copy the downloaded file to the machine you use to compile k2.</p>
+<p>The commands you need are as follows:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># assume that you place the downloaded file in the /tmp directory</span>
+<span class="nb">cd</span> /tmp
+wget https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz
+</pre></div>
 </div>
-<p>We provide the following approaches to install k2. You can choose any of them that
-is appropriate for you.</p>
-<p>Available versions of Python, CUDA, and PyTorch of different approaches are listed
-below:</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>From conda (<strong>recommended</strong>)</p>
-<ul>
-<li><p><img alt="Supported python versions" src="../_images/python_ge_3.6-blue.svg" /></p></li>
-<li><p><img alt="Supported cuda versions" src="../_images/cuda_ge_10.1-orange.svg" /></p></li>
-<li><p><img alt="Supported pytorch versions" src="../_images/pytorch_ge_1.6.0-green.svg" /></p></li>
-</ul>
-</li>
-<li><p>From pip (k2-fsa.org)</p>
-<ul>
-<li><p><img alt="Supported python versions" src="../_images/python_ge_3.6-blue.svg" /></p></li>
-<li><p><img alt="Supported cuda versions" src="../_images/cuda_ge_10.1-orange.svg" /></p></li>
-<li><p><img alt="Supported pytorch versions" src="../_images/pytorch_ge_1.6.0-green.svg" /></p></li>
-</ul>
-</li>
-<li><p>From pypi (pypi.org)</p>
-<ul>
-<li><p><img alt="Supported python versions" src="../_images/pypi_python-3.6_3.7_3.8-blue.svg" /></p></li>
-<li><p><img alt="Supported cuda versions" src="../_images/pypi_cuda-10.1-orange.svg" /></p></li>
-<li><p><img alt="Supported pytorch versions" src="../_images/pypi_pytorch-1.7.1-green.svg" /></p></li>
-</ul>
-</li>
-<li><p>From source (<strong>for advanced users</strong>)</p>
-<ul>
-<li><p><img alt="Supported python versions" src="../_images/python_ge_3.6-blue.svg" /></p></li>
-<li><p><img alt="Supported cuda versions" src="../_images/cuda_ge_10.1-orange.svg" /></p></li>
-<li><p><img alt="Supported pytorch versions" src="../_images/pytorch_ge_1.6.0-green.svg" /></p></li>
-</ul>
-</li>
-</ul>
-</div></blockquote>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="conda.html">Install using conda (Linux/macOS)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="pip.html">Install using pip (k2-fsa.org)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="pip_pypi.html">Install using pip (pypi.org)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="from_source.html">Install from source</a></li>
-<li class="toctree-l1"><a class="reference internal" href="for_developers.html">For developers</a></li>
-<li class="toctree-l1"><a class="reference internal" href="faqs.html">FAQs</a></li>
-</ul>
-</div>
-<section id="reporting-issues">
-<h2>Reporting issues<a class="headerlink" href="#reporting-issues" title="Permalink to this headline"></a></h2>
-<p>If you encounter any errors while using k2 after installation, please
-create an issue <a class="reference external" href="https://github.com/k2-fsa/k2/issues/new">on GitHub</a>
-and tell us your current environment by posting the output of the following
-two commands:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="o">-</span><span class="n">m</span> <span class="n">k2</span><span class="o">.</span><span class="n">version</span>
-<span class="n">python3</span> <span class="o">-</span><span class="n">m</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">collect_env</span>
+<p>and then change <a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#L23">https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#L23</a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># set(pybind11_URL  &quot;https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz&quot;)</span>
+<span class="nb">set</span><span class="p">(</span><span class="n">pybind11_URL</span>  <span class="s2">&quot;file:///tmp/v2.6.0.tar.gz&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -152,8 +122,8 @@ two commands:</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../index.html" class="btn btn-neutral float-left" title="k2" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="conda.html" class="btn btn-neutral float-right" title="Install using conda (Linux/macOS)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="for_developers.html" class="btn btn-neutral float-left" title="For developers" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../core_concepts/index.html" class="btn btn-neutral float-right" title="Core concepts in k2" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
