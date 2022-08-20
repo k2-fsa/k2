@@ -35,3 +35,63 @@ and then change `<https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#
 
    # set(pybind11_URL  "https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz")
    set(pybind11_URL  "file:///tmp/v2.6.0.tar.gz")
+
+mkl related issues on macOS
+---------------------------
+
+If you have the following errors while importing ``k2``:
+
+.. code-block:: bash
+
+  $ python3 -c "import k2"
+  Traceback (most recent call last):
+    File "/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py", line 24, in <module>
+      from _k2 import DeterminizeWeightPushingType
+  ImportError: dlopen(/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, 2): Library not loaded: @rpath/libmkl_intel_ilp64.2.dylib
+    Referenced from: /Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
+    Reason: image not found
+
+
+You can use the following commands to fix it:
+
+.. code-block:: bash
+
+   $ cd $CONDA_PREFIX/lib
+   $ ls -lh libmkl_intel_ilp64.*
+
+It will show something like below:
+
+.. code-block:: bash
+
+  $ ls -lh libmkl_intel_ilp64.*
+  -rwxrwxr-x  2 fangjun  staff    19M Oct 18  2021 libmkl_intel_ilp64.1.dylib
+  -rwxrwxr-x  2 fangjun  staff    19M Oct 18  2021 libmkl_intel_ilp64.dylib
+
+The fix is to create a symlink inside ``$CONDA_PREFIX/lib``:
+
+.. code-block:: bash
+
+  $ ln -s libmkl_intel_ilp64.dylib libmkl_intel_ilp64.2.dylib
+
+After the above fix, you may get a different error like below:
+
+.. code-block:: bash
+
+  $ python3 -c "import k2"
+  Traceback (most recent call last):
+    File "/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py", line 24, in <module>
+      from _k2 import DeterminizeWeightPushingType
+  ImportError: dlopen(/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, 2): Library not loaded: @rpath/libmkl_core.2.dylib
+    Referenced from: /Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
+    Reason: image not found
+
+Please follow the above approach to create another symlink for ``libmkl_core.2.dylib``.
+
+In summary, the commands you need to fix mkl related issues are listed below:
+
+.. code-block:: bash
+
+  $ cd $CONDA_PREFIX/lib
+  $ ln -s libmkl_intel_ilp64.dylib libmkl_intel_ilp64.2.dylib
+  $ ln -s libmkl_core.dylib libmkl_core.2.dylib
+  $ ln -s libmkl_intel_thread.dylib libmkl_intel_thread.2.dylib
