@@ -89,7 +89,7 @@ def generate_build_matrix(enable_cuda, test_only_latest_torch):
         },
     }
     if test_only_latest_torch:
-        latest = "1.12.0"
+        latest = "1.12.1"
         matrix = {latest: matrix[latest]}
 
     # We only have limited spaces in anaconda, so we exclude some
