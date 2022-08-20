@@ -36,10 +36,10 @@ and then change `<https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#
    # set(pybind11_URL  "https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz")
    set(pybind11_URL  "file:///tmp/v2.6.0.tar.gz")
 
-mkl related issues on macOS
+MKL related issues on macOS
 ---------------------------
 
-If you have the following errors while importing ``k2``:
+If you have the following error while importing ``k2``:
 
 .. code-block:: bash
 
