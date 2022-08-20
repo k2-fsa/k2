@@ -19,6 +19,8 @@ name: build_conda_cpu_windows
 
 on:
   push:
+    branches:
+      - conda-macos
     tags:
       - '*'
 
