@@ -53,6 +53,7 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">FAQs</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#importerror-lib64-libm-so-6-version-glibc-2-27-not-found">ImportError: /lib64/libm.so.6: version `GLIBC_2.27’ not found</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#error-downloading-https-github-com-pybind-pybind11-archive-v2-6-0-tar-gz-failed">error: Downloading https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz failed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mkl-related-issues-on-macos">MKL related issues on macOS</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#reporting-issues">Reporting issues</a></li>
@@ -113,6 +114,52 @@ wget https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz
 <p>and then change <a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#L23">https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#L23</a>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># set(pybind11_URL  &quot;https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz&quot;)</span>
 <span class="nb">set</span><span class="p">(</span><span class="n">pybind11_URL</span>  <span class="s2">&quot;file:///tmp/v2.6.0.tar.gz&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="mkl-related-issues-on-macos">
+<h2>MKL related issues on macOS<a class="headerlink" href="#mkl-related-issues-on-macos" title="Permalink to this headline"></a></h2>
+<p>If you have the following error while importing <code class="docutils literal notranslate"><span class="pre">k2</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python3 -c <span class="s2">&quot;import k2&quot;</span>
+Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
+  File <span class="s2">&quot;/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py&quot;</span>, line <span class="m">24</span>, <span class="k">in</span> &lt;module&gt;
+    from _k2 import DeterminizeWeightPushingType
+ImportError: dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, <span class="m">2</span><span class="o">)</span>: Library not loaded: @rpath/libmkl_intel_ilp64.2.dylib
+  Referenced from: /Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
+  Reason: image not found
+</pre></div>
+</div>
+<p>You can use the following commands to fix it:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ <span class="nb">cd</span> <span class="nv">$CONDA_PREFIX</span>/lib
+$ ls -lh libmkl_intel_ilp64.*
+</pre></div>
+</div>
+<p>It will show something like below:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ ls -lh libmkl_intel_ilp64.*
+-rwxrwxr-x  <span class="m">2</span> fangjun  staff    19M Oct <span class="m">18</span>  <span class="m">2021</span> libmkl_intel_ilp64.1.dylib
+-rwxrwxr-x  <span class="m">2</span> fangjun  staff    19M Oct <span class="m">18</span>  <span class="m">2021</span> libmkl_intel_ilp64.dylib
+</pre></div>
+</div>
+<p>The fix is to create a symlink inside <code class="docutils literal notranslate"><span class="pre">$CONDA_PREFIX/lib</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ ln -s libmkl_intel_ilp64.dylib libmkl_intel_ilp64.2.dylib
+</pre></div>
+</div>
+<p>After the above fix, you may get a different error like below:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python3 -c <span class="s2">&quot;import k2&quot;</span>
+Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
+  File <span class="s2">&quot;/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py&quot;</span>, line <span class="m">24</span>, <span class="k">in</span> &lt;module&gt;
+    from _k2 import DeterminizeWeightPushingType
+ImportError: dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, <span class="m">2</span><span class="o">)</span>: Library not loaded: @rpath/libmkl_core.2.dylib
+  Referenced from: /Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
+  Reason: image not found
+</pre></div>
+</div>
+<p>Please follow the above approach to create another symlink for <code class="docutils literal notranslate"><span class="pre">libmkl_core.2.dylib</span></code>.</p>
+<p>In summary, the commands you need to fix mkl related issues are listed below:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ <span class="nb">cd</span> <span class="nv">$CONDA_PREFIX</span>/lib
+$ ln -s libmkl_intel_ilp64.dylib libmkl_intel_ilp64.2.dylib
+$ ln -s libmkl_core.dylib libmkl_core.2.dylib
+$ ln -s libmkl_intel_thread.dylib libmkl_intel_thread.2.dylib
 </pre></div>
 </div>
 </section>
