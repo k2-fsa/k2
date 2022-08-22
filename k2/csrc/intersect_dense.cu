@@ -247,7 +247,8 @@ class MultiGraphDenseIntersect {
           c_, product, lambda_set_keep, (int32_t i)->void {
             // i is actually an idx012 of a state.
 
-            // the following works because each FSA has (its num-states * T_+1)
+            // the following works because each FSA has
+            // (its num-states * (T_+1))
             // states allocated to it.  However (i / (T_+1)) does not directly
             // map to a state index.
             int32_t fsa_idx0 = a_fsas_row_ids1_data[(i / (T + 1))];
@@ -698,9 +699,7 @@ class MultiGraphDenseIntersect {
                     num_fsas_per_t_cpu = num_fsas_per_t.To(c_cpu);
     K2_CHECK_EQ(num_fsas_per_t.Dim(), T_ + 1);
 
-    Array1<int32_t> a_fsas_row_splits1_cpu = a_fsas_.RowSplits(1).To(c_cpu),
-                    a_fsas_row_splits12_cpu =
-                        a_fsas_.RowSplits(2)[a_fsas_.RowSplits(1)].To(c_cpu);
+    Array1<int32_t> a_fsas_row_splits1_cpu = a_fsas_.RowSplits(1).To(c_cpu);
     int32_t tot_arcs = a_fsas_.NumElements(), tot_states = a_fsas_.TotSize(1);
 
     steps_.resize(T_ + 1);
