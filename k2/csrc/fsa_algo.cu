@@ -639,7 +639,7 @@ FsaVec CtcGraphs(const Ragged<int32_t> &symbols, bool modified /*= false*/,
             // between them, so there are two arcs for this state
             // otherwise, this state will point to blank state and next symbol
             // state, so we need three arcs here.
-            // Note: for the simpilfied topology (standard equals false), there
+            // Note: for the simplified topology (standard equals false), there
             // are always 3 arcs leaving symbol states.
             if (current_symbol != next_symbol)
               current_num_arcs = 3;
@@ -739,7 +739,7 @@ Fsa CtcTopo(const ContextPtr &c, int32_t max_token, bool modified,
     // for modified topology, the number of self loops and leaving arcs for
     // state 0 are all the number of states minus one.
     // and there two arcs(one for self loop, the other points to state 0) for
-    // each of other states. see links belove for details :
+    // each of other states. see links below for details :
     // https://github.com/k2-fsa/k2/issues/746#issuecomment-856421616
     // https://github.com/k2-fsa/snowfall/pull/209
     int32_t num_arcs = (states - 1) * 2 + (states - 2) * 2;
