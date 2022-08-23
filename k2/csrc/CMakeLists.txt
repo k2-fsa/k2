@@ -140,7 +140,11 @@ if(K2_USE_PYTORCH)
     target_include_directories(context PUBLIC ${TORCH_DIR}/include/torch/csrc/api/include)
   endif()
 
+  if(DEFINED ENV{CONDA_PREFIX} AND APPLE)
+    target_link_libraries(context PUBLIC "-L $ENV{CONDA_PREFIX}/lib")
+  endif()
 endif()
+
 target_include_directories(context PUBLIC ${PYTHON_INCLUDE_DIRS})
 
 if(K2_ENABLE_TESTS OR K2_ENABLE_BENCHMARK)
