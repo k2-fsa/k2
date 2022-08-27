@@ -1,7 +1,7 @@
 FAQs
 ====
 
-ImportError: /lib64/libm.so.6: version `GLIBC_2.27' not found
+ImportError: /lib64/libm.so.6: version 'GLIBC_2.27' not found
 -------------------------------------------------------------
 
 If you have this issue, it is very likely that you used ``conda install``
@@ -95,3 +95,53 @@ In summary, the commands you need to fix mkl related issues are listed below:
   $ ln -s libmkl_intel_ilp64.dylib libmkl_intel_ilp64.2.dylib
   $ ln -s libmkl_core.dylib libmkl_core.2.dylib
   $ ln -s libmkl_intel_thread.dylib libmkl_intel_thread.2.dylib
+
+Error: invalid device function
+------------------------------
+
+If you get the following error while running k2:
+
+.. code-block::
+
+  [F] /xxx/k2/k2-latest/k2/csrc/eval.h:147:void k2::EvalDevice(cudaStream_t,
+  int32_t, LambdaT&) [with LambdaT = __nv_dl_wrapper_t<__nv_dl_tag<k2::Array1<int>
+  (*)(std::shared_ptr<k2::Context>, int, int, int), k2::Range<int>, 1>, int*,
+  int, int>; cudaStream_t = CUstream_st*; int32_t = int] Check failed:
+  e == cudaSuccess (98 vs. 0)  Error: invalid device function.
+
+you have probably installed k2 from source. However, you are ``NOT`` running k2 on
+the same machine as the one you used to build k2 and the two machines have different
+types of GPUs.
+
+The fix is to pass ``-DK2_BUILD_FOR_ALL_ARCHS=ON`` to ``cmake``.
+
+If you have followed :ref:`installation for developers` to install k2, you need
+to change
+
+.. code-block:: bash
+
+  cmake -DCMAKE_BUILD_TYPE=Release ..
+
+to
+
+.. code-block:: bash
+
+  cmake -DCMAKE_BUILD_TYPE=Release -DK2_BUILD_FOR_ALL_ARCHS=ON ..
+
+If you have followed :ref:`install k2 from source` to install k2, you need to
+change
+
+.. code-block:: bash
+
+  git clone https://github.com/k2-fsa/k2.git
+  cd k2
+  python3 setup.py install
+
+to
+
+.. code-block:: bash
+
+  git clone https://github.com/k2-fsa/k2.git
+  cd k2
+  export K2_CMAKE_ARGS="-DK2_BUILD_FOR_ALL_ARCHS=ON"
+  python3 setup.py install
