@@ -20,6 +20,8 @@
  * limitations under the License.
  */
 
+#include <string>
+
 #include "k2/csrc/log.h"
 #include "k2/csrc/version.h"
 #include "k2/python/csrc/version.h"
