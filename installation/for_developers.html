@@ -85,7 +85,7 @@
            <div itemprop="articleBody">
              
   <section id="for-developers">
-<h1>For developers<a class="headerlink" href="#for-developers" title="Permalink to this headline"></a></h1>
+<span id="installation-for-developers"></span><h1>For developers<a class="headerlink" href="#for-developers" title="Permalink to this headline"></a></h1>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <p>It supports Linux (CPU + CUDA), macOS (CPU), and Windows (CPU + CUDA).</p>
@@ -117,6 +117,14 @@ git clone https://github.com/k2-fsa/k2.git
 mkdir build_release
 <span class="nb">cd</span> build_release
 cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Release ..
+
+<span class="c1"># Note: If you plan to run k2 on a different machine than the one you used to</span>
+<span class="c1"># build k2 and the two machines have different types of GPUs, please use the</span>
+<span class="c1"># following command:</span>
+<span class="c1">#</span>
+<span class="c1"># cmake -DCMAKE_BUILD_TYPE=Release -DK2_BUILD_FOR_ALL_ARCHS=ON ..</span>
+<span class="c1">#</span>
+
 make -j
 <span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PYTHONPATH</span> <span class="c1"># for `import k2`</span>
 <span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span> <span class="c1"># for `import _k2`</span>
@@ -129,8 +137,8 @@ python3 -c <span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&
 <span class="c1"># It should print /some/path/k2/build_release/lib/_k2.cpython-38-x86_64-linux-gnu.so</span>
 <span class="c1"># (I assume that you&#39;re using Python 3.8, so there is a string 38 above)</span>
 
-<span class="c1"># If you are going to install https://github.com/k2-fsa/sherpa after installing k2</span>
-<span class="c1"># Please run</span>
+<span class="c1"># If you are going to install https://github.com/k2-fsa/sherpa after installing</span>
+<span class="c1"># k2, please run</span>
 <span class="nb">export</span> <span class="nv">K2_INSTALL_PREFIX</span><span class="o">=</span>/some/path/k2/build_release
 <span class="c1"># before you install sherpa</span>
 </pre></div>
@@ -140,6 +148,14 @@ python3 -c <span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&
 mkdir build_debug
 <span class="nb">cd</span> build_debug
 cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Debug ..
+
+<span class="c1"># Note: If you plan to run k2 on a different machine than the one you used to</span>
+<span class="c1"># build k2 and the two machines have different types of GPUs, please use the</span>
+<span class="c1"># following command:</span>
+<span class="c1">#</span>
+<span class="c1"># cmake -DCMAKE_BUILD_TYPE=Debug -DK2_BUILD_FOR_ALL_ARCHS=ON ..</span>
+<span class="c1">#</span>
+
 make -j
 <span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PYTHONPATH</span> <span class="c1"># for `import k2`</span>
 <span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span> <span class="c1"># for `import _k2`</span>
@@ -152,8 +168,8 @@ python3 -c <span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&
 <span class="c1"># It should print /some/path/k2/build_debug/lib/_k2.cpython-38-x86_64-linux-gnu.so</span>
 <span class="c1"># (I assume that you&#39;re using Python 3.8, so there is a string 38 above)</span>
 
-<span class="c1"># If you are going to install https://github.com/k2-fsa/sherpa after installing k2</span>
-<span class="c1"># Please run</span>
+<span class="c1"># If you are going to install https://github.com/k2-fsa/sherpa after installing</span>
+<span class="c1"># k2, please run</span>
 <span class="nb">export</span> <span class="nv">K2_INSTALL_PREFIX</span><span class="o">=</span>/some/path/k2/build_debug
 <span class="c1"># before you install sherpa</span>
 </pre></div>

@@ -51,9 +51,10 @@
 <li class="toctree-l2"><a class="reference internal" href="from_source.html">Install from source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="for_developers.html">For developers</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">FAQs</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#importerror-lib64-libm-so-6-version-glibc-2-27-not-found">ImportError: /lib64/libm.so.6: version `GLIBC_2.27’ not found</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#importerror-lib64-libm-so-6-version-glibc-2-27-not-found">ImportError: /lib64/libm.so.6: version ‘GLIBC_2.27’ not found</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#error-downloading-https-github-com-pybind-pybind11-archive-v2-6-0-tar-gz-failed">error: Downloading https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz failed</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#mkl-related-issues-on-macos">MKL related issues on macOS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#error-invalid-device-function">Error: invalid device function</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#reporting-issues">Reporting issues</a></li>
@@ -92,7 +93,7 @@
   <section id="faqs">
 <h1>FAQs<a class="headerlink" href="#faqs" title="Permalink to this headline"></a></h1>
 <section id="importerror-lib64-libm-so-6-version-glibc-2-27-not-found">
-<h2>ImportError: /lib64/libm.so.6: version <a href="#id1"><span class="problematic" id="id2">`</span></a>GLIBC_2.27’ not found<a class="headerlink" href="#importerror-lib64-libm-so-6-version-glibc-2-27-not-found" title="Permalink to this headline"></a></h2>
+<h2>ImportError: /lib64/libm.so.6: version ‘GLIBC_2.27’ not found<a class="headerlink" href="#importerror-lib64-libm-so-6-version-glibc-2-27-not-found" title="Permalink to this headline"></a></h2>
 <p>If you have this issue, it is very likely that you used <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span></code>
 to install k2.</p>
 <p>The conda package is compiled using Ubuntu 18.04. If your system
@@ -160,6 +161,44 @@ ImportError: dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/en
 $ ln -s libmkl_intel_ilp64.dylib libmkl_intel_ilp64.2.dylib
 $ ln -s libmkl_core.dylib libmkl_core.2.dylib
 $ ln -s libmkl_intel_thread.dylib libmkl_intel_thread.2.dylib
+</pre></div>
+</div>
+</section>
+<section id="error-invalid-device-function">
+<h2>Error: invalid device function<a class="headerlink" href="#error-invalid-device-function" title="Permalink to this headline"></a></h2>
+<p>If you get the following error while running k2:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">F</span><span class="p">]</span> <span class="o">/</span><span class="n">xxx</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="n">latest</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">csrc</span><span class="o">/</span><span class="nb">eval</span><span class="o">.</span><span class="n">h</span><span class="p">:</span><span class="mi">147</span><span class="p">:</span><span class="n">void</span> <span class="n">k2</span><span class="p">::</span><span class="n">EvalDevice</span><span class="p">(</span><span class="n">cudaStream_t</span><span class="p">,</span>
+<span class="n">int32_t</span><span class="p">,</span> <span class="n">LambdaT</span><span class="o">&amp;</span><span class="p">)</span> <span class="p">[</span><span class="k">with</span> <span class="n">LambdaT</span> <span class="o">=</span> <span class="n">__nv_dl_wrapper_t</span><span class="o">&lt;</span><span class="n">__nv_dl_tag</span><span class="o">&lt;</span><span class="n">k2</span><span class="p">::</span><span class="n">Array1</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span>
+<span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="n">std</span><span class="p">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">k2</span><span class="p">::</span><span class="n">Context</span><span class="o">&gt;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="n">k2</span><span class="p">::</span><span class="n">Range</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="nb">int</span><span class="o">*</span><span class="p">,</span>
+<span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="o">&gt;</span><span class="p">;</span> <span class="n">cudaStream_t</span> <span class="o">=</span> <span class="n">CUstream_st</span><span class="o">*</span><span class="p">;</span> <span class="n">int32_t</span> <span class="o">=</span> <span class="nb">int</span><span class="p">]</span> <span class="n">Check</span> <span class="n">failed</span><span class="p">:</span>
+<span class="n">e</span> <span class="o">==</span> <span class="n">cudaSuccess</span> <span class="p">(</span><span class="mi">98</span> <span class="n">vs</span><span class="o">.</span> <span class="mi">0</span><span class="p">)</span>  <span class="n">Error</span><span class="p">:</span> <span class="n">invalid</span> <span class="n">device</span> <span class="n">function</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>you have probably installed k2 from source. However, you are <code class="docutils literal notranslate"><span class="pre">NOT</span></code> running k2 on
+the same machine as the one you used to build k2 and the two machines have different
+types of GPUs.</p>
+<p>The fix is to pass <code class="docutils literal notranslate"><span class="pre">-DK2_BUILD_FOR_ALL_ARCHS=ON</span></code> to <code class="docutils literal notranslate"><span class="pre">cmake</span></code>.</p>
+<p>If you have followed <a class="reference internal" href="for_developers.html#installation-for-developers"><span class="std std-ref">For developers</span></a> to install k2, you need
+to change</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Release ..
+</pre></div>
+</div>
+<p>to</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Release -DK2_BUILD_FOR_ALL_ARCHS<span class="o">=</span>ON ..
+</pre></div>
+</div>
+<p>If you have followed <a class="reference internal" href="from_source.html#install-k2-from-source"><span class="std std-ref">Install from source</span></a> to install k2, you need to
+change</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/k2-fsa/k2.git
+<span class="nb">cd</span> k2
+python3 setup.py install
+</pre></div>
+</div>
+<p>to</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/k2-fsa/k2.git
+<span class="nb">cd</span> k2
+<span class="nb">export</span> <span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-DK2_BUILD_FOR_ALL_ARCHS=ON&quot;</span>
+python3 setup.py install
 </pre></div>
 </div>
 </section>

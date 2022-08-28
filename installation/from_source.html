@@ -124,6 +124,32 @@ python3 setup.py install
 </pre></div>
 </div>
 <p>That is all you need to run.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<blockquote>
+<div><p>If you plan to run k2 on a different machine than the one you used to build
+k2 and the two machines have different types of GPUs, please use the
+following commands to install k2.</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/k2-fsa/k2.git
+<span class="nb">cd</span> k2
+<span class="nb">export</span> <span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-DK2_BUILD_FOR_ALL_ARCHS=ON&quot;</span>
+python3 setup.py install
+</pre></div>
+</div>
+</div></blockquote>
+</div></blockquote>
+<p>Otherwise, you may get some error like below when running k2:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">F</span><span class="p">]</span> <span class="o">/</span><span class="n">xxx</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="n">latest</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">csrc</span><span class="o">/</span><span class="nb">eval</span><span class="o">.</span><span class="n">h</span><span class="p">:</span><span class="mi">147</span><span class="p">:</span><span class="n">void</span> <span class="n">k2</span><span class="p">::</span><span class="n">EvalDevice</span><span class="p">(</span><span class="n">cudaStream_t</span><span class="p">,</span>
+<span class="n">int32_t</span><span class="p">,</span> <span class="n">LambdaT</span><span class="o">&amp;</span><span class="p">)</span> <span class="p">[</span><span class="k">with</span> <span class="n">LambdaT</span> <span class="o">=</span> <span class="n">__nv_dl_wrapper_t</span><span class="o">&lt;</span><span class="n">__nv_dl_tag</span><span class="o">&lt;</span><span class="n">k2</span><span class="p">::</span><span class="n">Array1</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span>
+<span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="n">std</span><span class="p">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">k2</span><span class="p">::</span><span class="n">Context</span><span class="o">&gt;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="n">k2</span><span class="p">::</span><span class="n">Range</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="nb">int</span><span class="o">*</span><span class="p">,</span>
+<span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="o">&gt;</span><span class="p">;</span> <span class="n">cudaStream_t</span> <span class="o">=</span> <span class="n">CUstream_st</span><span class="o">*</span><span class="p">;</span> <span class="n">int32_t</span> <span class="o">=</span> <span class="nb">int</span><span class="p">]</span> <span class="n">Check</span> <span class="n">failed</span><span class="p">:</span>
+<span class="n">e</span> <span class="o">==</span> <span class="n">cudaSuccess</span> <span class="p">(</span><span class="mi">98</span> <span class="n">vs</span><span class="o">.</span> <span class="mi">0</span><span class="p">)</span>  <span class="n">Error</span><span class="p">:</span> <span class="n">invalid</span> <span class="n">device</span> <span class="n">function</span><span class="o">.</span>
+</pre></div>
+</div>
+</div></blockquote>
+</div>
 <p>To test that k2 is installed successfully, you can run:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python3
 Python 3.8.6 (default, Dec  2 2020, 15:56:31)
