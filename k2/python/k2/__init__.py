@@ -119,3 +119,4 @@ from .utils import random_fsa_vec
 from _k2.version import with_cuda
 
 cmake_prefix_path = _Path(__file__).parent / "share" / "cmake"
+del _Path
