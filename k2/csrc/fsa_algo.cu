@@ -2239,7 +2239,12 @@ FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
                   repeat_num = us_row_splits1_data[us_idx0 + 1] -
                     us_row_splits1_data[us_idx0];
 
-          arc.score = -logf(1 - powf(1 - sampling_prob, repeat_num));
+          float score = -logf(1 - powf(1 - sampling_prob, repeat_num));
+          if (score - score != 0) {
+            arc.score = 0.0;
+          } else {
+            arc.score = score;
+          }
 
           K2_DCHECK_LT(frame_ids_data[states_idx012], boundary_data[idx0]);
 

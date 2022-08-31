@@ -24,6 +24,7 @@ from typing import Union
 import torch
 import _k2
 import k2
+import logging
 
 from . import fsa_properties
 from .fsa import Fsa
@@ -1392,7 +1393,8 @@ def generate_denominator_lattice(
     boundary: torch.Tensor,
     vocab_size: int,
     context_size: int,
-) -> Fsa:
+    return_arc_map: bool = False,
+) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:
     """Generate denominator lattice from sampled linear paths for RNN-T+MMI
     training.
 
@@ -1422,6 +1424,8 @@ def generate_denominator_lattice(
         The vocabulary size.
       context_size:
         The number of left symbols.
+      return_arc_map:
+        Whether to return arc_map.
     """
     ragged_arc, arc_map = _k2.generate_denominator_lattice(
         sampled_paths=k2.RaggedTensor(sampled_paths),
@@ -1436,6 +1440,10 @@ def generate_denominator_lattice(
     a_value = getattr(lattice, "scores")
     # Enable autograd for path_scores
     b_value = index_select(path_scores.flatten(), arc_map)
+    assert torch.all(a_value >= 0), a_value
     value = b_value + a_value
     setattr(lattice, "scores", value)
-    return lattice
+    if return_arc_map:
+        return lattice, arc_map
+    else:
+        return lattice
