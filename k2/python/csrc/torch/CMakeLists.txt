@@ -23,7 +23,7 @@ set(torch_srcs
 )
 
 if (K2_WITH_CUDA)
-  list(APPEND torch_srcs mutual_information_cuda.cu levenshtein_distance_cuda.cu)
+  list(APPEND torch_srcs levenshtein_distance_cuda.cu mutual_information_cuda.cu)
 endif()
 
 set(torch_srcs_with_prefix)
