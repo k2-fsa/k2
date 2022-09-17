@@ -1361,6 +1361,70 @@ def levenshtein_alignment(
     return alignment
 
 
+def levenshtein_distance(
+        px : torch.Tensor,
+        py : torch.Tensor,
+        boundary: Optional[torch.Tensor] = None
+) -> torch.Tensor:
+    '''Compute the levenshtein distance of two sequences.
+
+    This function can run on batches, ``px`` and ``py`` can be two-dimensional
+    tensors with the first dimension be the batch size, of course, the batch
+    size of ``px`` and ``py`` should be equal.
+
+    Note:
+      This function works both on ``CPU`` and ``GPU``.
+
+    Args:
+      px:
+        A one-dimensional tensor with shape ``[S]``, or a two-dimensional
+        tensor with the shape of ``[B][S]`` containing sequences. It's data type
+        MUST be ``torch.int32``.
+      py:
+        A one-dimensional tensor with the shape of ``[U]``, or a two-dimensional
+        tensor with the shape of ``[B][U]`` containing sequences. It's data type
+        MUST be ``torch.int32``. ``py`` should have the same dimension as ``px``.
+      boundary:
+        If supplied, a torch.LongTensor of shape ``[B][4]`` (if ``px`` and
+        ``py`` are one-dimensional tensors, the shape should be ``[1][4]``),
+        where each row contains ``[s_begin, u_begin, s_end, u_end]``,
+        with ``0 <= s_begin <= s_end <= S`` and ``0 <= u_begin <= u_end <= U``
+        (this implies that empty sequences are allowed).
+        If not supplied, the values ``[0, 0, S, U]`` will be assumed.
+        These are the beginning and one-past-the-last positions in the ``px``
+        and ``py`` sequences respectively, and can be used if not all sequences
+        are of the same length.
+
+    Returns:
+      A tensor with shape ``[B][S + 1][U + 1]`` (if ``px`` and ``py`` are
+      one-dimensional tensors, the shape is ``[1][S + 1][U + 1]``), containing
+      the levenshtein distance between the sequences. Each element ``[b][s][u]``
+      means the levenshtein distance between ``px[b][:s]`` and ``py[b][:u]``.
+      If ``boundary`` is set, the values in the positions out of the range of
+      boundary are uninitialized, can be any random values.
+
+    Examples:
+      >>> px = torch.tensor([[1, 3, 4, 9, 5]], dtype=torch.int32)
+      >>> py = torch.tensor([[2, 3, 4, 5, 9, 7]], dtype=torch.int32)
+      >>> distance = k2.levenshtein_distance(px=px, py=py)
+      >>> distance
+      tensor([[[0, 1, 2, 3, 4, 5, 6],
+               [1, 1, 2, 3, 4, 5, 6],
+               [2, 2, 1, 2, 3, 4, 5],
+               [3, 3, 2, 1, 2, 3, 4],
+               [4, 4, 3, 2, 2, 2, 3],
+               [5, 5, 4, 3, 2, 3, 3]]], dtype=torch.int32)
+    '''
+    assert px.dim() == py.dim()
+    if px.dim() == 1:
+        px = px.unsqueeze(0)
+        py = py.unsqueeze(0)
+    else:
+        assert px.dim() == 2
+    assert px.size(0) == py.size(0)
+    return _k2.levenshtein_distance(px=px, py=py, boundary=boundary)
+
+
 def union(fsas: Fsa) -> Fsa:
     '''Compute the union of a FsaVec.
 

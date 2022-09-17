@@ -30,6 +30,7 @@
 #include "k2/python/csrc/torch/fsa_algo.h"
 #include "k2/python/csrc/torch/index_add.h"
 #include "k2/python/csrc/torch/index_select.h"
+#include "k2/python/csrc/torch/levenshtein_distance.h"
 #include "k2/python/csrc/torch/mutual_information.h"
 #include "k2/python/csrc/torch/nbest.h"
 #include "k2/python/csrc/torch/ragged.h"
@@ -44,6 +45,7 @@ void PybindTorch(py::module &m) {
   PybindFsaAlgo(m);
   PybindIndexAdd(m);
   PybindIndexSelect(m);
+  PybindLevenshteinDistance(m);
   PybindMutualInformation(m);
   PybindNbest(m);
   PybindRagged(m);
