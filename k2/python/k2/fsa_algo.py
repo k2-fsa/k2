@@ -1362,8 +1362,8 @@ def levenshtein_alignment(
 
 
 def levenshtein_distance(
-        px : torch.Tensor,
-        py : torch.Tensor,
+        px: torch.Tensor,
+        py: torch.Tensor,
         boundary: Optional[torch.Tensor] = None
 ) -> torch.Tensor:
     '''Compute the levenshtein distance of two sequences.
@@ -1383,7 +1383,8 @@ def levenshtein_distance(
       py:
         A one-dimensional tensor with the shape of ``[U]``, or a two-dimensional
         tensor with the shape of ``[B][U]`` containing sequences. It's data type
-        MUST be ``torch.int32``. ``py`` should have the same dimension as ``px``.
+        MUST be ``torch.int32``. ``py`` should have the same dimension as
+        ``px``.
       boundary:
         If supplied, a torch.LongTensor of shape ``[B][4]`` (if ``px`` and
         ``py`` are one-dimensional tensors, the shape should be ``[1][4]``),

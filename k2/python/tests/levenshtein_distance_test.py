@@ -115,13 +115,13 @@ class TestLevenshteinDistance(unittest.TestCase):
                 assert torch.equal(
                     d[
                         i,
-                        boundary[i][0] : boundary[i][2] + 1,
-                        boundary[i][1] : boundary[i][3] + 1,
+                        boundary[i][0]: boundary[i][2] + 1,
+                        boundary[i][1]: boundary[i][3] + 1,
                     ],
                     expected[
                         i,
-                        boundary[i][0] : boundary[i][2] + 1,
-                        boundary[i][1] : boundary[i][3] + 1,
+                        boundary[i][0]: boundary[i][2] + 1,
+                        boundary[i][1]: boundary[i][3] + 1,
                     ],
                 )
 
