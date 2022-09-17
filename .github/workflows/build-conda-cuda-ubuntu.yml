@@ -23,6 +23,10 @@ on:
     tags:
       - '*'
 
+concurrency:
+  group: build_conda_cuda_ubuntu-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   K2_BUILD_TYPE: Release
 
