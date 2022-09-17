@@ -21,8 +21,24 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '.github/workflows/build-cpu-windows.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   pull_request:
     types: [labeled]
+    paths:
+      - '.github/workflows/build-cpu-windows.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+
+concurrency:
+  group: build-cpu-windows-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   BUILD_TYPE: Release
