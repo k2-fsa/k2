@@ -30,6 +30,8 @@ name: build_conda_cpu_macos
 
 on:
   push:
+    branches:
+      - conda-channels
     tags:
       - '*'
 
@@ -103,10 +105,19 @@ jobs:
         env:
           K2_PYTHON_VERSION: ${{ matrix.python-version}}
           K2_TORCH_VERSION: ${{ matrix.torch }}
-          K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
           K2_IS_GITHUB_ACTIONS: 1
           K2_IS_FOR_CONDA: 1
         run: |
+          if [[ ${{ matrix.channel }} == "k2-fsa" ]]; then
+            export K2_CONDA_TOKEN=${{ secrets.K2_CONDA_TOKEN}}
+          elif [[ ${{ matrix.channel }} == "k2-fsa-2" ]]; then
+            export K2_CONDA_TOKEN=${{ secrets.K2_CONDA_TOKEN2}}
+          elif [[ ${{ matrix.channel }} == "k2-fsa-3" ]]; then
+            export K2_CONDA_TOKEN=${{ secrets.K2_CONDA_TOKEN3}}
+          elif [[ ${{ matrix.channel }} == "k2-fsa-4" ]]; then
+            export K2_CONDA_TOKEN=${{ secrets.K2_CONDA_TOKEN4}}
+          fi
+
           export K2_BUILD_TYPE=$K2_BUILD_TYPE
           ./scripts/build_conda_cpu.sh
 

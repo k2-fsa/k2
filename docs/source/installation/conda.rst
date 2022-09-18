@@ -15,9 +15,9 @@ All you need is the following line
 
 .. code-block:: bash
 
-  $ conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=11.1 pytorch=1.8.1
+  $ conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=10.2 pytorch=1.12.1
 
-to install the **latest** k2 with Python 3.8, CUDA 11.1, and PyTorch 1.8.1.
+to install the **latest** k2 with Python 3.8, CUDA 10.2, and PyTorch 1.12.1.
 
 .. HINT::
 
@@ -30,11 +30,47 @@ to install the **latest** k2 with Python 3.8, CUDA 11.1, and PyTorch 1.8.1.
 
    The above command installs k2 with Python 3.9, cudatoolkit 11.6, and PyTorch 1.12.0
 
+One thing to note is that ``anaconda`` only provides limited space for open source
+projects, so we decide to use separate channels to host different versions of PyTorch,
+which is described in the following table:
+
++----------+-----------------------+
+| Channel  | PyTorch Versions      |
++==========+=======================+
+| k2-fsa   | >= 1.11.0, <= 1.12.1  |
++----------+-----------------------+
+| k2-fsa-3 | >= 1.9.0, <= 1.10.2   |
++----------+-----------------------+
+| k2-fsa-2 | >=1.6.0, <= 1.8.1     |
++----------+-----------------------+
+
+
+For instance, if you want to install ``k2`` with ``PyTorch`` 1.10.0, you need
+to use:
+
+.. code-block:: bash
+
+  $ conda install -c k2-fsa-3 -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=10.2 pytorch=1.10.0
+
+.. NOTE::
+
+   Note that we use the channel ``k2-fsa-3``.
+
+.. HINT::
+
+   The channel ``k2-fsa`` always contains the latest version of PyTorch.
+
+
 To Install a CPU version, use:
 
 .. code-block:: bash
 
-  conda install -c k2-fsa -c pytorch cpuonly k2 python=3.8 pytorch=1.8.1
+  conda install -c k2-fsa -c pytorch cpuonly k2 python=3.8 pytorch=1.12.1
+
+.. HINT::
+
+   You need to switch to ``k2-fsa-2`` or other channels to install ``k2``
+   compiled with other versions of PyTorch.
 
 We provide the following YouTube video showing how to install k2 via conda.
 

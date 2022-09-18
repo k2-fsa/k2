@@ -92,8 +92,8 @@ def generate_build_matrix(enable_cuda, test_only_latest_torch):
     # k2-fsa always contains the latest version
     channels = {
         "k2-fsa": {"1.11.0", "1.12.0", "1.12.1"},
-        "k2-fsa-2": {"1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"},
         "k2-fsa-3": {"1.9.0", "1.9.1", "1.10.0", "1.10.1", "1.10.2"},
+        "k2-fsa-2": {"1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"},
     }
 
     def get_channel(torch_version):
