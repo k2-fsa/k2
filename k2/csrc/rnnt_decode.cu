@@ -703,7 +703,8 @@ void RnntDecodingStreams::GatherPrevFrames(
 }
 
 void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
-                                       FsaVec *ofsa, Array1<int32_t> *out_map) {
+                                       bool allow_partial, FsaVec *ofsa,
+                                       Array1<int32_t> *out_map) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(!attached_)
       << "You can only get outputs after calling TerminateAndFlushToStreams()";
@@ -717,39 +718,47 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
 
   auto last_frame_shape = prev_frames_[frames - 1]->shape;
 
-  Array1<int32_t> num_final_arcs(c_, last_frame_shape.NumElements() + 1);
-  const ArcInfo *last_frame_arc_data = prev_frames_[frames - 1]->values.Data();
-  int32_t *num_final_arcs_data = num_final_arcs.Data();
+  RaggedShape final_arcs_shape = last_frame_shape;
+  Array1<ArcInfo> final_arcs = prev_frames_[frames - 1]->values;
 
-  K2_EVAL(
-      c_, last_frame_shape.NumElements(), lambda_set_final_arcs,
-      (int32_t idx012) {
-        ArcInfo ai = last_frame_arc_data[idx012];
-        if (ai.label == -1)
-          num_final_arcs_data[idx012] = 1;
-        else
-          num_final_arcs_data[idx012] = 0;
-      });
+  if (!allow_partial) {
+    Array1<int32_t> num_final_arcs(c_, last_frame_shape.NumElements() + 1);
+    const ArcInfo *last_frame_arc_data =
+        prev_frames_[frames - 1]->values.Data();
+    int32_t *num_final_arcs_data = num_final_arcs.Data();
 
-  ExclusiveSum(num_final_arcs, &num_final_arcs);
-  auto final_arcs_shape = RaggedShape2(&num_final_arcs, nullptr, -1);
+    K2_EVAL(
+        c_, last_frame_shape.NumElements(), lambda_set_final_arcs,
+        (int32_t idx012) {
+          ArcInfo ai = last_frame_arc_data[idx012];
+          if (ai.label == -1)
+            num_final_arcs_data[idx012] = 1;
+          else
+            num_final_arcs_data[idx012] = 0;
+        });
 
-  auto final_arcs = Array1<ArcInfo>(c_, final_arcs_shape.NumElements());
-  const int32_t *fas_row_ids1_data = final_arcs_shape.RowIds(1).Data();
-  const ArcInfo *last_frame_data = prev_frames_[frames - 1]->values.Data();
-  ArcInfo *final_arcs_data = final_arcs.Data();
+    ExclusiveSum(num_final_arcs, &num_final_arcs);
+    final_arcs_shape = RaggedShape2(&num_final_arcs, nullptr, -1);
 
-  K2_EVAL(
-      c_, final_arcs_shape.NumElements(), lambda_set_final_arcs,
-      (int32_t idx01) {
-        int32_t idx0 = fas_row_ids1_data[idx01];
-        ArcInfo ai = last_frame_data[idx0];
-        final_arcs_data[idx01] = ai;
-      });
+    final_arcs = Array1<ArcInfo>(c_, final_arcs_shape.NumElements());
+    const int32_t *fas_row_ids1_data = final_arcs_shape.RowIds(1).Data();
+    const ArcInfo *last_frame_data = prev_frames_[frames - 1]->values.Data();
+    ArcInfo *final_arcs_data = final_arcs.Data();
 
-  final_arcs_shape = ComposeRaggedShapes(last_frame_shape, final_arcs_shape);
-  final_arcs_shape = RemoveAxis(final_arcs_shape, 2);
+    K2_EVAL(
+        c_, final_arcs_shape.NumElements(), lambda_set_final_arcs,
+        (int32_t idx01) {
+          int32_t idx0 = fas_row_ids1_data[idx01];
+          ArcInfo ai = last_frame_data[idx0];
+          final_arcs_data[idx01] = ai;
+        });
 
+    final_arcs_shape = ComposeRaggedShapes(last_frame_shape, final_arcs_shape);
+    final_arcs_shape = RemoveAxis(final_arcs_shape, 2);
+  }
+
+  // We will append final states behind the last frame, the last_frame_shape is
+  /// the shape of the appended states, final states don't have arcs.
   auto stream_state_shape = RegularRaggedShape(c_, num_streams_, 1);
   auto state_arc_shape =
       RegularRaggedShape(c_, stream_state_shape.NumElements(), 0);

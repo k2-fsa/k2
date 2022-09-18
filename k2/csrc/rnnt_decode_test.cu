@@ -96,7 +96,7 @@ TEST(RnntDecodingStreams, Basic) {
                              std::vector<int32_t>({2, 5, 4})}) {
       Array1<int32_t> out_map;
       FsaVec ofsa;
-      streams.FormatOutput(num_frames, &ofsa, &out_map);
+      streams.FormatOutput(num_frames, true/*allow_partial*/, &ofsa, &out_map);
       Array1<int32_t> properties;
       int32_t property;
       GetFsaVecBasicProperties(ofsa, &properties, &property);

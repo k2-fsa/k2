@@ -30,7 +30,6 @@ from _k2 import RnntDecodingConfig
 
 
 class RnntDecodingStream(object):
-
     def __init__(self, fsa: Fsa) -> None:
         """Create a new rnnt decoding stream.
 
@@ -60,12 +59,13 @@ class RnntDecodingStream(object):
 
 
 class RnntDecodingStreams(object):
-    '''See https://github.com/k2-fsa/icefall/blob/master/egs/librispeech/ASR/pruned_transducer_stateless/beam_search.py  # noqa
+    """See https://github.com/k2-fsa/icefall/blob/master/egs/librispeech/ASR/pruned_transducer_stateless/beam_search.py  # noqa
     for how this class is used in RNN-T decoding.
-    '''
+    """
 
-    def __init__(self, src_streams: List[RnntDecodingStream],
-                 config: RnntDecodingConfig) -> None:
+    def __init__(
+        self, src_streams: List[RnntDecodingStream], config: RnntDecodingConfig
+    ) -> None:
         """
         Combines multiple RnntDecodingStream objects to create a
         RnntDecodingStreams object, then all these RnntDecodingStreams can do
@@ -146,7 +146,7 @@ class RnntDecodingStreams(object):
         """
         self.streams.terminate_and_flush_to_streams()
 
-    def format_output(self, num_frames: List[int]) -> Fsa:
+    def format_output(self, num_frames: List[int], allow_partial: bool) -> Fsa:
         """
         Generate the lattice Fsa currently got.
 
@@ -169,7 +169,7 @@ class RnntDecodingStreams(object):
         """
         assert len(num_frames) == self.num_streams
 
-        ragged_arcs, out_map = self.streams.format_output(num_frames)
+        ragged_arcs, out_map = self.streams.format_output(num_frames, allow_partial)
         fsa = Fsa(ragged_arcs)
 
         # propagate attributes
@@ -204,39 +204,34 @@ class RnntDecodingStreams(object):
                 src = self.src_streams[i].fsa
                 device = self.device
                 num_arcs = fsa[i].num_arcs
-                arc_map = out_map[start:start + num_arcs]
+                arc_map = out_map[start : start + num_arcs]
                 start = start + num_arcs
                 if hasattr(src, name):
                     value = getattr(src, name)
                     if info["tensor_type"] == "Tensor":
                         assert isinstance(value, Tensor)
-                        new_value = index_select(value,
-                                                 arc_map,
-                                                 default_value=filler)
+                        new_value = index_select(value, arc_map, default_value=filler)
                     else:
                         assert isinstance(value, RaggedTensor)
                         # Only integer types ragged attributes are supported now
                         assert value.num_axes == 2
                         assert value.dtype == torch.int32
-                        new_value, _ = value.index(arc_map,
-                                                   axis=0,
-                                                   need_value_indexes=False)
+                        new_value, _ = value.index(
+                            arc_map, axis=0, need_value_indexes=False
+                        )
                 else:
                     if info["tensor_type"] == "Tensor":
                         # fill with filler value
                         new_value = torch.tensor(
-                            [filler] * num_arcs,
-                            dtype=info["dtype"],
-                            device=device,
+                            [filler] * num_arcs, dtype=info["dtype"], device=device,
                         )
                     else:
                         # fill with empty RaggedTensor
                         new_value = RaggedTensor(
                             torch.empty(
-                                (num_arcs, 0),
-                                dtype=info["dtype"],
-                                device=device,
-                            ))
+                                (num_arcs, 0), dtype=info["dtype"], device=device,
+                            )
+                        )
                 values.append(new_value)
             if info["tensor_type"] == "Tensor":
                 new_value = torch.cat(values)
