@@ -88,30 +88,49 @@ def generate_build_matrix(enable_cuda, test_only_latest_torch):
             "cuda": ["10.2", "11.3", "11.6"],
         },
     }
+
+    # k2-fsa always contains the latest version
+    channels = {
+        "k2-fsa": {"1.11.0", "1.12.0", "1.12.1"},
+        "k2-fsa-2": {"1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"},
+        "k2-fsa-3": {"1.9.0", "1.9.1", "1.10.0", "1.10.1", "1.10.2"},
+    }
+
+    def get_channel(torch_version):
+        for k, v in channels.items():
+            if torch_version in v:
+                return k
+        raise ValueError(f"Unknown torch version {torch_version}")
+
     if test_only_latest_torch:
         latest = "1.12.1"
         matrix = {latest: matrix[latest]}
 
-    # We only have limited spaces in anaconda, so we exclude some
-    # versions of PyTorch here. If you need them, please consider
-    # installing k2 from source
-    # Only CUDA build are excluded since it occupies more disk space
-    excluded_torch_versions = ["1.6.0", "1.7.0"]
-
     ans = []
     for torch, python_cuda in matrix.items():
-        if torch in excluded_torch_versions and enable_cuda:
-            continue
-
+        conda_channel = get_channel(torch)
         python_versions = python_cuda["python-version"]
         cuda_versions = python_cuda["cuda"]
         if enable_cuda:
             for p in python_versions:
                 for c in cuda_versions:
-                    ans.append({"torch": torch, "python-version": p, "cuda": c})
+                    ans.append(
+                        {
+                            "torch": torch,
+                            "python-version": p,
+                            "cuda": c,
+                            "channel": conda_channel,
+                        }
+                    )
         else:
             for p in python_versions:
-                ans.append({"torch": torch, "python-version": p})
+                ans.append(
+                    {
+                        "torch": torch,
+                        "python-version": p,
+                        "channel": conda_channel,
+                    }
+                )
 
     print(json.dumps({"include": ans}))
 
