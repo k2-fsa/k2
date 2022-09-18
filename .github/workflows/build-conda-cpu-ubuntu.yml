@@ -30,8 +30,6 @@ name: build_conda_cpu_ubuntu
 
 on:
   push:
-    branches:
-      - conda-channels
     tags:
       - '*'
 
