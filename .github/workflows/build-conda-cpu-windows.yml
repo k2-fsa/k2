@@ -22,6 +22,10 @@ on:
     tags:
       - '*'
 
+concurrency:
+  group: build_conda_cpu_windows-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BUILD_TYPE: Release
 
@@ -108,5 +112,5 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-2019-cpu
           path: c:/Miniconda/envs/k2/conda-bld/win-64/*.tar.bz2

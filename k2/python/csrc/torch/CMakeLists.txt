@@ -12,7 +12,6 @@ set(torch_srcs
   ragged.cu
   ragged_ops.cu
   rnnt_decode.cu
-  torch_util.cu
 
   v2/any.cu
   v2/doc/doc.cu

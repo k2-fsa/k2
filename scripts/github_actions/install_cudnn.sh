@@ -36,9 +36,9 @@ case $cuda in
   11.5)
     filename=cudnn-11.3-linux-x64-v8.2.0.53.tgz
     ;;
-  # 11.5)
-  #   filename=cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz
-  #   ;;
+  11.6)
+    filename=cudnn-11.3-linux-x64-v8.2.0.53.tgz
+    ;;
   *)
     echo "Unsupported cuda version: $cuda"
     exit 1
@@ -47,7 +47,7 @@ esac
 
 command -v git-lfs >/dev/null 2>&1 || { echo >&2 "\nPlease install 'git-lfs' first."; exit 2; }
 
-git clone https://huggingface.co/csukuangfj/cudnn
+GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/csukuangfj/cudnn
 cd cudnn
 git lfs pull --include="$filename"
 

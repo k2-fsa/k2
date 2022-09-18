@@ -285,14 +285,17 @@ class OpenFstStreamReader {
       }
       ExpectChar(line_is, ']');  // sets failbit if not..
     }
-    line_is >> std::ws;
+    if (!line_is.eof()) line_is >> std::ws;
     float cost = 0.0;
     if (!line_is.eof()) {
       line_is >> cost;
       if (!line_is.eof()) line_is >> std::ws;
     }
     if (!line_is.eof() || line_is.fail() || src_state < 0 || dest_state < 0) {
-      K2_LOG(FATAL) << "Invalid line: " << line;
+      K2_LOG(FATAL) << "Invalid line: " << line << ", eof=" << line_is.eof()
+                    << ", fail=" << line_is.fail()
+                    << ", src_state=" << src_state
+                    << ", dest_state=" << dest_state;
     }
     AddArc({src_state, dest_state, label, -cost},
            aux_labels, ragged_labels);

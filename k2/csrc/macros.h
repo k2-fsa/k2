@@ -139,7 +139,7 @@ Here is an example:
       c, dim, ans_data, lambda_multiple2, (int32_t i)->int32_t{ return i*2; });
 @endcode
 
-`ans` will be {0, 2, 6, 12}
+`ans` will be {0, 0, 2, 6}
  */
 #define K2_TRANS_EXCSUM(context, dim, ans_data, lambda_name, ...)              \
   do {                                                                         \

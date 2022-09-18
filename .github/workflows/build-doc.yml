@@ -21,9 +21,18 @@ name: Generate doc
 on:
   push:
     branches:
-    - master
-    - doc
-    - doc-test
+      - master
+      - doc
+      - doc-test
+    paths:
+      - '.github/workflows/build-doc.yml'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+      - 'docs/**'
+
+concurrency:
+  group: build-doc-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   # debug is faster in terms of compilation time

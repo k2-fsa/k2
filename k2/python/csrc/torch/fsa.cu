@@ -34,8 +34,8 @@
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host_shim.h"
+#include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/fsa.h"
-#include "k2/python/csrc/torch/torch_util.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
 
 namespace k2 {
@@ -542,9 +542,8 @@ template <typename T>
    @return It returns the gradient of scores of all arcs.
  */
 template <typename T>
-/*static*/ torch::Tensor GetTotScoresLogBackward(FsaVec &fsas,
-                                             torch::Tensor arc_post,
-                                             torch::Tensor tot_scores_grad) {
+/*static*/ torch::Tensor GetTotScoresLogBackward(
+    FsaVec &fsas, torch::Tensor arc_post, torch::Tensor tot_scores_grad) {
   DeviceGuard guard(fsas.Context());
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(fsas.NumElements(), arc_post.numel());

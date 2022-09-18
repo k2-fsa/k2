@@ -933,6 +933,12 @@ class Fsa(object):
         self.rename_tensor_attribute_('labels', '__temp')
         self.rename_tensor_attribute_('aux_labels', 'labels')
         self.rename_tensor_attribute_('__temp', 'aux_labels')
+        _k2.fix_final_labels(self.arcs, None)
+
+        self.__dict__['_properties'] = None
+        # access self.properties which will do a validity check on the
+        # modified FSA after getting the properties
+        self.properties
         return self
 
         # TODO(dan), maybe: instead of using the generic approach above, we

@@ -837,6 +837,40 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
                     Array1<int32_t> *arc_map_src = nullptr,
                     Array1<int32_t> *arc_map_index = nullptr);
 
+/*
+  This operation reverses an Fsa or FsaVec. If 'src' accepts string 'x' with
+  weight 'x.weight', then the reverse of 'src' accepts the reverse of string 'x'
+  with weight 'x.weight.reverse'.
+
+  Implementation notss:
+  The Fsa in k2 only has one start state 0, and the only final state with
+  the largest state number whose in-coming arcs have "-1" as the label.
+  So, 1) the start state of 'dest' will correspond to the final state of 'src'.
+      2) the penultimate state of 'dest' will correspond to the start state
+         of the 'src'
+      2) The in-coming arcs with "-1" as the label will be converted to the
+         out-going arcs with "eps" as the label.
+      3) All the other states in 'src' will correspond to the same "state"
+         states in 'dest'. And the direction of the arcs will be reversed.
+      4) An additional state will be added as the new final state. An arc from
+         'penultimate' state in 'dest' (i.e. the state corresponding to the
+         start state in 'src') will be built with "-1" label.
+  Furthermore, as the Fsas of k2 run on the Log-semiring or Tropical-semiring,
+  the "weight.reverse" will equal to the orignal "weight".
+
+
+    @param [in] src  Input Fsa or FsaVec
+
+    @param [out] dest  Output Fsa or FsaVec.  At exit, it will be equivalent
+                       to the reverse Fsa of 'src'. Caution: the reverse will
+                       ignore the "-1" label.
+                       
+    @param [out,optional] arc_map  For each arc in `dest`, gives the index of
+                          the corresponding arc in `src` that it corresponds to.
+
+*/
+void Reverse(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_ALGO_H_
