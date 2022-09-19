@@ -182,10 +182,10 @@ class RnntDecodingStreams {
                     ever received).
                     It MUST satisfy `num_frames.size() == num_streams_`, and
                     `num_frames[i] <= srcs_[i].prev_frames.size()`.
-      @param [in] allow_partial If true, we will treat all the states in the
+      @param [in] allow_partial If true, we will treat all the states on the
                                 last frame to be final state. If false, we only
-                                care about the final state in the last frame
-                                when generating lattice.
+                                care about the real final state in the decoding
+                                graph on the last frame when generating lattice.
       @param [out] ofsa  The output lattice will write to here, its num_axes
                          equals to 3, will be re-allocated.
       @param [out] out_map  It is an Array1 with Dim() equals to

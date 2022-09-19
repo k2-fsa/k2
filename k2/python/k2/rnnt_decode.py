@@ -146,7 +146,11 @@ class RnntDecodingStreams(object):
         """
         self.streams.terminate_and_flush_to_streams()
 
-    def format_output(self, num_frames: List[int], allow_partial: bool) -> Fsa:
+    def format_output(
+            self,
+            num_frames: List[int],
+            allow_partial: bool = True
+    ) -> Fsa:
         """
         Generate the lattice Fsa currently got.
 
@@ -163,13 +167,20 @@ class RnntDecodingStreams(object):
             A List containing the number of frames we want to gather for each
             stream (note: the frames we have ever received for the corresponding
             stream). It MUST satisfy `len(num_frames) == self.num_streams`.
+          allow_partial:
+            If true, we will treat all the states on the last frame to be final
+            state. If false, we only care about the real final state in the
+            decoding graph on the last frame when generating lattice.
+
         Returns:
           Return the lattice Fsa with all the attributes propagated.
           The returned Fsa has 3 axes with `fsa.dim0==self.num_streams`.
         """
         assert len(num_frames) == self.num_streams
 
-        ragged_arcs, out_map = self.streams.format_output(num_frames, allow_partial)
+        ragged_arcs, out_map = self.streams.format_output(
+            num_frames, allow_partial
+        )
         fsa = Fsa(ragged_arcs)
 
         # propagate attributes
@@ -204,13 +215,15 @@ class RnntDecodingStreams(object):
                 src = self.src_streams[i].fsa
                 device = self.device
                 num_arcs = fsa[i].num_arcs
-                arc_map = out_map[start : start + num_arcs]
+                arc_map = out_map[start: start + num_arcs]
                 start = start + num_arcs
                 if hasattr(src, name):
                     value = getattr(src, name)
                     if info["tensor_type"] == "Tensor":
                         assert isinstance(value, Tensor)
-                        new_value = index_select(value, arc_map, default_value=filler)
+                        new_value = index_select(
+                            value, arc_map, default_value=filler
+                        )
                     else:
                         assert isinstance(value, RaggedTensor)
                         # Only integer types ragged attributes are supported now
@@ -223,13 +236,17 @@ class RnntDecodingStreams(object):
                     if info["tensor_type"] == "Tensor":
                         # fill with filler value
                         new_value = torch.tensor(
-                            [filler] * num_arcs, dtype=info["dtype"], device=device,
+                            [filler] * num_arcs,
+                            dtype=info["dtype"],
+                            device=device,
                         )
                     else:
                         # fill with empty RaggedTensor
                         new_value = RaggedTensor(
                             torch.empty(
-                                (num_arcs, 0), dtype=info["dtype"], device=device,
+                                (num_arcs, 0),
+                                dtype=info["dtype"],
+                                device=device,
                             )
                         )
                 values.append(new_value)
