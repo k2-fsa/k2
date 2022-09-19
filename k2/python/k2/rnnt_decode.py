@@ -149,7 +149,7 @@ class RnntDecodingStreams(object):
     def format_output(
             self,
             num_frames: List[int],
-            allow_partial: bool = True
+            allow_partial: bool = False
     ) -> Fsa:
         """
         Generate the lattice Fsa currently got.
@@ -171,6 +171,7 @@ class RnntDecodingStreams(object):
             If true, we will treat all the states on the last frame to be final
             state. If false, we only care about the real final state in the
             decoding graph on the last frame when generating lattice.
+            Default False.
 
         Returns:
           Return the lattice Fsa with all the attributes propagated.
