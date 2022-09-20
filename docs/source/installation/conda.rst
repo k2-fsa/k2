@@ -15,9 +15,9 @@ All you need is the following line
 
 .. code-block:: bash
 
-  $ conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=11.1 pytorch=1.8.1
+  $ conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=11.6 pytorch=1.12.1
 
-to install the **latest** k2 with Python 3.8, CUDA 11.1, and PyTorch 1.8.1.
+to install the **latest** k2 with Python 3.8, CUDA 11.6, and PyTorch 1.12.1.
 
 .. HINT::
 
@@ -34,7 +34,7 @@ To Install a CPU version, use:
 
 .. code-block:: bash
 
-  conda install -c k2-fsa -c pytorch cpuonly k2 python=3.8 pytorch=1.8.1
+  conda install -c k2-fsa -c pytorch cpuonly k2 python=3.8 pytorch=1.12.1
 
 We provide the following YouTube video showing how to install k2 via conda.
 
