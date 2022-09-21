@@ -715,49 +715,63 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
   GatherPrevFrames(num_frames);
 
   int32_t frames = prev_frames_.size();
-
   auto last_frame_shape = prev_frames_[frames - 1]->shape;
 
-  RaggedShape final_arcs_shape = last_frame_shape;
-  Array1<ArcInfo> final_arcs = prev_frames_[frames - 1]->values;
+  auto has_final = Array1<bool>(c_, num_streams_, false);
+  const ArcInfo *last_frame_arc_data = prev_frames_[frames - 1]->values.Data();
+  const int32_t *lfs_row_ids2_data = last_frame_shape.RowIds(2).Data(),
+                *lfs_row_ids1_data = last_frame_shape.RowIds(1).Data();
+  bool *has_final_data = has_final.Data();
 
-  if (!allow_partial) {
-    Array1<int32_t> num_final_arcs(c_, last_frame_shape.NumElements() + 1);
-    const ArcInfo *last_frame_arc_data =
-        prev_frames_[frames - 1]->values.Data();
-    int32_t *num_final_arcs_data = num_final_arcs.Data();
+  K2_EVAL(
+      c_, last_frame_shape.NumElements(), lambda_set_has_final,
+      (int32_t idx012) {
+        ArcInfo ai = last_frame_arc_data[idx012];
+        int32_t idx01 = lfs_row_ids2_data[idx012],
+                idx0 = lfs_row_ids1_data[idx01];
+        if (ai.label == -1) has_final_data[idx0] = true;
+      });
 
-    K2_EVAL(
-        c_, last_frame_shape.NumElements(), lambda_set_final_arcs,
-        (int32_t idx012) {
-          ArcInfo ai = last_frame_arc_data[idx012];
-          if (ai.label == -1)
+  Array1<int32_t> num_final_arcs(c_, last_frame_shape.NumElements() + 1);
+  int32_t *num_final_arcs_data = num_final_arcs.Data();
+
+  K2_EVAL(
+      c_, last_frame_shape.NumElements(), lambda_set_final_arcs,
+      (int32_t idx012) {
+        ArcInfo ai = last_frame_arc_data[idx012];
+        int32_t idx01 = lfs_row_ids2_data[idx012],
+                idx0 = lfs_row_ids1_data[idx01];
+        if (ai.label == -1) {
+          num_final_arcs_data[idx012] = 1;
+        } else {
+          if (allow_partial && !has_final_data[idx0]) {
             num_final_arcs_data[idx012] = 1;
-          else
+          } else {
             num_final_arcs_data[idx012] = 0;
-        });
+          }
+        }
+      });
 
-    ExclusiveSum(num_final_arcs, &num_final_arcs);
-    final_arcs_shape = RaggedShape2(&num_final_arcs, nullptr, -1);
+  ExclusiveSum(num_final_arcs, &num_final_arcs);
+  auto final_arcs_shape = RaggedShape2(&num_final_arcs, nullptr, -1);
 
-    final_arcs = Array1<ArcInfo>(c_, final_arcs_shape.NumElements());
-    const int32_t *fas_row_ids1_data = final_arcs_shape.RowIds(1).Data();
-    const ArcInfo *last_frame_data = prev_frames_[frames - 1]->values.Data();
-    ArcInfo *final_arcs_data = final_arcs.Data();
+  auto final_arcs = Array1<ArcInfo>(c_, final_arcs_shape.NumElements());
+  const int32_t *fas_row_ids1_data = final_arcs_shape.RowIds(1).Data();
+  ArcInfo *final_arcs_data = final_arcs.Data();
 
-    K2_EVAL(
-        c_, final_arcs_shape.NumElements(), lambda_set_final_arcs,
-        (int32_t idx01) {
-          int32_t idx0 = fas_row_ids1_data[idx01];
-          ArcInfo ai = last_frame_data[idx0];
-          final_arcs_data[idx01] = ai;
-        });
+  K2_EVAL(
+      c_, final_arcs_shape.NumElements(), lambda_set_final_arcs,
+      (int32_t idx01) {
+        int32_t idx0 = fas_row_ids1_data[idx01];
+        ArcInfo ai = last_frame_arc_data[idx0];
+        final_arcs_data[idx01] = ai;
+      });
 
-    final_arcs_shape = ComposeRaggedShapes(last_frame_shape, final_arcs_shape);
-    final_arcs_shape = RemoveAxis(final_arcs_shape, 2);
-  }
+  final_arcs_shape = ComposeRaggedShapes(last_frame_shape, final_arcs_shape);
+  final_arcs_shape = RemoveAxis(final_arcs_shape, 2);
 
-  // We will append final states behind the last frame, the last_frame_shape is
+  // We will append final states behind the last frame, the last_frame_shape
+  // is
   /// the shape of the appended states, final states don't have arcs.
   auto stream_state_shape = RegularRaggedShape(c_, num_streams_, 1);
   auto state_arc_shape =
@@ -825,8 +839,8 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
                 // actually we won't get t == frames
                 // here since those frames have no arcs.
             t = m % (frames + 1),
-                // arc_idx012 into prev_frames_ arcs on time t, index of the arc
-                // on that frame.
+                // arc_idx012 into prev_frames_ arcs on time t, index of the
+                // arc on that frame.
             arcs_idx012 = m / (frames + 1);
 
         K2_CHECK_EQ(t, oarc_idx1);
@@ -851,9 +865,9 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
           arc.dest_state = dest_state_idx012 - oarc_idx0xx;
 
           // graph_arc_idx01 == -1 means this is a implicit epsilon self-loop
-          // arc_info.label == -1 means this is the final arc before last frame
-          // this is non-accessible arc, we set its label to 0 here to make the
-          // generated lattice a valid k2 fsa.
+          // arc_info.label == -1 means this is the final arc before last
+          // frame this is non-accessible arc, we set its label to 0 here to
+          // make the generated lattice a valid k2 fsa.
           if (arc_info.graph_arc_idx01 == -1 || arc_info.label == -1) {
             arc.label = 0;
             arc_info.graph_arc_idx01 = -1;
