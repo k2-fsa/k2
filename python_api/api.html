@@ -7201,7 +7201,7 @@ will not be allowed to exceed this limit.</p></li>
 <h3>__init__<a class="headerlink" href="#id43" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.RnntDecodingStream.__init__">
-<span class="sig-prename descclassname"><span class="pre">RnntDecodingStream.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_decode.py#L34-L52"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.RnntDecodingStream.__init__" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">RnntDecodingStream.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsa</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_decode.py#L33-L51"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.RnntDecodingStream.__init__" title="Permalink to this definition"></a></dt>
 <dd><p>Create a new rnnt decoding stream.</p>
 <p>Every sequence(wave data) needs a decoding stream, this function is
 expected to be called when a new sequence comes. We support different
@@ -7223,7 +7223,7 @@ sequences in parallel.</p>
 <h3>__str__<a class="headerlink" href="#id44" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.RnntDecodingStream.__str__">
-<span class="sig-prename descclassname"><span class="pre">RnntDecodingStream.</span></span><span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_decode.py#L54-L59"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.RnntDecodingStream.__str__" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">RnntDecodingStream.</span></span><span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_decode.py#L53-L58"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.RnntDecodingStream.__str__" title="Permalink to this definition"></a></dt>
 <dd><p>Return a string representation of this object</p>
 <p>For visualization and debug only.</p>
 <dl class="field-list simple">
@@ -7241,7 +7241,7 @@ sequences in parallel.</p>
 <h3>__init__<a class="headerlink" href="#id45" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.RnntDecodingStreams.__init__">
-<span class="sig-prename descclassname"><span class="pre">RnntDecodingStreams.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_streams</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_decode.py#L67-L90"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.RnntDecodingStreams.__init__" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">RnntDecodingStreams.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_streams</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_decode.py#L66-L90"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.RnntDecodingStreams.__init__" title="Permalink to this definition"></a></dt>
 <dd><p>Combines multiple RnntDecodingStream objects to create a
 RnntDecodingStreams object, then all these RnntDecodingStreams can do
 decoding in parallel.</p>
@@ -7300,7 +7300,7 @@ by <cite>get_contexts()</cite>.</p>
 <h3>format_output<a class="headerlink" href="#format-output" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.RnntDecodingStreams.format_output">
-<span class="sig-prename descclassname"><span class="pre">RnntDecodingStreams.</span></span><span class="sig-name descname"><span class="pre">format_output</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_frames</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_decode.py#L149-L253"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.RnntDecodingStreams.format_output" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">RnntDecodingStreams.</span></span><span class="sig-name descname"><span class="pre">format_output</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_frames</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_partial</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_decode.py#L149-L266"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.RnntDecodingStreams.format_output" title="Permalink to this definition"></a></dt>
 <dd><p>Generate the lattice Fsa currently got.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -7313,9 +7313,15 @@ attributes attr1, attr2, attr3, attr4.</p>
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>num_frames</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]) – A List containing the number of frames we want to gather for each
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_frames</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]) – A List containing the number of frames we want to gather for each
 stream (note: the frames we have ever received for the corresponding
-stream). It MUST satisfy <cite>len(num_frames) == self.num_streams</cite>.</p>
+stream). It MUST satisfy <cite>len(num_frames) == self.num_streams</cite>.</p></li>
+<li><p><strong>allow_partial</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If true, we will treat all the states on the last frame to be final
+state. If false, we only care about the real final state in the
+decoding graph on the last frame when generating lattice.
+Default False.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
