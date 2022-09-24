@@ -96,7 +96,7 @@ def generate_build_matrix(enable_cuda, test_only_latest_torch):
     # versions of PyTorch here. If you need them, please consider
     # installing k2 from source
     # Only CUDA build are excluded since it occupies more disk space
-    excluded_torch_versions = ["1.6.0", "1.7.0"]
+    excluded_torch_versions = ["1.6.0", "1.7.0", "1.7.1"]
 
     ans = []
     for torch, python_cuda in matrix.items():

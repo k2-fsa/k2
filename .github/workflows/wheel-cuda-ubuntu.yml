@@ -21,10 +21,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04]
-        cuda: ["10.1"]
+        cuda: ["10.2"]
         gcc: ["5"]
-        torch: ["1.7.1"]
-        python-version: [3.6, 3.7, 3.8]
+        torch: ["1.12.1"]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
 
     steps:
       - uses: actions/checkout@v2
