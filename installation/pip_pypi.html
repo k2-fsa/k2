@@ -5,7 +5,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Install using pip (pypi.org) &mdash; k2 1.19 documentation</title>
+  <title>Install using pip (pypi.org) &mdash; k2 1.20 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -32,7 +32,7 @@
             <a href="../index.html" class="icon icon-home"> k2
           </a>
               <div class="version">
-                1.19
+                1.20
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -86,12 +86,12 @@
              
   <section id="install-using-pip-pypi-org">
 <h1>Install using pip (pypi.org)<a class="headerlink" href="#install-using-pip-pypi-org" title="Permalink to this headline"></a></h1>
-<p>k2 on PyPI supports the following versions of Python, CUDA, and PyTorch:</p>
+<p><code class="docutils literal notranslate"><span class="pre">k2</span></code> on PyPI supports the following versions of Python, CUDA, and PyTorch:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><img alt="Supported python versions" src="../_images/pypi_python-3.6_3.7_3.8-blue.svg" /></p></li>
-<li><p><img alt="Supported cuda versions" src="../_images/pypi_cuda-10.1-orange.svg" /></p></li>
-<li><p><img alt="Supported pytorch versions" src="../_images/pypi_pytorch-1.7.1-green.svg" /></p></li>
+<li><p><img alt="Supported python versions" src="../_images/python_ge_3.7-blue.svg" /></p></li>
+<li><p><img alt="Supported cuda versions" src="../_images/cuda-10.2-orange.svg" /></p></li>
+<li><p><img alt="Supported pytorch versions" src="../_images/torch-1.12.1-green.svg" /></p></li>
 </ul>
 </div></blockquote>
 <div class="admonition caution">
@@ -105,13 +105,13 @@ If not, please install them before proceeding.</p>
 automagically. You don’t need to pre-install PyTorch and cudatoolkit when using
 <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span></code>.</p>
 </div>
-<p>The following command installs k2 from PyPI:</p>
+<p>The following command installs <code class="docutils literal notranslate"><span class="pre">k2</span></code> from PyPI:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install k2
 </pre></div>
 </div>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
-<p>The wheel packages on PyPI are built using <cite>torch==1.7.1+cu101</cite> on Ubuntu 18.04.
+<p>The wheel packages on PyPI are built using <cite>torch==1.12.1+cu102</cite> on Ubuntu 18.04.
 If you are using other Linux systems or a different PyTorch version, the
 pre-built wheel packages may NOT work on your system, please consider one of
 the following alternatives to install k2:</p>
@@ -122,31 +122,39 @@ the following alternatives to install k2:</p>
 </ul>
 </div></blockquote>
 </div>
-<p>To verify that k2 is installed successfully, run:</p>
+<p>To verify that <code class="docutils literal notranslate"><span class="pre">k2</span></code> is installed successfully, run:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python3 -m k2.version
-
-k2 version: 1.8
-Build type: Release
-Git SHA1: 646704e142438bcd1aaf4a6e32d95e5ccd93a174
-Git date: Thu Sep 16 13:05:12 2021
-Cuda used to build k2: 10.1
-cuDNN used to build k2: 8.0.2
-Python version used to build k2: 3.8
-OS used to build k2: Ubuntu 18.04.5 LTS
-CMake version: 3.21.2
-GCC version: 7.5.0
-CMAKE_CUDA_FLAGS:  --expt-extended-lambda -gencode arch=compute_35,code=sm_35 --expt-extended-lambda -gencode arch=compute_50,code=sm_50 --expt-extended-lambda -gencode arch=compute_60,code=sm_60 --expt-extended-lambda -gencode arch=compute_61,code=sm_61 --expt-extended-lambda -gencode arch=compute_70,code=sm_70 --expt-extended-lambda -gencode arch=compute_75,code=sm_75 -D_GLIBCXX_USE_CXX11_ABI=0 --compiler-options -Wall --compiler-options -Wno-unknown-pragmas --compiler-options -Wno-strict-overflow
-CMAKE_CXX_FLAGS:  -D_GLIBCXX_USE_CXX11_ABI=0 -Wno-strict-overflow
-PyTorch version used to build k2: 1.7.1+cu101
-PyTorch is using Cuda: 10.1
-NVTX enabled: True
-With CUDA: True
-Disable debug: True
-Sync kernels : False
-Disable checks: False
 </pre></div>
 </div>
-<p>Congratulations! You have installed k2 successfully.</p>
+<p>You should see something like below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Collecting</span> <span class="n">environment</span> <span class="n">information</span><span class="o">...</span>
+
+<span class="n">k2</span> <span class="n">version</span><span class="p">:</span> <span class="mf">1.20</span>
+<span class="n">Build</span> <span class="nb">type</span><span class="p">:</span> <span class="n">Release</span>
+<span class="n">Git</span> <span class="n">SHA1</span><span class="p">:</span> <span class="mi">89465</span><span class="n">dfc3085c1e7148f8c5e78a861c42ad77730</span>
+<span class="n">Git</span> <span class="n">date</span><span class="p">:</span> <span class="n">Wed</span> <span class="n">Sep</span> <span class="mi">21</span> <span class="mi">14</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span><span class="mi">54</span> <span class="mi">2022</span>
+<span class="n">Cuda</span> <span class="n">used</span> <span class="n">to</span> <span class="n">build</span> <span class="n">k2</span><span class="p">:</span> <span class="mf">10.2</span>
+<span class="n">cuDNN</span> <span class="n">used</span> <span class="n">to</span> <span class="n">build</span> <span class="n">k2</span><span class="p">:</span> <span class="mf">8.3.2</span>
+<span class="n">Python</span> <span class="n">version</span> <span class="n">used</span> <span class="n">to</span> <span class="n">build</span> <span class="n">k2</span><span class="p">:</span> <span class="mf">3.8</span>
+<span class="n">OS</span> <span class="n">used</span> <span class="n">to</span> <span class="n">build</span> <span class="n">k2</span><span class="p">:</span> <span class="n">Ubuntu</span> <span class="mf">18.04.5</span> <span class="n">LTS</span>
+<span class="n">CMake</span> <span class="n">version</span><span class="p">:</span> <span class="mf">3.21.6</span>
+<span class="n">GCC</span> <span class="n">version</span><span class="p">:</span> <span class="mf">7.5.0</span>
+<span class="n">CMAKE_CUDA_FLAGS</span><span class="p">:</span>   <span class="o">-</span><span class="n">lineinfo</span> <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">use_fast_math</span> <span class="o">-</span><span class="n">Xptxas</span><span class="o">=-</span><span class="n">w</span>  <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_35</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_35</span>  <span class="o">-</span><span class="n">lineinfo</span> <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">use_fast_math</span> <span class="o">-</span><span class="n">Xptxas</span><span class="o">=-</span><span class="n">w</span>  <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_50</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_50</span>  <span class="o">-</span><span class="n">lineinfo</span> <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">use_fast_math</span> <span class="o">-</span><span class="n">Xptxas</span><span class="o">=-</span><span class="n">w</span>  <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_60</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_60</span>  <span class="o">-</span><span class="n">lineinfo</span> <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">use_fast_math</span> <span class="o">-</span><span class="n">Xptxas</span><span class="o">=-</span><span class="n">w</span>  <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_61</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_61</span>  <span class="o">-</span><span class="n">lineinfo</span> <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">use_fast_math</span> <span class="o">-</span><span class="n">Xptxas</span><span class="o">=-</span><span class="n">w</span>  <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_70</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_70</span>  <span class="o">-</span><span class="n">lineinfo</span> <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">use_fast_math</span> <span class="o">-</span><span class="n">Xptxas</span><span class="o">=-</span><span class="n">w</span>  <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_75</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_75</span> <span class="o">-</span><span class="n">DONNX_NAMESPACE</span><span class="o">=</span><span class="n">onnx_c2</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_35</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_35</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_50</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_50</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_52</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_52</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_60</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_60</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_61</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_61</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_70</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_70</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_75</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">sm_75</span> <span class="o">-</span><span class="n">gencode</span> <span class="n">arch</span><span class="o">=</span><span class="n">compute_75</span><span class="p">,</span><span class="n">code</span><span class="o">=</span><span class="n">compute_75</span> <span class="o">-</span><span class="n">Xcudafe</span> <span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">cc_clobber_ignored</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">integer_sign_change</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">useless_using_declaration</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">set_but_not_used</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">field_without_dll_interface</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">base_class_has_different_dll_interface</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">dll_interface_conflict_none_assumed</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">dll_interface_conflict_dllexport_assumed</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">implicit_return_from_non_void_function</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">unsigned_compare_with_zero</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">declared_but_not_referenced</span><span class="p">,</span><span class="o">--</span><span class="n">diag_suppress</span><span class="o">=</span><span class="n">bad_friend_decl</span> <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">relaxed</span><span class="o">-</span><span class="n">constexpr</span> <span class="o">--</span><span class="n">expt</span><span class="o">-</span><span class="n">extended</span><span class="o">-</span><span class="k">lambda</span> <span class="o">-</span><span class="n">D_GLIBCXX_USE_CXX11_ABI</span><span class="o">=</span><span class="mi">0</span> <span class="o">--</span><span class="n">compiler</span><span class="o">-</span><span class="n">options</span> <span class="o">-</span><span class="n">Wall</span>  <span class="o">--</span><span class="n">compiler</span><span class="o">-</span><span class="n">options</span> <span class="o">-</span><span class="n">Wno</span><span class="o">-</span><span class="n">strict</span><span class="o">-</span><span class="n">overflow</span>  <span class="o">--</span><span class="n">compiler</span><span class="o">-</span><span class="n">options</span> <span class="o">-</span><span class="n">Wno</span><span class="o">-</span><span class="n">unknown</span><span class="o">-</span><span class="n">pragmas</span>
+<span class="n">CMAKE_CXX_FLAGS</span><span class="p">:</span>  <span class="o">-</span><span class="n">D_GLIBCXX_USE_CXX11_ABI</span><span class="o">=</span><span class="mi">0</span> <span class="o">-</span><span class="n">Wno</span><span class="o">-</span><span class="n">unused</span><span class="o">-</span><span class="n">variable</span>  <span class="o">-</span><span class="n">Wno</span><span class="o">-</span><span class="n">strict</span><span class="o">-</span><span class="n">overflow</span>
+<span class="n">PyTorch</span> <span class="n">version</span> <span class="n">used</span> <span class="n">to</span> <span class="n">build</span> <span class="n">k2</span><span class="p">:</span> <span class="mf">1.12.1</span><span class="o">+</span><span class="n">cu102</span>
+<span class="n">PyTorch</span> <span class="ow">is</span> <span class="n">using</span> <span class="n">Cuda</span><span class="p">:</span> <span class="mf">10.2</span>
+<span class="n">NVTX</span> <span class="n">enabled</span><span class="p">:</span> <span class="kc">True</span>
+<span class="n">With</span> <span class="n">CUDA</span><span class="p">:</span> <span class="kc">True</span>
+<span class="n">Disable</span> <span class="n">debug</span><span class="p">:</span> <span class="kc">True</span>
+<span class="n">Sync</span> <span class="n">kernels</span> <span class="p">:</span> <span class="kc">False</span>
+<span class="n">Disable</span> <span class="n">checks</span><span class="p">:</span> <span class="kc">False</span>
+<span class="n">Max</span> <span class="n">cpu</span> <span class="n">memory</span> <span class="n">allocate</span><span class="p">:</span> <span class="mi">214748364800</span> <span class="nb">bytes</span> <span class="p">(</span><span class="ow">or</span> <span class="mf">200.0</span> <span class="n">GB</span><span class="p">)</span>
+<span class="n">k2</span> <span class="n">abort</span><span class="p">:</span> <span class="kc">False</span>
+<span class="vm">__file__</span><span class="p">:</span> <span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">fj</span><span class="o">/</span><span class="n">fangjun</span><span class="o">/</span><span class="n">py38</span><span class="o">-</span><span class="mf">1.12.1</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">python3</span><span class="mf">.8</span><span class="o">/</span><span class="n">site</span><span class="o">-</span><span class="n">packages</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">version</span><span class="o">/</span><span class="n">version</span><span class="o">.</span><span class="n">py</span>
+<span class="n">_k2</span><span class="o">.</span><span class="vm">__file__</span><span class="p">:</span> <span class="o">/</span><span class="n">ceph</span><span class="o">-</span><span class="n">fj</span><span class="o">/</span><span class="n">fangjun</span><span class="o">/</span><span class="n">py38</span><span class="o">-</span><span class="mf">1.12.1</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">python3</span><span class="mf">.8</span><span class="o">/</span><span class="n">site</span><span class="o">-</span><span class="n">packages</span><span class="o">/</span><span class="n">_k2</span><span class="o">.</span><span class="n">cpython</span><span class="o">-</span><span class="mi">38</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">gnu</span><span class="o">.</span><span class="n">so</span>
+</pre></div>
+</div>
+<p>Congratulations! You have installed <code class="docutils literal notranslate"><span class="pre">k2</span></code> successfully.</p>
 </section>
 
 
