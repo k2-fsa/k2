@@ -66,6 +66,7 @@ from .fsa_algo import levenshtein_graph
 from .fsa_algo import linear_fsa
 from .fsa_algo import linear_fsa_with_self_loops
 from .fsa_algo import linear_fst
+from .fsa_algo import linear_fst_with_self_loops
 from .fsa_algo import prune_on_arc_post
 from .fsa_algo import random_paths
 from .fsa_algo import remove_epsilon
@@ -97,6 +98,7 @@ from .rnnt_loss import get_rnnt_logprobs_joint
 from .rnnt_loss import get_rnnt_logprobs_pruned
 from .rnnt_loss import get_rnnt_logprobs_smoothed
 from .rnnt_loss import get_rnnt_prune_ranges
+from .rnnt_loss import get_rnnt_prune_ranges_deprecated  # for testing purpose
 from .rnnt_loss import rnnt_loss
 from .rnnt_loss import rnnt_loss_pruned
 from .rnnt_loss import rnnt_loss_simple
@@ -117,3 +119,4 @@ from .utils import random_fsa_vec
 from _k2.version import with_cuda
 
 cmake_prefix_path = _Path(__file__).parent / "share" / "cmake"
+del _Path

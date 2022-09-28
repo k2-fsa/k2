@@ -55,7 +55,7 @@ cd $k2_dir
 export K2_ROOT_DIR=$k2_dir
 echo "K2_ROOT_DIR: $K2_ROOT_DIR"
 
-K2_PYTHON_VERSION=$(python3 -c "import sys; print(sys.version[:3])")
+K2_PYTHON_VERSION=$(python -c "import sys; print('.'.join(sys.version.split('.')[:2]))")
 
 if [ -z $K2_CUDA_VERSION ]; then
   echo "env var K2_CUDA_VERSION is not set, defaults to 10.1"

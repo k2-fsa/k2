@@ -22,8 +22,24 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '.github/workflows/run-tests-cpu.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   pull_request:
     types: [labeled]
+    paths:
+      - '.github/workflows/run-tests-cpu.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+
+concurrency:
+  group: run-tests-cpu-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   run-tests-cpu:

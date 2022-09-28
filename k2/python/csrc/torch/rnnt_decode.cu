@@ -159,16 +159,17 @@ static void PybindRnntDecodingStreams(py::module &m) {
 
   streams.def(
       "format_output",
-      [](PyClass &self,
-         std::vector<int32_t> &num_frames) -> std::pair<FsaVec, torch::Tensor> {
+      [](PyClass &self, std::vector<int32_t> &num_frames,
+         bool allow_partial) -> std::pair<FsaVec, torch::Tensor> {
         DeviceGuard guard(self.Context());
         FsaVec ofsa;
         Array1<int32_t> out_map;
-        self.FormatOutput(num_frames, &ofsa, &out_map);
+        self.FormatOutput(num_frames, allow_partial, &ofsa, &out_map);
         torch::Tensor out_map_tensor = ToTorch<int32_t>(out_map);
         return std::make_pair(ofsa, out_map_tensor);
       },
-      py::arg("num_frames"), py::call_guard<py::gil_scoped_release>());
+      py::arg("num_frames"), py::arg("allow_partial"),
+      py::call_guard<py::gil_scoped_release>());
 }
 
 }  // namespace k2

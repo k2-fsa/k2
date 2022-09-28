@@ -1,3 +1,5 @@
+.. _installation for developers:
+
 For developers
 ==============
 
@@ -39,6 +41,14 @@ To build a release version, use:
   mkdir build_release
   cd build_release
   cmake -DCMAKE_BUILD_TYPE=Release ..
+
+  # Note: If you plan to run k2 on a different machine than the one you used to
+  # build k2 and the two machines have different types of GPUs, please use the
+  # following command:
+  #
+  # cmake -DCMAKE_BUILD_TYPE=Release -DK2_BUILD_FOR_ALL_ARCHS=ON ..
+  #
+
   make -j
   export PYTHONPATH=$PWD/../k2/python:$PYTHONPATH # for `import k2`
   export PYTHONPATH=$PWD/lib:$PYTHONPATH # for `import _k2`
@@ -51,6 +61,11 @@ To build a release version, use:
   # It should print /some/path/k2/build_release/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
 
+  # If you are going to install https://github.com/k2-fsa/sherpa after installing
+  # k2, please run
+  export K2_INSTALL_PREFIX=/some/path/k2/build_release
+  # before you install sherpa
+
 To build a debug version, use:
 
 .. code-block:: bash
@@ -59,6 +74,14 @@ To build a debug version, use:
   mkdir build_debug
   cd build_debug
   cmake -DCMAKE_BUILD_TYPE=Debug ..
+
+  # Note: If you plan to run k2 on a different machine than the one you used to
+  # build k2 and the two machines have different types of GPUs, please use the
+  # following command:
+  #
+  # cmake -DCMAKE_BUILD_TYPE=Debug -DK2_BUILD_FOR_ALL_ARCHS=ON ..
+  #
+
   make -j
   export PYTHONPATH=$PWD/../k2/python:$PYTHONPATH # for `import k2`
   export PYTHONPATH=$PWD/lib:$PYTHONPATH # for `import _k2`
@@ -70,6 +93,11 @@ To build a debug version, use:
   python3 -c "import torch; import _k2; print(_k2.__file__)"
   # It should print /some/path/k2/build_debug/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
+
+  # If you are going to install https://github.com/k2-fsa/sherpa after installing
+  # k2, please run
+  export K2_INSTALL_PREFIX=/some/path/k2/build_debug
+  # before you install sherpa
 
 .. HINT::
 

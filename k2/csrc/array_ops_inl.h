@@ -346,7 +346,7 @@ Array1<T> Cat(ContextPtr c, int32_t num_arrays, const Array1<T> **src) {
   if (c->GetDeviceType() == kCpu) {
     // a simple loop is faster, although the other branches should still work on
     // CPU.
-    int32_t elem_size = src[0]->ElementSize();
+    int64_t elem_size = src[0]->ElementSize();
     for (int32_t i = 0; i < num_arrays; ++i) {
       int32_t this_dim = src[i]->Dim();
       const T *this_src_data = src[i]->Data();

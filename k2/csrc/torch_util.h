@@ -189,6 +189,12 @@ torch::Tensor ToTorch(Array2<T> &array) {
   auto scalar_type = ToScalarType<T>::value;
   auto options = torch::device(device).dtype(scalar_type);
 
+  // If array is empty, the `array.Data()` will be a nullptr, which will
+  // cause crash when calling `torch::from_blob`. Just return an empty tensor
+  // here.
+  if (array.Dim0() == 0 || array.Dim1() == 0)
+    return torch::empty({array.Dim0(), array.Dim1()}, options);
+
   // NOTE: we keep a copy of `Region` inside the lambda
   // so that `torch::Tensor` always accesses valid memory.
   auto tensor = torch::from_blob(

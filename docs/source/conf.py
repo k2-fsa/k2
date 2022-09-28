@@ -52,6 +52,7 @@ extensions = [
     'sphinx_autodoc_typehints',
     'sphinx_rtd_theme',
     'sphinxcontrib.bibtex',
+    'sphinxcontrib.youtube',
 ]
 bibtex_bibfiles = ['refs.bib']
 
