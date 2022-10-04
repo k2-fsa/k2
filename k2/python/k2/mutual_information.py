@@ -304,12 +304,12 @@ def mutual_information_recursion(
 
     pxy_grads = [None, None]
     scores = MutualInformationRecursionFunction.apply(
-        px=px,
-        py=py,
-        pxy_grads=pxy_grads,
-        boundary=boundary,
-        fast_emit_scale=fast_emit_scale,
-        return_grad=return_grad
+        px,
+        py,
+        pxy_grads,
+        boundary,
+        fast_emit_scale,
+        return_grad
     )
     px_grad, py_grad = pxy_grads
     return (scores, (px_grad, py_grad)) if return_grad else scores
