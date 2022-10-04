@@ -35,12 +35,10 @@
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 
-// Caution: see also utils.h where there is EvalWithRedirect that's very related
-// to this.
 namespace k2 {
 
 
-template <typename T, typename LambdaT>
+template <typename LambdaT>
 __global__ void eval_lambda(int32_t n, LambdaT lambda) {
   int32_t i = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x + threadIdx.x;
   if (i < n) {
@@ -186,10 +184,10 @@ void SetData(ContextPtrType c, T *data, int32_t n, LambdaT &lambda) {
 }
 
 /*
-  This is a form of Eval() where the lambda takes  two arguments.
+  This is a form of Eval() where the lambda takes two arguments.
 
   Eval2() will evaluate lambda(i, j) for 0 <= i < m and 0 <= j < n,
-  on the appropriate  device (CPU or GPU).  The second index, n,
+  on the appropriate device (CPU or GPU). The second index, n,
   is supposed to be the faster-varying one, the index for which
   threads in the same warp will tend to have different values.
   (Of course this doesn't affect the semantics of the operation).

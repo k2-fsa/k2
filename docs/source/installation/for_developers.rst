@@ -1,3 +1,5 @@
+.. _installation for developers:
+
 For developers
 ==============
 
@@ -13,7 +15,7 @@ First, you have to install CMake, CUDA toolkit (with cuDNN), and PyTorch:
   - CMake 3.11.0 and 3.18.0 are known to work. Other CMake versions may work
     but they are not tested.
 
-  - Install PyTorch. PyTorch 1.4.x and above are known to work. Other PyTorch
+  - Install PyTorch. PyTorch 1.6.x and above are known to work. Other PyTorch
     versions may work, but they are not tested.
 
   - Install CUDA toolkit and cuDNN. CUDA 10.1 and above are known to work.
@@ -39,6 +41,14 @@ To build a release version, use:
   mkdir build_release
   cd build_release
   cmake -DCMAKE_BUILD_TYPE=Release ..
+
+  # Note: If you plan to run k2 on a different machine than the one you used to
+  # build k2 and the two machines have different types of GPUs, please use the
+  # following command:
+  #
+  # cmake -DCMAKE_BUILD_TYPE=Release -DK2_BUILD_FOR_ALL_ARCHS=ON ..
+  #
+
   make -j
   export PYTHONPATH=$PWD/../k2/python:$PYTHONPATH # for `import k2`
   export PYTHONPATH=$PWD/lib:$PYTHONPATH # for `import _k2`
@@ -51,6 +61,11 @@ To build a release version, use:
   # It should print /some/path/k2/build_release/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
 
+  # If you are going to install https://github.com/k2-fsa/sherpa after installing
+  # k2, please run
+  export K2_INSTALL_PREFIX=/some/path/k2/build_release
+  # before you install sherpa
+
 To build a debug version, use:
 
 .. code-block:: bash
@@ -59,6 +74,14 @@ To build a debug version, use:
   mkdir build_debug
   cd build_debug
   cmake -DCMAKE_BUILD_TYPE=Debug ..
+
+  # Note: If you plan to run k2 on a different machine than the one you used to
+  # build k2 and the two machines have different types of GPUs, please use the
+  # following command:
+  #
+  # cmake -DCMAKE_BUILD_TYPE=Debug -DK2_BUILD_FOR_ALL_ARCHS=ON ..
+  #
+
   make -j
   export PYTHONPATH=$PWD/../k2/python:$PYTHONPATH # for `import k2`
   export PYTHONPATH=$PWD/lib:$PYTHONPATH # for `import _k2`
@@ -71,10 +94,17 @@ To build a debug version, use:
   # It should print /some/path/k2/build_debug/lib/_k2.cpython-38-x86_64-linux-gnu.so
   # (I assume that you're using Python 3.8, so there is a string 38 above)
 
+  # If you are going to install https://github.com/k2-fsa/sherpa after installing
+  # k2, please run
+  export K2_INSTALL_PREFIX=/some/path/k2/build_debug
+  # before you install sherpa
+
 .. HINT::
 
   You can pass the option ``-DK2_WITH_CUDA=OFF`` to ``cmake`` to build
-  a CPU only version of k2.
+  a CPU only version of k2. In that case, you have to install a CPU version
+  of PyTorch; otherwise, you will get a CMake configuration error, saying
+  that cuDNN cannot be found.
 
   It is much faster to build a CPU version than that of building a CUDA
   version. When you are adding new features to k2, we recommend you to

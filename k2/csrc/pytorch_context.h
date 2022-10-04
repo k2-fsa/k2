@@ -23,7 +23,7 @@
 #include <memory>
 
 #include "k2/csrc/context.h"
-#include "torch/torch.h"
+#include "torch/all.h"
 
 namespace k2 {
 

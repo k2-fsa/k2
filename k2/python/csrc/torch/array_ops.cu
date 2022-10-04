@@ -22,8 +22,8 @@
 
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/device_guard.h"
+#include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/array_ops.h"
-#include "k2/python/csrc/torch/torch_util.h"
 
 namespace k2 {
 

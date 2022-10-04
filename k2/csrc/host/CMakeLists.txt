@@ -42,40 +42,46 @@ if(K2_ENABLE_NVTX)
   endif()
 endif()
 
-#---------------------------- Test K2 host sources ----------------------------
+if(K2_ENABLE_TESTS)
+  #---------------------------- Test K2 host sources ----------------------------
 
-# please sort the source files alphabetically
-set(fsa_tests
-    arcsort_test
-    array_test
-    aux_labels_test
-    connect_test
-    determinize_test
-    fsa_equivalent_test
-    fsa_renderer_test
-    fsa_test
-    fsa_util_test
-    intersect_test
-    properties_test
-    rmepsilon_test
-    topsort_test
-    weights_test
-    )
-
-function(k2_add_fsa_test name)
-  add_executable(${name} "${name}.cc")
-  target_link_libraries(${name}
-      PRIVATE
-      fsa
-      gtest
-      gtest_main
+  # please sort the source files alphabetically
+  set(fsa_tests
+      arcsort_test
+      array_test
+      aux_labels_test
+      connect_test
+      determinize_test
+      fsa_equivalent_test
+      fsa_renderer_test
+      fsa_test
+      fsa_util_test
+      intersect_test
+      properties_test
+      rmepsilon_test
+      topsort_test
+      weights_test
       )
-  add_test(NAME "Test.${name}"
-      COMMAND
-      $<TARGET_FILE:${name}>
-      )
-endfunction()
 
-foreach (name IN LISTS fsa_tests)
-  k2_add_fsa_test(${name})
-endforeach ()
+  function(k2_add_fsa_test name)
+    add_executable(${name} "${name}.cc")
+    target_link_libraries(${name}
+        PRIVATE
+        fsa
+        gtest
+        gtest_main
+        )
+    add_test(NAME "Test.${name}"
+        COMMAND
+        $<TARGET_FILE:${name}>
+        )
+  endfunction()
+
+  foreach (name IN LISTS fsa_tests)
+    k2_add_fsa_test(${name})
+  endforeach ()
+endif()
+
+install(TARGETS fsa
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)

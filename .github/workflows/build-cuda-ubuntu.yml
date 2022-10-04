@@ -22,8 +22,24 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '.github/workflows/build-cuda-ubuntu.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   pull_request:
     types: [labeled]
+    paths:
+      - '.github/workflows/build-cuda-ubuntu.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+
+concurrency:
+  group: build-cuda-ubuntu-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   BUILD_TYPE: Release

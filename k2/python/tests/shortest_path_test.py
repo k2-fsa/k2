@@ -150,6 +150,22 @@ class TestShortestPath(unittest.TestCase):
                          torch.ones(2, device=device)))
             assert fsa3.scores.grad.sum() == 2
 
+    def test_large_fsa(self):
+        num_arcs = 200000
+        num_fsas = 10
+        for device in self.devices:
+            labels = torch.randint(0, 1000, [num_arcs])
+            fsa = k2.linear_fst(labels.tolist(), labels.tolist())
+            fsav = k2.create_fsa_vec([fsa] * num_fsas).to(device)
+            best_path = k2.shortest_path(fsav, use_double_scores=False)
+
+            expected_labels = torch.zeros(num_arcs + 1, dtype=torch.int32)
+            expected_labels[:-1] = labels
+            expected_labels[-1] = -1
+            expected_labels = expected_labels.repeat(num_fsas).to(device)
+
+            assert torch.all(torch.eq(expected_labels, best_path.labels))
+
 
 if __name__ == '__main__':
     unittest.main()
