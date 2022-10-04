@@ -385,7 +385,7 @@ def rnnt_loss(
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
     modified: bool = False,
-    fast_emit_scale : float = 0.0,
+    fast_emit_scale: float = 0.0,
     reduction: Optional[str] = "mean",
 ) -> Tensor:
     """A normal RNN-T loss, which uses a 'joiner' network output as input,
