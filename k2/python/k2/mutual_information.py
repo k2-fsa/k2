@@ -35,6 +35,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         py: torch.Tensor,
         pxy_grads: List[Optional[torch.Tensor]],
         boundary: Optional[torch.Tensor] = None,
+        fast_emit_scale: float = 0.0,
         return_grad: bool = False,
     ) -> torch.Tensor:
         """
@@ -109,6 +110,10 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
             all sequences are
             of the same length.
 
+          fast_emit_scale:
+            Implement fast_emit proposed in https://arxiv.org/pdf/2010.11148.pdf
+            The idea is to scale px_grad with (1 + fast_emit_scale).
+
           return_grad:
             Whether to return grads of ``px`` and ``py``, this grad standing
             for the occupation probability is the output of the backward with a
@@ -163,6 +168,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
             ans_grad = torch.ones(B, device=px.device, dtype=px.dtype)
             (px_grad, py_grad) = _k2.mutual_information_backward(
                 px, py, boundary, p, ans_grad)
+            px_grad *= (1 + fast_emit_scale)
             ctx.save_for_backward(px_grad, py_grad)
         assert len(pxy_grads) == 2
         pxy_grads[0] = px_grad
@@ -173,19 +179,20 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
     @staticmethod
     def backward(
         ctx, ans_grad: Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, None, None, None]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, None, None, None, None]:
         (px_grad, py_grad) = ctx.saved_tensors
         (B,) = ans_grad.shape
         ans_grad = ans_grad.reshape(B, 1, 1)  # (B, 1, 1)
         px_grad *= ans_grad
         py_grad *= ans_grad
-        return (px_grad, py_grad, None, None, None)
+        return (px_grad, py_grad, None, None, None, None)
 
 
 def mutual_information_recursion(
     px: Tensor,
     py: Tensor,
     boundary: Optional[Tensor] = None,
+    fast_emit_scale: float = 0.0,
     return_grad: bool = False,
 ) -> Union[Tuple[Tensor, Tuple[Tensor, Tensor]], Tensor]:
     """A recursion that is useful in computing mutual information between two
@@ -248,6 +255,10 @@ def mutual_information_recursion(
         ``y`` sequences respectively, and can be used if not all sequences are
         of the same length.
 
+      fast_emit_scale:
+        Implement fast_emit proposed in https://arxiv.org/pdf/2010.11148.pdf
+        The idea is to scale px_grad with (1 + fast_emit_scale).
+
       return_grad:
         Whether to return grads of ``px`` and ``py``, this grad standing for the
         occupation probability is the output of the backward with a
@@ -291,8 +302,14 @@ def mutual_information_recursion(
     assert px.is_contiguous()
     assert py.is_contiguous()
     pxy_grads = [None, None]
-    scores = MutualInformationRecursionFunction.apply(px, py, pxy_grads,
-                                                      boundary, return_grad)
+    scores = MutualInformationRecursionFunction.apply(
+        px=px,
+        py=py,
+        pxy_grads=pxy_grads,
+        boundary=boundary,
+        fast_emit_scale=fast_emit_scale,
+        return_grad=return_grad
+    )
     px_grad, py_grad = pxy_grads
     return (scores, (px_grad, py_grad)) if return_grad else scores
 
