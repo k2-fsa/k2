@@ -4,6 +4,8 @@ name: Publish to PyPI - Ubuntu CUDA
 
 on:
   push:
+    branches:
+      - manual-release
     tags:
       - '*'
 
@@ -22,7 +24,7 @@ jobs:
       matrix:
         os: [ubuntu-18.04]
         cuda: ["10.2"]
-        gcc: ["5"]
+        gcc: ["7"]
         torch: ["1.12.1"]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
 
