@@ -38,10 +38,10 @@ concurrency:
 
 jobs:
   style_check:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.9]
+        python-version: [3.9]
       fail-fast: false
 
     steps:

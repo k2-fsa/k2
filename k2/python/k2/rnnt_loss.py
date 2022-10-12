@@ -138,17 +138,17 @@ def get_rnnt_logprobs(
           This is simply a way of incorporating
           the probability of the termination symbol on the last frame.
     """
-    assert lm.ndim == 3
-    assert am.ndim == 3
-    assert lm.shape[0] == am.shape[0]
-    assert lm.shape[2] == am.shape[2]
+    assert lm.ndim == 3, lm.shape
+    assert am.ndim == 3, am.shape
+    assert lm.shape[0] == am.shape[0], (lm.shape, am.shape)
+    assert lm.shape[2] == am.shape[2], (lm.shape, am.shape)
 
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
-    assert symbols.shape == (B, S)
-    assert S >= 1
-    assert T >= S
-    assert rnnt_type in ["regular", "modified", "constrained"]
+    assert symbols.shape == (B, S), (symbols.shape, B, S)
+    assert S >= 1, S
+    assert T >= S, (T, S)
+    assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     # subtracting am_max and lm_max is to ensure the probs are in a good range
     # to do exp() without causing underflow or overflow.
@@ -217,6 +217,7 @@ def rnnt_loss_simple(
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
     rnnt_type: str = "regular",
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
     return_grad: bool = False,
 ) -> Union[Tensor, Tuple[Tensor, Tuple[Tensor, Tensor]]]:
@@ -254,6 +255,10 @@ def rnnt_loss_simple(
                        *next* context on the *current* frame, e.g. if we emit
                        c given "a b" context, we are forced to emit "blank"
                        given "b c" context on the current frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -284,6 +289,24 @@ def rnnt_loss_simple(
         boundary=boundary,
         rnnt_type=rnnt_type,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if modified else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                (T - 1) / 2,
+                dtype=px.dtype,
+                device=px.device,
+            ).expand(B, 1, 1)
+        else:
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
+
     scores_and_grads = mutual_information_recursion(
         px=px, py=py, boundary=boundary, return_grad=return_grad
     )
@@ -369,13 +392,13 @@ def get_rnnt_logprobs_joint(
       This is simply a way of incorporating
       the probability of the termination symbol on the last frame.
     """
-    assert logits.ndim == 4
+    assert logits.ndim == 4, logits.shape
     (B, T, S1, C) = logits.shape
     S = S1 - 1
-    assert symbols.shape == (B, S)
-    assert S >= 1
-    assert T >= S
-    assert rnnt_type in ["regular", "modified", "constrained"]
+    assert symbols.shape == (B, S), (symbols.shape, B, S)
+    assert S >= 1, S
+    assert T >= S, (T, S)
+    assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     normalizers = torch.logsumexp(logits, dim=3)
     normalizers = normalizers.permute((0, 2, 1))
@@ -417,6 +440,7 @@ def rnnt_loss(
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
     rnnt_type: str = "regular",
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
 ) -> Tensor:
     """A normal RNN-T loss, which uses a 'joiner' network output as input,
@@ -449,6 +473,10 @@ def rnnt_loss(
                        *next* context on the *current* frame, e.g. if we emit
                        c given "a b" context, we are forced to emit "blank"
                        given "b c" context on the current frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -468,6 +496,24 @@ def rnnt_loss(
         boundary=boundary,
         rnnt_type=rnnt_type,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if modified else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                (T - 1) / 2,
+                dtype=px.dtype,
+                device=px.device,
+            ).expand(B, 1, 1)
+        else:
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
+
     negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
     if reduction == "none":
         return -negated_loss
@@ -587,12 +633,12 @@ def get_rnnt_prune_ranges(
     """
     (B, S, T1) = px_grad.shape
     T = py_grad.shape[-1]
-    assert T1 in [T, T + 1]
+    assert T1 in [T, T + 1], (T1, T)
     S1 = S + 1
-    assert py_grad.shape == (B, S1, T)
-    assert boundary.shape == (B, 4)
-    assert S >= 1
-    assert T >= S
+    assert py_grad.shape == (B, S1, T), (py_grad.shape, B, S1, T)
+    assert boundary.shape == (B, 4), (boundary.shape, B)
+    assert S >= 1, S
+    assert T >= S, (T, S)
 
     # s_range > S means we won't prune out any symbols. To make indexing with
     # ranges run normally, s_range should be equal to or less than ``S + 1``.
@@ -602,12 +648,14 @@ def get_rnnt_prune_ranges(
     if T1 == T:
         assert (
             s_range >= 1
-        ), "Pruning range for non-regular RNN-T should be equal to or greater than 1, or no valid paths could survive pruning."
+        ), f"""Pruning range for modified RNN-T should be equal to or greater
+        than 1, or no valid paths could survive pruning. Given {s_range}"""
 
     else:
         assert (
             s_range >= 2
-        ), "Pruning range for regular RNN-T should be equal to or greater than 2, or no valid paths could survive pruning."
+        ), f"""Pruning range for standard RNN-T should be equal to or greater
+        than 2, or no valid paths could survive pruning. Given {s_range}"""
 
     (B_stride, S_stride, T_stride) = py_grad.stride()
     blk_grad = torch.as_strided(
@@ -714,11 +762,11 @@ def get_rnnt_prune_ranges_deprecated(
     """
     (B, S, T1) = px_grad.shape
     T = py_grad.shape[-1]
-    assert T1 in [T, T + 1]
-    assert py_grad.shape == (B, S + 1, T)
-    assert boundary.shape == (B, 4)
-    assert S >= 1
-    assert T >= S
+    assert T1 in [T, T + 1], (T1, T)
+    assert py_grad.shape == (B, S + 1, T), (py_grad.shape, B, S, T)
+    assert boundary.shape == (B, 4), (boundary.shape, B)
+    assert S >= 1, S
+    assert T >= S, (T, S)
 
     # s_range > S means we won't prune out any symbols. To make indexing with
     # ranges run normally, s_range should be equal to or less than ``S + 1``.
@@ -728,12 +776,14 @@ def get_rnnt_prune_ranges_deprecated(
     if T1 == T:
         assert (
             s_range >= 1
-        ), "Pruning range for non-regular RNN-T should be equal to or greater than 1, or no valid paths could survive pruning."
+        ), f"""Pruning range for modified RNN-T should be equal to or greater
+        than 1, or no valid paths could survive pruning. Given {s_range}"""
 
     else:
         assert (
             s_range >= 2
-        ), "Pruning range for regular RNN-T should be equal to or greater than 2, or no valid paths could survive pruning."
+        ), f"""Pruning range for standard RNN-T should be equal to or greater
+        than 2, or no valid paths could survive pruning. Given {s_range}"""
 
     px_pad = torch.zeros((B, 1, T1), dtype=px_grad.dtype, device=px_grad.device)
     py_pad = torch.zeros(
@@ -813,13 +863,13 @@ def do_rnnt_pruning(
     # am (B, T, encoder_dm)
     # lm (B, S + 1, decoder_dim)
     # ranges (B, T, s_range)
-    assert ranges.shape[0] == am.shape[0]
-    assert ranges.shape[0] == lm.shape[0]
-    assert am.shape[1] == ranges.shape[1]
+    assert ranges.shape[0] == am.shape[0], (ranges.shape, am.shape)
+    assert ranges.shape[0] == lm.shape[0], (ranges.shape, lm.shape)
+    assert am.shape[1] == ranges.shape[1], (am.shape, ranges.shape)
     (B, T, s_range) = ranges.shape
     (B, S1, decoder_dim) = lm.shape
     encoder_dim = am.shape[-1]
-    assert am.shape == (B, T, encoder_dim)
+    assert am.shape == (B, T, encoder_dim), (am.shape, B, T, encoder_dim)
     S = S1 - 1
 
     # (B, T, s_range, encoder_dim)
@@ -857,9 +907,9 @@ def _roll_by_shifts(src: torch.Tensor, shifts: torch.LongTensor):
                [ 8,  9,  5,  6,  7],
                [12, 13, 14, 10, 11]]])
     """
-    assert src.dim() == 3
+    assert src.dim() == 3, src.shape
     (B, T, S) = src.shape
-    assert shifts.shape == (B, T)
+    assert shifts.shape == (B, T), (shifts.shape, B, T)
 
     index = (
         torch.arange(S, device=src.device)
@@ -948,13 +998,13 @@ def get_rnnt_logprobs_pruned(
     # logits (B, T, s_range, C)
     # symbols (B, S)
     # ranges (B, T, s_range)
-    assert logits.ndim == 4
+    assert logits.ndim == 4, logits.shape
     (B, T, s_range, C) = logits.shape
-    assert ranges.shape == (B, T, s_range)
+    assert ranges.shape == (B, T, s_range), (ranges.shape, B, T, s_range)
     (B, S) = symbols.shape
-    assert S >= 1
-    assert T >= S
-    assert rnnt_type in ["regular", "modified", "constrained"]
+    assert S >= 1, S
+    assert T >= S, (T, S)
+    assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     normalizers = torch.logsumexp(logits, dim=3)
 
@@ -1050,6 +1100,7 @@ def rnnt_loss_pruned(
     termination_symbol: int,
     boundary: Tensor = None,
     rnnt_type: str = "regular",
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
 ) -> Tensor:
     """A RNN-T loss with pruning, which uses the output of a pruned 'joiner'
@@ -1091,6 +1142,10 @@ def rnnt_loss_pruned(
                        *next* context on the *current* frame, e.g. if we emit
                        c given "a b" context, we are forced to emit "blank"
                        given "b c" context on the current frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -1110,6 +1165,24 @@ def rnnt_loss_pruned(
         boundary=boundary,
         rnnt_type=rnnt_type,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if modified else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                (T - 1) / 2,
+                dtype=px.dtype,
+                device=px.device,
+            ).expand(B, 1, 1)
+        else:
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
+
     negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
     if reduction == "none":
         return -negated_loss
@@ -1232,16 +1305,16 @@ def get_rnnt_logprobs_smoothed(
           we cannot emit any symbols.  This is simply a way of incorporating
           the probability of the termination symbol on the last frame.
     """
-    assert lm.ndim == 3
-    assert am.ndim == 3
-    assert lm.shape[0] == am.shape[0]
-    assert lm.shape[2] == am.shape[2]
+    assert lm.ndim == 3, lm.shape
+    assert am.ndim == 3, am.shape
+    assert lm.shape[0] == am.shape[0], (lm.shape, am.shape)
+    assert lm.shape[2] == am.shape[2], (lm.shape, am.shape)
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
-    assert symbols.shape == (B, S)
-    assert S >= 1
-    assert T >= S
-    assert rnnt_type in ["regular", "modified", "constrained"]
+    assert symbols.shape == (B, S), (symbols.shape, B, S)
+    assert S >= 1, S
+    assert T >= S, (T, S)
+    assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     # Caution: some parts of this code are a little less clear than they could
     # be due to optimizations.  In particular it may not be totally obvious that
@@ -1369,6 +1442,7 @@ def rnnt_loss_smoothed(
     am_only_scale: float = 0.1,
     boundary: Optional[Tensor] = None,
     rnnt_type: str = "regular",
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
     return_grad: bool = False,
 ) -> Union[Tuple[Tensor, Tuple[Tensor, Tensor]], Tensor]:
@@ -1413,6 +1487,10 @@ def rnnt_loss_smoothed(
                        *next* context on the *current* frame, e.g. if we emit
                        c given "a b" context, we are forced to emit "blank"
                        given "b c" context on the current frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -1445,6 +1523,24 @@ def rnnt_loss_smoothed(
         boundary=boundary,
         rnnt_type=rnnt_type,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if modified else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                (T - 1) / 2,
+                dtype=px.dtype,
+                device=px.device,
+            ).expand(B, 1, 1)
+        else:
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
+
     scores_and_grads = mutual_information_recursion(
         px=px, py=py, boundary=boundary, return_grad=return_grad
     )

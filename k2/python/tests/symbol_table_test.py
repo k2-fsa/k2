@@ -85,6 +85,9 @@ class TestSymbolTable(unittest.TestCase):
         assert merged['e'] == 11
         assert merged[11] == 'e'
 
+        copied = k2.SymbolTable.from_str(merged.to_str())
+        assert merged == copied
+
 
 if __name__ == '__main__':
     unittest.main()
