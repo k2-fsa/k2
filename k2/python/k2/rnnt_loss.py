@@ -292,7 +292,7 @@ def rnnt_loss_simple(
 
     if delay_penalty > 0.0:
         B, S, T0 = px.shape
-        T = T0 if modified else T0 - 1
+        T = T0 if rnnt_type != "regular" else T0 - 1
         if boundary is None:
             offset = torch.tensor(
                 (T - 1) / 2,
@@ -499,7 +499,7 @@ def rnnt_loss(
 
     if delay_penalty > 0.0:
         B, S, T0 = px.shape
-        T = T0 if modified else T0 - 1
+        T = T0 if rnnt_type != "regular" else T0 - 1
         if boundary is None:
             offset = torch.tensor(
                 (T - 1) / 2,
@@ -1168,7 +1168,7 @@ def rnnt_loss_pruned(
 
     if delay_penalty > 0.0:
         B, S, T0 = px.shape
-        T = T0 if modified else T0 - 1
+        T = T0 if rnnt_type != "regular" else T0 - 1
         if boundary is None:
             offset = torch.tensor(
                 (T - 1) / 2,
@@ -1526,7 +1526,7 @@ def rnnt_loss_smoothed(
 
     if delay_penalty > 0.0:
         B, S, T0 = px.shape
-        T = T0 if modified else T0 - 1
+        T = T0 if rnnt_type != "regular" else T0 - 1
         if boundary is None:
             offset = torch.tensor(
                 (T - 1) / 2,
