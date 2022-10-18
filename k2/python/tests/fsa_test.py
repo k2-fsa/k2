@@ -215,9 +215,8 @@ class TestFsa(unittest.TestCase):
             2 4 2 -6.2
             3 6 3 -7.2
             5 0 1 -8.2
-            6 8 -1 -9.2
-            7 8 -1 0
-            8
+            6 -9.2
+            7 0
             '''
             assert _remove_leading_spaces(expected_str) == \
                     _remove_leading_spaces(k2.to_str_simple(fsa, openfst=True))
@@ -269,9 +268,8 @@ class TestFsa(unittest.TestCase):
         2 4 2 [ ] -6.2
         3 6 3 [ ] -7.2
         5 0 1 [ 13 ] -8.2
-        6 8 -1 [ ] -9.2
-        7 8 -1 [ ] 0
-        8
+        6 -9.2
+        7 0
         '''
         string = _remove_leading_spaces(k2.to_str(fsa, openfst=True))
         print("fsa=", string)
@@ -552,9 +550,8 @@ class TestFsa(unittest.TestCase):
                 2 4 2 22 -6.2
                 3 6 3 36 -7.2
                 5 0 1 50 -8.2
-                6 8 -1 -1 0
-                7 8 -1 -1 -9.2
-                8
+                6 0
+                7 -9.2
             '''
             assert _remove_leading_spaces(expected_str) == \
                     _remove_leading_spaces(k2.to_str_simple(fsa, openfst=True))
@@ -620,9 +617,8 @@ class TestFsa(unittest.TestCase):
                 2 4 2 22 -6.2
                 3 6 3 36 -7.2
                 5 0 1 50 -8.2
-                6 8 -1 -1 0
-                7 8 -1 -1 -9.2
-                8
+                6 0
+                7 -9.2
             '''
             assert _remove_leading_spaces(expected_str) == \
                     _remove_leading_spaces(k2.to_str_simple(fsa, openfst=True))
