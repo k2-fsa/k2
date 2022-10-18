@@ -203,7 +203,7 @@ class TestFsa(unittest.TestCase):
                 fsa = k2.Fsa.from_openfst(s, acceptor=True)
             elif i == 2:
                 fsa = k2.Fsa.from_openfst(s, num_aux_labels=0)
-            elif i ==3:
+            elif i == 3:
                 # Test k2.Fsa.from_str(k2.to_str(openfst=True), openfst=True)
                 fsa_tmp = k2.Fsa.from_str(s, acceptor=True, openfst=True)
                 fsa_tmp_str = k2.to_str(fsa_tmp, openfst=True)
@@ -598,8 +598,10 @@ class TestFsa(unittest.TestCase):
             elif i == 1:
                 # Test k2.Fsa.from_str(k2.to_str(openfst=True), openfst=True)
                 fsa_tmp = k2.Fsa.from_str(s, num_aux_labels=3, openfst=True)
-                fsa_tmp_str = k2.to_str(fsa, openfst=True)
-                fsa = k2.Fsa.from_str(fsa_tmp_str, num_aux_labels=3, openfst=True)
+                fsa_tmp_str = k2.to_str(fsa_tmp, openfst=True)
+                fsa = k2.Fsa.from_str(fsa_tmp_str,
+                                      num_aux_labels=3,
+                                      openfst=True)
             else:
                 fsa = k2.Fsa.from_openfst(s,
                                           aux_label_names=[
