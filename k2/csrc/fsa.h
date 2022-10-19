@@ -392,11 +392,37 @@ Tensor WeightsOfArcsAsTensor(const Array1<Arc> &arcs);
 // memory location because Array1 does not support a stride.  However
 // it would be possible to get it as an Array2.
 inline Array1<float> WeightsOfArcsAsArray1(const Array1<Arc> &arcs) {
-  return Array1<float>(WeightsOfArcsAsTensor(arcs));
+  ContextPtr c = arcs.Context();
+  const Arc *arc_data = arcs.Data();
+  Array1<float> weights(c, arcs.Dim());
+  const float *ptr = reinterpret_cast<const float *>(arc_data);
+  float *weights_data = weights.Data();
+  int32_t stride = 4;
+  K2_EVAL(
+      c, arcs.Dim(), lambda_get_weights,
+      (int32_t i)->void { weights_data[i] = ptr[i * stride + 3]; });
+  return weights;
 }
 
 inline Array1<float> WeightsOfFsaAsArray1(const Ragged<Arc> &fsa) {
-  return Array1<float>(WeightsOfArcsAsTensor(fsa.values));
+  return WeightsOfArcsAsArray1(fsa.values);
+}
+
+inline Array1<int32_t> LabelsOfArcsAsArray1(const Array1<Arc> &arcs) {
+  ContextPtr c = arcs.Context();
+  const Arc *arc_data = arcs.Data();
+  Array1<int32_t> labels(c, arcs.Dim());
+  const int32_t *ptr = reinterpret_cast<const int32_t *>(arc_data);
+  int32_t *labels_data = labels.Data();
+  int32_t stride = 4;
+  K2_EVAL(
+      c, arcs.Dim(), lambda_get_labels,
+      (int32_t i)->void { labels_data[i] = ptr[i * stride + 2]; });
+  return labels;
+}
+
+inline Array1<int32_t> LabelsOfFsaAsArray1(const Ragged<Arc> &fsa) {
+  return LabelsOfArcsAsArray1(fsa.values);
 }
 
 }  // namespace k2

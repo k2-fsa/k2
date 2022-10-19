@@ -79,14 +79,12 @@ set(context_srcs
   thread_pool.cu
   timer.cu
   top_sort.cu
-  torch_util.cu
   utils.cu
   nbest.cu
 )
 
-
 if(K2_USE_PYTORCH)
-  list(APPEND context_srcs pytorch_context.cu)
+  list(APPEND context_srcs pytorch_context.cu torch_util.cu)
 else()
   list(APPEND context_srcs default_context.cu)
 endif()
@@ -259,20 +257,37 @@ if(K2_USE_PYTORCH)
   endif()
 endif()
 
-file(MAKE_DIRECTORY
-  DESTINATION
-    ${PROJECT_BINARY_DIR}/include/k2
-)
+if (ANDROID)
+  file(GLOB HEADER_LIST "*.h")
 
-file(COPY
-  torch_api.h
-  DESTINATION
-    ${PROJECT_BINARY_DIR}/include/k2
-)
+  file(MAKE_DIRECTORY
+    DESTINATION
+      ${PROJECT_BINARY_DIR}/include/k2/csrc
+  )
 
-install(TARGETS k2_log k2_torch_api context
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-install(FILES torch_api.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/k2
-)
+  file(COPY
+    ${HEADER_LIST}
+    DESTINATION
+      ${PROJECT_BINARY_DIR}/include/k2/csrc
+  )
+endif()
+
+if(K2_USE_PYTORCH)
+  file(MAKE_DIRECTORY
+    DESTINATION
+      ${PROJECT_BINARY_DIR}/include/k2
+  )
+
+  file(COPY
+    torch_api.h
+    DESTINATION
+      ${PROJECT_BINARY_DIR}/include/k2
+  )
+
+  install(TARGETS k2_log k2_torch_api context
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  )
+  install(FILES torch_api.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/k2
+  )
+endif()
