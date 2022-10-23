@@ -525,13 +525,14 @@ def rnnt_loss(
             f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
         )
 
-def _monotonic_lower_bound(x: torch.Tensor) -> torch.Tensor:
-    """Compute a monotonically increasing lower bound on the array `x`.
-    The basic idea is: we traverse the array in reverse order, and update
-    current element with the following statement,
 
-        min_value = min(src[i], min_value)
-        dest[i] = min_value
+def _monotonic_lower_bound(x: torch.Tensor) -> torch.Tensor:
+    """Compute a monotonically increasing lower bound of the tensor `x` on the
+    last dimension. The basic idea is: we traverse the tensor in reverse order,
+    and update current element with the following statement,
+
+        min_value = min(x[i], min_value)
+        x[i] = min_value
 
     >>> import torch
     >>> x = torch.tensor([0, 2, 1, 3, 6, 5, 8], dtype=torch.int32)
@@ -550,10 +551,11 @@ def _monotonic_lower_bound(x: torch.Tensor) -> torch.Tensor:
             [ 3,  3,  7,  7,  7, 19]], dtype=torch.int32)
     Args:
       x:
-        The source tensor
+        The source tensor.
 
     Returns:
-      Returns a tensor which is monotonic(i.e. satisfiy `dest[i] <= dest[i+1]`).
+      Returns a tensor which is monotonic on the last dimension
+      (i.e. satisfiy `x[i] <= x[i+1]`).
     """
     x = torch.flip(x, dims=(-1,))
     x, _ = torch.cummin(x, dim=-1)
