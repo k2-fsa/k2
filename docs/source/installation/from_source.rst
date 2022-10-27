@@ -45,9 +45,16 @@ After setting up the environment, we are ready to build k2:
 
   git clone https://github.com/k2-fsa/k2.git
   cd k2
+  export K2_MAKE_ARGS="-j6"
   python3 setup.py install
 
 That is all you need to run.
+
+.. hint::
+
+   We use ``export K2_MAKE_ARGS="-j6"`` to pass ``-j6`` to ``make``
+   to reduce compilation time.
+   If you have many GPUs and enough RAM, you can choose a larger value.
 
 .. caution::
 
