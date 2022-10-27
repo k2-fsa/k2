@@ -120,10 +120,17 @@ CUDA toolkit you are using.</p></li>
 <p>After setting up the environment, we are ready to build k2:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/k2-fsa/k2.git
 <span class="nb">cd</span> k2
+<span class="nb">export</span> <span class="nv">K2_MAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-j6&quot;</span>
 python3 setup.py install
 </pre></div>
 </div>
 <p>That is all you need to run.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>We use <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">K2_MAKE_ARGS=&quot;-j6&quot;</span></code> to pass <code class="docutils literal notranslate"><span class="pre">-j6</span></code> to <code class="docutils literal notranslate"><span class="pre">make</span></code>
+to reduce compilation time.
+If you have many GPUs and enough RAM, you can choose a larger value.</p>
+</div>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
 <blockquote>
