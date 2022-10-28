@@ -227,9 +227,14 @@ RaggedShape RnntDecodingStreams::ExpandArcs() {
                 graph_state = state_value % num_graph_states;
 
         const int32_t *graph_row_split1_data = graph_row_splits1_ptr_data[idx0];
-        // plus one for the implicit epsilon self-loop
-        num_arcs_data[idx012] = graph_row_split1_data[graph_state + 1] -
-                                graph_row_split1_data[graph_state] + 1;
+        if (graph_state == num_graph_states - 1) {
+          // Super final state has no arcs.
+          num_arcs_data[idx012] = 0;
+        } else {
+          // Plus one for the implicit epsilon self-loop
+          num_arcs_data[idx012] = graph_row_split1_data[graph_state + 1] -
+                                  graph_row_split1_data[graph_state] + 1;
+        }
       });
 
   // Compute exclusive sum of num-arcs above.
@@ -546,7 +551,11 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
         states_data[arc_idx] = state;
 
         double log_prob = 0.0;  // make final arc probability 1.
-        if (arc.label != -1) log_prob = logprobs_acc(idx01, arc.label);
+        if (arc.label == -1) {
+          log_prob = logprobs_acc(idx01, 0);
+        } else {
+          log_prob = logprobs_acc(idx01, arc.label);
+        }
 
         scores_data[arc_idx] = this_score + arc.score + log_prob;
 
