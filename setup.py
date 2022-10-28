@@ -125,6 +125,8 @@ class BuildExtension(build_ext):
         ):
             print("For fast compilation, run:")
             print('export K2_MAKE_ARGS="-j"; python setup.py install')
+            make_args = ' -j4 '
+            print("Setting make_args to '-j4'")
 
         if is_macos():
             if not 'K2_WITH_CUDA=OFF' in cmake_args:
