@@ -198,11 +198,6 @@ linear_fst_with_self_loops
 
 .. autofunction:: linear_fst_with_self_loops
 
-monotonic_lower_bound
----------------------
-
-.. autofunction:: monotonic_lower_bound
-
 mutual_information_recursion
 ----------------------------
 
