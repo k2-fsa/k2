@@ -48,9 +48,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04, macos-10.15]
-        torch: ["1.12.0"]
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        os: [ubuntu-latest, macos-latest]
+        torch: ["1.13.0"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         build_type: ["Release", "Debug"]
 
     steps:

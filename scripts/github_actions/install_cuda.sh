@@ -46,6 +46,9 @@ case "$cuda" in
   11.6)
     url=https://developer.download.nvidia.com/compute/cuda/11.6.2/local_installers/cuda_11.6.2_510.47.03_linux.run
     ;;
+  11.7)
+    url=https://developer.download.nvidia.com/compute/cuda/11.7.1/local_installers/cuda_11.7.1_515.65.01_linux.run
+    ;;
   *)
     echo "Unknown cuda version: $cuda"
     exit 1
