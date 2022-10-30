@@ -1,7 +1,6 @@
 # please keep the list sorted
 set(torch_srcs
   arc.cu
-  array_ops.cu
   fsa.cu
   fsa_algo.cu
   index_add.cu

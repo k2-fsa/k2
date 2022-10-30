@@ -16,7 +16,6 @@
 
 import os
 
-import k2
 import torch
 from torch import Tensor
 from typing import Optional, Tuple, Union
@@ -527,6 +526,43 @@ def rnnt_loss(
         )
 
 
+def _monotonic_lower_bound(x: torch.Tensor) -> torch.Tensor:
+    """Compute a monotonically increasing lower bound of the tensor `x` on the
+    last dimension. The basic idea is: we traverse the tensor in reverse order,
+    and update current element with the following statement,
+
+        min_value = min(x[i], min_value)
+        x[i] = min_value
+
+    >>> import torch
+    >>> x = torch.tensor([0, 2, 1, 3, 6, 5, 8], dtype=torch.int32)
+    >>> _monotonic_lower_bound(x)
+    tensor([0, 1, 1, 3, 5, 5, 8], dtype=torch.int32)
+    >>> x
+    tensor([0, 2, 1, 3, 6, 5, 8], dtype=torch.int32)
+    >>> x = torch.randint(20, (3, 6), dtype=torch.int32)
+    >>> x
+    tensor([[12, 18,  5,  4, 18, 17],
+            [11, 14, 14,  3, 10,  4],
+            [19,  3,  8, 13,  7, 19]], dtype=torch.int32)
+    >>> _monotonic_lower_bound(x)
+    tensor([[ 4,  4,  4,  4, 17, 17],
+            [ 3,  3,  3,  3,  4,  4],
+            [ 3,  3,  7,  7,  7, 19]], dtype=torch.int32)
+    Args:
+      x:
+        The source tensor.
+
+    Returns:
+      Returns a tensor which is monotonic on the last dimension
+      (i.e. satisfiy `x[i] <= x[i+1]`).
+    """
+    x = torch.flip(x, dims=(-1,))
+    x, _ = torch.cummin(x, dim=-1)
+    x = torch.flip(x, dims=(-1,))
+    return x
+
+
 def _adjust_pruning_lower_bound(
     s_begin: torch.Tensor, s_range: int
 ) -> torch.Tensor:
@@ -538,11 +574,10 @@ def _adjust_pruning_lower_bound(
       - s_begin[i + 1] - s_begin[i] < s_range, which means that we can't skip
         any symbols.
 
-    To make it monotonic increasing, we can use `monotonic_lower_bound` function
-    in k2, which guarantees `s_begin[i] <= s_begin[i + 1]`. The main idea is:
+    To make it monotonic increasing, we can use `_monotonic_lower_bound` above,
+    which guarantees `s_begin[i] <= s_begin[i + 1]`. The main idea is:
     traverse the array in reverse order and update the elements by
-    `min_value = min(a_begin[i], min_value)`, the initial `min_value` is set to
-    `inf`.
+    `min_value = min(a_begin[i], min_value)`.
 
     The method we used to realize `s_begin[i + 1] - s_begin[i] < s_range`
     constraint is a little tricky. We first transform `s_begin` with
@@ -565,13 +600,13 @@ def _adjust_pruning_lower_bound(
     """
     # s_begin (B, T)
     (B, T) = s_begin.shape
-    s_begin = k2.monotonic_lower_bound(s_begin)
+    s_begin = _monotonic_lower_bound(s_begin)
     # do the magic transformation
     s_begin = -(
         s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device)
     )
     # make the transformed tensor to be non-decreasing
-    s_begin = k2.monotonic_lower_bound(s_begin)
+    s_begin = _monotonic_lower_bound(s_begin)
     # make start symbol to be zero.
     s_begin = torch.clamp(s_begin, min=0)
     # do the magic transformation again to recover s_begin
