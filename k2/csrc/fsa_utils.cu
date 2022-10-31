@@ -620,7 +620,7 @@ std::string FsaToString(const Fsa &fsa, bool openfst, /*= false*/
   char line_sep = '\n';
   for (int32_t a = 0; a != num_arcs; ++a) {
     const auto &arc = arcs[a];
-    if (openfst & arc.label == -1) {
+    if (openfst && arc.label == -1) {
       os << arc.src_state << sep;
     } else {
       os << arc.src_state << sep << arc.dest_state << sep << arc.label << sep;
@@ -637,7 +637,7 @@ std::string FsaToString(const Fsa &fsa, bool openfst, /*= false*/
     os << (scale * arc.score) << line_sep;
   }
 
-  if (num_arcs > 0 & !openfst) {
+  if (num_arcs > 0 && !openfst) {
     int32_t final_state = fsa.shape.Dim0() - 1;
     os << final_state << line_sep;
   } else {
