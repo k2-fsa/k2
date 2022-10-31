@@ -20,17 +20,28 @@ on:
   push:
     branches:
       - master
-      - v2.0-pre
+    paths:
+      - '.github/workflows/style_check.yml'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   pull_request:
     branches:
       - master
+    paths:
+      - '.github/workflows/style_check.yml'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+
+concurrency:
+  group: style_check-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   style_check:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.9]
+        python-version: [3.9]
       fail-fast: false
 
     steps:

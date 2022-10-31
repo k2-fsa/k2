@@ -332,9 +332,10 @@ class _GetArcPostFunction(torch.autograd.Function):
                       else _k2.backprop_get_arc_post_float)
 
         incoming_arcs = fsas._get_incoming_arcs()
-        forward_scores_grad, backward_scores_grad = bprop_func(
-            fsas.arcs, incoming_arcs, arc_post_grad)
+
         arc_scores_grad = arc_post_grad.detach().clone()
+        forward_scores_grad, backward_scores_grad = bprop_func(
+            fsas.arcs, incoming_arcs, arc_scores_grad)
 
         return (
             None,  # fsas

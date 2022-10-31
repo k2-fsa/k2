@@ -22,9 +22,24 @@ on:
   push:
     branches:
       - master
-      - v2.0-pre
+    paths:
+      - '.github/workflows/run-tests.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   pull_request:
     types: [labeled]
+    paths:
+      - '.github/workflows/run-tests.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+
+concurrency:
+  group: run-tests-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   run-tests:
@@ -33,11 +48,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04]
-        cuda: ["10.2"]
+        os: [ubuntu-latest]
+        cuda: ["11.7"]
         gcc: ["7"]
-        torch: ["1.11.0"]
-        python-version: ["3.10"]
+        torch: ["1.13.0"]
+        python-version: ["3.11"]
         build_type: ["Release", "Debug"]
 
     steps:

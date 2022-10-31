@@ -1,7 +1,6 @@
 # please keep the list sorted
 set(torch_srcs
   arc.cu
-  array_ops.cu
   fsa.cu
   fsa_algo.cu
   index_add.cu
@@ -12,7 +11,6 @@ set(torch_srcs
   ragged.cu
   ragged_ops.cu
   rnnt_decode.cu
-  torch_util.cu
 
   v2/any.cu
   v2/doc/doc.cu

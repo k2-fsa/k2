@@ -17,6 +17,15 @@
 name: nightly_cpu_ubuntu
 
 on:
+  push:
+    branches:
+      - nightly
+    paths:
+      - '.github/workflows/nightly-cpu-ubuntu.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   schedule:
     # minute (0-59)
     # hour (0-23)
@@ -26,11 +35,16 @@ on:
     # nightly build at 23:50 UTC time every day
     - cron: "50 23 * * *"
 
+concurrency:
+  group: nightly_cpu_ubuntu-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BUILD_TYPE: Release
 
 jobs:
   enable_nightly_build:
+    if: github.repository == 'k2-fsa/k2'
     runs-on: ubuntu-latest
     outputs:
       enabled: ${{ steps.set-enabled.outputs.enabled }}
@@ -47,7 +61,7 @@ jobs:
 
   generate_build_matrix:
     needs: enable_nightly_build
-    if: needs.enable_nightly_build.outputs.enabled == 'true'
+    if: needs.enable_nightly_build.outputs.enabled == 'true' || github.event_name == 'push'
     # see https://github.com/pytorch/pytorch/pull/50633
     runs-on: ubuntu-latest
     outputs:

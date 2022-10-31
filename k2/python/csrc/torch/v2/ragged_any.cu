@@ -27,7 +27,7 @@
 #include <vector>
 
 #include "k2/csrc/ragged_ops.h"
-#include "k2/python/csrc/torch/torch_util.h"
+#include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/v2/autograd/index_and_sum.h"
 #include "k2/python/csrc/torch/v2/autograd/normalize.h"
 #include "k2/python/csrc/torch/v2/autograd/sum.h"

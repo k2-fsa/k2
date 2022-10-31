@@ -7,6 +7,13 @@ Install from source
 
     It supports Linux (CPU + CUDA), macOS (CPU), and Windows (CPU + CUDA).
 
+.. hint::
+
+  You can pass the option ``-DK2_WITH_CUDA=OFF`` to ``cmake`` to build
+  a CPU only version of k2. In that case, you have to install a CPU version
+  of PyTorch; otherwise, you will get a CMake configuration error, saying
+  that cuDNN cannot be found.
+
 The following versions of Python, CUDA, and PyTorch are known to work.
 
     - |source_python_versions|
@@ -38,9 +45,40 @@ After setting up the environment, we are ready to build k2:
 
   git clone https://github.com/k2-fsa/k2.git
   cd k2
+  export K2_MAKE_ARGS="-j6"
   python3 setup.py install
 
 That is all you need to run.
+
+.. hint::
+
+   We use ``export K2_MAKE_ARGS="-j6"`` to pass ``-j6`` to ``make``
+   to reduce compilation time.
+   If you have many GPUs and enough RAM, you can choose a larger value.
+
+.. caution::
+
+   If you plan to run k2 on a different machine than the one you used to build
+   k2 and the two machines have different types of GPUs, please use the
+   following commands to install k2.
+
+    .. code-block:: bash
+
+      git clone https://github.com/k2-fsa/k2.git
+      cd k2
+      export K2_CMAKE_ARGS="-DK2_BUILD_FOR_ALL_ARCHS=ON"
+      python3 setup.py install
+
+  Otherwise, you may get some error like below when running k2:
+
+    .. code-block::
+
+      [F] /xxx/k2/k2-latest/k2/csrc/eval.h:147:void k2::EvalDevice(cudaStream_t,
+      int32_t, LambdaT&) [with LambdaT = __nv_dl_wrapper_t<__nv_dl_tag<k2::Array1<int>
+      (*)(std::shared_ptr<k2::Context>, int, int, int), k2::Range<int>, 1>, int*,
+      int, int>; cudaStream_t = CUstream_st*; int32_t = int] Check failed:
+      e == cudaSuccess (98 vs. 0)  Error: invalid device function.
+
 
 To test that k2 is installed successfully, you can run:
 

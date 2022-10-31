@@ -52,6 +52,7 @@ extensions = [
     'sphinx_autodoc_typehints',
     'sphinx_rtd_theme',
     'sphinxcontrib.bibtex',
+    'sphinxcontrib.youtube',
 ]
 bibtex_bibfiles = ['refs.bib']
 
@@ -92,7 +93,7 @@ html_context = {
     'github_user': 'k2-fsa',
     'github_repo': 'k2',
     'github_version': 'master',
-    'conf_py_path': '/k2/docs/source/',
+    'conf_py_path': '/docs/source/',
 }
 
 # refer to

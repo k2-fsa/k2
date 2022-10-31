@@ -107,6 +107,15 @@ std::string GetStackTrace();
  */
 K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel();
 
+inline bool EnableAbort() {
+  static std::once_flag init_flag;
+  static bool enable_abort = false;
+  std::call_once(init_flag, []() {
+    enable_abort = (std::getenv("K2_ABORT") != nullptr);
+  });
+  return enable_abort;
+}
+
 class Logger {
  public:
   K2_CUDA_HOSTDEV Logger(const char *filename, const char *func_name,
@@ -179,11 +188,16 @@ class Logger {
         printf("\n\n%s\n", stack_trace.c_str());
       }
       fflush(nullptr);
+      if (EnableAbort()) {
+        abort();
+        // raise(SIGTERM);
+      }
+      throw std::runtime_error(kErrMsg);
       // abort();
       //
       // NOTE: abort() will terminate the program immediately without
       // printing the Python stack backtrace.
-      throw std::runtime_error(kErrMsg);
+      // throw std::runtime_error(kErrMsg);
 #endif
     }
   }
@@ -281,6 +295,22 @@ inline bool DisableChecks() {
     disable_checks = (std::getenv("K2_DISABLE_CHECKS") != nullptr);
   });
   return disable_checks;
+}
+
+/*
+   Get the max cpu memory (in bytes) can be allocated at a time through the
+   environment variable `K2_MAX_CPU_MEM_ALLOCATE`. Return the default value
+   (i.e. 200GB) if the variable does not set.
+ */
+inline int64_t MaxCpuMemAllocate() {
+  static std::once_flag init_flag;
+  // 200GB in bytes, 200 * 1024 * 1024 * 1024
+  static int64_t max_cpu_mem_allocate = 214748364800L;
+  std::call_once(init_flag, []() {
+    char *env_str = std::getenv("K2_MAX_CPU_MEM_ALLOCATE");
+    if (env_str != nullptr) max_cpu_mem_allocate = std::atol(env_str);
+  });
+  return max_cpu_mem_allocate;
 }
 
 inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {

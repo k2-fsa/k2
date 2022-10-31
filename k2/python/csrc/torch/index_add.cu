@@ -30,8 +30,8 @@
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/tensor_ops.h"
+#include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/index_add.h"
-#include "k2/python/csrc/torch/torch_util.h"
 
 namespace k2 {
 

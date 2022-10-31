@@ -461,7 +461,7 @@ class Semaphore {
   Class ParallelRunner allows you to invoke CUDA kernels in parallel.
   It works for CUDA and CPU, but for CPU it currently just executes things
   sequentially.  It works by creating a separate stream each time you
-  call NewStream(),, and using CUDA events to ensure correct ordering of kernels
+  call NewStream(), and using CUDA events to ensure correct ordering of kernels
   with respect to the CUDA stream in the supplied context.
 
   Note: it's important to destroy this at the right time.  The usage pattern

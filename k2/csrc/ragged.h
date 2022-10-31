@@ -176,7 +176,7 @@ class RaggedShape {
   explicit RaggedShape(const std::vector<RaggedShapeLayer> &layers,
                        bool check = !internal::kDisableDebug)
       : layers_(layers) {
-    // the check can be disabled by settin the environment variable
+    // the check can be disabled by setting the environment variable
     // K2_DISABLE_CHECKS.
     if (check && !internal::DisableChecks()) Check();
   }

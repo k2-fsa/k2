@@ -6,23 +6,46 @@ Install using conda (Linux/macOS)
 
 .. HINT::
 
-  Windows is currently not supported.
+  Windows is currently not supported via conda install.
+  Please refer to :ref:`install k2 from source`
+  or :ref:`install using pip via k2-fsa.org` if you
+  want to install k2 on Windows.
 
 All you need is the following line
 
 .. code-block:: bash
 
-  $ conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=11.1 pytorch=1.8.1
+  $ conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=11.6 pytorch=1.12.1
 
-to install the **latest** k2 with Python 3.8, CUDA 11.1, and PyTorch 1.8.1.
+to install the **latest** k2 with Python 3.8, CUDA 11.6, and PyTorch 1.12.1.
 
-You can change the versions of Python, CUDA, and PyTorch as you need.
+.. HINT::
+
+   The above command is just an example. You can choose other versions of Python,
+   cudatoolkit, and PyTorch as you want. For instance,
+
+   .. code-block:: bash
+
+      $ conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.9 cudatoolkit=11.6 pytorch=1.12.0
+
+   The above command installs k2 with Python 3.9, cudatoolkit 11.6, and PyTorch 1.12.0
 
 To Install a CPU version, use:
 
 .. code-block:: bash
 
-  conda install -c k2-fsa -c pytorch cpuonly k2 python=3.8 pytorch=1.8.1
+  conda install -c k2-fsa -c pytorch cpuonly k2 python=3.8 pytorch=1.12.1
+
+We provide the following YouTube video showing how to install k2 via conda.
+
+.. note::
+
+   To get the latest news of `next-gen Kaldi <https://github.com/k2-fsa>`_, please subscribe
+   the following YouTube channel by `Nadira Povey <https://www.youtube.com/channel/UC_VaumpkmINz1pNkFXAN9mw>`_:
+
+      `<https://www.youtube.com/channel/UC_VaumpkmINz1pNkFXAN9mw>`_
+
+..  youtube:: HerxbUHs-V4
 
 .. HINT::
 

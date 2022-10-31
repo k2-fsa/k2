@@ -126,11 +126,16 @@ class Fsa(object):
         It is useful when loading an Fsa from file.
 
         Args:
-          tensor:
-            A torch tensor of dtype `torch.int32` with 4 columns.
+          arcs:
+            When the `arcs` is an instance of `torch.Tensor`, it is
+            a torch tensor of dtype `torch.int32` with 4 columns.
             Each row represents an arc. Column 0 is the src_state,
             column 1 the dest_state, column 2 the label, and column
             3 the score.
+            When the `arcs` is an instance of `_k2.RaggedArc`, it is a
+            Ragged containing `_k2.Arc` returned by internal functions
+            (i.e. C++/CUDA functions) or got from other Fsa object
+            by `fsa.arcs`.
 
             Caution:
               Scores are floats and their binary pattern is
@@ -746,7 +751,7 @@ class Fsa(object):
         '''Compute scores on arcs, representing log probabilities;
         with log_semiring=True you could call these log posteriors,
         but if log_semiring=False they can only be interpreted as the
-        difference betwen the best-path score and the score of the
+        difference between the best-path score and the score of the
         best path that includes this arc.
 
         This version is not differentiable; see also :func:`get_arc_post`.
@@ -933,6 +938,12 @@ class Fsa(object):
         self.rename_tensor_attribute_('labels', '__temp')
         self.rename_tensor_attribute_('aux_labels', 'labels')
         self.rename_tensor_attribute_('__temp', 'aux_labels')
+        _k2.fix_final_labels(self.arcs, None)
+
+        self.__dict__['_properties'] = None
+        # access self.properties which will do a validity check on the
+        # modified FSA after getting the properties
+        self.properties
         return self
 
         # TODO(dan), maybe: instead of using the generic approach above, we

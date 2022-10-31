@@ -664,6 +664,7 @@ class MultiGraphDenseIntersectPruned {
                     [arc] dim, so it's just [fsa_id][arc]
                     It is conceptually unchanged by this operation but non-const
                     because row-ids of its shape may need to be generated.
+       @param [in] t  Which frame we are processing (i.e. the frame index).
        @return      Returns a vector of log-likelihood cutoffs, one per FSA (the
                     cutoff will be -infinity for FSAs that don't have any active
                     states).  The cutoffs will be of the form: the best score
@@ -672,7 +673,7 @@ class MultiGraphDenseIntersectPruned {
                     'search_beam_' as long as the number of active states in
                     each FSA is between min_active and max_active.
   */
-  Array1<float> GetPruningCutoffs(Ragged<float> &arc_end_scores) {
+  Array1<float> GetPruningCutoffs(Ragged<float> &arc_end_scores, int32_t t) {
     NVTX_RANGE(K2_FUNC);
     int32_t num_fsas = arc_end_scores.shape.Dim0();
 
@@ -697,6 +698,8 @@ class MultiGraphDenseIntersectPruned {
           min_active = min_active_;
     K2_CHECK_LT(min_active, max_active);
 
+    const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
+
     Array1<float> cutoffs(c_, num_fsas);
     float *cutoffs_data = cutoffs.Data();
 
@@ -705,10 +708,17 @@ class MultiGraphDenseIntersectPruned {
           float best_loglike = max_per_fsa_data[i],
                 dynamic_beam = dynamic_beams_data[i];
           int32_t active_states = arc_end_scores_row_splits1_data[i + 1] -
-                                  arc_end_scores_row_splits1_data[i];
+                                  arc_end_scores_row_splits1_data[i],
+                  final_t = b_fsas_row_splits1[i+1] - b_fsas_row_splits1[i];
+          float current_min_active = min_active;
+          // Do less pruning on the few final frames, to ensure we don't prune
+          // away final states.
+          if (t + 5 >= final_t) {
+              current_min_active = max(min_active, max_active / 2);
+          }
           if (active_states <= max_active) {
             // Not constrained by max_active...
-            if (active_states >= min_active || active_states == 0) {
+            if (active_states >= current_min_active || active_states == 0) {
               // Neither the max_active nor min_active constraints
               // apply.  Gradually approach 'beam'
               // (Also approach 'beam' if active_states == 0; we might as
@@ -722,12 +732,21 @@ class MultiGraphDenseIntersectPruned {
               dynamic_beam *= 1.25;
             }
           } else {
-            // We violated the max_active constraint -> decrease beam
-            if (dynamic_beam > default_beam) dynamic_beam = default_beam;
-            // Decrease the beam as long as we have more than
-            // max_active active states.
-            dynamic_beam *= 0.8;
+            // We modify dynamic_beam when max_active violated only if it's not
+            // last few frames, in order to avoid final states pruning.
+            if (t + 5 < final_t) {
+              // We violated the max_active constraint -> decrease beam
+              if (dynamic_beam > default_beam) dynamic_beam = default_beam;
+
+              // Decrease the beam as long as we have more than
+              // max_active active states.
+              dynamic_beam *= 0.8;
+            }
           }
+          // no pruning on last frame; we want all final-arcs.
+          // -1 because t starts from 0.
+          if (t == final_t - 1) dynamic_beam = 1.0e+10;
+
           dynamic_beams_data[i] = dynamic_beam;
           cutoffs_data[i] = best_loglike - dynamic_beam;
         });
@@ -879,7 +898,7 @@ class MultiGraphDenseIntersectPruned {
     Ragged<float> ai_loglikes(arc_info.shape, ai_data_array1);
 
     // `cutoffs` is of dimension num_fsas.
-    Array1<float> cutoffs = GetPruningCutoffs(ai_loglikes);
+    Array1<float> cutoffs = GetPruningCutoffs(ai_loglikes, t);
     float *cutoffs_data = cutoffs.Data();
 
     // write certain indexes (into ai.values) to state_map_.Data().  Keeps

@@ -1,4 +1,4 @@
-k2/python/k2/torch_version.py
+torch_version.py
 # Build folder
 **/build*
 

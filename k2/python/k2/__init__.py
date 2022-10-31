@@ -1,3 +1,5 @@
+from pathlib import Path as _Path
+
 import torch  # noqa
 from .torch_version import k2_torch_cuda_version
 from .torch_version import k2_torch_version
@@ -64,12 +66,14 @@ from .fsa_algo import levenshtein_graph
 from .fsa_algo import linear_fsa
 from .fsa_algo import linear_fsa_with_self_loops
 from .fsa_algo import linear_fst
+from .fsa_algo import linear_fst_with_self_loops
 from .fsa_algo import prune_on_arc_post
 from .fsa_algo import random_paths
 from .fsa_algo import remove_epsilon
 from .fsa_algo import remove_epsilon_and_add_self_loops
 from .fsa_algo import remove_epsilon_self_loops
 from .fsa_algo import replace_fsa
+from .fsa_algo import reverse
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_algo import trivial_graph
@@ -94,6 +98,7 @@ from .rnnt_loss import get_rnnt_logprobs_joint
 from .rnnt_loss import get_rnnt_logprobs_pruned
 from .rnnt_loss import get_rnnt_logprobs_smoothed
 from .rnnt_loss import get_rnnt_prune_ranges
+from .rnnt_loss import get_rnnt_prune_ranges_deprecated  # for testing purpose
 from .rnnt_loss import rnnt_loss
 from .rnnt_loss import rnnt_loss_pruned
 from .rnnt_loss import rnnt_loss_simple
@@ -112,3 +117,6 @@ from .utils import to_tensor
 from .utils import random_fsa
 from .utils import random_fsa_vec
 from _k2.version import with_cuda
+
+cmake_prefix_path = _Path(__file__).parent / "share" / "cmake"
+del _Path

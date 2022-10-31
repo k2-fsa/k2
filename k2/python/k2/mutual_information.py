@@ -41,10 +41,11 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         Computing mutual information between two sequences of real vectors.
         Args:
           px:
-            A torch.Tensor of some floating point type, with shape
-            ``[B][S][T+1]`` where ``B`` is the batch size, ``S`` is the
+            A torch.Tensor of some floating point type, with shape ``[B][S][T]``
+            if modified, ``[B][S][T+1]`` if not modified.
+            where ``B`` is the batch size, ``S`` is the
             length of the ``x`` sequence (including representations of
-            ``EOS`` symbols but not ``BOS`` symbols), and ``S`` is the
+            ``EOS`` symbols but not ``BOS`` symbols), and ``T`` is the
             length of the ``y`` sequence (including representations of
             ``EOS`` symbols but not  ``BOS`` symbols).  In the mutual
             information application, ``px[b][s][t]`` would represent the
@@ -68,7 +69,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
             well as this one.
 
             Note:
-              we don't require ``px`` and py to be contiguous, but the
+              we don't require ``px`` and ``py`` to be contiguous, but the
               code assumes for optimization purposes that the ``T`` axis has
               stride 1.
 
@@ -99,7 +100,8 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
           boundary:
             If supplied, a torch.LongTensor of shape ``[B][4]``, where each
             row contains ``[s_begin, t_begin, s_end, t_end]``,
-            with ``0 <= s_begin <= s_end < S`` and ``0 <= t_begin <= t_end < T``
+            with ``0 <= s_begin <= s_end <= S`` and
+            ``0 <= t_begin <= t_end < T``
             (this implies that empty sequences are allowed).
             If not supplied, the values ``[0, 0, S, T]`` will be assumed.
             These are the beginning and one-past-the-last positions in the
@@ -134,10 +136,10 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         """
         (B, S, T1) = px.shape
         T = py.shape[-1]
-        assert T1 in [T, T + 1]
-        assert py.shape == (B, S + 1, T)
+        assert T1 in [T, T + 1], (T1, T)
+        assert py.shape == (B, S + 1, T), (py.shape, S, T)
         if boundary is not None:
-            assert boundary.shape == (B, 4)
+            assert boundary.shape == (B, 4), (boundary.shape, B)
 
         # p is a tensor of shape (B, S + 1, T + 1) were p[s][t] is the
         # the mutual information of the pair of subsequences of x and y that
@@ -162,7 +164,7 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
             (px_grad, py_grad) = _k2.mutual_information_backward(
                 px, py, boundary, p, ans_grad)
             ctx.save_for_backward(px_grad, py_grad)
-        assert len(pxy_grads) == 2
+        assert len(pxy_grads) == 2, len(pxy_grads)
         pxy_grads[0] = px_grad
         pxy_grads[1] = py_grad
 
@@ -199,7 +201,7 @@ def mutual_information_recursion(
         A torch.Tensor of some floating point type, with shape ``[B][S][T+1]``,
         where ``B`` is the batch size, ``S`` is the length of the ``x`` sequence
         (including representations of ``EOS`` symbols but not ``BOS`` symbols),
-        and ``S`` is the length of the ``y`` sequence (including representations
+        and ``T`` is the length of the ``y`` sequence (including representations
         of ``EOS`` symbols but not ``BOS`` symbols).  In the mutual information
         application, ``px[b][s][t]`` would represent the following log odds
         ratio; ignoring the b index on the right to make the notation more
@@ -221,7 +223,7 @@ def mutual_information_recursion(
         one.
 
         Note:
-          we don't require ``px`` and py to be contiguous, but the
+          we don't require ``px`` and ``py`` to be contiguous, but the
           code assumes for optimization purposes that the ``T`` axis has
           stride 1.
 
@@ -239,7 +241,7 @@ def mutual_information_recursion(
       boundary:
         If supplied, a torch.LongTensor of shape ``[B][4]``, where each
         row contains ``[s_begin, t_begin, s_end, t_end]``,
-        with ``0 <= s_begin <= s_end < S`` and ``0 <= t_begin <= t_end < T``
+        with ``0 <= s_begin <= s_end <= S`` and ``0 <= t_begin <= t_end < T``
         (this implies that empty sequences are allowed).
         If not supplied, the values ``[0, 0, S, T]`` will be assumed.
         These are the beginning and one-past-the-last positions in the ``x`` and
@@ -273,21 +275,22 @@ def mutual_information_recursion(
       specified should be obvious; it just works on shorter sequences with
       offsets into ``px`` and ``py``.
     """
-    assert px.ndim == 3
+    assert px.ndim == 3, px.shape
     B, S, T1 = px.shape
     T = py.shape[-1]
-    assert px.shape[-1] in [T, T + 1]  # if T, then "modified".
-    assert py.shape == (B, S + 1, T)
-    assert px.dtype == py.dtype
+    assert px.shape[-1] in [T, T + 1], (px.shape, T)  # if T, then "modified".
+    assert py.shape == (B, S + 1, T), (py.shape, B, S, T)
+    assert px.dtype == py.dtype, (px.dtype, py.dtype)
     if boundary is not None:
-        assert boundary.dtype == torch.int64
-        assert boundary.shape == (B, 4)
+        assert boundary.dtype == torch.int64, boundary.dtype
+        assert boundary.shape == (B, 4), (boundary.shape, B)
         for s_begin, t_begin, s_end, t_end in boundary.tolist():
-            assert 0 <= s_begin <= s_end <= S
-            assert 0 <= t_begin <= t_end <= T
-    # The following assertions are for efficiency
-    assert px.is_contiguous()
-    assert py.is_contiguous()
+            assert 0 <= s_begin <= s_end <= S, (s_begin, s_end, S)
+            assert 0 <= t_begin <= t_end <= T, (t_begin, t_end, T)
+
+    # The following statements are for efficiency
+    px, py = px.contiguous(), py.contiguous()
+
     pxy_grads = [None, None]
     scores = MutualInformationRecursionFunction.apply(px, py, pxy_grads,
                                                       boundary, return_grad)
@@ -301,7 +304,7 @@ def _inner_product(a: Tensor, b: Tensor) -> Tensor:
     i.e. equivalent to (a * b).sum(dim=-1)
     without creating a large temporary.
     """
-    assert a.shape[-1] == b.shape[-1]  # The last dim must be equal
+    assert a.shape[-1] == b.shape[-1], (a.shape, b.shape)
     a = a.unsqueeze(-2)  # (..., 1, K)
     b = b.unsqueeze(-1)  # (..., K, 1)
     c = torch.matmul(a, b)  # (..., 1, 1)
@@ -326,7 +329,7 @@ def joint_mutual_information_recursion(
         the sequence must be the same length as px.
       boundary:
         optionally, a LongTensor of shape [B][4] containing rows
-        [s_begin, t_begin, s_end, t_end], with 0 <= s_begin <= s_end < S
+        [s_begin, t_begin, s_end, t_end], with 0 <= s_begin <= s_end <= S
         and 0 <= t_begin <= t_end < T, defaulting to [0, 0, S, T].
         These are the beginning and one-past-the-last positions in the x
         and y sequences respectively, and can be used if not all
@@ -357,12 +360,12 @@ def joint_mutual_information_recursion(
     sequence is "special".
     """
     N = len(px)
-    assert len(py) == N and N > 0
+    assert len(py) == N and N > 0, (len(py), N)
     B, S, T1 = px[0].shape
     T = py[0].shape[2]
-    assert T1 in [T, T + 1]  # T if modified...
-    assert py[0].shape == (B, S + 1, T)
-    assert px[0].dtype == py[0].dtype
+    assert T1 in [T, T + 1], (T1, T)  # T if modified...
+    assert py[0].shape == (B, S + 1, T), (py[0].shape, B, S, T)
+    assert px[0].dtype == py[0].dtype, (px[0].dtype, py[0].dtype)
 
     px_cat = torch.stack(
         px, dim=0
@@ -372,16 +375,17 @@ def joint_mutual_information_recursion(
     py_tot = py_cat.sum(dim=0)  # (B, S+1, T)
 
     if boundary is not None:
-        assert boundary.dtype == torch.int64
-        assert boundary.shape == (B, 4)
+        assert boundary.dtype == torch.int64, boundary.dtype
+        assert boundary.shape == (B, 4), (boundary.shape, B)
         for s_begin, t_begin, s_end, t_end in boundary.tolist():
-            assert 0 <= s_begin <= s_end <= S
-            assert 0 <= t_begin <= t_end <= T
+            assert 0 <= s_begin <= s_end <= S, (s_begin, s_end, S)
+            assert 0 <= t_begin <= t_end <= T, (t_begin, t_end, T)
 
+    # The following statements are for efficiency
     px_tot, py_tot = px_tot.contiguous(), py_tot.contiguous()
-    # The following assertions are for efficiency
-    assert px_tot.ndim == 3
-    assert py_tot.ndim == 3
+
+    assert px_tot.ndim == 3, px_tot.shape
+    assert py_tot.ndim == 3, py_tot.shape
 
     p = torch.empty(B, S + 1, T + 1, device=px_tot.device, dtype=px_tot.dtype)
 

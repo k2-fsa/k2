@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - nightly
+    paths:
+      - '.github/workflows/nightly-cuda-ubuntu.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   schedule:
     # minute (0-59)
     # hour (0-23)
@@ -13,11 +19,16 @@ on:
     # nightly build at 23:50 UTC time every day
     - cron: "50 23 * * *"
 
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BUILD_TYPE: Release
 
 jobs:
   enable_nightly_build:
+    if: github.repository == 'k2-fsa/k2'
     runs-on: ubuntu-latest
     outputs:
       enabled: ${{ steps.set-enabled.outputs.enabled }}
@@ -34,15 +45,15 @@ jobs:
 
   nightly:
     needs: enable_nightly_build
-    if: needs.enable_nightly_build.outputs.enabled == 'true'
+    if: needs.enable_nightly_build.outputs.enabled == 'true' || github.event_name == 'push'
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
       matrix:
-        cuda: ["10.1", "10.2", "11.0"]
+        cuda: ["11.6", "11.7"]
         gcc: ["7"]
-        torch: ["1.7.1"]
-        python-version: [3.6, 3.7, 3.8]
+        torch: ["1.13.0"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v2

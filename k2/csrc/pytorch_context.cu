@@ -92,6 +92,9 @@ class PytorchCpuContext : public Context {
   DeviceType GetDeviceType() const override { return kCpu; }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
+    int64_t max_bytes = internal::MaxCpuMemAllocate();
+    if (max_bytes != -1) K2_CHECK_LE(static_cast<int64_t>(bytes), max_bytes);
+
     void *p = allocator_->raw_allocate(bytes);
     if (deleter_context != nullptr) *deleter_context = nullptr;
     return p;

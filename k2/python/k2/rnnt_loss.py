@@ -16,7 +16,6 @@
 
 import os
 
-import k2
 import torch
 from torch import Tensor
 from typing import Optional, Tuple, Union
@@ -26,13 +25,13 @@ from .mutual_information import mutual_information_recursion
 def fix_for_boundary(px: Tensor, boundary: Optional[Tensor] = None) -> Tensor:
     """
     Insert -inf's into `px` in appropriate places if `boundary` is not
-    None.  If boundary == None and modified == False, px[:,:,-1] will
+    None.  If boundary == None and rnnt_type == "regular", px[:,:,-1] will
     be -infinity, but if boundary is specified, we need px[b,:,boundary[b,3]]
     to be -infinity.
 
      Args:
           px: a Tensor of of shape [B][S][T+1] (this function is only
-              called if modified == False, see other docs for `modified`)
+              called if rnnt_type == "regular", see other docs for `rnnt_type`)
               px is modified in-place and returned.
            boundary: None, or a Tensor of shape [B][3] containing
               [s_begin, t_begin, s_end, t_end]; we need only t_end.
@@ -49,8 +48,8 @@ def get_rnnt_logprobs(
     am: Tensor,
     symbols: Tensor,
     termination_symbol: int,
+    rnnt_type: str = "regular",
     boundary: Optional[Tensor] = None,
-    modified: bool = False,
 ) -> Tuple[Tensor, Tensor]:
     """
     Reduces RNN-T problem (the simple case, where joiner network is just
@@ -97,20 +96,32 @@ def get_rnnt_logprobs(
         [0, 0, S, T]
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
-       modified: if True, each time a real symbol is consumed a frame will
-           also be consumed, so at most 1 symbol can appear per frame.
+      rnnt_type:
+        Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
+        `regular`: The regular rnnt that taking you to the next frame only if
+                   emitting a blank (i.e., emitting a symbol does not take you
+                   to the next frame).
+        `modified`: A modified version of rnnt that will take you to the next
+                    frame either emitting a blank or a non-blank symbol.
+        `constrained`: A version likes the modified one that will go to the next
+                       frame when you emit a non-blank symbol, but this is done
+                       by "forcing" you to take the blank transition from the
+                       *next* context on the *current* frame, e.g. if we emit
+                       c given "a b" context, we are forced to emit "blank"
+                       given "b c" context on the current frame.
     Returns:
         (px, py) (the names are quite arbitrary).
-           px: logprobs, of shape [B][S][T+1] if !modified, [B][S][T] if modified.
+           px: logprobs, of shape [B][S][T+1] if rnnt_type is regular,
+                                  [B][S][T] if rnnt_type is not regular.
            py: logprobs, of shape [B][S+1][T]
 
       in the recursion::
 
           p[b,0,0] = 0.0
-          if !modified:
+          if rnnt_type == "regular":
              p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                                 p[b,s,t-1] + py[b,s,t-1])
-          if modified:
+          if rnnt_type != "regular":
              p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
                                 p[b,s,t-1] + py[b,s,t-1])
           .. where p[b][s][t] is the "joint score" of the pair of subsequences
@@ -121,19 +132,22 @@ def get_rnnt_logprobs(
           (s,t) by one in the t direction,
           i.e. of emitting the termination/next-frame symbol.
 
-          if !modified, px[:,:,T] equals -infinity, meaning on the
+          if rnnt_type == "regular", px[:,:,T] equals -infinity, meaning on the
           "one-past-the-last" frame we cannot emit any symbols.
           This is simply a way of incorporating
           the probability of the termination symbol on the last frame.
     """
-    assert lm.ndim == 3
-    assert am.ndim == 3
-    assert lm.shape[0] == am.shape[0]
-    assert lm.shape[2] == am.shape[2]
+    assert lm.ndim == 3, lm.shape
+    assert am.ndim == 3, am.shape
+    assert lm.shape[0] == am.shape[0], (lm.shape, am.shape)
+    assert lm.shape[2] == am.shape[2], (lm.shape, am.shape)
 
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
-    assert symbols.shape == (B, S)
+    assert symbols.shape == (B, S), (symbols.shape, B, S)
+    assert S >= 1, S
+    assert T >= S, (T, S)
+    assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     # subtracting am_max and lm_max is to ensure the probs are in a good range
     # to do exp() without causing underflow or overflow.
@@ -160,7 +174,7 @@ def get_rnnt_logprobs(
         -1
     )  # [B][S][T]
 
-    if not modified:
+    if rnnt_type == "regular":
         px_am = torch.cat(
             (
                 px_am,
@@ -187,8 +201,10 @@ def get_rnnt_logprobs(
     py_lm = lm[:, :, termination_symbol].unsqueeze(2)  # [B][S+1][1]
     py = py_am + py_lm - normalizers
 
-    if not modified:
+    if rnnt_type == "regular":
         px = fix_for_boundary(px, boundary)
+    elif rnnt_type == "constrained":
+        px += py[:, 1:, :]
 
     return (px, py)
 
@@ -199,7 +215,8 @@ def rnnt_loss_simple(
     symbols: Tensor,
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
-    modified: bool = False,
+    rnnt_type: str = "regular",
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
     return_grad: bool = False,
 ) -> Union[Tensor, Tuple[Tensor, Tuple[Tensor, Tensor]]]:
@@ -224,8 +241,23 @@ def rnnt_loss_simple(
         [0, 0, S, T]
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
-      modified: if True, each time a real symbol is consumed a frame will
-         also be consumed, so at most 1 symbol can appear per frame.
+      rnnt_type:
+        Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
+        `regular`: The regular rnnt that taking you to the next frame only if
+                   emitting a blank (i.e., emitting a symbol does not take you
+                   to the next frame).
+        `modified`: A modified version of rnnt that will take you to the next
+                    frame either emitting a blank or a non-blank symbol.
+        `constrained`: A version likes the modified one that will go to the next
+                       frame when you emit a non-blank symbol, but this is done
+                       by "forcing" you to take the blank transition from the
+                       *next* context on the *current* frame, e.g. if we emit
+                       c given "a b" context, we are forced to emit "blank"
+                       given "b c" context on the current frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -253,8 +285,26 @@ def rnnt_loss_simple(
         symbols=symbols,
         termination_symbol=termination_symbol,
         boundary=boundary,
-        modified=modified,
+        rnnt_type=rnnt_type,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if rnnt_type != "regular" else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                (T - 1) / 2,
+                dtype=px.dtype,
+                device=px.device,
+            ).expand(B, 1, 1)
+        else:
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
+
     scores_and_grads = mutual_information_recursion(
         px=px, py=py, boundary=boundary, return_grad=return_grad
     )
@@ -266,9 +316,9 @@ def rnnt_loss_simple(
     elif reduction == "sum":
         loss = -torch.sum(negated_loss)
     else:
-        assert (
-            False
-        ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+        raise ValueError(
+            f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+        )
     return (loss, scores_and_grads[1]) if return_grad else loss
 
 
@@ -276,8 +326,8 @@ def get_rnnt_logprobs_joint(
     logits: Tensor,
     symbols: Tensor,
     termination_symbol: int,
+    rnnt_type: str = "regular",
     boundary: Optional[Tensor] = None,
-    modified: bool = False,
 ) -> Tuple[Tensor, Tensor]:
     """Reduces RNN-T problem to a compact, standard form that can then be given
     (with boundaries) to mutual_information_recursion().
@@ -298,23 +348,36 @@ def get_rnnt_logprobs_joint(
         [0, 0, S, T]
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
-      modified: if True, each time a real symbol is consumed a frame will
-          also be consumed, so at most 1 symbol can appear per frame.
+      rnnt_type:
+        Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
+        `regular`: The regular rnnt that taking you to the next frame only if
+                   emitting a blank (i.e., emitting a symbol does not take you
+                   to the next frame).
+        `modified`: A modified version of rnnt that will take you to the next
+                    frame either emitting a blank or a non-blank symbol.
+        `constrained`: A version likes the modified one that will go to the next
+                       frame when you emit a non-blank symbol, but this is done
+                       by "forcing" you to take the blank transition from the
+                       *next* context on the *current* frame, e.g. if we emit
+                       c given "a b" context, we are forced to emit "blank"
+                       given "b c" context on the current frame.
     Returns:
       (px, py) (the names are quite arbitrary)::
 
-          px: logprobs, of shape [B][S][T+1]
+          px: logprobs, of shape [B][S][T+1] if rnnt_type is regular,
+                                 [B][S][T] if rnnt_type is not regular.
           py: logprobs, of shape [B][S+1][T]
 
       in the recursion::
 
          p[b,0,0] = 0.0
-         if !modified:
+         if rnnt_type == "regular":
             p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                                p[b,s,t-1] + py[b,s,t-1])
-         if modified:
+         if rnnt_type != "regular":
             p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
                                p[b,s,t-1] + py[b,s,t-1])
+
       .. where p[b][s][t] is the "joint score" of the pair of subsequences of
       length s and t respectively.  px[b][s][t] represents the probability of
       extending the subsequences of length (s,t) by one in the s direction,
@@ -322,15 +385,18 @@ def get_rnnt_logprobs_joint(
       of extending the subsequences of length (s,t) by one in the t direction,
       i.e. of emitting the termination/next-frame symbol.
 
-      if !modified, px[:,:,T] equals -infinity, meaning on the
+      if `rnnt_type == "regular"`, px[:,:,T] equals -infinity, meaning on the
       "one-past-the-last" frame we cannot emit any symbols.
       This is simply a way of incorporating
       the probability of the termination symbol on the last frame.
     """
-    assert logits.ndim == 4
+    assert logits.ndim == 4, logits.shape
     (B, T, S1, C) = logits.shape
     S = S1 - 1
-    assert symbols.shape == (B, S)
+    assert symbols.shape == (B, S), (symbols.shape, B, S)
+    assert S >= 1, S
+    assert T >= S, (T, S)
+    assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     normalizers = torch.logsumexp(logits, dim=3)
     normalizers = normalizers.permute((0, 2, 1))
@@ -340,7 +406,7 @@ def get_rnnt_logprobs_joint(
     ).squeeze(-1)
     px = px.permute((0, 2, 1))
 
-    if not modified:
+    if rnnt_type == "regular":
         px = torch.cat(
             (
                 px,
@@ -357,11 +423,11 @@ def get_rnnt_logprobs_joint(
         logits[:, :, :, termination_symbol].permute((0, 2, 1)).clone()
     )  # [B][S+1][T]
     py -= normalizers
-    px = px.contiguous()
-    py = py.contiguous()
 
-    if not modified:
+    if rnnt_type == "regular":
         px = fix_for_boundary(px, boundary)
+    elif rnnt_type == "constrained":
+        px += py[:, 1:, :]
 
     return (px, py)
 
@@ -371,7 +437,8 @@ def rnnt_loss(
     symbols: Tensor,
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
-    modified: bool = False,
+    rnnt_type: str = "regular",
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
 ) -> Tensor:
     """A normal RNN-T loss, which uses a 'joiner' network output as input,
@@ -391,8 +458,23 @@ def rnnt_loss(
         [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
         [0, 0, S, T] if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
-      modified: if True, each time a real symbol is consumed a frame will
-          also be consumed, so at most 1 symbol can appear per frame.
+      rnnt_type:
+        Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
+        `regular`: The regular rnnt that taking you to the next frame only if
+                   emitting a blank (i.e., emitting a symbol does not take you
+                   to the next frame).
+        `modified`: A modified version of rnnt that will take you to the next
+                    frame either emitting a blank or a non-blank symbol.
+        `constrained`: A version likes the modified one that will go to the next
+                       frame when you emit a non-blank symbol, but this is done
+                       by "forcing" you to take the blank transition from the
+                       *next* context on the *current* frame, e.g. if we emit
+                       c given "a b" context, we are forced to emit "blank"
+                       given "b c" context on the current frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -410,8 +492,26 @@ def rnnt_loss(
         symbols=symbols,
         termination_symbol=termination_symbol,
         boundary=boundary,
-        modified=modified,
+        rnnt_type=rnnt_type,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if rnnt_type != "regular" else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                (T - 1) / 2,
+                dtype=px.dtype,
+                device=px.device,
+            ).expand(B, 1, 1)
+        else:
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
+
     negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
     if reduction == "none":
         return -negated_loss
@@ -420,30 +520,66 @@ def rnnt_loss(
     elif reduction == "sum":
         return -torch.sum(negated_loss)
     else:
-        assert (
-            False
-        ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+        raise ValueError(
+            f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+        )
+
+
+def _monotonic_lower_bound(x: torch.Tensor) -> torch.Tensor:
+    """Compute a monotonically increasing lower bound of the tensor `x` on the
+    last dimension. The basic idea is: we traverse the tensor in reverse order,
+    and update current element with the following statement,
+
+        min_value = min(x[i], min_value)
+        x[i] = min_value
+
+    >>> import torch
+    >>> x = torch.tensor([0, 2, 1, 3, 6, 5, 8], dtype=torch.int32)
+    >>> _monotonic_lower_bound(x)
+    tensor([0, 1, 1, 3, 5, 5, 8], dtype=torch.int32)
+    >>> x
+    tensor([0, 2, 1, 3, 6, 5, 8], dtype=torch.int32)
+    >>> x = torch.randint(20, (3, 6), dtype=torch.int32)
+    >>> x
+    tensor([[12, 18,  5,  4, 18, 17],
+            [11, 14, 14,  3, 10,  4],
+            [19,  3,  8, 13,  7, 19]], dtype=torch.int32)
+    >>> _monotonic_lower_bound(x)
+    tensor([[ 4,  4,  4,  4, 17, 17],
+            [ 3,  3,  3,  3,  4,  4],
+            [ 3,  3,  7,  7,  7, 19]], dtype=torch.int32)
+    Args:
+      x:
+        The source tensor.
+
+    Returns:
+      Returns a tensor which is monotonic on the last dimension
+      (i.e. satisfiy `x[i] <= x[i+1]`).
+    """
+    x = torch.flip(x, dims=(-1,))
+    x, _ = torch.cummin(x, dim=-1)
+    x = torch.flip(x, dims=(-1,))
+    return x
 
 
 def _adjust_pruning_lower_bound(
     s_begin: torch.Tensor, s_range: int
 ) -> torch.Tensor:
-    """Adjust s_begin (pruning lower bound) to make it satisfied the following
-    constrains
+    """Adjust s_begin (pruning lower bounds) to make it satisfy the following
+    constraints
 
       - monotonic increasing, i.e. s_begin[i] <= s_begin[i + 1]
       - start with symbol 0 at first frame.
-      - s_begin[i + 1] - s_begin[i] < s_range, whicn means that we can't skip
+      - s_begin[i + 1] - s_begin[i] < s_range, which means that we can't skip
         any symbols.
 
-    To make it monotonic increasing, we can use `monotonic_lower_bound` function
-    in k2, which guarantee `s_begin[i] <= s_begin[i + 1]`. The main idea is:
+    To make it monotonic increasing, we can use `_monotonic_lower_bound` above,
+    which guarantees `s_begin[i] <= s_begin[i + 1]`. The main idea is:
     traverse the array in reverse order and update the elements by
-    `min_value = min(a_begin[i], min_value)`, the initial `min_value` set to
-    `inf`.
+    `min_value = min(a_begin[i], min_value)`.
 
     The method we used to realize `s_begin[i + 1] - s_begin[i] < s_range`
-    constrain is a little tricky. We first transform `s_begin` with
+    constraint is a little tricky. We first transform `s_begin` with
     `s_begin = -(s_begin - (s_range - 1) * torch.arange(0,T))`
     then we make the transformed `s_begin` monotonic increasing, after that,
     we transform back `s_begin` with the same formula as the previous
@@ -463,13 +599,13 @@ def _adjust_pruning_lower_bound(
     """
     # s_begin (B, T)
     (B, T) = s_begin.shape
-    s_begin = k2.monotonic_lower_bound(s_begin)
+    s_begin = _monotonic_lower_bound(s_begin)
     # do the magic transformation
     s_begin = -(
         s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device)
     )
     # make the transformed tensor to be non-decreasing
-    s_begin = k2.monotonic_lower_bound(s_begin)
+    s_begin = _monotonic_lower_bound(s_begin)
     # make start symbol to be zero.
     s_begin = torch.clamp(s_begin, min=0)
     # do the magic transformation again to recover s_begin
@@ -479,6 +615,9 @@ def _adjust_pruning_lower_bound(
     return s_begin
 
 
+# To get more insight of how we calculate pruning bounds, please read
+# chapter 3.2 (Pruning bounds) of our Pruned RNN-T paper
+# (https://arxiv.org/pdf/2206.13236.pdf)
 def get_rnnt_prune_ranges(
     px_grad: torch.Tensor,
     py_grad: torch.Tensor,
@@ -505,10 +644,10 @@ def get_rnnt_prune_ranges(
     of symbols given a particular frame.
 
     Note:
-      For the generated tensor ranges, ranges[:, 0] is a monotonic increasing
-      tensor from 0 to `len(symbols)` and it satisfies
-      `ranges[t+1, 0] - ranges[t, 0] < s_range` which means we won't skip any
-      symbols.
+      For the generated tensor ranges (assuming batch size is 1), ranges[:, 0]
+      is a monotonic increasing tensor from 0 to `len(symbols) - s_range` and
+      it satisfies `ranges[t+1, 0] - ranges[t, 0] < s_range` which means we
+      won't skip any symbols.
 
     Args:
       px_grad:
@@ -523,17 +662,162 @@ def get_rnnt_prune_ranges(
       s_range:
         How many symbols to keep for each frame.
     Returns:
-      A tensor contains the kept symbols indexes for each frame, with shape
-      (B, T, s_range).
+      A tensor with the shape of (B, T, s_range) containing the indexes of the
+      kept symbols for each frame.
     """
     (B, S, T1) = px_grad.shape
     T = py_grad.shape[-1]
-    assert T1 in [T, T + 1]
-    assert py_grad.shape == (B, S + 1, T)
-    assert boundary.shape == (B, 4)
-    assert s_range >= 1
+    assert T1 in [T, T + 1], (T1, T)
+    S1 = S + 1
+    assert py_grad.shape == (B, S1, T), (py_grad.shape, B, S1, T)
+    assert boundary.shape == (B, 4), (boundary.shape, B)
+    assert S >= 1, S
+    assert T >= S, (T, S)
+
+    # s_range > S means we won't prune out any symbols. To make indexing with
+    # ranges run normally, s_range should be equal to or less than ``S + 1``.
     if s_range > S:
-        s_range = S
+        s_range = S + 1
+
+    if T1 == T:
+        assert (
+            s_range >= 1
+        ), f"""Pruning range for modified RNN-T should be equal to or greater
+        than 1, or no valid paths could survive pruning. Given {s_range}"""
+
+    else:
+        assert (
+            s_range >= 2
+        ), f"""Pruning range for standard RNN-T should be equal to or greater
+        than 2, or no valid paths could survive pruning. Given {s_range}"""
+
+    (B_stride, S_stride, T_stride) = py_grad.stride()
+    blk_grad = torch.as_strided(
+        py_grad,
+        (B, S1 - s_range + 1, s_range, T),
+        (B_stride, S_stride, S_stride, T_stride),
+    )
+    # (B, S1 - s_range + 1, T)
+    blk_sum_grad = torch.sum(blk_grad, axis=2)
+
+    px_pad = torch.zeros((B, 1, T1), dtype=px_grad.dtype, device=px_grad.device)
+    # (B, S1, T)
+    px_grad_pad = torch.cat((px_pad, px_grad), dim=1)
+
+    # (B, S1 - s_range + 1, T)
+    final_grad = blk_sum_grad - px_grad_pad[:, : S1 - s_range + 1, :T]
+
+    # (B, T)
+    s_begin = torch.argmax(final_grad, axis=1)
+
+    # Handle the values of s_begin in padding positions.
+    # -1 here means we fill the position of the last frame (before padding) with
+    # padding value which is `len(symbols) - s_range + 1`.
+    # This is to guarantee that we reach the last symbol at last frame (before
+    # padding).
+    # The shape of the mask is (B, T), for example, we have a batch containing
+    # 3 sequences, their lengths are 3, 5, 6 (i.e. B = 3, T = 6), so the mask is
+    # [[True, True, False, False, False, False],
+    #  [True, True, True,  True,  False, False],
+    #  [True, True, True,  True,  True,  False]]
+    mask = torch.arange(0, T, device=px_grad.device).reshape(1, T).expand(B, T)
+    mask = mask < boundary[:, 3].reshape(B, 1) - 1
+
+    s_begin_padding = boundary[:, 2].reshape(B, 1) - s_range + 1
+    # handle the cases where `len(symbols) < s_range`
+    s_begin_padding = torch.clamp(s_begin_padding, min=0)
+
+    s_begin = torch.where(mask, s_begin, s_begin_padding)
+
+    # adjusting lower bound to make it satisfy some constraints, see docs in
+    # `_adjust_pruning_lower_bound` for more details of these constraints.
+    # T1 == T here means we are using the non-regular(i.e. modified rnnt or
+    # constrained rnnt) version of transducer, the third constraint becomes
+    # `s_begin[i + 1] - s_begin[i] < 2`, because it only emits one symbol per
+    # frame.
+    s_begin = _adjust_pruning_lower_bound(s_begin, 2 if T1 == T else s_range)
+
+    ranges = s_begin.reshape((B, T, 1)).expand((B, T, s_range)) + torch.arange(
+        s_range, device=px_grad.device
+    )
+
+    return ranges
+
+
+# This is a deprecated version of method to generate pruning bounds which is
+# less exact than the one above (i.e. the one we publish in our paper).
+# It will be deleted at some time, keeping it just for testing purpose.
+def get_rnnt_prune_ranges_deprecated(
+    px_grad: torch.Tensor,
+    py_grad: torch.Tensor,
+    boundary: torch.Tensor,
+    s_range: int,
+) -> torch.Tensor:
+    """Get the pruning ranges of normal rnnt loss according to the grads
+    of px and py returned by mutual_information_recursion.
+
+    For each sequence with T frames, we will generate a tensor with the shape of
+    (T, s_range) containing the information that which symbols will be token
+    into consideration for each frame. For example, here is a sequence with 10
+    frames and the corresponding symbols are `[A B C D E F]`, if the s_range
+    equals 3, one possible ranges tensor will be::
+
+      [[0, 1, 2], [0, 1, 2], [0, 1, 2], [0, 1, 2], [1, 2, 3],
+       [1, 2, 3], [1, 2, 3], [3, 4, 5], [3, 4, 5], [3, 4, 5]]
+
+    which means we only consider `[A B C]` at frame 0, 1, 2, 3, and `[B C D]`
+    at frame 4, 5, 6, `[D E F]` at frame 7, 8, 9.
+
+    We can only consider limited number of symbols because frames and symbols
+    are monotonic aligned, theoretically it can only generate particular range
+    of symbols given a particular frame.
+
+    Note:
+      For the generated tensor ranges (assuming batch size is 1), ranges[:, 0]
+      is a monotonic increasing tensor from 0 to `len(symbols) - s_range` and
+      it satisfies `ranges[t+1, 0] - ranges[t, 0] < s_range` which means we
+      won't skip any symbols.
+
+    Args:
+      px_grad:
+        The gradient of px, see docs in `mutual_information_recursion` for more
+        details of px.
+      py_grad:
+        The gradient of py, see docs in `mutual_information_recursion` for more
+        details of py.
+      boundary:
+        a LongTensor of shape [B, 4] with elements interpreted as
+        [begin_symbol, begin_frame, end_symbol, end_frame]
+      s_range:
+        How many symbols to keep for each frame.
+    Returns:
+      A tensor with the shape of (B, T, s_range) containing the indexes of the
+      kept symbols for each frame.
+    """
+    (B, S, T1) = px_grad.shape
+    T = py_grad.shape[-1]
+    assert T1 in [T, T + 1], (T1, T)
+    assert py_grad.shape == (B, S + 1, T), (py_grad.shape, B, S, T)
+    assert boundary.shape == (B, 4), (boundary.shape, B)
+    assert S >= 1, S
+    assert T >= S, (T, S)
+
+    # s_range > S means we won't prune out any symbols. To make indexing with
+    # ranges run normally, s_range should be equal to or less than ``S + 1``.
+    if s_range > S:
+        s_range = S + 1
+
+    if T1 == T:
+        assert (
+            s_range >= 1
+        ), f"""Pruning range for modified RNN-T should be equal to or greater
+        than 1, or no valid paths could survive pruning. Given {s_range}"""
+
+    else:
+        assert (
+            s_range >= 2
+        ), f"""Pruning range for standard RNN-T should be equal to or greater
+        than 2, or no valid paths could survive pruning. Given {s_range}"""
 
     px_pad = torch.zeros((B, 1, T1), dtype=px_grad.dtype, device=px_grad.device)
     py_pad = torch.zeros(
@@ -559,25 +843,32 @@ def get_rnnt_prune_ranges(
     s_begin = s_begin[:, :T]
 
     # Handle the values of s_begin in padding positions.
-    # -1 here means we fill the position of the last frame of real data with
+    # -1 here means we fill the position of the last frame (before padding) with
     # padding value which is `len(symbols) - s_range + 1`.
-    # This is to guarantee that we reach the last symbol at last frame of real
-    # data.
+    # This is to guarantee that we reach the last symbol at last frame (before
+    # padding).
+    # The shape of the mask is (B, T), for example, we have a batch containing
+    # 3 sequences, their lengths are 3, 5, 6 (i.e. B = 3, T = 6), so the mask is
+    # [[True, True, False, False, False, False],
+    #  [True, True, True,  True,  False, False],
+    #  [True, True, True,  True,  True,  False]]
     mask = torch.arange(0, T, device=px_grad.device).reshape(1, T).expand(B, T)
     mask = mask < boundary[:, 3].reshape(B, 1) - 1
 
     s_begin_padding = boundary[:, 2].reshape(B, 1) - s_range + 1
-    # handle the cases when `len(symbols) < s_range`
+    # handle the cases where `len(symbols) < s_range`
     s_begin_padding = torch.clamp(s_begin_padding, min=0)
 
     s_begin = torch.where(mask, s_begin, s_begin_padding)
 
-    # adjusting lower bound to make it satisfied some constrains, see docs in
-    # `adjust_pruning_lower_bound` for more details of these constrains.
-    # T1 == T here means we are using the modified version of transducer,
-    # the third constrain becomes `s_begin[i + 1] - s_begin[i] < 2`, because
+    # adjusting lower bound to make it satisfy some constraints, see docs in
+    # `_adjust_pruning_lower_bound` for more details of these constraints.
+    # T1 == T here means we are using the non-regular (i.e. modified rnnt or
+    # constrained rnnt) version of transducer,
+    # the third constraint becomes `s_begin[i + 1] - s_begin[i] < 2`, because
     # it only emits one symbol per frame.
     s_begin = _adjust_pruning_lower_bound(s_begin, 2 if T1 == T else s_range)
+
     ranges = s_begin.reshape((B, T, 1)).expand((B, T, s_range)) + torch.arange(
         s_range, device=px_grad.device
     )
@@ -587,8 +878,8 @@ def get_rnnt_prune_ranges(
 def do_rnnt_pruning(
     am: torch.Tensor, lm: torch.Tensor, ranges: torch.Tensor
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Prune the output of encoder(am) output and prediction network(lm)
-    output of RNNT.
+    """Prune the output of encoder(am) and prediction network(lm) with ranges
+    generated by `get_rnnt_prune_ranges`.
 
     Args:
       am:
@@ -606,13 +897,13 @@ def do_rnnt_pruning(
     # am (B, T, encoder_dm)
     # lm (B, S + 1, decoder_dim)
     # ranges (B, T, s_range)
-    assert ranges.shape[0] == am.shape[0]
-    assert ranges.shape[0] == lm.shape[0]
-    assert am.shape[1] == ranges.shape[1]
+    assert ranges.shape[0] == am.shape[0], (ranges.shape, am.shape)
+    assert ranges.shape[0] == lm.shape[0], (ranges.shape, lm.shape)
+    assert am.shape[1] == ranges.shape[1], (am.shape, ranges.shape)
     (B, T, s_range) = ranges.shape
     (B, S1, decoder_dim) = lm.shape
     encoder_dim = am.shape[-1]
-    assert am.shape == (B, T, encoder_dim)
+    assert am.shape == (B, T, encoder_dim), (am.shape, B, T, encoder_dim)
     S = S1 - 1
 
     # (B, T, s_range, encoder_dim)
@@ -622,7 +913,9 @@ def do_rnnt_pruning(
     lm_pruned = torch.gather(
         lm.unsqueeze(1).expand((B, T, S + 1, decoder_dim)),
         dim=2,
-        index=ranges.reshape((B, T, s_range, 1)).expand((B, T, s_range, decoder_dim)),
+        index=ranges.reshape((B, T, s_range, 1)).expand(
+            (B, T, s_range, decoder_dim)
+        ),
     )
     return am_pruned, lm_pruned
 
@@ -648,9 +941,9 @@ def _roll_by_shifts(src: torch.Tensor, shifts: torch.LongTensor):
                [ 8,  9,  5,  6,  7],
                [12, 13, 14, 10, 11]]])
     """
-    assert src.dim() == 3
+    assert src.dim() == 3, src.shape
     (B, T, S) = src.shape
-    assert shifts.shape == (B, T)
+    assert shifts.shape == (B, T), (shifts.shape, B, T)
 
     index = (
         torch.arange(S, device=src.device)
@@ -668,7 +961,7 @@ def get_rnnt_logprobs_pruned(
     ranges: Tensor,
     termination_symbol: int,
     boundary: Tensor,
-    modified: bool = False,
+    rnnt_type: str = "regular",
 ) -> Tuple[Tensor, Tensor]:
     """Construct px, py for mutual_information_recursion with pruned output.
 
@@ -680,6 +973,12 @@ def get_rnnt_logprobs_pruned(
         {0..C-1}.
       ranges:
         A tensor containing the symbol ids for each frame that we want to keep.
+        It is a LongTensor of shape ``[B][T][s_range]``, where ``ranges[b,t,0]``
+        contains the begin symbol ``0 <= s <= S - s_range + 1``, such that
+        ``logits[b,t,:,:]`` represents the logits with positions
+        ``s, s + 1, ... s + s_range - 1``.
+        See docs in :func:`get_rnnt_prune_ranges` for more details of what
+        ranges contains.
       termination_symbol:
         the termination symbol, with 0 <= termination_symbol < C
       boundary:
@@ -688,19 +987,58 @@ def get_rnnt_logprobs_pruned(
         [0, 0, S, T]
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
-      modified: if True, each time a real symbol is consumed a frame will
-        also be consumed, so at most 1 symbol can appear per frame.
+      rnnt_type:
+        Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
+        `regular`: The regular rnnt that taking you to the next frame only if
+                   emitting a blank (i.e., emitting a symbol does not take you
+                   to the next frame).
+        `modified`: A modified version of rnnt that will take you to the next
+                    frame whether emitting a blank or a non-blank symbol.
+        `constrained`: A version likes the modified one that will go to the next
+                       frame when you emit a non-blank symbol, but this is done
+                       by "forcing" you to take the blank transition from the
+                       *next* context on the *current* frame, e.g. if we emit
+                       c given "a b" context, we are forced to emit "blank"
+                       given "b c" context on the current frame.
     Returns:
-      Return the px (B, S, T) if modified else (B, S, T + 1) and
-      py (B, S + 1, T) needed by mutual_information_recursion.
+      (px, py) (the names are quite arbitrary)::
+
+          px: logprobs, of shape [B][S][T+1] if rnnt_type is regular,
+                                 [B][S][T] if rnnt_type is not regular.
+          py: logprobs, of shape [B][S+1][T]
+
+      in the recursion::
+
+         p[b,0,0] = 0.0
+         if rnnt_type == "regular":
+            p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
+                               p[b,s,t-1] + py[b,s,t-1])
+         if rnnt_type != "regular":
+            p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
+                               p[b,s,t-1] + py[b,s,t-1])
+
+      .. where p[b][s][t] is the "joint score" of the pair of subsequences of
+      length s and t respectively.  px[b][s][t] represents the probability of
+      extending the subsequences of length (s,t) by one in the s direction,
+      given the particular symbol, and py[b][s][t] represents the probability
+      of extending the subsequences of length (s,t) by one in the t direction,
+      i.e. of emitting the termination/next-frame symbol.
+
+      if `rnnt_type == "regular"`, px[:,:,T] equals -infinity, meaning on the
+      "one-past-the-last" frame we cannot emit any symbols.
+      This is simply a way of incorporating
+      the probability of the termination symbol on the last frame.
     """
     # logits (B, T, s_range, C)
     # symbols (B, S)
     # ranges (B, T, s_range)
-    assert logits.ndim == 4
+    assert logits.ndim == 4, logits.shape
     (B, T, s_range, C) = logits.shape
-    assert ranges.shape == (B, T, s_range)
+    assert ranges.shape == (B, T, s_range), (ranges.shape, B, T, s_range)
     (B, S) = symbols.shape
+    assert S >= 1, S
+    assert T >= S, (T, S)
+    assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     normalizers = torch.logsumexp(logits, dim=3)
 
@@ -748,7 +1086,7 @@ def get_rnnt_logprobs_pruned(
 
     px = px.permute((0, 2, 1))
 
-    if not modified:
+    if rnnt_type == "regular":
         px = torch.cat(
             (
                 px,
@@ -781,11 +1119,10 @@ def get_rnnt_logprobs_pruned(
     # (B, S + 1, T)
     py = py.permute((0, 2, 1))
 
-    px = px.contiguous()
-    py = py.contiguous()
-
-    if not modified:
+    if rnnt_type == "regular":
         px = fix_for_boundary(px, boundary)
+    elif rnnt_type == "constrained":
+        px += py[:, 1:, :]
 
     return (px, py)
 
@@ -796,12 +1133,13 @@ def rnnt_loss_pruned(
     ranges: Tensor,
     termination_symbol: int,
     boundary: Tensor = None,
-    modified: bool = False,
+    rnnt_type: str = "regular",
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
 ) -> Tensor:
-    """A RNN-T loss with pruning, which uses a pruned 'joiner' network output
-    as input, i.e. a 4 dimensions tensor with shape (B, T, s_range, C),
-    s_range means the symbols number kept for each frame.
+    """A RNN-T loss with pruning, which uses the output of a pruned 'joiner'
+    network as input, i.e. a 4 dimensions tensor with shape (B, T, s_range, C),
+    s_range means the number of symbols kept for each frame.
 
     Args:
       logits:
@@ -812,6 +1150,12 @@ def rnnt_loss_pruned(
         of the sequence.
       ranges:
         A tensor containing the symbol ids for each frame that we want to keep.
+        It is a LongTensor of shape ``[B][T][s_range]``, where ``ranges[b,t,0]``
+        contains the begin symbol ``0 <= s <= S - s_range +1``, such that
+        ``logits[b,t,:,:]`` represents the logits with positions
+        ``s, s + 1, ... s + s_range - 1``.
+        See docs in :func:`get_rnnt_prune_ranges` for more details of what ranges
+        contains.
       termination_symbol:
         The identity of the termination symbol, must be in {0..C-1}
       boundary:
@@ -819,8 +1163,23 @@ def rnnt_loss_pruned(
         [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
         [0, 0, S, T] if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
-      modified: if True, each time a real symbol is consumed a frame will
-        also be consumed, so at most 1 symbol can appear per frame.
+      rnnt_type:
+        Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
+        `regular`: The regular rnnt that taking you to the next frame only if
+                   emitting a blank (i.e., emitting a symbol does not take you
+                   to the next frame).
+        `modified`: A modified version of rnnt that will take you to the next
+                    frame either emitting a blank or a non-blank symbol.
+        `constrained`: A version likes the modified one that will go to the next
+                       frame when you emit a non-blank symbol, but this is done
+                       by "forcing" you to take the blank transition from the
+                       *next* context on the *current* frame, e.g. if we emit
+                       c given "a b" context, we are forced to emit "blank"
+                       given "b c" context on the current frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -828,8 +1187,8 @@ def rnnt_loss_pruned(
         `sum`: the output will be summed.
         Default: `mean`
     Returns:
-      If recursion is `none`, returns a tensor of shape (B,), containing the
-      total RNN-T loss values for each element of the batch, otherwise a scalar
+      If reduction is `none`, returns a tensor of shape (B,), containing the
+      total RNN-T loss values for each sequence of the batch, otherwise a scalar
       with the reduction applied.
     """
     px, py = get_rnnt_logprobs_pruned(
@@ -838,8 +1197,26 @@ def rnnt_loss_pruned(
         ranges=ranges,
         termination_symbol=termination_symbol,
         boundary=boundary,
-        modified=modified,
+        rnnt_type=rnnt_type,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if rnnt_type != "regular" else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                (T - 1) / 2,
+                dtype=px.dtype,
+                device=px.device,
+            ).expand(B, 1, 1)
+        else:
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
+
     negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
     if reduction == "none":
         return -negated_loss
@@ -848,9 +1225,9 @@ def rnnt_loss_pruned(
     elif reduction == "sum":
         return -torch.sum(negated_loss)
     else:
-        assert (
-            False
-        ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+        raise ValueError(
+            f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+        )
 
 
 def get_rnnt_logprobs_smoothed(
@@ -861,7 +1238,7 @@ def get_rnnt_logprobs_smoothed(
     lm_only_scale: float = 0.1,
     am_only_scale: float = 0.1,
     boundary: Optional[Tensor] = None,
-    modified: bool = False,
+    rnnt_type: str = "regular",
 ) -> Tuple[Tensor, Tensor]:
     """
     Reduces RNN-T problem (the simple case, where joiner network is just
@@ -922,20 +1299,32 @@ def get_rnnt_logprobs_smoothed(
         [0, 0, S, T]
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
-      modified: if True, each time a real symbol is consumed a frame will
-        also be consumed, so at most 1 symbol can appear per frame.
+      rnnt_type:
+        Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
+        `regular`: The regular rnnt that taking you to the next frame only if
+                   emitting a blank (i.e., emitting a symbol does not take you
+                   to the next frame).
+        `modified`: A modified version of rnnt that will take you to the next
+                    frame either emitting a blank or a non-blank symbol.
+        `constrained`: A version likes the modified one that will go to the next
+                       frame when you emit a non-blank symbol, but this is done
+                       by "forcing" you to take the blank transition from the
+                       *next* context on the *current* frame, e.g. if we emit
+                       c given "a b" context, we are forced to emit "blank"
+                       given "b c" context on the current frame.
     Returns:
         (px, py) (the names are quite arbitrary).
-           px: logprobs, of shape [B][S][T+1] if !modified, [B][S][T] if modified.
+           px: logprobs, of shape [B][S][T+1] if rnnt_type == "regular",
+                                  [B][S][T] if rnnt_type != "regular".
            py: logprobs, of shape [B][S+1][T]
 
         in the recursion::
 
           p[b,0,0] = 0.0
-          if !modified:
+          if rnnt_type == "regular":
              p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
                                 p[b,s,t-1] + py[b,s,t-1])
-          if modified:
+          if rnnt_type != "regular":
              p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
                                 p[b,s,t-1] + py[b,s,t-1])
           .. where p[b][s][t] is the "joint score" of the pair of subsequences
@@ -950,13 +1339,16 @@ def get_rnnt_logprobs_smoothed(
           we cannot emit any symbols.  This is simply a way of incorporating
           the probability of the termination symbol on the last frame.
     """
-    assert lm.ndim == 3
-    assert am.ndim == 3
-    assert lm.shape[0] == am.shape[0]
-    assert lm.shape[2] == am.shape[2]
+    assert lm.ndim == 3, lm.shape
+    assert am.ndim == 3, am.shape
+    assert lm.shape[0] == am.shape[0], (lm.shape, am.shape)
+    assert lm.shape[2] == am.shape[2], (lm.shape, am.shape)
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
-    assert symbols.shape == (B, S)
+    assert symbols.shape == (B, S), (symbols.shape, B, S)
+    assert S >= 1, S
+    assert T >= S, (T, S)
+    assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     # Caution: some parts of this code are a little less clear than they could
     # be due to optimizations.  In particular it may not be totally obvious that
@@ -1008,7 +1400,7 @@ def get_rnnt_logprobs_smoothed(
         -1
     )  # [B][S][T]
 
-    if not modified:
+    if rnnt_type == "regular":
         px_am = torch.cat(
             (
                 px_am,
@@ -1029,12 +1421,12 @@ def get_rnnt_logprobs_smoothed(
         unigram_lm.expand(B, S, C), dim=2, index=symbols.unsqueeze(-1)
     )  # [B][S][1]
 
-    px = px_am + px_lm  # [B][S][T+1] if not modified, [B][S][T] if modified
+    px = px_am + px_lm  # [B][S][T+1] if rnnt_type == "regular", otherwise [B][S][T]
     px[:, :, :T] -= normalizers[:, :S, :]  # px: [B][S][T+1] or [B][S][T]
 
     px_amonly = (
         px_am + px_lm_unigram
-    )  # [B][S][T+1] if !modified; [B][S][T] if modified.
+    )  # [B][S][T+1] if rnnt_type == "regular", otherwise [B][S][T].
     px_amonly[:, :, :T] -= amonly_normalizers
     px_lmonly = px_lm - lmonly_normalizers[:, :S, :]
 
@@ -1067,8 +1459,10 @@ def get_rnnt_logprobs_smoothed(
         + py_amonly * am_only_scale
     )
 
-    if not modified:
+    if rnnt_type == "regular":
         px_interp = fix_for_boundary(px_interp, boundary)
+    elif rnnt_type == "constrained":
+        px_interp += py_interp[:, 1:, :]
 
     return (px_interp, py_interp)
 
@@ -1081,7 +1475,8 @@ def rnnt_loss_smoothed(
     lm_only_scale: float = 0.1,
     am_only_scale: float = 0.1,
     boundary: Optional[Tensor] = None,
-    modified: bool = False,
+    rnnt_type: str = "regular",
+    delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
     return_grad: bool = False,
 ) -> Union[Tuple[Tensor, Tuple[Tensor, Tensor]], Tensor]:
@@ -1113,8 +1508,23 @@ def rnnt_loss_smoothed(
         [0, 0, S, T]
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
-      modified: if True, each time a real symbol is consumed a frame will
-        also be consumed, so at most 1 symbol can appear per frame.
+      rnnt_type:
+        Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
+        `regular`: The regular rnnt that taking you to the next frame only if
+                   emitting a blank (i.e., emitting a symbol does not take you
+                   to the next frame).
+        `modified`: A modified version of rnnt that will take you to the next
+                    frame whether emitting a blank or a non-blank symbol.
+        `constrained`: A version likes the modified one that will go to the next
+                       frame when you emit a non-blank symbol, but this is done
+                       by "forcing" you to take the blank transition from the
+                       *next* context on the *current* frame, e.g. if we emit
+                       c given "a b" context, we are forced to emit "blank"
+                       given "b c" context on the current frame.
+      delay_penalty: A constant value to penalize symbol delay, this may be
+         needed when training with time masking, to avoid the time-masking
+         encouraging the network to delay symbols.
+         See https://github.com/k2-fsa/k2/issues/955 for more details.
       reduction:
         Specifies the reduction to apply to the output: `none`, `mean` or `sum`.
         `none`: no reduction will be applied.
@@ -1145,8 +1555,26 @@ def rnnt_loss_smoothed(
         lm_only_scale=lm_only_scale,
         am_only_scale=am_only_scale,
         boundary=boundary,
-        modified=modified,
+        rnnt_type=rnnt_type,
     )
+
+    if delay_penalty > 0.0:
+        B, S, T0 = px.shape
+        T = T0 if rnnt_type != "regular" else T0 - 1
+        if boundary is None:
+            offset = torch.tensor(
+                (T - 1) / 2,
+                dtype=px.dtype,
+                device=px.device,
+            ).expand(B, 1, 1)
+        else:
+            offset = (boundary[:, 3] - 1) / 2
+        penalty = offset.reshape(B, 1, 1) - torch.arange(
+            T0, device=px.device
+        ).reshape(1, 1, T0)
+        penalty = penalty * delay_penalty
+        px += penalty.to(px.dtype)
+
     scores_and_grads = mutual_information_recursion(
         px=px, py=py, boundary=boundary, return_grad=return_grad
     )
@@ -1158,7 +1586,7 @@ def rnnt_loss_smoothed(
     elif reduction == "sum":
         loss = -torch.sum(negated_loss)
     else:
-        assert (
-            False
-        ), f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+        raise ValueError(
+            f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
+        )
     return (loss, scores_and_grads[1]) if return_grad else loss
