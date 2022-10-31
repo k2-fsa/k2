@@ -54,6 +54,20 @@ struct WaveHeader {
     K2_CHECK_EQ(bits_per_sample, 16);  // we support only 16 bits per sample
   }
 
+  // See
+  // https://en.wikipedia.org/wiki/WAV#Metadata
+  // and
+  // https://www.robotplanet.dk/audio/wav_meta_data/riff_mci.pdf
+  void SeekToDataChunk(std::istream &is) {
+    //                              a t a d
+    while (is && subchunk2_id != 0x61746164) {
+      const char *p = reinterpret_cast<const char *>(&subchunk2_id);
+      is.seekg(subchunk2_size, std::istream::cur);
+      is.read(reinterpret_cast<char *>(&subchunk2_id), sizeof(int32_t));
+      is.read(reinterpret_cast<char *>(&subchunk2_size), sizeof(int32_t));
+    }
+  }
+
   int32_t chunk_id;
   int32_t chunk_size;
   int32_t format;
@@ -80,6 +94,8 @@ std::pair<torch::Tensor, float> ReadWaveImpl(std::istream &is) {
   K2_CHECK((bool)is) << "Failed to read wave header";
 
   header.Validate();
+
+  header.SeekToDataChunk(is);
 
   float sample_rate = header.sample_rate;
 
