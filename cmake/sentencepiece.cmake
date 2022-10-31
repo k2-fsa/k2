@@ -36,7 +36,7 @@ function(download_sentencepiece)
 
   FetchContent_GetProperties(sentencepiece)
   if(NOT sentencepiece_POPULATED)
-    message(STATUS "Downloading sentencepiece")
+    message(STATUS "Downloading sentencepiece from ${sentencepiece_URL}")
     FetchContent_Populate(sentencepiece)
   endif()
   message(STATUS "sentencepiece is downloaded to ${sentencepiece_SOURCE_DIR}")
