@@ -19,7 +19,9 @@
 #ifndef K2_TORCH_CSRC_HYPOTHESIS_H_
 #define K2_TORCH_CSRC_HYPOTHESIS_H_
 
+#include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "torch/all.h"

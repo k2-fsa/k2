@@ -17,6 +17,7 @@
  */
 
 #include <algorithm>
+#include <utility>
 
 #include "k2/csrc/utils.h"
 #include "k2/torch/csrc/hypothesis.h"

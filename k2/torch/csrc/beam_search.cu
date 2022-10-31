@@ -19,7 +19,9 @@
 #ifndef K2_TORCH_CSRC_BEAM_SEARCH_H_
 #define K2_TORCH_CSRC_BEAM_SEARCH_H_
 
+#include <algorithm>
 #include <deque>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/array.h"
