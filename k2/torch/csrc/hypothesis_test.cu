@@ -37,8 +37,7 @@ TEST(Hypotheses, ConstructorFromVector) {
 
   Hypotheses hyps(std::move(hyp_vec));
 
-  EXPECT_EQ(hyp_vec[0].ys.size(), 0);
-  EXPECT_EQ(hyp_vec[1].ys.size(), 0);
+  EXPECT_TRUE(hyp_vec.empty());
 }
 
 }  // namespace k2
