@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 
   std::string usage = R"(
   (1) CTC decoding
-    ./bin/decode \
+    ./bin/online_decode \
       --use_ctc_decoding true \
       --jit_pt <path to exported torch script pt file> \
       --bpe_model <path to pretrained BPE model> \
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
       /path/to/bar.wav \
       <more wave files if any>
   (2) HLG decoding
-    ./bin/decode \
+    ./bin/online_decode \
       --use_ctc_decoding false \
       --jit_pt <path to exported torch script pt file> \
       --hlg <path to HLG.pt> \

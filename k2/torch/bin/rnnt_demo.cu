@@ -185,9 +185,9 @@ int main(int argc, char *argv[]) {
   module.eval();
   module.to(device);
 
-  int32_t vocab_size = module.attr("vocab_size").toInt();
-  int32_t context_size = module.attr("context_size").toInt();
-  int32_t subsampling_factor = module.attr("subsampling_factor").toInt();
+  int32_t vocab_size = 500;
+  int32_t context_size = 2;
+  int32_t subsampling_factor = 4;
 
   k2::FsaClass decoding_graph;
   if (FLAGS_use_lg) {
@@ -212,8 +212,8 @@ int main(int argc, char *argv[]) {
   // suppose we are using same graph for all waves.
   for (int32_t i = 0; i < num_waves; ++i) {
     individual_graphs[i] = decoding_graph;
-    individual_streams[i] =
-        k2::rnnt_decoding::CreateStream(individual_graphs[i].fsa);
+    individual_streams[i] = k2::rnnt_decoding::CreateStream(
+        std::make_shared<k2::Fsa>(individual_graphs[i].fsa));
   }
 
   // we are not using a streaming model currently, so calculate encoder_outs
@@ -225,8 +225,10 @@ int main(int argc, char *argv[]) {
 
   K2_LOG(INFO) << "Compute encoder outs";
   // the output for module.encoder.forward() is a tuple of 2 tensors
-  auto outputs =
-      module.run_method("encoder_forward", features, input_lengths).toTuple();
+  auto outputs = module.attr("encoder")
+                     .toModule()
+                     .run_method("forward", features, input_lengths)
+                     .toTuple();
   assert(outputs->elements().size() == 2u);
 
   auto encoder_outs = outputs->elements()[0].toTensor();
@@ -296,11 +298,13 @@ int main(int argc, char *argv[]) {
     k2::DecodeOneChunk(streams, module, sub_encoder_outs);
 
     k2::FsaVec ofsa;
-    k2::Ragged<int32_t> out_map;
-    streams.FormatOutput(current_num_frames, &ofsa, &out_map);
+    k2::Array1<int32_t> out_map;
+    bool allow_partial = true;
+    streams.FormatOutput(current_num_frames, allow_partial, &ofsa, &out_map);
 
+    auto arc_map = k2::Ragged<int32_t>(ofsa.shape, out_map).RemoveAxis(1);
     k2::FsaClass lattice(ofsa);
-    lattice.CopyAttrs(current_graphs, out_map);
+    lattice.CopyAttrs(current_graphs, arc_map);
 
     lattice = k2::GetBestPaths(lattice, FLAGS_use_max, FLAGS_num_paths,
                                FLAGS_nbest_scale);

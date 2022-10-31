@@ -698,7 +698,7 @@ class MultiGraphDenseIntersectPruned {
           min_active = min_active_;
     K2_CHECK_LT(min_active, max_active);
 
-    const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
+    const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
 
     Array1<float> cutoffs(c_, num_fsas);
     float *cutoffs_data = cutoffs.Data();

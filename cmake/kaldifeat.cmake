@@ -24,8 +24,8 @@ function(download_kaldifeat)
 
   include(FetchContent)
 
-  set(kaldifeat_URL "https://github.com/csukuangfj/kaldifeat/archive/refs/tags/v1.9.tar.gz")
-  set(kaldifeat_HASH "SHA256=b7a61d65ce40e62e6b15702b59632c331df2697a8ee71917d68110c903f719be")
+  set(kaldifeat_URL "https://github.com/csukuangfj/kaldifeat/archive/refs/tags/v1.20.tar.gz")
+  set(kaldifeat_HASH "SHA256=509110abbb4bf510831a9abbf1f3e7a0768f9e505d7f25defeaf6545566e1aaf")
 
   set(kaldifeat_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
@@ -36,7 +36,7 @@ function(download_kaldifeat)
 
   FetchContent_GetProperties(kaldifeat)
   if(NOT kaldifeat_POPULATED)
-    message(STATUS "Downloading kaldifeat")
+    message(STATUS "Downloading kaldifeat from ${kaldifeat_URL}")
     FetchContent_Populate(kaldifeat)
   endif()
   message(STATUS "kaldifeat is downloaded to ${kaldifeat_SOURCE_DIR}")

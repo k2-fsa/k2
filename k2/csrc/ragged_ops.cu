@@ -1204,7 +1204,7 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
 
     // Contains the pointers for split_map
     Array1<int32_t *> split_map_ptr;
-    int32_t **split_map_ptr_data;
+    int32_t **split_map_ptr_data = nullptr;
 
     if (axis == num_axes - 1 && split_map != nullptr) {
       split_map_ptr = Array1<int32_t *>(GetCpuContext(), out_size);
