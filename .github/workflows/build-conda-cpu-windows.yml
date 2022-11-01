@@ -22,6 +22,10 @@ on:
     tags:
       - '*'
 
+concurrency:
+  group: build_conda_cpu_windows-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BUILD_TYPE: Release
 

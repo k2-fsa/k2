@@ -110,7 +110,6 @@ from .utils import create_fsa_vec
 from .utils import create_sparse
 from .utils import is_rand_equivalent
 from .utils import get_best_matching_stats
-from .utils import monotonic_lower_bound
 from .utils import to_dot
 from .utils import to_str
 from .utils import to_str_simple

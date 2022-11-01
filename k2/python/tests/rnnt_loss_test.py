@@ -262,7 +262,7 @@ class TestRnntLoss(unittest.TestCase):
         boundary_[:, 2] = seq_length
         boundary_[:, 3] = frames
 
-        for modified in [True, False]:
+        for rnnt_type in ["regular", "modified", "constrained"]:
             for device in self.devices:
                 # lm: [B][S+1][C]
                 lm = lm_.to(device)
@@ -277,9 +277,13 @@ class TestRnntLoss(unittest.TestCase):
                     symbols=symbols,
                     termination_symbol=termination_symbol,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                 )
-                assert px.shape == (B, S, T) if modified else (B, S, T + 1)
+                assert (
+                    px.shape == (B, S, T)
+                    if rnnt_type != "regular"
+                    else (B, S, T + 1)
+                )
                 assert py.shape == (B, S + 1, T)
                 assert symbols.shape == (B, S)
                 m = k2.mutual_information_recursion(
@@ -296,7 +300,7 @@ class TestRnntLoss(unittest.TestCase):
                     symbols=symbols,
                     termination_symbol=termination_symbol,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                 )
                 assert torch.allclose(m, expected.to(device))
 
@@ -308,7 +312,7 @@ class TestRnntLoss(unittest.TestCase):
                     lm_only_scale=0.0,
                     am_only_scale=0.0,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                 )
                 assert torch.allclose(m, expected.to(device))
 
@@ -318,12 +322,12 @@ class TestRnntLoss(unittest.TestCase):
                     symbols=symbols,
                     termination_symbol=termination_symbol,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                 )
                 assert torch.allclose(m, expected.to(device))
 
                 # compare with torchaudio rnnt_loss
-                if self.has_torch_rnnt_loss and not modified:
+                if self.has_torch_rnnt_loss and rnnt_type == "regular":
                     import torchaudio.functional
 
                     m = torchaudio.functional.rnnt_loss(
@@ -345,7 +349,7 @@ class TestRnntLoss(unittest.TestCase):
                     symbols=symbols,
                     termination_symbol=termination_symbol,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                 )
                 assert torch.allclose(m, expected.to(device))
 
@@ -355,7 +359,7 @@ class TestRnntLoss(unittest.TestCase):
                     symbols=symbols,
                     termination_symbol=termination_symbol,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                 )
                 assert torch.allclose(m, expected.to(device))
 
@@ -367,7 +371,7 @@ class TestRnntLoss(unittest.TestCase):
                     lm_only_scale=0.0,
                     am_only_scale=0.0,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                 )
                 assert torch.allclose(m, expected.to(device))
 
@@ -500,7 +504,7 @@ class TestRnntLoss(unittest.TestCase):
         boundary_[:, 2] = seq_length
         boundary_[:, 3] = frames
 
-        for modified in [True, False]:
+        for rnnt_type in ["regular", "modified", "constrained"]:
             for device in self.devices:
                 # normal rnnt
                 am = am_.to(device)
@@ -518,13 +522,11 @@ class TestRnntLoss(unittest.TestCase):
                     symbols=symbols,
                     termination_symbol=terminal_symbol,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                     reduction="none",
                 )
 
-                print(
-                    f"Unpruned rnnt loss with modified {modified} : {k2_loss}"
-                )
+                print(f"Unpruned rnnt loss with {rnnt_type} rnnt : {k2_loss}")
 
                 # pruning
                 k2_simple_loss, (px_grad, py_grad) = k2.rnnt_loss_simple(
@@ -533,7 +535,7 @@ class TestRnntLoss(unittest.TestCase):
                     symbols=symbols,
                     termination_symbol=terminal_symbol,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                     return_grad=True,
                     reduction="none",
                 )
@@ -560,7 +562,7 @@ class TestRnntLoss(unittest.TestCase):
                         ranges=ranges,
                         termination_symbol=terminal_symbol,
                         boundary=boundary,
-                        modified=modified,
+                        rnnt_type=rnnt_type,
                         reduction="none",
                     )
                     print(f"Pruned loss with range {r} : {pruned_loss}")
@@ -590,7 +592,7 @@ class TestRnntLoss(unittest.TestCase):
 
         print(f"B = {B}, T = {T}, S = {S}, C = {C}")
 
-        for modified in [True, False]:
+        for rnnt_type in ["regular", "modified", "constrained"]:
             for device in self.devices:
                 # normal rnnt
                 am = am_.to(device)
@@ -609,13 +611,11 @@ class TestRnntLoss(unittest.TestCase):
                     symbols=symbols,
                     termination_symbol=terminal_symbol,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                     reduction="none",
                 )
 
-                print(
-                    f"Unpruned rnnt loss with modified {modified} : {k2_loss}"
-                )
+                print(f"Unpruned rnnt loss with {rnnt_type} rnnt : {k2_loss}")
 
                 # pruning
                 k2_simple_loss, (px_grad, py_grad) = k2.rnnt_loss_simple(
@@ -624,13 +624,13 @@ class TestRnntLoss(unittest.TestCase):
                     symbols=symbols,
                     termination_symbol=terminal_symbol,
                     boundary=boundary,
-                    modified=modified,
+                    rnnt_type=rnnt_type,
                     return_grad=True,
                     reduction="none",
                 )
 
                 S0 = 2
-                if modified:
+                if rnnt_type != "regular":
                     S0 = 1
 
                 for r in range(S0, S + 2):
@@ -656,7 +656,7 @@ class TestRnntLoss(unittest.TestCase):
                         ranges=ranges,
                         termination_symbol=terminal_symbol,
                         boundary=boundary,
-                        modified=modified,
+                        rnnt_type=rnnt_type,
                         reduction="none",
                     )
                     print(f"Pruned loss with range {r} : {pruned_loss}")
@@ -713,9 +713,7 @@ class TestRnntLoss(unittest.TestCase):
                     s_range=r,
                 )
                 am_pruned, lm_pruned = k2.do_rnnt_pruning(
-                    am=am,
-                    lm=lm,
-                    ranges=new_ranges,
+                    am=am, lm=lm, ranges=new_ranges,
                 )
 
                 logits = am_pruned + lm_pruned
@@ -739,9 +737,7 @@ class TestRnntLoss(unittest.TestCase):
                 )
 
                 am_pruned, lm_pruned = k2.do_rnnt_pruning(
-                    am=am,
-                    lm=lm,
-                    ranges=old_ranges,
+                    am=am, lm=lm, ranges=old_ranges,
                 )
                 logits = am_pruned + lm_pruned
 

@@ -19,7 +19,6 @@ endfunction()
 set(py_test_files
   add_epsilon_self_loops_test.py
   arc_sort_test.py
-  array_ops_test.py
   cat_test.py
   compose_arc_maps_test.py
   closure_test.py

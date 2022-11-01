@@ -22,8 +22,26 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '.github/workflows/test-k2-as-third-party-lib-cpu-macos.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+      - 'scripts/github_actions/k2-torch-api-test/**'
   pull_request:
     types: [labeled]
+    paths:
+      - '.github/workflows/test-k2-as-third-party-lib-cpu-macos.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+      - 'scripts/github_actions/k2-torch-api-test/**'
+
+concurrency:
+  group: test-k2-as-third-party-lib-cpu-macos-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   BUILD_TYPE: Release
