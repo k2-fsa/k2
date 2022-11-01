@@ -111,6 +111,7 @@ GIT_LFS_SKIP_SMUDGE=1 git clone $repo_url
 pushd $repo
 git lfs pull --include "exp/cpu_jit.pt"
 git lfs pull --include "data/lang_bpe_500/bpe.model"
+git lfs pull --include "data/lang_bpe_500/LG.pt"
 popd
 
 log "Test RNN-T decoding"
