@@ -24,7 +24,7 @@ on:
       - master
     paths:
       - '.github/workflows/run-tests-cpu.yml'
-      - '.github/scripts/run-test.yml'
+      - '.github/scripts/run-test.sh'
       - 'CMakeLists.txt'
       - 'cmake/**'
       - 'k2/csrc/**'
@@ -33,7 +33,7 @@ on:
     types: [labeled]
     paths:
       - '.github/workflows/run-tests-cpu.yml'
-      - '.github/scripts/run-test.yml'
+      - '.github/scripts/run-test.sh'
       - 'CMakeLists.txt'
       - 'cmake/**'
       - 'k2/csrc/**'

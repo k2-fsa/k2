@@ -42,15 +42,6 @@ case $cuda in
   11.7)
     filename=cudnn-11.3-linux-x64-v8.2.0.53.tgz
     ;;
-  11.3)
-    filename=cudnn-11.3-linux-x64-v8.2.0.53.tgz
-    ;;
-  11.5)
-    filename=cudnn-11.3-linux-x64-v8.2.0.53.tgz
-    ;;
-  # 11.5)
-  #   filename=cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz
-  #   ;;
   *)
     echo "Unsupported cuda version: $cuda"
     exit 1

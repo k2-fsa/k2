@@ -166,7 +166,6 @@ int main(int argc, char *argv[]) {
   assert(outputs->elements().size() == 3u);
 
   auto nnet_output = outputs->elements()[0].toTensor();
-  auto memory = outputs->elements()[1].toTensor();
 
   torch::Tensor supervision_segments =
       k2::GetSupervisionSegments(supervisions, subsampling_factor);
