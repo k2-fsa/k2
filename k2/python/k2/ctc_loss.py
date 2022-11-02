@@ -104,7 +104,7 @@ class CtcLoss(nn.Module):
             duration = dense_fsa_vec.duration.to(frame_idx.device)
 
             # add: offset = frame_idx + alpha * value
-            offset = frame_idx.add(value=duration // 2, alpha=-1)
+            offset = frame_idx.add(value=duration >> 1, alpha=-1)
             penalty = -delay_penalty * offset.values
             # This branch is for the phone-based models, which can not distinct
             # repeat tokens with aux_labels. So we need an extra attribute
