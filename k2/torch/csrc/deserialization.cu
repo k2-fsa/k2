@@ -105,7 +105,6 @@ void restoreAccurateTypeTags(const torch::IValue &root,
       case torch::jit::IntType::Kind:
       case torch::jit::NoneType::Kind:
       case torch::jit::GeneratorType::Kind:
-      case torch::jit::QuantizerType::Kind:
       case torch::jit::BoolType::Kind:
       case torch::jit::VarType::Kind:
       case torch::jit::CapsuleType::Kind:
@@ -121,12 +120,19 @@ void restoreAccurateTypeTags(const torch::IValue &root,
       case torch::jit::AnyListType::Kind:
       case torch::jit::AnyTupleType::Kind:
       case torch::jit::AnyClassType::Kind:
+#if K2_TORCH_VERSION_MAJOR > 1 || \
+    (K2_TORCH_VERSION_MAJOR == 1 && K2_TORCH_VERSION_MINOR >= 7)
       case torch::jit::AnyEnumType::Kind:
+      case torch::jit::QuantizerType::Kind:
+#endif
         // no op, there is nothing to tag
         break;
+#if K2_TORCH_VERSION_MAJOR > 1 || \
+    (K2_TORCH_VERSION_MAJOR == 1 && K2_TORCH_VERSION_MINOR >= 7)
       case torch::jit::EnumType::Kind:
         // TODO(gmagogsfm): Implement serialization/deserialization of Enum.
         AT_ASSERT(false);
+#endif
       case torch::jit::TupleType::Kind: {
         auto t = w.value.toTuple();
         auto ttype = w.static_type->expect<torch::jit::TupleType>();

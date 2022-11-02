@@ -33,9 +33,6 @@ struct WaveHeader {
   void Validate() const {
     //                       F F I R
     K2_CHECK_EQ(chunk_id, 0x46464952);
-    K2_CHECK_EQ(chunk_size, 36 + subchunk2_size)
-        << "chunk_size: " << chunk_size << ", "
-        << "subchunk2_size: " << subchunk2_size;
     //                     E V A W
     K2_CHECK_EQ(format, 0x45564157);
     K2_CHECK_EQ(subchunk1_id, 0x20746d66);
@@ -96,6 +93,7 @@ std::pair<torch::Tensor, float> ReadWaveImpl(std::istream &is) {
   header.Validate();
 
   header.SeekToDataChunk(is);
+  K2_CHECK((bool)is) << "Failed to locate the data chunk";
 
   float sample_rate = header.sample_rate;
 

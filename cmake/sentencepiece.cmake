@@ -27,7 +27,7 @@ function(download_sentencepiece)
   set(sentencepiece_URL "https://github.com/google/sentencepiece/archive/refs/tags/v0.1.96.tar.gz")
   set(sentencepiece_HASH "SHA256=5198f31c3bb25e685e9e68355a3bf67a1db23c9e8bdccc33dc015f496a44df7a")
 
-  set(SPM_ENABLE_SHARED OFF CACHE BOOL "" FORCE)
+  set(SPM_ENABLE_SHARED ${BUILD_SHARED_LIBS} CACHE BOOL "" FORCE)
 
   FetchContent_Declare(sentencepiece
     URL               ${sentencepiece_URL}
@@ -44,13 +44,21 @@ function(download_sentencepiece)
 
   add_subdirectory(${sentencepiece_SOURCE_DIR} ${sentencepiece_BINARY_DIR} EXCLUDE_FROM_ALL)
 
-  # Link to sentencepiece statically
-  target_include_directories(sentencepiece-static
-    INTERFACE
-      ${sentencepiece_SOURCE_DIR}
-      ${sentencepiece_SOURCE_DIR}/src
-      ${sentencepiece_BINARY_DIR}
-  )
+  if(BUILD_SHARED_LIBS)
+    target_include_directories(sentencepiece
+      INTERFACE
+        ${sentencepiece_SOURCE_DIR}
+        ${sentencepiece_SOURCE_DIR}/src
+        ${sentencepiece_BINARY_DIR}
+    )
+  else()
+    target_include_directories(sentencepiece-static
+      INTERFACE
+        ${sentencepiece_SOURCE_DIR}
+        ${sentencepiece_SOURCE_DIR}/src
+        ${sentencepiece_BINARY_DIR}
+    )
+  endif()
 endfunction()
 
 download_sentencepiece()
