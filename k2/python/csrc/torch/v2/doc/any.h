@@ -1794,6 +1794,36 @@ Returns:
   Returns a 1-D tensor, sharing the same dtype and device with ``self``.
 )doc";
 
+static constexpr const char *kRaggedAnyAddDoc = R"doc(
+Add value scaled by alpha to source ragged tensor over the last axis.
+
+It implements:
+
+    dest[...][i][j] = src[...][i][j] + alpha * value[i]
+
+>>> import k2.ragged as k2r
+>>> import torch
+>>> src = k2r.RaggedTensor([[1, 3], [1], [2, 8]], dtype=torch.int32)
+>>> value = torch.tensor([1, 2, 3], dtype=torch.int32)
+>>> src.add(value, 1)
+RaggedTensor([[2, 4],
+              [3],
+              [5, 11]], dtype=torch.int32)
+>>> src.add(value, -1)
+RaggedTensor([[0, 2],
+              [-1],
+              [-1, 5]], dtype=torch.int32)
+
+Args:
+  value:
+      The value to be added to the ``self``, whose dimension MUST
+      equal the number of sublists along the last dimension of ``self``.
+  alpha:
+      The number used to scaled value before adding to ``self``.
+Returns:
+  Returns a new RaggedTensor, sharing the same dtype and device with ``self``.
+)doc";
+
 static constexpr const char *kRaggedAnyPadDoc = R"doc(
 Pad a ragged tensor with 2-axes to a 2-D torch tensor.
 

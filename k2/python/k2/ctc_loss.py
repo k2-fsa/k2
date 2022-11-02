@@ -17,7 +17,7 @@ from .ragged import RaggedTensor
 
 
 class CtcLoss(nn.Module):
-    '''Ctc Loss computation in k2. It produces the same output as `torch.CtcLoss`
+    """Ctc Loss computation in k2. It produces the same output as `torch.CtcLoss`
     if given the same input.
 
     One difference between `k2.CtcLoss` and `torch.CtcLoss` is that k2 accepts
@@ -30,13 +30,15 @@ class CtcLoss(nn.Module):
     We assume that the blank label is always 0. The arguments `reduction` and
     `target_lengths` have the same meaning as their counterparts in
     `torch.CtcLoss`.
-    '''
+    """
 
-    def __init__(self,
-                 output_beam: float,
-                 reduction: Literal['none', 'mean', 'sum'] = 'sum',
-                 use_double_scores: bool = True):
-        '''
+    def __init__(
+        self,
+        output_beam: float,
+        reduction: Literal["none", "mean", "sum"] = "sum",
+        use_double_scores: bool = True,
+    ):
+        """
         Args:
           output_beam:
              Beam to prune output, similar to lattice-beam in Kaldi.  Relative
@@ -50,19 +52,21 @@ class CtcLoss(nn.Module):
           use_double_scores:
             True to use double precision floating point in computing
             the total scores. False to use single precision.
-        '''
+        """
         super().__init__()
-        assert reduction in ('none', 'mean', 'sum')
+        assert reduction in ("none", "mean", "sum")
         self.output_beam = output_beam
         self.reduction = reduction
         self.use_double_scores = use_double_scores
 
-    def forward(self,
-                decoding_graph: Fsa,
-                dense_fsa_vec: DenseFsaVec,
-                delay_penalty: float = 0.0,
-                target_lengths: Optional[torch.Tensor] = None) -> torch.Tensor:
-        '''Compute the CTC loss given a decoding graph and a dense fsa vector.
+    def forward(
+        self,
+        decoding_graph: Fsa,
+        dense_fsa_vec: DenseFsaVec,
+        delay_penalty: float = 0.0,
+        target_lengths: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Compute the CTC loss given a decoding graph and a dense fsa vector.
 
         Args:
           decoding_graph:
@@ -78,7 +82,7 @@ class CtcLoss(nn.Module):
         Returns:
           If `reduction` is `none`, return a 1-D tensor with size equal to batch
           size. If `reduction` is `mean` or `sum`, return a scalar.
-        '''
+        """
         lattice = intersect_dense(
             a_fsas=decoding_graph,
             b_fsas=dense_fsa_vec,
@@ -86,43 +90,71 @@ class CtcLoss(nn.Module):
             frame_idx_name="frame_idx" if delay_penalty > 0.0 else None,
         )
 
-        # torch.save(lattice.as_dict(), f"lattice.pt")
-
         if delay_penalty > 0.0:
-            assert hasattr(lattice, "_is_repeat_token_")
-            assert isinstance(lattice._is_repeat_token_, torch.Tensor)
             frame_idx = RaggedTensor(
-                lattice.arcs.shape().remove_axis(1), lattice.frame_idx)
+                lattice.arcs.shape().remove_axis(1), lattice.frame_idx
+            )
+            # duration in DenseFsaVec is on CPU
             duration = dense_fsa_vec.duration.to(frame_idx.device)
-            offset = frame_idx.plus(-duration // 2)
+
+            # add: offset = frame_idx + alpha * value
+            offset = frame_idx.add(value=duration // 2, alpha=-1)
             penalty = -delay_penalty * offset.values
-            mask = (lattice.labels == 0) | (lattice.labels == -1) | lattice._is_repeat_token_
+            # This branch is for the phone-based models, which can not distinct
+            # repeat tokens with aux_labels. So we need an extra attribute
+            # (_is_repeat_token_) to mark whether current token is a repeat
+            # token. We can set `_is_repeat_token_` when we construct
+            # GraphCompiler (search this term in icefall for more details) by
+            # adding something like:
+            # `ctc_topo._is_repeat_token_ = ctc_topo.labels != ctc_topo.aux_labels`
+            # The Fsa operations will propagate this attribute to lattice.
+            # `labels != aux_labels` here means the self-loop arc for each
+            # state (i.e. the repeat token arc).
+            if hasattr(lattice, "_is_repeat_token_"):
+                assert isinstance(lattice._is_repeat_token_, torch.Tensor)
+                mask = (
+                    (lattice.labels == 0)
+                    | (lattice.labels == -1)
+                    | lattice._is_repeat_token_
+                )
+            else:
+                # This branch is for bpe-based and char-based models, which have
+                # one to one relationship between labels and aux_labels. So we
+                # can distinct repeat tokens by aux_labels (repeat tokens have
+                # epsilon aux_labels).
+                assert hasattr(lattice, "aux_labels")
+                assert isinstance(lattice.aux_labels, torch.Tensor)
+                mask = (lattice.aux_labels == 0) | (lattice.aux_labels == -1)
+            # we only add penalty to non-blank arcs.
             penalty.masked_fill_(mask, 0.0)
             lattice.scores += penalty
 
         tot_scores = lattice.get_tot_scores(
-            log_semiring=True, use_double_scores=self.use_double_scores)
+            log_semiring=True, use_double_scores=self.use_double_scores
+        )
         loss = -1 * tot_scores
         loss = loss.to(torch.float32)
 
-        if self.reduction == 'none':
+        if self.reduction == "none":
             return loss
-        elif self.reduction == 'sum':
+        elif self.reduction == "sum":
             return loss.sum()
         else:
-            assert self.reduction == 'mean'
+            assert self.reduction == "mean"
             loss /= target_lengths
             return loss.mean()
 
 
-def ctc_loss(decoding_graph: Fsa,
-             dense_fsa_vec: DenseFsaVec,
-             output_beam: float = 10,
-             delay_penalty: float = 0.0,
-             reduction: Literal['none', 'mean', 'sum'] = 'sum',
-             use_double_scores: bool = True,
-             target_lengths: Optional[torch.Tensor] = None) -> torch.Tensor:
-    '''Compute the CTC loss given a decoding graph and a dense fsa vector.
+def ctc_loss(
+    decoding_graph: Fsa,
+    dense_fsa_vec: DenseFsaVec,
+    output_beam: float = 10,
+    delay_penalty: float = 0.0,
+    reduction: Literal["none", "mean", "sum"] = "sum",
+    use_double_scores: bool = True,
+    target_lengths: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
+    """Compute the CTC loss given a decoding graph and a dense fsa vector.
 
     Args:
       decoding_graph:
@@ -149,14 +181,16 @@ def ctc_loss(decoding_graph: Fsa,
     Returns:
       If `reduction` is `none`, return a 1-D tensor with size equal to batch
       size. If `reduction` is `mean` or `sum`, return a scalar.
-    '''
-    m = CtcLoss(output_beam=output_beam,
-                reduction=reduction,
-                use_double_scores=use_double_scores)
+    """
+    m = CtcLoss(
+        output_beam=output_beam,
+        reduction=reduction,
+        use_double_scores=use_double_scores,
+    )
 
     return m(
         decoding_graph=decoding_graph,
         dense_fsa_vec=dense_fsa_vec,
         delay_penalty=delay_penalty,
-        target_lengths=target_lengths
+        target_lengths=target_lengths,
     )

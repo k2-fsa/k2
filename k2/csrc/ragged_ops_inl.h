@@ -91,7 +91,7 @@ void SegmentedReduce(const Ragged<T> &src, T initial_value, Array1<T> *dst) {
 }
 
 template <typename T>
-Ragged<T> PlusPerSublist(Ragged<T> &src, Array1<T> &value) {
+Ragged<T> AddPerSublist(Ragged<T> &src, Array1<T> &value, T alpha) {
   NVTX_RANGE(K2_FUNC);
 
   ContextPtr &context = src.Context();
@@ -107,11 +107,11 @@ Ragged<T> PlusPerSublist(Ragged<T> &src, Array1<T> &value) {
           *value_data = value.Data();
 
   K2_EVAL(
-      context, ans_values.Dim(), lambda_do_plus, (int32_t i)->void {
+      context, ans_values.Dim(), lambda_do_add, (int32_t i)->void {
         int32_t row = row_ids_data[i];
         T value = value_data[row];
 
-        ans_data[i] = src_data[i] + value;
+        ans_data[i] = src_data[i] + value * alpha;
       });
   return ans;
 }
