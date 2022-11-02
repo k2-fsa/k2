@@ -22,6 +22,8 @@
 
 #include "k2/csrc/log.h"
 
+#include <time.h>
+
 #ifdef K2_HAVE_EXECINFO_H
 #include <execinfo.h>  // To get stack trace in error messages.
 #ifdef K2_HAVE_CXXABI_H
@@ -45,7 +47,11 @@ std::string GetTimeStamp() {
   auto now = system_clock::now();
   std::time_t time = system_clock::to_time_t(now);
   std::tm tm;
+#ifndef _MSC_VER
   localtime_r(&time, &tm);
+#else
+  localtime_s(&tm, &time);
+#endif
   char s[128];
   std::strftime(s, sizeof(s), "%F %T", &tm);
   int32_t ms =
