@@ -75,6 +75,12 @@ class CtcLoss(nn.Module):
           dense_fsa_vec:
             It represents the neural network output. Refer to the help
             information in :class:`k2.DenseFsaVec`.
+          delay_penalty:
+            A constant to penalize symbol delay, which is used to make symbol
+            emit earlier for streaming models. It is almost the same as the
+            `delay_penalty` in our `rnnt_loss`, See
+            https://github.com/k2-fsa/k2/issues/955 and
+            https://arxiv.org/pdf/2211.00490.pdf for more details.
           target_lengths:
             Used only when `reduction` is `mean`. It is a 1-D tensor of batch
             size representing lengths of the targets, e.g., number of phones or
@@ -166,6 +172,12 @@ def ctc_loss(
       output_beam:
          Beam to prune output, similar to lattice-beam in Kaldi.  Relative
          to best path of output.
+      delay_penalty:
+        A constant to penalize symbol delay, which is used to make symbol
+        emit earlier for streaming models. It is almost the same as the
+        `delay_penalty` in our `rnnt_loss`, See
+        https://github.com/k2-fsa/k2/issues/955 and
+        https://arxiv.org/pdf/2211.00490.pdf for more details.
       reduction:
         Specifies the reduction to apply to the output: 'none' | 'mean' | 'sum'.
         'none': no reduction will be applied, 'mean': the output losses will be
