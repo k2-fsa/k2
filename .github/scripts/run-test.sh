@@ -49,7 +49,7 @@ if [ $(uname) == "Darwin" ]; then
   # GitHub only provides 7 GB RAM for Linux/Windows
   # It has 14 GB RAM for macOS. This test requires a lot of RAM.
   log "Test n-gram LM rescore (librispeech)"
-  ./bin/ngram_lm_rescore \
+  ./build/bin/ngram_lm_rescore \
     --use_gpu false \
     --nn_model $repo/exp/cpu_jit.pt \
     --hlg $repo/data/lang_bpe_500/HLG.pt \
@@ -61,21 +61,21 @@ if [ $(uname) == "Darwin" ]; then
     $repo/test_wavs/1221-135766-0002.wav
 
   log "Test n-gram LM rescore + attention rescore (librispeech)"
-./build/bin/attention_rescore \
-  --use_gpu false \
-  --nn_model $repo/exp/cpu_jit.pt \
-  --hlg $repo/data/lang_bpe_500/HLG.pt \
-  --g $repo/data/lm/G_4_gram.pt \
-  --ngram_lm_scale 1.0 \
-  --attention_scale 1.0 \
-  --num_paths 100 \
-  --nbest_scale 0.5 \
-  --word_table $repo/data/lang_bpe_500/words.txt \
-  --sos_id 1 \
-  --eos_id 1 \
-  $repo/test_wavs/1089-134686-0001.wav \
-  $repo/test_wavs/1221-135766-0001.wav \
-  $repo/test_wavs/1221-135766-0002.wav
+  ./build/bin/attention_rescore \
+    --use_gpu false \
+    --nn_model $repo/exp/cpu_jit.pt \
+    --hlg $repo/data/lang_bpe_500/HLG.pt \
+    --g $repo/data/lm/G_4_gram.pt \
+    --ngram_lm_scale 1.0 \
+    --attention_scale 1.0 \
+    --num_paths 100 \
+    --nbest_scale 0.5 \
+    --word_table $repo/data/lang_bpe_500/words.txt \
+    --sos_id 1 \
+    --eos_id 1 \
+    $repo/test_wavs/1089-134686-0001.wav \
+    $repo/test_wavs/1221-135766-0001.wav \
+    $repo/test_wavs/1221-135766-0002.wav
 fi
 
 log "Streaming CTC decoding"
