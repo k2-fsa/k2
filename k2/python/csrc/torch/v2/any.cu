@@ -351,6 +351,9 @@ void PybindRaggedAny(py::module &m) {
   any.def("normalize", &RaggedAny::Normalize, py::arg("use_log"),
           kRaggedAnyNormalizeDoc);
 
+  any.def("plus", &RaggedAny::Plus, py::arg("value"),
+          kRaggedAnyNormalizeDoc);
+
   any.def("pad", &RaggedAny::Pad, py::arg("mode"), py::arg("padding_value"),
           kRaggedAnyPadDoc);
 

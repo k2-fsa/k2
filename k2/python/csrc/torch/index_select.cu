@@ -153,6 +153,8 @@ static torch::Tensor IndexSelectWrapper(torch::Tensor src, torch::Tensor index,
         return IndexSelect1D<float>(src, index, default_value);
       case ToScalarType<double>::value:
         return IndexSelect1D<double>(src, index, default_value);
+      case ToScalarType<bool>::value:
+        return IndexSelect1D<bool>(src, index, default_value);
       default:
         K2_LOG(FATAL) << "Unsupported scalar type: " << scalar_type;
         return {};
@@ -167,6 +169,8 @@ static torch::Tensor IndexSelectWrapper(torch::Tensor src, torch::Tensor index,
         return IndexSelect2D<float>(src, index);
       case ToScalarType<double>::value:
         return IndexSelect2D<double>(src, index);
+      case ToScalarType<bool>::value:
+        return IndexSelect2D<bool>(src, index);
       default:
         K2_LOG(FATAL) << "Unsupported scalar type: " << scalar_type;
         return {};

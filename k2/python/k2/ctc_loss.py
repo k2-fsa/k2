@@ -13,6 +13,7 @@ import torch.nn as nn
 from .autograd import intersect_dense
 from .dense_fsa_vec import DenseFsaVec
 from .fsa import Fsa
+from .ragged import RaggedTensor
 
 
 class CtcLoss(nn.Module):
@@ -59,6 +60,7 @@ class CtcLoss(nn.Module):
     def forward(self,
                 decoding_graph: Fsa,
                 dense_fsa_vec: DenseFsaVec,
+                delay_penalty: float = 0.0,
                 target_lengths: Optional[torch.Tensor] = None) -> torch.Tensor:
         '''Compute the CTC loss given a decoding graph and a dense fsa vector.
 
@@ -77,8 +79,26 @@ class CtcLoss(nn.Module):
           If `reduction` is `none`, return a 1-D tensor with size equal to batch
           size. If `reduction` is `mean` or `sum`, return a scalar.
         '''
-        lattice = intersect_dense(decoding_graph, dense_fsa_vec,
-                                  self.output_beam)
+        lattice = intersect_dense(
+            a_fsas=decoding_graph,
+            b_fsas=dense_fsa_vec,
+            output_beam=self.output_beam,
+            frame_idx_name="frame_idx" if delay_penalty > 0.0 else None,
+        )
+
+        # torch.save(lattice.as_dict(), f"lattice.pt")
+
+        if delay_penalty > 0.0:
+            assert hasattr(lattice, "_is_repeat_token_")
+            assert isinstance(lattice._is_repeat_token_, torch.Tensor)
+            frame_idx = RaggedTensor(
+                lattice.arcs.shape().remove_axis(1), lattice.frame_idx)
+            duration = dense_fsa_vec.duration.to(frame_idx.device)
+            offset = frame_idx.plus(-duration // 2)
+            penalty = -delay_penalty * offset.values
+            mask = (lattice.labels == 0) | (lattice.labels == -1) | lattice._is_repeat_token_
+            penalty.masked_fill_(mask, 0.0)
+            lattice.scores += penalty
 
         tot_scores = lattice.get_tot_scores(
             log_semiring=True, use_double_scores=self.use_double_scores)
@@ -98,6 +118,7 @@ class CtcLoss(nn.Module):
 def ctc_loss(decoding_graph: Fsa,
              dense_fsa_vec: DenseFsaVec,
              output_beam: float = 10,
+             delay_penalty: float = 0.0,
              reduction: Literal['none', 'mean', 'sum'] = 'sum',
              use_double_scores: bool = True,
              target_lengths: Optional[torch.Tensor] = None) -> torch.Tensor:
@@ -133,4 +154,9 @@ def ctc_loss(decoding_graph: Fsa,
                 reduction=reduction,
                 use_double_scores=use_double_scores)
 
-    return m(decoding_graph, dense_fsa_vec, target_lengths)
+    return m(
+        decoding_graph=decoding_graph,
+        dense_fsa_vec=dense_fsa_vec,
+        delay_penalty=delay_penalty,
+        target_lengths=target_lengths
+    )

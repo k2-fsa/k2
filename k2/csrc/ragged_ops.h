@@ -132,6 +132,9 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *argmax);
 template <typename T>
 Ragged<T> NormalizePerSublist(Ragged<T> &src, bool use_log);
 
+template <typename T>
+Ragged<T> PlusPerSublist(Ragged<T> &src, Array1<T> &value);
+
 /*
   Output to an array `and_values` the result of reducing each sub-list along
   the last axis of `src` with operator &, i.e. bit-wise and.

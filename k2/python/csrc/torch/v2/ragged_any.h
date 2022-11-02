@@ -250,6 +250,8 @@ struct RaggedAny {
   /// Wrapper for k2::NormalizePerSublist
   RaggedAny Normalize(bool use_log) /*const*/;
 
+  RaggedAny Plus(torch::Tensor value) /*const*/;
+
   /// Wrapper for k2::PadRagged
   torch::Tensor Pad(const std::string &mode,
                     py::object padding_value) /*const*/;
