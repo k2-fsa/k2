@@ -314,8 +314,6 @@ if(K2_WITH_CUDA)
   include(moderngpu)
 endif()
 
-include(sentencepiece)
-include(kaldifeat)
 if(K2_ENABLE_TESTS)
   enable_testing()
   include(googletest)
