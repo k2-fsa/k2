@@ -111,7 +111,7 @@ std::vector<std::vector<int32_t>> GreedySearch(
 
   K2_CHECK_EQ(encoder_out_lens.dim(), 1);
   K2_CHECK_EQ(encoder_out_lens.scalar_type(), torch::kLong);
-  K2_CHECK(encoder_out_lens.is_cpu());
+  K2_CHECK(encoder_out_lens.device().is_cpu());
 
   torch::nn::utils::rnn::PackedSequence packed_seq =
       torch::nn::utils::rnn::pack_padded_sequence(encoder_out, encoder_out_lens,
@@ -221,7 +221,7 @@ std::vector<std::vector<int32_t>> ModifiedBeamSearch(
 
   K2_CHECK_EQ(encoder_out_lens.dim(), 1);
   K2_CHECK_EQ(encoder_out_lens.scalar_type(), torch::kLong);
-  K2_CHECK(encoder_out_lens.is_cpu());
+  K2_CHECK(encoder_out_lens.device().is_cpu());
 
   torch::nn::utils::rnn::PackedSequence packed_seq =
       torch::nn::utils::rnn::pack_padded_sequence(encoder_out, encoder_out_lens,
