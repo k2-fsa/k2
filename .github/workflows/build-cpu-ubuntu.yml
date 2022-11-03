@@ -107,6 +107,21 @@ jobs:
 
           python3 -c "import torch; print('torch version:', torch.__version__)"
 
+      - name: Build wheel
+        shell: bash
+        run: |
+          export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF"
+          export K2_MAKE_ARGS="-j2"
+          python3 setup.py bdist_wheel
+          ls -lh dist/
+          ls -lh build/*
+
+      - name: Upload Wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-18.04-cpu
+          path: dist/*.whl
+
       - name: Build k2
         shell: bash
         env:
@@ -127,18 +142,3 @@ jobs:
         run: |
           cd build
           ctest --output-on-failure
-
-      - name: Build wheel
-        shell: bash
-        run: |
-          export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF"
-          export K2_MAKE_ARGS="-j2"
-          python3 setup.py bdist_wheel
-          ls -lh dist/
-          ls -lh build/*
-
-      - name: Upload Wheel
-        uses: actions/upload-artifact@v2
-        with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-18.04-cpu
-          path: dist/*.whl
