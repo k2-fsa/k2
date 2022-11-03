@@ -70,6 +70,64 @@ torch::Tensor RowIds(RaggedShapePtr shape, int32_t axis);
  */
 torch::Tensor RowSplits(RaggedShapePtr shape, int32_t axis);
 
+class FsaClass;
+using FsaClassPtr = std::shared_ptr<FsaClass>;
+
+/* Create a CTC topology.
+
+   Note:
+     A standard CTC topology is the conventional one, where there
+     is a mandatory blank between two repeated neighboring symbols.
+     A non-standard, i.e., modified CTC topology, imposes no such constraint.
+
+   @param max_token  The maximum token ID (inclusive). We assume that token IDs
+                     are contiguous (from 1 to `max_token`). 0 represents blank.
+   @param modified  If False, create a standard CTC topology. Otherwise, create
+                    a modified CTC topology.
+   @param device  A torch.device indicating what device the returned Fsa will
+                  be. Default torch::CPU.
+   @return  Return either a standard or a modified CTC topology as an FSA
+            depending on whether `modified` is false or true.
+ */
+FsaClassPtr GetCtcTopo(int32_t max_token, bool modified = false,
+                       torch::Device device = torch::kCPU);
+
+/**
+  Load a file saved in Python by
+
+    torch.save(fsa.as_dict(), filename, _use_new_zipfile_serialization=True)
+
+  Note: `_use_new_zipfile_serialization` is True by default
+
+  @param filename Path to the filename produced in Python by `torch.save()`.
+  @param map_location  It has the same meaning as the one in `torch.load()`.
+                       The loaded FSA is moved to this device
+                       before returning.
+  @return Return the FSA contained in the filename.
+ */
+FsaClassPtr LoadFsa(const std::string &filename,
+                    torch::Device map_location = torch::kCPU);
+
+/** Run CTC decode.
+ * @param log_softmax_out A tensor of shape (N, T, C) containing the output
+ *                        from a log_softmax layer.
+ * @param log_softmax_out_lens  A tensor of shape (N,) containing the number
+ *                              of valid frames in log_softmax_out before
+ *                              padding.
+ * @param decoding_graph  Can be either the return value of CtcTopo() or
+ *                        an HLG returned from LoadFsa()
+ *
+ * @return Return the decoding results of size `N`. ans[i] is the result
+ *         for the i-th utterance. If the decoding_graph is a CtcTopo,
+ *         then the decoding result contains token IDs; if the decoding_graph
+ *         is an HLG, then the decoding result contains word IDs.
+ *         Note: The decoding result does not contain repeats and does not
+ *         contain blanks.
+ */
+std::vector<std::vector<int32_t>> Decode(torch::Tensor log_softmax_out,
+                                         torch::Tensor log_softmax_out_lens,
+                                         FsaClassPtr decoding_graph);
+
 }  // namespace k2
 
 #endif  // K2_CSRC_TORCH_API_H_
