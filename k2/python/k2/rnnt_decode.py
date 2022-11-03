@@ -168,8 +168,9 @@ class RnntDecodingStreams(object):
             stream (note: the frames we have ever received for the corresponding
             stream). It MUST satisfy `len(num_frames) == self.num_streams`.
           allow_partial:
-            If true, we will treat all the states on the last frame to be final
-            state. If false, we only care about the real final state in the
+            If true and there is no final state active, we will treat all the
+            states on the last frame to be final state.
+            If false, we only care about the real final state in the
             decoding graph on the last frame when generating lattice.
             Default False.
 
