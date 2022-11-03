@@ -29,9 +29,19 @@ SymbolTable::SymbolTable(const std::string &filename) {
   std::string sym;
   int32_t id;
   while (is >> sym >> id) {
+    if (sym.size() >= 3) {
+      // For BPE-based models, we replace ▁ with a space
+      // Unicode 9601, hex 0x2581, utf8 0xe29681
+      const uint8_t *p = reinterpret_cast<const uint8_t *>(sym.c_str());
+      if (p[0] == 0xe2 && p[1] == 0x96 && p[2] == 0x81) {
+        sym = sym.replace(0, 3, " ");
+      }
+    }
+
     K2_CHECK(!sym.empty());
     K2_CHECK_EQ(sym2id_.count(sym), 0) << "Duplicated symbol: " << sym;
     K2_CHECK_EQ(id2sym_.count(id), 0) << "Duplicated ID: " << id;
+
     sym2id_.insert({sym, id});
     id2sym_.insert({id, sym});
   }

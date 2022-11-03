@@ -21,8 +21,8 @@
 #include "k2/torch/csrc/deserialization.h"
 #include "k2/torch/csrc/features.h"
 #include "k2/torch/csrc/fsa_algo.h"
+#include "k2/torch/csrc/symbol_table.h"
 #include "k2/torch/csrc/wave_reader.h"
-#include "sentencepiece_processor.h"  // NOLINT
 #include "torch/all.h"
 #include "torch/script.h"
 
@@ -34,7 +34,7 @@ Usage:
   ./bin/ctc_decode \
     --use_gpu true \
     --nn_model <path to torch scripted pt file> \
-    --bpe_model <path to pre-trained BPE model> \
+    --tokens <path to tokens.txt> \
     <path to foo.wav> \
     <path to bar.wav> \
     <more waves if any>
@@ -51,7 +51,7 @@ Caution:
 
 C10_DEFINE_bool(use_gpu, false, "true to use GPU; false to use CPU");
 C10_DEFINE_string(nn_model, "", "Path to the model exported by torch script.");
-C10_DEFINE_string(bpe_model, "", "Path to the pretrained BPE model.");
+C10_DEFINE_string(tokens, "", "Path to the tokens.txt");
 
 // Fsa decoding related
 C10_DEFINE_double(search_beam, 20, "search_beam in IntersectDensePruned");
@@ -83,8 +83,8 @@ static void CheckArgs() {
     exit(EXIT_FAILURE);
   }
 
-  if (FLAGS_bpe_model.empty()) {
-    std::cerr << "Please provide --bpe_model\n" << torch::UsageMessage();
+  if (FLAGS_tokens.empty()) {
+    std::cerr << "Please provide --tokens\n" << torch::UsageMessage();
     exit(EXIT_FAILURE);
   }
 }
@@ -184,15 +184,14 @@ int main(int argc, char *argv[]) {
   auto ragged_aux_labels = k2::GetTexts(lattice);
   auto aux_labels_vec = ragged_aux_labels.ToVecVec();
 
-  sentencepiece::SentencePieceProcessor processor;
-  auto status = processor.Load(FLAGS_bpe_model);
-  K2_CHECK(status.ok()) << status.ToString();
+  k2::SymbolTable symbol_table(FLAGS_tokens);
 
   std::vector<std::string> texts;
   for (const auto &ids : aux_labels_vec) {
     std::string text;
-    status = processor.Decode(ids, &text);
-    K2_CHECK(status.ok()) << status.ToString();
+    for (auto id : ids) {
+      text.append(symbol_table[id]);
+    }
     texts.emplace_back(std::move(text));
   }
 

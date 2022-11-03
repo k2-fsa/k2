@@ -20,8 +20,8 @@
 #include "k2/torch/csrc/beam_search.h"
 #include "k2/torch/csrc/features.h"
 #include "k2/torch/csrc/parse_options.h"
+#include "k2/torch/csrc/symbol_table.h"
 #include "k2/torch/csrc/wave_reader.h"
-#include "sentencepiece_processor.h"  // NOLINT
 #include "torch/all.h"
 
 static constexpr const char *kUsageMessage = R"(
@@ -33,7 +33,7 @@ Usage:
 
   ./bin/pruned_stateless_transducer \
     --nn-model=/path/to/cpu_jit.pt \
-    --bpe-model=/path/to/bpe.model \
+    --tokens=/path/to/tokens.txt \
     --use-gpu=true \
     --decoding-method=modified_beam_search \
     /path/to/foo.wav \
@@ -71,9 +71,9 @@ int main(int argc, char *argv[]) {
 
   k2::ParseOptions po(kUsageMessage);
 
-  std::string nn_model;   // path to the torch jit model file
-  std::string bpe_model;  // path to the BPE model file
-  bool use_gpu = false;   // true to use GPU for decoding; false to use CPU.
+  std::string nn_model;  // path to the torch jit model file
+  std::string tokens;    // path to tokens.txt
+  bool use_gpu = false;  // true to use GPU for decoding; false to use CPU.
   std::string decoding_method = "greedy_search";  // Supported methods are:
                                                   // greedy_search,
                                                   // modified_beam_search
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
 
   po.Register("nn-model", &nn_model, "Path to the torch jit model file");
 
-  po.Register("bpe-model", &bpe_model, "Path to the BPE model file");
+  po.Register("tokens", &tokens, "Path to the tokens.txt");
 
   po.Register("use-gpu", &use_gpu,
               "true to use GPU for decoding; false to use CPU. "
@@ -171,15 +171,14 @@ int main(int argc, char *argv[]) {
         k2::ModifiedBeamSearch(module, encoder_out, encoder_out_lens.cpu());
   }
 
-  sentencepiece::SentencePieceProcessor processor;
-  auto status = processor.Load(bpe_model);
-  K2_CHECK(status.ok()) << status.ToString();
+  k2::SymbolTable symbol_table(tokens);
 
   std::vector<std::string> texts;
   for (const auto &ids : hyp_tokens) {
     std::string text;
-    status = processor.Decode(ids, &text);
-    K2_CHECK(status.ok()) << status.ToString();
+    for (auto id : ids) {
+      text.append(symbol_table[id]);
+    }
     texts.emplace_back(std::move(text));
   }
 

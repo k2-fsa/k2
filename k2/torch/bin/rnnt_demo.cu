@@ -29,7 +29,6 @@
 #include "k2/torch/csrc/utils.h"
 #include "k2/torch/csrc/wave_reader.h"
 #include "kaldifeat/csrc/feature-fbank.h"
-#include "sentencepiece_processor.h"  // NOLINT
 #include "torch/all.h"
 #include "torch/script.h"
 #include "torch/utils.h"
@@ -39,9 +38,8 @@ C10_DEFINE_string(jit_pt, "", "Path to exported jit file.");
 C10_DEFINE_bool(
     use_lg, false,
     "True to use an LG decoding graph. False to use a trivial decoding graph");
-C10_DEFINE_string(
-    bpe_model, "",
-    "Path to a pretrained BPE model. Needed if --use_lg is false");
+C10_DEFINE_string(tokens, "",
+                  "Path to a tokens.txt. Needed if --use_lg is false");
 C10_DEFINE_string(lg, "", "Path to LG.pt. Needed if --use_lg is true");
 C10_DEFINE_string(word_table, "",
                   "Path to words.txt. Needed if --use_lg is true");
@@ -84,8 +82,8 @@ static void CheckArgs() {
     exit(EXIT_FAILURE);
   }
 
-  if (FLAGS_use_lg == false && FLAGS_bpe_model.empty()) {
-    std::cout << "Please provide --bpe_model"
+  if (FLAGS_use_lg == false && FLAGS_tokens.empty()) {
+    std::cout << "Please provide --tokens"
               << "\n";
     std::cout << torch::UsageMessage() << "\n";
     exit(EXIT_FAILURE);
@@ -117,7 +115,7 @@ int main(int argc, char *argv[]) {
     ./bin/rnnt_demo \
       --use_lg false \
       --jit_pt <path to exported torch script pt file> \
-      --bpe_model <path to pretrained BPE model> \
+      --tokens <path to tokens.txt> \
       /path/to/foo.wav \
       /path/to/bar.wav \
       <more wave files if any>
@@ -314,18 +312,13 @@ int main(int argc, char *argv[]) {
     auto aux_labels_vec = ragged_aux_labels.ToVecVec();
 
     if (!FLAGS_use_lg) {
-      sentencepiece::SentencePieceProcessor processor;
-      auto status = processor.Load(FLAGS_bpe_model);
-      if (!status.ok()) {
-        K2_LOG(FATAL) << status.ToString();
-      }
+      k2::SymbolTable symbol_table(FLAGS_tokens);
       for (size_t i = 0; i < current_wave_ids.size(); ++i) {
         std::string text;
-        status = processor.Decode(aux_labels_vec[i], &text);
-        if (!status.ok()) {
-          K2_LOG(FATAL) << status.ToString();
+        for (auto id : aux_labels_vec[i]) {
+          text.append(symbol_table[id]);
         }
-        texts[current_wave_ids[i]] = text;
+        texts[current_wave_ids[i]] = std::move(text);
       }
     } else {
       k2::SymbolTable symbol_table(FLAGS_word_table);

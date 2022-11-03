@@ -16,7 +16,7 @@ GIT_LFS_SKIP_SMUDGE=1 git clone $repo_url
 pushd $repo
 git lfs pull --include "exp/cpu_jit.pt"
 
-git lfs pull --include "data/lang_bpe_500/bpe.model"
+git lfs pull --include "data/lang_bpe_500/tokens.txt"
 git lfs pull --include "data/lang_bpe_500/HLG.pt"
 git lfs pull --include "data/lang_bpe_500/words.txt"
 
@@ -28,7 +28,7 @@ log "Test CTC decode (librispeech)"
 ./build/bin/ctc_decode \
   --use_gpu false \
   --nn_model $repo/exp/cpu_jit.pt \
-  --bpe_model $repo/data/lang_bpe_500/bpe.model \
+  --tokens $repo/data/lang_bpe_500/tokens.txt \
   $repo/test_wavs/1089-134686-0001.wav \
   $repo/test_wavs/1221-135766-0001.wav \
   $repo/test_wavs/1221-135766-0002.wav
@@ -83,7 +83,7 @@ log "Streaming CTC decoding"
 ./build/bin/online_decode \
   --use_ctc_decoding true \
   --jit_pt $repo/exp/cpu_jit.pt \
-  --bpe_model $repo/data/lang_bpe_500/bpe.model \
+  --tokens $repo/data/lang_bpe_500/tokens.txt \
   $repo/test_wavs/1089-134686-0001.wav \
   $repo/test_wavs/1221-135766-0001.wav \
   $repo/test_wavs/1221-135766-0002.wav
@@ -110,7 +110,6 @@ log "Download pretrained model and test-data from $repo_url"
 GIT_LFS_SKIP_SMUDGE=1 git clone $repo_url
 pushd $repo
 git lfs pull --include "exp/cpu_jit.pt"
-git lfs pull --include "data/lang_bpe_500/bpe.model"
 git lfs pull --include "data/lang_bpe_500/LG.pt"
 popd
 
@@ -119,7 +118,7 @@ log "Test RNN-T decoding"
 ./build/bin/pruned_stateless_transducer \
   --use-gpu=false \
   --nn-model=$repo/exp/cpu_jit.pt \
-  --bpe-model=$repo/data/lang_bpe_500/bpe.model \
+  --tokens=$repo/data/lang_bpe_500/tokens.txt \
   $repo/test_wavs/1089-134686-0001.wav \
   $repo/test_wavs/1221-135766-0001.wav \
   $repo/test_wavs/1221-135766-0002.wav
@@ -127,7 +126,7 @@ log "Test RNN-T decoding"
 ./build/bin/rnnt_demo \
   --use_lg false \
   --jit_pt $repo/exp/cpu_jit.pt \
-  --bpe_model $repo/data/lang_bpe_500/bpe.model \
+  --tokens $repo/data/lang_bpe_500/tokens \
   $repo/test_wavs/1089-134686-0001.wav \
   $repo/test_wavs/1221-135766-0001.wav \
   $repo/test_wavs/1221-135766-0002.wav

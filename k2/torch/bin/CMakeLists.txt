@@ -5,11 +5,6 @@ set(bin_dep_libs
   ${TORCH_LIBRARIES}
   k2_torch
 )
-if(BUILD_SHARED_LIBS)
-  list(APPEND bin_dep_libs sentencepiece)
-else()
-  list(APPEND bin_dep_libs sentencepiece-static)
-endif()
 
 #----------------------------------------
 #       CTC decoding
