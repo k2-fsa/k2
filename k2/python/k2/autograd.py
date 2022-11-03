@@ -657,11 +657,11 @@ def intersect_dense_pruned(a_fsas: Fsa,
                            b_fsas: DenseFsaVec,
                            search_beam: float,
                            output_beam: float,
-                           allow_partial: bool,
                            min_active_states: int,
                            max_active_states: int,
                            seqframe_idx_name: Optional[str] = None,
-                           frame_idx_name: Optional[str] = None) -> Fsa:
+                           frame_idx_name: Optional[str] = None,
+                           allow_partial: bool = False) -> Fsa:
     '''Intersect array of FSAs on CPU/GPU.
 
     Caution:
