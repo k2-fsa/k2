@@ -394,7 +394,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             given frame for any given intersection/composition task. This is
             advisory, in that it will try not to exceed that but may not always
             succeed. You can use a very large number if no constraint is needed.
-          allow_partial If true, we will treat all the states on the
+          allow_partial If true and there was no final state active,
+            we will treat all the states on the
             last frame to be final state. If false, we only
             care about the real final state in the decoding
             graph on the last frame when generating lattice.
@@ -691,7 +692,8 @@ def intersect_dense_pruned(a_fsas: Fsa,
         frame for any given intersection/composition task. This is advisory,
         in that it will try not to exceed that but may not always succeed.
         You can use a very large number if no constraint is needed.
-      allow_partial If true, we will treat all the states on the
+      allow_partial If true and there was no final state active,
+        we will treat all the states on the
         last frame to be final state. If false, we only
         care about the real final state in the decoding
         graph on the last frame when generating lattice.

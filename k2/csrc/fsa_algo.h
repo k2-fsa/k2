@@ -178,8 +178,9 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
                          of states are active.  The hash size used per FSA is 4
                          times (this rounded up to a power of 2), so this
                          affects memory consumption.
-       @param [in] allow_partial If true, we will treat all the states on the
-                         last frame to be final state. If false, we only
+       @param [in] allow_partial If true and there was no final state active,
+                         we will treat all the states on the last frame
+                         to be final state. If false, we only
                          care about the real final state in the decoding
                          graph on the last frame when generating lattice.
          @param[out] out Output vector of composed, pruned FSAs, with same

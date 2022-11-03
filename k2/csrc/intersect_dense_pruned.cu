@@ -133,8 +133,9 @@ class MultiGraphDenseIntersectPruned {
                            intersection/composition task. This is advisory,
                            in that it will try not to exceed that but may not
                            always succeed.  This determines the hash size.
-       @param [in] allow_partial If true, we will treat all the states on the
-                           last frame to be final state. If false, we only
+       @param [in] allow_partial If true and there was no final state active,
+                           we will treat all the states on the last frame
+                           to be final state. If false, we only
                            care about the real final state in the decoding
                            graph on the last frame when generating lattice.
 
