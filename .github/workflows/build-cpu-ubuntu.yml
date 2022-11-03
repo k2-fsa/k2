@@ -129,7 +129,7 @@ jobs:
         run: |
           pwd
           ./scripts/github_actions/fix_torch.sh
-          mkdir build
+          mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
           cat k2/csrc/version.h

@@ -37,9 +37,6 @@
 #include "k2/python/csrc/torch/v2/k2.h"
 
 void PybindTorch(py::module &m) {
-  // _k2 depends on torch, we should import torch before importing _k2.
-  py::module_::import("torch");
-
   PybindArc(m);
   PybindFsa(m);
   PybindFsaAlgo(m);
