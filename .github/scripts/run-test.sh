@@ -126,7 +126,7 @@ log "Test RNN-T decoding"
 ./build/bin/rnnt_demo \
   --use_lg false \
   --jit_pt $repo/exp/cpu_jit.pt \
-  --tokens $repo/data/lang_bpe_500/tokens \
+  --tokens $repo/data/lang_bpe_500/tokens.txt \
   $repo/test_wavs/1089-134686-0001.wav \
   $repo/test_wavs/1221-135766-0001.wav \
   $repo/test_wavs/1221-135766-0002.wav

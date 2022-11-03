@@ -202,7 +202,11 @@ static void TestLoadFsaMapToCpu(const std::string &dir_name) {
 
 TEST(Deserialization, Test) {
   char pattern[] = "/tmp/k2_test.XXXXXX";
+#ifndef _MSC_VER
   char *dir_name = mkdtemp(pattern);
+#else
+  char *dir_name = "./";
+#endif
   assert(dir_name != nullptr);
 
   TestDictOfTensorIntStr(dir_name);
@@ -217,8 +221,10 @@ TEST(Deserialization, Test) {
   }
 #endif
 
+#ifndef _MSC_VER
   int ret = rmdir(dir_name);
   assert(ret == 0);
+#endif
 }
 
 }  // namespace k2
