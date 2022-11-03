@@ -170,5 +170,3 @@ if [ x"${url}" == "x" ]; then
 else
   retry python3 -m pip install -q $package -f $url
 fi
-
-./fix_torch.sh

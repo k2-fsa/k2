@@ -20,6 +20,8 @@
 #define K2_CSRC_TORCH_API_H_
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "torch/script.h"
 
