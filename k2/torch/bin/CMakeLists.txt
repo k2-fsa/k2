@@ -4,6 +4,7 @@ include(transform)
 set(bin_dep_libs
   ${TORCH_LIBRARIES}
   k2_torch
+  k2_fbank
 )
 
 #----------------------------------------

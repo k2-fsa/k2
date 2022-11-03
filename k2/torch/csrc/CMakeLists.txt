@@ -7,7 +7,6 @@ set(k2_torch_srcs
   decode.cu
   dense_fsa_vec.cu
   deserialization.cu
-  features.cu
   fsa_algo.cu
   fsa_class.cu
   hypothesis.cu
@@ -23,7 +22,10 @@ if(NOT K2_WITH_CUDA)
 endif()
 
 add_library(k2_torch ${k2_torch_srcs})
-target_link_libraries(k2_torch PUBLIC ${TORCH_LIBRARIES} context kaldifeat_core)
+target_link_libraries(k2_torch PUBLIC ${TORCH_LIBRARIES} context)
+
+add_library(k2_fbank features.cc)
+target_link_libraries(k2_fbank PUBLIC ${TORCH_LIBRARIES} kaldifeat_core)
 
 if(K2_ENABLE_TESTS)
   # Please sort files alphabetically
