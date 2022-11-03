@@ -133,16 +133,23 @@ class MultiGraphDenseIntersectPruned {
                            intersection/composition task. This is advisory,
                            in that it will try not to exceed that but may not
                            always succeed.  This determines the hash size.
+       @param [in] allow_partial If true, we will treat all the states on the
+                           last frame to be final state. If false, we only
+                           care about the real final state in the decoding
+                           graph on the last frame when generating lattice.
+
    */
   MultiGraphDenseIntersectPruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                                  float search_beam, float output_beam,
-                                 int32_t min_active, int32_t max_active)
+                                 int32_t min_active, int32_t max_active,
+                                 bool allow_partial)
       : a_fsas_(a_fsas),
         b_fsas_(b_fsas),
         search_beam_(search_beam),
         output_beam_(output_beam),
         min_active_(min_active),
         max_active_(max_active),
+        allow_partial_(allow_partial),
         dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), search_beam),
         forward_semaphore_(1) {
     NVTX_RANGE(K2_FUNC);
@@ -498,12 +505,27 @@ class MultiGraphDenseIntersectPruned {
           int32_t dest_state_idx012 = oarc_idx01x_next +
                                       arc_info.u.dest_info_state_idx1;
           arc.dest_state = dest_state_idx012 - oarc_idx0xx;
-          arc.label = a_fsas_arcs[arc_info.a_fsas_arc_idx012].label;
+          int32_t arc_label = a_fsas_arcs[arc_info.a_fsas_arc_idx012].label;
+          arc.label = arc_label;
+          int32_t final_t = b_fsas_row_splits1[oarc_idx0+1] - b_fsas_row_splits1[oarc_idx0];
+          if (t == final_t - 1 && arc_label != -1) {
+            if (allow_partial_) {
+              arc.label = -1;
+            } else {
+              // Unreachable code.
+              K2_LOG(FATAL) <<
+                "arc.labe != -1 on final_arc when allow_partial==false.";
+            }
+          }
 
           int32_t fsa_id = oarc_idx0,
             b_fsas_idx0x = b_fsas_row_splits1[fsa_id],
             b_fsas_idx01 = b_fsas_idx0x + t,
-             b_fsas_idx2 = (arc.label + 1),
+            // Use arc_label instead of arc.label to keep track of
+            // the origial arc index in b_fsas when allow_partial == true.
+            // Then arc_map_b storages the "correct" arc index instead of
+            // the non-exist manually added arc pointing to super-final state.
+            b_fsas_idx2 = (arc_label + 1),
        b_fsas_arc_idx012 = b_fsas_idx01 * b_fsas_num_cols + b_fsas_idx2;
 
           arc.score = arc_info.arc_loglike;
@@ -664,6 +686,9 @@ class MultiGraphDenseIntersectPruned {
     const int32_t *ai_row_ids2 = ai_shape.RowIds(2).Data();
     // from state_idx01 to arc_idx01x
     const int32_t *ai_row_splits2 = ai_shape.RowSplits(2).Data();
+
+    const int32_t *a_fsas_row_splits1 = a_fsas_.shape.RowSplits(1).Data();
+    const int32_t *a_fsas_row_ids1 = a_fsas_.shape.RowIds(1).Data();
     // from state_idx01 (into a_fsas_) to arc_idx01x (into a_fsas_)
     const int32_t *a_fsas_row_splits2 = a_fsas_.shape.RowSplits(2).Data();
 
@@ -678,6 +703,29 @@ class MultiGraphDenseIntersectPruned {
 
     Ragged<ArcInfo> ai(ai_shape);
     ArcInfo *ai_data = ai.values.Data();  // uninitialized
+
+    // A valid final arc means its label == -1.
+    auto has_valid_final_arc = Array1<bool>(c_, NumFsas(), false);
+    bool *has_valid_final_arc_data = has_valid_final_arc.Data();
+
+    if (allow_partial_) {
+      K2_EVAL(
+         c_, ai.values.Dim(), set_has_non_inf_arc, (int32_t ai_arc_idx012)->void {
+           int32_t ai_state_idx01 = ai_row_ids2[ai_arc_idx012],
+                   ai_fsa_idx0 = ai_row_ids1[ai_state_idx01],
+                   ai_arc_idx01x = ai_row_splits2[ai_state_idx01],
+                   ai_arc_idx2 = ai_arc_idx012 - ai_arc_idx01x;
+           StateInfo sinfo = state_values[ai_state_idx01];
+           int32_t a_fsas_arc_idx01x =
+                       a_fsas_row_splits2[sinfo.a_fsas_state_idx01],
+                   a_fsas_arc_idx012 = a_fsas_arc_idx01x + ai_arc_idx2;
+           Arc arc = arcs[a_fsas_arc_idx012];
+           auto final_t = b_fsas_row_splits1[ai_fsa_idx0+1] - b_fsas_row_splits1[ai_fsa_idx0];
+           if (final_t - 1 == t && -1 == arc.label) {
+             has_valid_final_arc_data[ai_fsa_idx0] = true;
+           }
+         });
+    }
 
     K2_EVAL(
         c_, ai.values.Dim(), ai_lambda, (int32_t ai_arc_idx012)->void {
@@ -698,6 +746,17 @@ class MultiGraphDenseIntersectPruned {
           K2_DCHECK_LT(static_cast<uint32_t>(scores_idx2),
                        static_cast<uint32_t>(scores_num_cols));
           float acoustic_score = scores_acc(scores_idx01, scores_idx2);
+          auto dest_state = arc.dest_state;
+          auto final_t = b_fsas_row_splits1[ai_fsa_idx0+1] - b_fsas_row_splits1[ai_fsa_idx0];
+          if (final_t - 1 == t && !has_valid_final_arc_data[ai_fsa_idx0] &&
+              allow_partial_) {
+              int32_t a_fsas_idx0 = a_fsas_row_ids1[sinfo.a_fsas_state_idx01];
+              // state_idx1 is 0-based.
+              // So "-1" is used when calculating a_fsas_final_state_idx1.
+              int32_t a_fsas_final_state_idx1 = a_fsas_row_splits1[a_fsas_idx0 + 1] - 1 - a_fsas_row_splits1[a_fsas_idx0];
+              dest_state = a_fsas_final_state_idx1;
+              acoustic_score = 0.0;
+          }
           ArcInfo ai;
           ai.a_fsas_arc_idx012 = a_fsas_arc_idx012;
           ai.arc_loglike = acoustic_score + arc.score;
@@ -709,7 +768,7 @@ class MultiGraphDenseIntersectPruned {
           // convert to an idx01; this relies on the fact that
           // sinfo.abs_state_id == arc.src_state + a_fsas_fsa_idx0x.
           ai.u.dest_a_fsas_state_idx01 =
-              sinfo.a_fsas_state_idx01 + arc.dest_state - arc.src_state;
+              sinfo.a_fsas_state_idx01 + dest_state - arc.src_state;
           ai_data[ai_arc_idx012] = ai;
         });
     return ai;
@@ -1459,6 +1518,7 @@ class MultiGraphDenseIntersectPruned {
   float output_beam_;
   int32_t min_active_;
   int32_t max_active_;
+  bool allow_partial_;
   Array1<float> dynamic_beams_;  // dynamic beams (initially just search_beam_
                                  // but change due to max_active/min_active
                                  // constraints).
@@ -1521,13 +1581,14 @@ class MultiGraphDenseIntersectPruned {
 void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                           float search_beam, float output_beam,
                           int32_t min_active_states, int32_t max_active_states,
+                          bool allow_partial,
                           FsaVec *out, Array1<int32_t> *arc_map_a,
                           Array1<int32_t> *arc_map_b) {
   NVTX_RANGE("IntersectDensePruned");
   FsaVec a_vec = FsaToFsaVec(a_fsas);
   MultiGraphDenseIntersectPruned intersector(a_vec, b_fsas, search_beam,
                                              output_beam, min_active_states,
-                                             max_active_states);
+                                             max_active_states, allow_partial);
 
   intersector.Intersect();
   intersector.FormatOutput(out, arc_map_a, arc_map_b);

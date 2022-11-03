@@ -161,10 +161,10 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
          @param[in] b_fsas   Input FSAs that correspond to neural network
                          outputs (see documentation in fsa.h).
          @param[in] search_beam   Beam for frame-synchronous beam pruning,
-                    e.g. 20. Smaller is faster, larger is more exact
-                    (less pruning). This is the default value; it may be
-                    modified by {min,max}_active which dictate the minimum
-                    or maximum allowed number of active states per frame.
+                         e.g. 20. Smaller is faster, larger is more exact
+                         (less pruning). This is the default value; it may be
+                         modified by {min,max}_active which dictate the minimum
+                         or maximum allowed number of active states per frame.
          @param[in] output_beam   Beam with which we prune the output (analogous
                          to lattice-beam in Kaldi), e.g. 8.  We discard arcs in
                          the output that are not on a path that's within
@@ -178,6 +178,10 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
                          of states are active.  The hash size used per FSA is 4
                          times (this rounded up to a power of 2), so this
                          affects memory consumption.
+       @param [in] allow_partial If true, we will treat all the states on the
+                         last frame to be final state. If false, we only
+                         care about the real final state in the decoding
+                         graph on the last frame when generating lattice.
          @param[out] out Output vector of composed, pruned FSAs, with same
                          Dim0() as b_fsas.  Elements of it may be empty if the
                          composition was empty, either intrinsically or due to
@@ -196,6 +200,7 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
 void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                           float search_beam, float output_beam,
                           int32_t min_active_states, int32_t max_active_states,
+                          bool allow_partial,
                           FsaVec *out, Array1<int32_t> *arc_map_a,
                           Array1<int32_t> *arc_map_b);
 

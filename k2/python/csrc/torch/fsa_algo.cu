@@ -200,7 +200,7 @@ static void PybindIntersectDensePruned(py::module &m) {
       "intersect_dense_pruned",
       [](FsaVec &a_fsas, DenseFsaVec &b_fsas, float search_beam,
          float output_beam, int32_t min_active_states,
-         int32_t max_active_states)
+         int32_t max_active_states, bool allow_partial)
           -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
         DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> arc_map_a;
@@ -208,13 +208,15 @@ static void PybindIntersectDensePruned(py::module &m) {
         FsaVec out;
 
         IntersectDensePruned(a_fsas, b_fsas, search_beam, output_beam,
-                             min_active_states, max_active_states, &out,
+                             min_active_states, max_active_states,
+                             allow_partial, &out,
                              &arc_map_a, &arc_map_b);
         return std::make_tuple(out, ToTorch(arc_map_a), ToTorch(arc_map_b));
       },
       py::arg("a_fsas"), py::arg("b_fsas"), py::arg("search_beam"),
       py::arg("output_beam"), py::arg("min_active_states"),
-      py::arg("max_active_states"));
+      py::arg("max_active_states"),
+      py::arg("allow_partial") = false);
 }
 
 static void PybindIntersectDense(py::module &m) {

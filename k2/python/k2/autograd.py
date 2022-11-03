@@ -358,6 +358,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
                 output_beam: float,
                 min_active_states: int,
                 max_active_states: int,
+                allow_partial: bool,
                 unused_scores_a: torch.Tensor,
                 unused_scores_b: torch.Tensor,
                 seqframe_idx_name: Optional[str] = None,
@@ -383,16 +384,20 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
           output_beam:
             Pruning beam for the output of intersection (vs. best path);
             equivalent to kaldi's lattice-beam.  E.g. 8.
-          max_active_states:
-            Maximum number of FSA states that are allowed to be active on any
-            given frame for any given intersection/composition task. This is
-            advisory, in that it will try not to exceed that but may not always
-            succeed. You can use a very large number if no constraint is needed.
           min_active_states:
             Minimum number of FSA states that are allowed to be active on any
             given frame for any given intersection/composition task. This is
             advisory, in that it will try not to have fewer than this number
             active. Set it to zero if there is no constraint.
+          max_active_states:
+            Maximum number of FSA states that are allowed to be active on any
+            given frame for any given intersection/composition task. This is
+            advisory, in that it will try not to exceed that but may not always
+            succeed. You can use a very large number if no constraint is needed.
+          allow_partial If true, we will treat all the states on the
+            last frame to be final state. If false, we only
+            care about the real final state in the decoding
+            graph on the last frame when generating lattice.
           unused_scores_a:
             It equals to `a_fsas.scores` and its sole purpose is for back
             propagation.
@@ -418,7 +423,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             search_beam=search_beam,
             output_beam=output_beam,
             min_active_states=min_active_states,
-            max_active_states=max_active_states)
+            max_active_states=max_active_states,
+            allow_partial=allow_partial)
 
         out_fsa[0] = Fsa(ragged_arc)
 
@@ -650,6 +656,7 @@ def intersect_dense_pruned(a_fsas: Fsa,
                            b_fsas: DenseFsaVec,
                            search_beam: float,
                            output_beam: float,
+                           allow_partial: bool,
                            min_active_states: int,
                            max_active_states: int,
                            seqframe_idx_name: Optional[str] = None,
@@ -684,6 +691,10 @@ def intersect_dense_pruned(a_fsas: Fsa,
         frame for any given intersection/composition task. This is advisory,
         in that it will try not to exceed that but may not always succeed.
         You can use a very large number if no constraint is needed.
+      allow_partial If true, we will treat all the states on the
+        last frame to be final state. If false, we only
+        care about the real final state in the decoding
+        graph on the last frame when generating lattice.
       seqframe_idx_name:
         If set (e.g. to 'seqframe'), an attribute in the output will be created
         that encodes the sequence-index and the frame-index within that
@@ -717,7 +728,8 @@ def intersect_dense_pruned(a_fsas: Fsa,
     # in `out_fsa[0].scores`
     _IntersectDensePrunedFunction.apply(a_fsas, b_fsas, out_fsa, search_beam,
                                         output_beam, min_active_states,
-                                        max_active_states, a_fsas.scores,
+                                        max_active_states, allow_partial,
+                                        a_fsas.scores,
                                         b_fsas.scores, seqframe_idx_name,
                                         frame_idx_name)
     return out_fsa[0]
