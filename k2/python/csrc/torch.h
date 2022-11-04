@@ -27,7 +27,6 @@
 
 #include "k2/csrc/log.h"
 #include "k2/csrc/torch_util.h"
-#include "k2/python/csrc/torch.h"
 #include "torch/extension.h"
 
 namespace pybind11 {
@@ -96,6 +95,7 @@ PyClass To(PyClass &pyclass, py::object device) {
     if (context->GetDeviceType() == kCpu) return pyclass;
 
     // CUDA to CPU
+    py::gil_scoped_release release;
     DeviceGuard guard(context);
     return pyclass.To(GetCpuContext());
   }
@@ -110,6 +110,7 @@ PyClass To(PyClass &pyclass, py::object device) {
     return pyclass;
 
   // CPU to CUDA
+  py::gil_scoped_release release;
   DeviceGuard guard(device_index);
   return pyclass.To(GetCudaContext(device_index));
 }
