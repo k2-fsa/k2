@@ -37,9 +37,6 @@
 
 C10_DEFINE_bool(use_gpu, false, "True to use GPU. False to use CPU");
 C10_DEFINE_string(jit_pt, "", "Path to exported jit file.");
-C10_DEFINE_string(
-    bpe_model, "",
-    "Path to a pretrained BPE model. Needed if --use_ctc_decoding is true");
 C10_DEFINE_bool(use_ctc_decoding, true, "True to use CTC decoding");
 C10_DEFINE_string(hlg, "",
                   "Path to HLG.pt. Needed if --use_ctc_decoding is false");
@@ -114,7 +111,7 @@ int main(int argc, char *argv[]) {
     ./bin/online_decode \
       --use_ctc_decoding true \
       --jit_pt <path to exported torch script pt file> \
-      --bpe_model <path to pretrained BPE model> \
+      --token_table <path to tokens.txt> \
       /path/to/foo.wav \
       /path/to/bar.wav \
       <more wave files if any>
