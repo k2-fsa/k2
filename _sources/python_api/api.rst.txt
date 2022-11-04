@@ -362,6 +362,11 @@ name
 
 .. autoattribute:: k2.DeterminizeWeightPushingType.name
 
+value
+^^^^^
+
+.. autoattribute:: k2.DeterminizeWeightPushingType.value
+
 Fsa
 ---
 
