@@ -271,7 +271,6 @@ def rnnt_loss_simple(
         get if you did `torch.autograd.grad((-loss.sum()), [px, py])`, note, the
         loss here is the loss with reduction "none".
         This is useful to implement the pruned version of rnnt loss.
-
     Returns:
        If return_grad is False, returns a tensor of shape (B,), containing the
        total RNN-T loss values for each element of the batch if reduction equals

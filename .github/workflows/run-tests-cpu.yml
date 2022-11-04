@@ -24,6 +24,7 @@ on:
       - master
     paths:
       - '.github/workflows/run-tests-cpu.yml'
+      - '.github/scripts/run-test.sh'
       - 'CMakeLists.txt'
       - 'cmake/**'
       - 'k2/csrc/**'
@@ -32,6 +33,7 @@ on:
     types: [labeled]
     paths:
       - '.github/workflows/run-tests-cpu.yml'
+      - '.github/scripts/run-test.sh'
       - 'CMakeLists.txt'
       - 'cmake/**'
       - 'k2/csrc/**'
@@ -43,7 +45,7 @@ concurrency:
 
 jobs:
   run-tests-cpu:
-    if: github.event.label.name == 'ready' || github.event_name == 'push'
+    if: github.event.label.name == 'ready' || github.event.label.name == 'cpp-test' || github.event_name == 'push'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -109,8 +111,11 @@ jobs:
 
       - name: Configure CMake
         shell: bash
+        env:
+          torch: ${{ matrix.torch }}
         run: |
           pwd
+          ./scripts/github_actions/fix_torch.sh
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DK2_WITH_CUDA=OFF ..
@@ -141,3 +146,8 @@ jobs:
           K2_LOG_LEVEL=WARNING ./bin/cu_log_test --gtest_filter="Log.Cpu"
           K2_LOG_LEVEL=ERROR ./bin/cu_log_test --gtest_filter="Log.Cpu"
           K2_LOG_LEVEL=FATAL ./bin/cu_log_test --gtest_filter="Log.Cpu"
+
+      - name: Run C++ API tests
+        shell: bash
+        run: |
+          .github/scripts/run-test.sh

@@ -39,7 +39,7 @@ function(download_googltest)
 
   FetchContent_GetProperties(googletest)
   if(NOT googletest_POPULATED)
-    message(STATUS "Downloading googletest")
+    message(STATUS "Downloading googletest from ${googletest_URL}")
     FetchContent_Populate(googletest)
   endif()
   message(STATUS "googletest is downloaded to ${googletest_SOURCE_DIR}")

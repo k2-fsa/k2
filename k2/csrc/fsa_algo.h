@@ -669,7 +669,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
    @param [in] labels_shape This might correspond to the shape of the
                          `aux_labels`; it is a shape with
                          `labels_shape.NumAxes() == 2` and
-                         `arcs.shape.Dim0() == fsas.NumElements()`.
+                         `labels_shape.Dim0() == fsas.NumElements()`.
                          The i'th arc of the FsaVec will be expanded to a
                          sequence of `max(1, l)` arcs, where l is the
                          length of the i'th list in `labels_shape`
@@ -724,7 +724,7 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
                                 to n (which also implies that aux_labels for
                                 final-arc must at least contain -1).
                                 For other arcs that are not final-arcs,
-                                the corresponding aux_labels must contain no
+                                the corresponding aux_labels must not contain
                                 -1.
     @param [out] dest   Output Fsa or FsaVec, it's the inverted Fsa. At exit
                         dest.NumAxes() == src.NumAxes() and num-states of it

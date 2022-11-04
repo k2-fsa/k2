@@ -1202,7 +1202,7 @@ RaggedShape ComposeRaggedShapes3(const RaggedShape &a, const RaggedShape &b,
   If cached_tot_sizeN is not -1, it must equal the total size on
   that axis which will equal the last element of row_splitsN (if
   provided) and must equal the row_idsN.Dim(), if provided. See
-  documentation above for RagggedShape2 for details.
+  documentation above for RaggedShape2 for details.
 
   We also require that (supposing both row_splitsN and row_idsN are non-NULL):
   row_splits1[row_splits1.Dim() - 1] == row_ids1.Dim()
