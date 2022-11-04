@@ -1,5 +1,5 @@
 /**
- * Copyright      2021  Xiaomi Corporation (authors: Fangjun Kuang)
+ * Copyright      2021  Xiaomi Corporation (authors: Fangjun Kuang, Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "k2/csrc/online_dense_intersector.h"
+#include "k2/csrc/intersect_dense_pruned.h"
 #include "k2/torch/csrc/decode.h"
 #include "k2/torch/csrc/dense_fsa_vec.h"
 #include "k2/torch/csrc/deserialization.h"
@@ -37,13 +37,16 @@
 
 C10_DEFINE_bool(use_gpu, false, "True to use GPU. False to use CPU");
 C10_DEFINE_string(jit_pt, "", "Path to exported jit file.");
-C10_DEFINE_string(tokens, "",
-                  "Path to tokens.txt. Needed if --use_ctc_decoding is true");
+C10_DEFINE_string(
+    bpe_model, "",
+    "Path to a pretrained BPE model. Needed if --use_ctc_decoding is true");
 C10_DEFINE_bool(use_ctc_decoding, true, "True to use CTC decoding");
 C10_DEFINE_string(hlg, "",
                   "Path to HLG.pt. Needed if --use_ctc_decoding is false");
 C10_DEFINE_string(word_table, "",
                   "Path to words.txt. Needed if --use_ctc_decoding is false");
+C10_DEFINE_string(token_table, "",
+                  "Path to a tokens.txt. Needed if --use_ctc_decoding is true");
 // Fsa decoding related
 C10_DEFINE_double(search_beam, 20, "search_beam in IntersectDensePruned");
 C10_DEFINE_double(output_beam, 8, "output_beam in IntersectDensePruned");
@@ -58,6 +61,7 @@ C10_DEFINE_double(frame_shift_ms, 10.0,
 C10_DEFINE_double(frame_length_ms, 25.0,
                   "Frame length in ms for computing Fbank");
 C10_DEFINE_int(num_bins, 80, "Number of triangular bins for computing Fbank");
+C10_DEFINE_int(num_streams, 2, "Number of concurrent streams");
 
 static void CheckArgs() {
 #if !defined(K2_WITH_CUDA)
@@ -77,8 +81,8 @@ static void CheckArgs() {
     exit(EXIT_FAILURE);
   }
 
-  if (FLAGS_use_ctc_decoding && FLAGS_tokens.empty()) {
-    std::cout << "Please provide --tokens"
+  if (FLAGS_use_ctc_decoding && FLAGS_token_table.empty()) {
+    std::cout << "Please provide --token_table"
               << "\n";
     std::cout << torch::UsageMessage() << "\n";
     exit(EXIT_FAILURE);
@@ -110,7 +114,7 @@ int main(int argc, char *argv[]) {
     ./bin/online_decode \
       --use_ctc_decoding true \
       --jit_pt <path to exported torch script pt file> \
-      --tokens <path to tokens.txt> \
+      --bpe_model <path to pretrained BPE model> \
       /path/to/foo.wav \
       /path/to/bar.wav \
       <more wave files if any>
@@ -195,10 +199,6 @@ int main(int argc, char *argv[]) {
   assert(outputs->elements().size() == 3u);
 
   auto nnet_output = outputs->elements()[0].toTensor();
-  auto memory = outputs->elements()[1].toTensor();
-
-  // memory_key_padding_mask is used in attention decoder rescoring
-  // auto memory_key_padding_mask = outputs->elements()[2].toTensor();
 
   k2::FsaClass decoding_graph;
 
@@ -216,41 +216,84 @@ int main(int argc, char *argv[]) {
   K2_LOG(INFO) << "Decoding";
 
   auto decoding_fsa = k2::FsaToFsaVec(decoding_graph.fsa);
+
   k2::OnlineDenseIntersecter decoder(
-      decoding_fsa, num_waves, FLAGS_search_beam, FLAGS_output_beam,
+      decoding_fsa, FLAGS_num_streams, FLAGS_search_beam, FLAGS_output_beam,
       FLAGS_min_activate_states, FLAGS_max_activate_states);
 
+  // store decode states for each waves
+  std::vector<std::shared_ptr<k2::DecodeStateInfo>> states_info(num_waves);
+
+  // decocding results for each waves
   std::vector<std::string> texts(num_waves, "");
 
-  int32_t T = nnet_output.size(1);
-  int32_t chunk_size = 20;  // 20 frames per chunk
-  int32_t chunk_num = (T / chunk_size) + ((T % chunk_size) ? 1 : 0);
+  std::vector<int32_t> positions(num_waves, 0);
 
-  for (int32_t c = 0; c < chunk_num; ++c) {
-    int32_t start = c * chunk_size;
-    int32_t end = (c + 1) * chunk_size >= T ? T : (c + 1) * chunk_size;
+  int32_t T = nnet_output.size(1);
+  int32_t chunk_size = 10;  // 20 frames per chunk
+
+  // simulate asynchronous decoding
+  while (true) {
+    std::vector<std::shared_ptr<k2::DecodeStateInfo>> current_states_info(
+        FLAGS_num_streams);
     std::vector<int64_t> num_frame;
-    for (auto &frame : num_frames) {
-      if (frame < chunk_size * subsampling_factor) {
-        num_frame.push_back(frame);
-        frame = 0;
+    std::vector<torch::Tensor> current_nnet_output;
+    // which waves we are decoding now
+    std::vector<int32_t> current_wave_ids;
+
+    for (int32_t i = 0; i < num_waves; ++i) {
+      // this wave is done
+      if (num_frames[i] == 0) continue;
+
+      current_states_info[current_wave_ids.size()] = states_info[i];
+      current_wave_ids.push_back(i);
+
+      if (num_frames[i] < chunk_size * subsampling_factor) {
+        num_frame.push_back(num_frames[i]);
+        num_frames[i] = 0;
       } else {
         num_frame.push_back(chunk_size * subsampling_factor);
-        frame -= chunk_size * subsampling_factor;
+        num_frames[i] -= chunk_size * subsampling_factor;
       }
-    }
-    torch::Dict<std::string, torch::Tensor> sup;
-    sup.insert("sequence_idx", torch::arange(num_waves, torch::kInt));
-    sup.insert("start_frame", torch::zeros({num_waves}, torch::kInt));
-    sup.insert("num_frames",
-               torch::from_blob(num_frame.data(), {num_waves}, torch::kLong)
-                   .to(torch::kInt));
-    torch::IValue supervision(sup);
 
-    // cut nnet_output into chunks
-    using namespace torch::indexing;  // NOLINT
-    auto sub_nnet_output =
-        nnet_output.index({Slice(), Slice(start, end), Slice()});
+      int32_t start = positions[i],
+              end = start + chunk_size >= T ? T : start + chunk_size;
+      positions[i] = end;
+      auto sub_output = nnet_output.index(
+          {i, torch::indexing::Slice(start, end), torch::indexing::Slice()});
+
+      // padding T axis to chunk_size if needed
+      namespace F = torch::nn::functional;
+      sub_output = F::pad(sub_output,
+          F::PadFuncOptions({0, 0, 0, chunk_size - end + start})
+          .mode(torch::kConstant));
+
+      current_nnet_output.push_back(sub_output);
+
+      // we can only decode `FLAGS_num_streams` waves at a time
+      if (static_cast<int32_t>(current_wave_ids.size()) >= FLAGS_num_streams)
+        break;
+    }
+    if (current_wave_ids.size() == 0) break;  // finished
+
+    // no enough waves, feed in garbage data
+    while (static_cast<int32_t>(num_frame.size()) < FLAGS_num_streams) {
+      num_frame.push_back(0);
+      auto opts = torch::TensorOptions().dtype(nnet_output.dtype())
+        .device(nnet_output.device());
+      current_nnet_output.push_back(
+          torch::zeros({chunk_size, nnet_output.size(2)}, opts));
+    }
+
+    auto sub_nnet_output = torch::stack(current_nnet_output);
+
+    torch::Dict<std::string, torch::Tensor> sup;
+    sup.insert("sequence_idx", torch::arange(FLAGS_num_streams, torch::kInt));
+    sup.insert("start_frame", torch::zeros({FLAGS_num_streams}, torch::kInt));
+    sup.insert("num_frames",
+               torch::from_blob(num_frame.data(), {FLAGS_num_streams},
+                 torch::kLong).to(torch::kInt));
+    torch::IValue supervision(sup);
 
     torch::Tensor supervision_segments =
         k2::GetSupervisionSegments(supervision, subsampling_factor);
@@ -258,12 +301,15 @@ int main(int argc, char *argv[]) {
     k2::DenseFsaVec dense_fsa_vec = k2::CreateDenseFsaVec(
         sub_nnet_output, supervision_segments, subsampling_factor - 1);
 
-    bool is_final = c == chunk_num - 1 ? true : false;
-    decoder.Intersect(dense_fsa_vec, is_final);
-
     k2::FsaVec fsa;
     k2::Array1<int32_t> graph_arc_map;
-    decoder.FormatOutput(&fsa, &graph_arc_map, is_final);
+
+    decoder.Decode(dense_fsa_vec, &current_states_info, &fsa, &graph_arc_map);
+
+    // update decoding states
+    for (size_t i = 0; i < current_wave_ids.size(); ++i) {
+      states_info[current_wave_ids[i]] = current_states_info[i];
+    }
 
     k2::FsaClass lattice(fsa);
     lattice.CopyAttrs(decoding_graph,
@@ -276,19 +322,17 @@ int main(int argc, char *argv[]) {
     auto aux_labels_vec = ragged_aux_labels.ToVecVec();
 
     if (FLAGS_use_ctc_decoding) {
-      k2::SymbolTable symbol_table(FLAGS_tokens);
-      for (size_t i = 0; i < aux_labels_vec.size(); ++i) {
+      k2::SymbolTable symbol_table(FLAGS_token_table);
+      for (size_t i = 0; i < current_wave_ids.size(); ++i) {
         std::string text;
-
         for (auto id : aux_labels_vec[i]) {
           text.append(symbol_table[id]);
         }
-
-        texts[i] = std::move(text);
+        texts[current_wave_ids[i]] = std::move(text);
       }
     } else {
       k2::SymbolTable symbol_table(FLAGS_word_table);
-      for (size_t i = 0; i < aux_labels_vec.size(); ++i) {
+      for (size_t i = 0; i < current_wave_ids.size(); ++i) {
         std::string text;
         std::string sep = "";
         for (auto id : aux_labels_vec[i]) {
@@ -296,14 +340,14 @@ int main(int argc, char *argv[]) {
           text.append(symbol_table[id]);
           sep = " ";
         }
-        texts[i] = text;
+        texts[current_wave_ids[i]] = text;
       }
     }
     std::ostringstream os;
     os << "\nPartial result:\n";
-    for (int32_t i = 0; i != num_waves; ++i) {
-      os << wave_filenames[i] << "\n";
-      os << texts[i];
+    for (size_t i = 0; i != current_wave_ids.size(); ++i) {
+      os << wave_filenames[current_wave_ids[i]] << "\n";
+      os << texts[current_wave_ids[i]];
       os << "\n\n";
     }
     K2_LOG(INFO) << os.str();
