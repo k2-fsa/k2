@@ -42,7 +42,7 @@ C10_DEFINE_string(hlg, "",
                   "Path to HLG.pt. Needed if --use_ctc_decoding is false");
 C10_DEFINE_string(word_table, "",
                   "Path to words.txt. Needed if --use_ctc_decoding is false");
-C10_DEFINE_string(token_table, "",
+C10_DEFINE_string(tokens, "",
                   "Path to a tokens.txt. Needed if --use_ctc_decoding is true");
 // Fsa decoding related
 C10_DEFINE_double(search_beam, 20, "search_beam in IntersectDensePruned");
@@ -78,8 +78,8 @@ static void CheckArgs() {
     exit(EXIT_FAILURE);
   }
 
-  if (FLAGS_use_ctc_decoding && FLAGS_token_table.empty()) {
-    std::cout << "Please provide --token_table"
+  if (FLAGS_use_ctc_decoding && FLAGS_tokens.empty()) {
+    std::cout << "Please provide --tokens"
               << "\n";
     std::cout << torch::UsageMessage() << "\n";
     exit(EXIT_FAILURE);
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
     ./bin/online_decode \
       --use_ctc_decoding true \
       --jit_pt <path to exported torch script pt file> \
-      --token_table <path to tokens.txt> \
+      --tokens <path to tokens.txt> \
       /path/to/foo.wav \
       /path/to/bar.wav \
       <more wave files if any>
@@ -319,7 +319,7 @@ int main(int argc, char *argv[]) {
     auto aux_labels_vec = ragged_aux_labels.ToVecVec();
 
     if (FLAGS_use_ctc_decoding) {
-      k2::SymbolTable symbol_table(FLAGS_token_table);
+      k2::SymbolTable symbol_table(FLAGS_tokens);
       for (size_t i = 0; i < current_wave_ids.size(); ++i) {
         std::string text;
         for (auto id : aux_labels_vec[i]) {
