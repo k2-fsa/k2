@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 #include "k2/csrc/ragged_ops.h"
-#include "k2/csrc/torch_api.h"
 #include "k2/csrc/torch_util.h"
+#include "k2/torch/csrc/torch_api.h"
 
 namespace k2 {
 

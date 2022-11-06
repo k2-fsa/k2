@@ -18,7 +18,7 @@
 #if HAVE_K2_TORCH_API_H == 1
 #include "k2/torch_api.h"  // for third party library
 #else
-#include "k2/csrc/torch_api.h"
+#include "k2/torch/csrc/torch_api.h"
 #endif
 
 #include "gtest/gtest.h"
