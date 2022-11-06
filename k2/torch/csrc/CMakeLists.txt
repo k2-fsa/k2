@@ -24,9 +24,6 @@ endif()
 add_library(k2_torch ${k2_torch_srcs})
 target_link_libraries(k2_torch PUBLIC ${TORCH_LIBRARIES} context)
 
-add_library(k2_fbank features.cc)
-target_link_libraries(k2_fbank PUBLIC ${TORCH_LIBRARIES} kaldifeat_core)
-
 # TODO(Wei Kang): Refactor following lines after putting ctc decoding algorithms to torch_api
 set(k2_torch_api_srcs torch_api.cu)
 if(NOT K2_WITH_CUDA)

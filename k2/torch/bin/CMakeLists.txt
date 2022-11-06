@@ -4,13 +4,15 @@ include(transform)
 set(bin_dep_libs
   ${TORCH_LIBRARIES}
   k2_torch
-  k2_fbank
+  kaldifeat_core
 )
+
+set(feature_srcs ../csrc/features.cc)
 
 #----------------------------------------
 #       CTC decoding
 #----------------------------------------
-set(ctc_decode_srcs ctc_decode.cu)
+set(ctc_decode_srcs ctc_decode.cu ${feature_srcs})
 if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE ctc_decode_srcs SRCS ${ctc_decode_srcs})
 endif()
@@ -21,7 +23,7 @@ target_link_libraries(ctc_decode ${bin_dep_libs})
 #----------------------------------------
 #       HLG decoding
 #----------------------------------------
-set(hlg_decode_srcs hlg_decode.cu)
+set(hlg_decode_srcs hlg_decode.cu ${feature_srcs})
 if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE hlg_decode_srcs SRCS ${hlg_decode_srcs})
 endif()
@@ -32,7 +34,7 @@ target_link_libraries(hlg_decode ${bin_dep_libs})
 #-------------------------------------------
 #       HLG decoding + n-gram LM rescoring
 #-------------------------------------------
-set(ngram_lm_rescore_srcs ngram_lm_rescore.cu)
+set(ngram_lm_rescore_srcs ngram_lm_rescore.cu ${feature_srcs})
 if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE ngram_lm_rescore_srcs SRCS ${ngram_lm_rescore_srcs})
 endif()
@@ -43,7 +45,7 @@ target_link_libraries(ngram_lm_rescore ${bin_dep_libs})
 #---------------------------------------------------------------
 #       HLG decoding + n-gram LM rescoring + attenion rescoring
 #---------------------------------------------------------------
-set(attention_rescore_srcs attention_rescore.cu)
+set(attention_rescore_srcs attention_rescore.cu ${feature_srcs})
 if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE attention_rescore_srcs SRCS ${attention_rescore_srcs})
 endif()
@@ -55,7 +57,7 @@ target_link_libraries(attention_rescore ${bin_dep_libs})
 #-------------------------------------------
 #       online decoding
 #-------------------------------------------
-set(online_decode_srcs online_decode.cu)
+set(online_decode_srcs online_decode.cu ${feature_srcs})
 if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE online_decode_srcs SRCS ${online_decode_srcs})
 endif()
@@ -67,7 +69,7 @@ target_link_libraries(online_decode ${bin_dep_libs})
 #-------------------------------------------
 #      rnnt demo
 #-------------------------------------------
-set(rnnt_demo_srcs rnnt_demo.cu)
+set(rnnt_demo_srcs rnnt_demo.cu ${feature_srcs})
 if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE rnnt_demo_srcs SRCS ${rnnt_demo_srcs})
 endif()
@@ -79,7 +81,7 @@ target_link_libraries(rnnt_demo ${bin_dep_libs})
 #-------------------------------------------
 #      pruned stateless transducer
 #-------------------------------------------
-set(pruned_stateless_transducer_srcs pruned_stateless_transducer.cu)
+set(pruned_stateless_transducer_srcs pruned_stateless_transducer.cu ${feature_srcs})
 if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE pruned_stateless_transducer_srcs SRCS ${pruned_stateless_transducer_srcs})
 endif()
