@@ -326,6 +326,9 @@ forward
 
 .. automethod:: k2.CtcLoss.forward
 
+DecodeStateInfo
+---------------
+
 DenseFsaVec
 -----------
 
@@ -562,6 +565,19 @@ total_scores
 ^^^^^^^^^^^^
 
 .. automethod:: k2.Nbest.total_scores
+
+OnlineDenseIntersecter
+----------------------
+
+__init__
+^^^^^^^^
+
+.. automethod:: k2.OnlineDenseIntersecter.__init__
+
+decode
+^^^^^^
+
+.. automethod:: k2.OnlineDenseIntersecter.decode
 
 RaggedShape
 -----------
