@@ -30,7 +30,7 @@ if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE k2_torch_api_srcs SRCS ${k2_torch_api_srcs})
 endif()
 add_library(k2_torch_api ${k2_torch_api_srcs})
-target_link_libraries(k2_torch_api PUBLIC context)
+target_link_libraries(k2_torch_api PUBLIC context k2_torch)
 
 if(K2_ENABLE_TESTS)
   add_executable(torch_api_test torch_api_test.cc)

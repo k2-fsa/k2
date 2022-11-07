@@ -22,6 +22,7 @@
 #endif
 
 #include "gtest/gtest.h"
+#include "torch/torch.h"
 
 namespace k2 {
 
@@ -55,6 +56,30 @@ TEST(RaggedShape, TestAllWrappedMethods) {
   EXPECT_TRUE(torch::allclose(RowIds(shape, 1), expected_row_ids));
 
   EXPECT_TRUE(torch::allclose(RowSplits(shape, 1), row_splits));
+}
+
+// This test does not do any checking, just to confirm it runs normally.
+TEST(CtcDecode, TestBasicCtcDecode) {
+  namespace F = torch::nn::functional;
+
+  auto logits = torch::randn({5, 20, 50}, torch::kFloat32);
+  auto log_softmax_out = F::log_softmax(logits, /*dim*/ 2);
+
+  auto log_softmax_out_lens = torch::randint(20, {5}, torch::kInt32);
+
+  auto ctc_topo = GetCtcTopo(49);
+
+  std::vector<std::vector<int32_t>> results =
+      Decode(log_softmax_out, log_softmax_out_lens, ctc_topo);
+
+  std::ostringstream oss;
+  for (auto result : results) {
+    for (auto id : result) {
+      oss << id << " ";
+    }
+    oss << "\n";
+  }
+  std::cout << "Decoding results : " << oss.str();
 }
 
 }  // namespace k2
