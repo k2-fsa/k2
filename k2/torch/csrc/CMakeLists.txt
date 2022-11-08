@@ -24,6 +24,9 @@ endif()
 add_library(k2_torch ${k2_torch_srcs})
 target_link_libraries(k2_torch PUBLIC ${TORCH_LIBRARIES} context)
 
+add_library(k2_fbank features.cc)
+target_link_libraries(k2_fbank PUBLIC ${TORCH_LIBRARIES} kaldifeat_core)
+
 if(K2_ENABLE_TESTS)
   # Please sort files alphabetically
   set(k2_torch_test_srcs
