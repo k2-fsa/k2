@@ -110,7 +110,7 @@ FsaClassPtr GetCtcTopo(int32_t max_token, bool modified = false,
 FsaClassPtr LoadFsaClass(const std::string &filename,
                          torch::Device map_location = torch::kCPU);
 
-/** Run CTC decode.
+/** Get the lattice of CTC decode.
  * @param log_softmax_out A tensor of shape (N, T, C) containing the output
  *                        from a log_softmax layer.
  * @param log_softmax_out_lens  A tensor of shape (N,) containing the number
@@ -138,18 +138,28 @@ FsaClassPtr LoadFsaClass(const std::string &filename,
  *                             number if no constraint is needed.
  * @param subsampling_factor  The subsampling factor of the model.
  *
- * @return Return the decoding results of size `N`. ans[i] is the result
- *         for the i-th utterance. If the decoding_graph is a CtcTopo,
- *         then the decoding result contains token IDs; if the decoding_graph
- *         is an HLG, then the decoding result contains word IDs.
- *         Note: The decoding result does not contain repeats and does not
- *         contain blanks.
+ * @return Return the decoding lattice having 3 axes with the dim0 equaling to
+ *         `N`.
  */
-std::vector<std::vector<int32_t>> Decode(
+FsaClassPtr GetLattice(
     torch::Tensor log_softmax_out, torch::Tensor log_softmax_out_lens,
     FsaClassPtr decoding_graph, float search_beam = 20, float output_beam = 8,
     int32_t min_activate_states = 30, int32_t max_activate_states = 10000,
     int32_t subsampling_factor = 4);
+
+/** Get the best path of a lattice.
+ * @param lattice  The decoding lattice containing an FsaVec.
+ *
+ * @return Return the decoding results of size `lattice.dim0`. ans[i] is the
+ *         result for the i-th utterance. If the decoding_graph used to generate
+ *         the lattice is a CtcTopo, then the decoding result contains token
+ *         IDs; if the decoding_graph used to generate the lattice is an HLG,
+ *         then the decoding result contains word IDs.
+ *         Note: The decoding result does not contain repeats and does not
+ *         contain blanks.
+ */
+std::vector<std::vector<int32_t>> BestPath(const FsaClassPtr &lattice);
+
 }  // namespace k2
 
 #endif  // K2_CSRC_TORCH_API_H_

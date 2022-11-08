@@ -69,8 +69,8 @@ TEST(CtcDecode, TestBasicCtcDecode) {
 
   auto ctc_topo = GetCtcTopo(49);
 
-  std::vector<std::vector<int32_t>> results =
-      Decode(log_softmax_out, log_softmax_out_lens, ctc_topo);
+  auto lattice = GetLattice(log_softmax_out, log_softmax_out_lens, ctc_topo);
+  auto results = BestPath(lattice);
 
   std::ostringstream oss;
   for (auto result : results) {

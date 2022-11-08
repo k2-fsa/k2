@@ -74,13 +74,13 @@ FsaClassPtr LoadFsaClass(const std::string &filename,
   return std::make_shared<FsaClass>(LoadFsa(filename, map_location));
 }
 
-std::vector<std::vector<int32_t>> Decode(torch::Tensor log_softmax_out,
-                                         torch::Tensor log_softmax_out_lens,
-                                         FsaClassPtr decoding_graph,
-                                         float search_beam, float output_beam,
-                                         int32_t min_activate_states,
-                                         int32_t max_activate_states,
-                                         int32_t subsampling_factor) {
+FsaClassPtr GetLattice(torch::Tensor log_softmax_out,
+                          torch::Tensor log_softmax_out_lens,
+                          FsaClassPtr decoding_graph,
+                          float search_beam, float output_beam,
+                          int32_t min_activate_states,
+                          int32_t max_activate_states,
+                          int32_t subsampling_factor) {
   int32_t num_sequences = log_softmax_out.size(0);
   K2_CHECK_EQ(num_sequences, log_softmax_out_lens.size(0))
       << "The number of sequences should be equal, given " << num_sequences
@@ -98,9 +98,12 @@ std::vector<std::vector<int32_t>> Decode(torch::Tensor log_softmax_out,
                  search_beam, output_beam, min_activate_states,
                  max_activate_states, subsampling_factor);
 
-  lattice = ShortestPath(lattice);
+  return std::make_shared<FsaClass>(lattice);
+}
 
-  auto ragged_aux_labels = GetTexts(lattice);
+std::vector<std::vector<int32_t>> BestPath(const FsaClassPtr &lattice) {
+  FsaClass paths = ShortestPath(*lattice);
+  auto ragged_aux_labels = GetTexts(paths);
   auto aux_labels_vec = ragged_aux_labels.ToVecVec();
   return aux_labels_vec;
 }
