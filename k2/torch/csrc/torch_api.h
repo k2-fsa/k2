@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 
-#ifndef K2_CSRC_TORCH_API_H_
-#define K2_CSRC_TORCH_API_H_
+#ifndef K2_TORCH_CSRC_TORCH_API_H_
+#define K2_TORCH_CSRC_TORCH_API_H_
 
 #include <memory>
 #include <string>
@@ -162,4 +162,4 @@ std::vector<std::vector<int32_t>> BestPath(const FsaClassPtr &lattice);
 
 }  // namespace k2
 
-#endif  // K2_CSRC_TORCH_API_H_
+#endif  // K2_TORCH_CSRC_TORCH_API_H_
