@@ -121,5 +121,9 @@ from .utils import random_fsa
 from .utils import random_fsa_vec
 from _k2.version import with_cuda
 
+from .decode import get_aux_labels
+from .decode import get_lattice
+from .decode import one_best_decoding
+
 cmake_prefix_path = _Path(__file__).parent / "share" / "cmake"
 del _Path
