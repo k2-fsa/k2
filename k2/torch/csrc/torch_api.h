@@ -124,13 +124,13 @@ FsaClassPtr LoadFsaClass(const std::string &filename,
  *                     `max_active_states`.
  * @param output_beam  Beam to prune output, similar to lattice-beam in Kaldi.
  *                     Relative to best path of output.
- * @param min_activate_states  Minimum number of FSA states that are allowed to
+ * @param min_active_states  Minimum number of FSA states that are allowed to
  *                             be active on any given frame for any given
  *                             intersection/composition task. This is advisory,
  *                             in that it will try not to have fewer than this
  *                             number active. Set it to zero if there is no
  *                             constraint.
- * @param max_activate_states  Maximum number of FSA states that are allowed to
+ * @param max_active_states  Maximum number of FSA states that are allowed to
  *                             be active on any given frame for any given
  *                             intersection/composition task. This is advisory,
  *                             in that it will try not to exceed that but may
@@ -141,11 +141,12 @@ FsaClassPtr LoadFsaClass(const std::string &filename,
  * @return Return the decoding lattice having 3 axes with the dim0 equaling to
  *         `N`.
  */
-FsaClassPtr GetLattice(
-    torch::Tensor log_softmax_out, torch::Tensor log_softmax_out_lens,
-    FsaClassPtr decoding_graph, float search_beam = 20, float output_beam = 8,
-    int32_t min_activate_states = 30, int32_t max_activate_states = 10000,
-    int32_t subsampling_factor = 4);
+FsaClassPtr GetLattice(torch::Tensor log_softmax_out,
+                       torch::Tensor log_softmax_out_lens,
+                       FsaClassPtr decoding_graph, float search_beam = 20,
+                       float output_beam = 8, int32_t min_active_states = 30,
+                       int32_t max_active_states = 10000,
+                       int32_t subsampling_factor = 4);
 
 /** Get the best path of a lattice.
  * @param lattice  The decoding lattice containing an FsaVec.
