@@ -127,7 +127,7 @@ class SymbolTable(Generic[Symbol]):
           An instance of :class:`SymbolTable`.
 
         '''
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             return SymbolTable.from_str(f.read().strip())
 
     def to_str(self) -> str:
