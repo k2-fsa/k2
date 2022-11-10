@@ -65,7 +65,9 @@
 <li class="toctree-l3"><a class="reference internal" href="#determinize">determinize</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#do-rnnt-pruning">do_rnnt_pruning</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#expand-ragged-attributes">expand_ragged_attributes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-aux-labels">get_aux_labels</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#get-best-matching-stats">get_best_matching_stats</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-lattice">get_lattice</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#get-rnnt-logprobs">get_rnnt_logprobs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#get-rnnt-logprobs-joint">get_rnnt_logprobs_joint</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#get-rnnt-logprobs-pruned">get_rnnt_logprobs_pruned</a></li>
@@ -89,6 +91,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#linear-fst">linear_fst</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#linear-fst-with-self-loops">linear_fst_with_self_loops</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#mutual-information-recursion">mutual_information_recursion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#one-best-decoding">one_best_decoding</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#properties-to-str">properties_to_str</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#prune-on-arc-post">prune_on_arc_post</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#random-fsa">random_fsa</a></li>
@@ -963,6 +966,31 @@ the rest will stay ragged.</p></li>
 </dd></dl>
 
 </section>
+<section id="get-aux-labels">
+<h2>get_aux_labels<a class="headerlink" href="#get-aux-labels" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.get_aux_labels">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_aux_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">best_paths</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/decode.py#L117-L150"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_aux_labels" title="Permalink to this definition"></a></dt>
+<dd><p>Extract aux_labels from the best-path FSAs and remove 0s and -1s.
+:type best_paths: <code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>
+:param best_paths: An Fsa with best_paths.arcs.num_axes() == 3, i.e.</p>
+<blockquote>
+<div><p>containing multiple FSAs, which is expected to be the result
+of <cite>shortest_path</cite> (otherwise the returned values won’t
+be meaningful).</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns a list of lists of int, containing the label sequences we
+decoded.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
 <section id="get-best-matching-stats">
 <h2>get_best_matching_stats<a class="headerlink" href="#get-best-matching-stats" title="Permalink to this headline"></a></h2>
 <dl class="py function">
@@ -1057,6 +1085,50 @@ the way to the beginning of a sentence.</p>
 </dd>
 </dl>
 </p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="get-lattice">
+<h2>get_lattice<a class="headerlink" href="#get-lattice" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.get_lattice">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">get_lattice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_prob</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_prob_len</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoding_graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_beam</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_beam</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_active_states</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_active_states</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subsampling_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/decode.py#L17-L95"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.get_lattice" title="Permalink to this definition"></a></dt>
+<dd><p>Get the decoding lattice from a decoding graph and  log_softmax output.
+:type log_prob: <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>
+:param log_prob: Output from a log_softmax layer of shape <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">T,</span> <span class="pre">C)</span></code>.
+:type log_prob_len: <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>
+:param log_prob_len: A tensor of shape <code class="docutils literal notranslate"><span class="pre">(N,)</span></code> containing number of valid frames from</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">log_prob</span></code> before padding.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>decoding_graph</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – An Fsa, the decoding graph. It can be either an <code class="docutils literal notranslate"><span class="pre">HLG</span></code> or an <code class="docutils literal notranslate"><span class="pre">H</span></code>.
+You can use <a class="reference internal" href="#k2.ctc_topo" title="k2.ctc_topo"><code class="xref py py-func docutils literal notranslate"><span class="pre">ctc_topo()</span></code></a> to build an <code class="docutils literal notranslate"><span class="pre">H</span></code>.</p></li>
+<li><p><strong>search_beam</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Decoding beam, e.g. 20.  Smaller is faster, larger is more exact
+(less pruning). This is the default value; it may be modified by
+<cite>min_active_states</cite> and <cite>max_active_states</cite>.</p></li>
+<li><p><strong>output_beam</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Beam to prune output, similar to lattice-beam in Kaldi.  Relative
+to best path of output.</p></li>
+<li><p><strong>min_active_states</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Minimum number of FSA states that are allowed to be active on any given
+frame for any given intersection/composition task. This is advisory,
+in that it will try not to have fewer than this number active.
+Set it to zero if there is no constraint.</p></li>
+<li><p><strong>max_active_states</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Maximum number of FSA states that are allowed to be active on any given
+frame for any given intersection/composition task. This is advisory,
+in that it will try not to exceed that but may not always succeed.
+You can use a very large number if no constraint is needed.</p></li>
+<li><p><strong>subsampling_factor</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – The subsampling factor of the model.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>An FsaVec containing the decoding result. It has axes [utt][state][arc].</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2358,6 +2430,30 @@ as <strong>-infinity</strong>.  The extension to cases where the boundaries are
 specified should be obvious; it just works on shorter sequences with
 offsets into <code class="docutils literal notranslate"><span class="pre">px</span></code> and <code class="docutils literal notranslate"><span class="pre">py</span></code>.</p>
 </p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="one-best-decoding">
+<h2>one_best_decoding<a class="headerlink" href="#one-best-decoding" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.one_best_decoding">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">one_best_decoding</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lattice</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_double_scores</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/decode.py#L98-L114"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.one_best_decoding" title="Permalink to this definition"></a></dt>
+<dd><p>Get the best path from a lattice.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lattice</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The decoding lattice returned by <a class="reference internal" href="#k2.get_lattice" title="k2.get_lattice"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_lattice()</span></code></a>.</p></li>
+<li><p><strong>use_double_scores</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – True to use double precision floating point in the computation.
+False to use single precision.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>An FsaVec containing linear paths.</p>
 </dd>
 </dl>
 </dd></dl>

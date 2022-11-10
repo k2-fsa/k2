@@ -83,10 +83,20 @@ expand_ragged_attributes
 
 .. autofunction:: expand_ragged_attributes
 
+get_aux_labels
+--------------
+
+.. autofunction:: get_aux_labels
+
 get_best_matching_stats
 -----------------------
 
 .. autofunction:: get_best_matching_stats
+
+get_lattice
+-----------
+
+.. autofunction:: get_lattice
 
 get_rnnt_logprobs
 -----------------
@@ -202,6 +212,11 @@ mutual_information_recursion
 ----------------------------
 
 .. autofunction:: mutual_information_recursion
+
+one_best_decoding
+-----------------
+
+.. autofunction:: one_best_decoding
 
 properties_to_str
 -----------------
