@@ -81,6 +81,7 @@ class SumFunction : public torch::autograd::Function<SumFunction> {
 
     auto grad_output = grad_outputs[0];
     // note: stride may be zero
+    // see https://github.com/k2-fsa/k2/pull/1101
     int32_t stride = grad_output.stride(0);
 
     auto opts = torch::TensorOptions()
