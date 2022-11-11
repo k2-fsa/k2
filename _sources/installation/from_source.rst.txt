@@ -31,7 +31,7 @@ The following versions of Python, CUDA, and PyTorch are known to work.
 
 Before compiling k2, some preparation work has to be done:
 
-  - Have a compiler supporting at least C++14, e.g., GCC >= 5.0, Clang >= 3.4.
+  - Have a compiler supporting at least C++14, e.g., GCC >= 7.0, Clang >= 3.4.
   - Install CMake. CMake 3.11.0 and 3.18.0 are known to work.
   - Install Python3.
   - Install PyTorch.
