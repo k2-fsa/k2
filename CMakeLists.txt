@@ -191,7 +191,7 @@ endif()
 if(NOT K2_COMPILER_SUPPORTS_CXX14)
   message(FATAL_ERROR "
     k2 requires a compiler supporting at least C++14.
-    If you are using GCC, please upgrade it to at least version 5.0.
+    If you are using GCC, please upgrade it to at least version 7.0.
     If you are using Clang, please upgrade it to at least version 3.4.")
 endif()
 
