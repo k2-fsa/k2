@@ -29,6 +29,7 @@
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/v2/autograd/index_and_sum.h"
+#include "k2/python/csrc/torch/v2/autograd/logsumexp.h"
 #include "k2/python/csrc/torch/v2/autograd/normalize.h"
 #include "k2/python/csrc/torch/v2/autograd/sum.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
@@ -436,6 +437,12 @@ RaggedAny &RaggedAny::SetRequiresGrad(bool requires_grad /*=true*/) {
 torch::Tensor RaggedAny::Sum(float initial_value /*=0*/) const {
   DeviceGuard guard(any.Context());
   return SumFunction::apply(*this, Data(), initial_value);
+}
+
+torch::Tensor RaggedAny::LogSumExp(
+    float initial_value /*=negative_infinity*/) const {
+  DeviceGuard guard(any.Context());
+  return LogSumExpFunction::apply(*this, Data(), initial_value);
 }
 
 RaggedAny RaggedAny::Index(int32_t axis, int32_t i) const {

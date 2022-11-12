@@ -40,6 +40,7 @@ class TestRaggedTensor(unittest.TestCase):
                 torch.cuda.set_device(1)
                 cls.devices.append(torch.device("cuda", 1))
         cls.dtypes = [torch.float32, torch.float64, torch.int32]
+        cls.real_dtypes = [torch.float32, torch.float64]
 
     def test_create_ragged_tensor(self):
         funcs = [k2r.create_ragged_tensor, k2r.RaggedTensor]
@@ -226,6 +227,55 @@ class TestRaggedTensor(unittest.TestCase):
                 )
 
                 assert torch.all(torch.eq(b, expected_sum))
+
+    def test_logsumexp_with_grad(self):
+        for device in self.devices:
+            for dtype in self.real_dtypes:
+                a = k2r.RaggedTensor([[-1.1, 2.2, -3.3, 4.4], [], [5.5, -6.6]],
+                                     dtype=dtype, device=device)
+                a_0 = torch.tensor([-1.1, 2.2, -3.3, 4.4],
+                                   dtype=dtype, device=device)
+                a_1 = torch.tensor([], dtype=dtype, device=device)
+                a_2 = torch.tensor([5.5, -6.6], dtype=dtype, device=device)
+
+                a.requires_grad_(True)
+                a_0.requires_grad_(True)
+                a_1.requires_grad_(True)
+                a_2.requires_grad_(True)
+
+                b = a.logsumexp()
+                b_0 = a_0.logsumexp(dim=0)
+                b_1 = a_1.logsumexp(dim=0)
+                b_2 = a_2.logsumexp(dim=0)
+
+                expected_b = torch.stack([b_0, b_1, b_2])
+                assert torch.allclose(b, expected_b)
+
+                c = b.sum()
+                expected_c = expected_b.sum()
+                c.backward()
+                expected_c.backward()
+                assert torch.allclose(a.grad,
+                                      torch.cat([a_0.grad, a_1.grad, a_2.grad]))
+
+    def test_logsumexp_no_grad(self):
+        for device in self.devices:
+            for dtype in self.real_dtypes:
+                a = k2r.RaggedTensor([[-1.1, 2.2, -3.3, 4.4], [], [-5.5, 6.6]],
+                                     dtype=dtype)
+                a = a.to(device)
+                b = a.logsumexp()
+                expected_logsumexp = torch.tensor([
+                    torch.logsumexp(
+                        torch.tensor([-1.1, 2.2, -3.3, 4.4],
+                                     dtype=dtype, device=device), dim=0),
+                    torch.tensor([float('-inf')], dtype=dtype, device=device),
+                    torch.logsumexp(
+                        torch.tensor([-5.5, 6.6],
+                                     dtype=dtype, device=device), dim=0),
+                ], device=device)
+
+                assert torch.allclose(b, expected_logsumexp)
 
     def test_getitem_scalar(self):
         for device in self.devices:

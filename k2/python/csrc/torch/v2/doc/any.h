@@ -930,6 +930,43 @@ Returns:
   containing the computed sum.
 )doc";
 
+static constexpr const char *kRaggedAnyLogSumExpDoc = R"doc(
+Compute the logsumexp of sublists over the last axis of this tensor.
+
+Note:
+  If a sublist is empty, the logsumexp for it is the provided
+  ``initial_value``.
+
+Note:
+  This operation only supports float type input,
+  i.e., with dtype being torch.float32 or torch.float64.
+
+>>> import torch
+>>> import k2
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([[-0.25, -0.25, -0.25, -0.25], [], [-0.5, -0.5]], dtype=torch.float32)
+>>> a.requires_grad_(True)
+RaggedTensor([[-0.25, -0.25, -0.25, -0.25],
+              [],
+              [-0.5, -0.5]], dtype=torch.float32)
+>>> b = a.logsumexp()
+>>> b
+tensor([1.1363,   -inf, 0.1931], grad_fn=<LogSumExpFunction>>)
+>>> c = b.sum()
+>>> c
+tensor(-inf, grad_fn=<SumBackward0>)
+>>> c.backward()
+>>> a.grad
+tensor([0.2500, 0.2500, 0.2500, 0.2500, 0.5000, 0.5000])
+
+Args:
+  initial_value:
+    If a sublist is empty, its logsumexp is this value.
+Returns:
+  Return a 1-D tensor with the same dtype of this tensor
+  containing the computed logsumexp.
+)doc";
+
 static constexpr const char *kRaggedAnyNumelDoc = R"doc(
 Returns:
   Return number of elements in this tensor. It equals to
