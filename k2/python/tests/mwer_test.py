@@ -100,8 +100,6 @@ class TestMWERLoss(unittest.TestCase):
             path_1_1_logp = logp[6] + logp[10] + logp[11]
             path_2_1_logp = logp[8] + logp[9] + logp[11]
             path_3_1_logp = logp[8] + logp[10] + logp[11]
-            path_0_0_logp.retain_grad()
-            path_1_0_logp.retain_grad()
 
             den_0_logp = torch.logsumexp(torch.stack([path_0_0_logp,
                                                       path_1_0_logp,
