@@ -77,10 +77,7 @@ class Nbest(object):
     of paths, which is also the number of FSAs in `fsa`.
     '''
 
-    def __init__(self,
-                 fsa: k2.Fsa,
-                 shape: k2.RaggedShape,
-                 kept_path: k2.RaggedTensor) -> None:
+    def __init__(self, fsa: k2.Fsa, shape: k2.RaggedShape) -> None:
         assert len(fsa.shape) == 3, f'fsa.shape: {fsa.shape}'
         assert shape.num_axes == 2, f'num_axes: {shape.num_axes}'
 
@@ -89,7 +86,6 @@ class Nbest(object):
 
         self.fsa = fsa
         self.shape = shape
-        self.kept_path = kept_path
 
     def __str__(self):
         s = 'Nbest('
