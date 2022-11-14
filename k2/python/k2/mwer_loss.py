@@ -86,15 +86,15 @@ class MWERLoss(torch.nn.Module):
                                             nbest.fsa.scores)
         # Get the probalitity of each path, in log format,
         # with shape [stream][path].
-        ragged_path_logp = k2.RaggedTensor(
-            nbest.shape, ragged_nbest_logp.sum() / self.temperature)
+        path_logp = ragged_nbest_logp.sum() / self.temperature
+        ragged_path_prob = k2.RaggedTensor(nbest.shape, path_logp.exp())
 
-        # Function `normalize(use_log=True)` equals to apply
-        # `torch.log_softmax(dim=-1)` over each sublist.
-        # TODO(liyong): Implement RaggedTensor.softmax
-        # to replace following two lines?
-        ragged_path_logp_normalized = ragged_path_logp.normalize(use_log=True)
-        prob_normalized = ragged_path_logp_normalized.values.exp()
+        # Normalize prob of each path.
+        den_prob = ragged_path_prob.sum()
+        den_logp = torch.index_select(
+            den_prob.log(), 0, ragged_path_prob.shape.row_ids(1))
+        prob_normalized = (path_logp - den_logp).exp()
+
         loss = (prob_normalized * wers).sum()
         return loss
 

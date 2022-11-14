@@ -56,6 +56,7 @@ set(py_test_files
   linear_fst_with_self_loops_test.py
   multi_gpu_test.py
   mutual_information_test.py
+  mwer_test.py
   nbest_test.py
   numerical_gradient_check_test.py
   ragged_ops_test.py
