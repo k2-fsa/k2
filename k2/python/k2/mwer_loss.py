@@ -124,12 +124,12 @@ def mwer_loss(
          Number of paths to **sample** from the lattice
          using :func:`k2.random_paths`.
        temperature:
-         Softmax temperature similar to (logits / temperature).log_softmax().
+         similar to temperature used in (logits / temperature).log_softmax().
          For long utterances, the dynamic range of scores will be too large
          and the posteriors will be mostly 0 or 1.
          To prevent this it might be a good idea to have an extra argument
          that functions like a temperature.
-         Something we can scale the logprobs by before doing the softmax.
+         Something we can scale the logprobs by before doing the normalization.
        use_double_scores:
          True to use double precision floating point.
          False to use single precision.
