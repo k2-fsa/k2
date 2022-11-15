@@ -215,6 +215,28 @@ class TestRaggedTensor(unittest.TestCase):
                 )
                 assert torch.all(torch.eq(a.grad, expected_grad))
 
+    def test_sum_with_grad_case2(self):
+        # see https://github.com/k2-fsa/k2/pull/1101
+        for device in self.devices:
+            for dtype in [torch.float32, torch.float64]:
+                a = k2r.RaggedTensor([[1, 2], [], [5]], dtype=dtype)
+                a = a.to(device)
+                a.requires_grad_(True)
+                b = a.sum()
+                c = b.sum()
+                expected_sum = torch.tensor(
+                    [3, 0, 5], dtype=dtype, device=device
+                )
+
+                assert torch.all(torch.eq(b, expected_sum))
+                assert torch.all(torch.eq(c, expected_sum.sum()))
+
+                c.backward()
+                expected_grad = torch.tensor(
+                    [1, 1, 1], device=device, dtype=dtype
+                )
+                assert torch.all(torch.eq(a.grad, expected_grad)), a.grad
+
     def test_sum_no_grad(self):
         for device in self.devices:
             for dtype in self.dtypes:
