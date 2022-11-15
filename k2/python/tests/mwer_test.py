@@ -65,7 +65,7 @@ class TestMWERLoss(unittest.TestCase):
 
             # assigned to lattice.scores
             prob_lattice = torch.tensor([0.1, 0.5, 0.2,
-                                         0.3, 0.4, 0.5]).repeat(2)
+                                         0.3, 0.4, 0.5]).repeat(2).to(device)
             prob_lattice.requires_grad_()
             logp_lattice = prob_lattice.log()
 
