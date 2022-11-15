@@ -52,7 +52,7 @@ class MWERLoss(torch.nn.Module):
           nbest_scale:
             Scale `lattice.score` before passing it to :func:`k2.random_paths`.
             A smaller value leads to more unique paths at the risk of being not
-            to sample the path with the best score.''
+            to sample the path with the best score.
           num_paths:
             Number of paths to **sample** from the lattice
             using :func:`k2.random_paths`.
