@@ -18,12 +18,11 @@ class MWERLoss(torch.nn.Module):
         '''
         Args:
           temperature:
-            Similar to temperature used in (logits / temperature).log_softmax().
             For long utterances, the dynamic range of scores will be too large
             and the posteriors will be mostly 0 or 1.
             To prevent this it might be a good idea to have an extra argument
             that functions like a temperature.
-            Something we can scale the logprobs by before doing the normalization.
+            We scale the logprobs by before doing the normalization.
           use_double_scores:
             True to use double precision floating point.
             False to use single precision.
@@ -124,12 +123,11 @@ def mwer_loss(
          Number of paths to **sample** from the lattice
          using :func:`k2.random_paths`.
        temperature:
-         Similar to temperature used in (logits / temperature).log_softmax().
          For long utterances, the dynamic range of scores will be too large
          and the posteriors will be mostly 0 or 1.
          To prevent this it might be a good idea to have an extra argument
          that functions like a temperature.
-         Something we can scale the logprobs by before doing the normalization.
+         We scale the logprobs by before doing the normalization.
        use_double_scores:
          True to use double precision floating point.
          False to use single precision.
