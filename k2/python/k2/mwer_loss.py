@@ -65,6 +65,9 @@ class MWERLoss(torch.nn.Module):
             use_double_scores=self.use_double_scores,
             nbest_scale=nbest_scale,
         )
+        device = lattice.scores.device
+        path_arc_shape = nbest.kept_path.shape.to(device)
+        stream_path_shape = nbest.shape.to(device)
 
         hyps = nbest.build_levenshtein_graphs()
         refs = k2.levenshtein_graph(ref_texts, device=hyps.device)
@@ -78,15 +81,14 @@ class MWERLoss(torch.nn.Module):
             use_double_scores=self.use_double_scores, log_semiring=False
         )
         # Each path has a corresponding wer.
-        wers = -tot_scores
+        wers = -tot_scores.to(device)
 
         # Group each log_prob into [path][arc]
-        ragged_nbest_logp = k2.RaggedTensor(nbest.kept_path.shape,
-                                            nbest.fsa.scores)
+        ragged_nbest_logp = k2.RaggedTensor(path_arc_shape, nbest.fsa.scores)
         # Get the probalitity of each path, in log format,
         # with shape [stream][path].
         path_logp = ragged_nbest_logp.sum() / self.temperature
-        ragged_path_prob = k2.RaggedTensor(nbest.shape, path_logp.exp())
+        ragged_path_prob = k2.RaggedTensor(stream_path_shape, path_logp.exp())
 
         # Normalize prob of each path.
         den_prob = ragged_path_prob.sum()

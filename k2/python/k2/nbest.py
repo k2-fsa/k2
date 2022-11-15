@@ -77,7 +77,10 @@ class Nbest(object):
     of paths, which is also the number of FSAs in `fsa`.
     '''
 
-    def __init__(self, fsa: k2.Fsa, shape: k2.RaggedShape) -> None:
+    def __init__(self,
+                 fsa: k2.Fsa,
+                 shape: k2.RaggedShape,
+                 kept_path: k2.RaggedTensor = None) -> None:
         assert len(fsa.shape) == 3, f'fsa.shape: {fsa.shape}'
         assert shape.num_axes == 2, f'num_axes: {shape.num_axes}'
 
@@ -86,6 +89,7 @@ class Nbest(object):
 
         self.fsa = fsa
         self.shape = shape
+        self.kept_path = kept_path
 
     def __str__(self):
         s = 'Nbest('
@@ -189,7 +193,8 @@ class Nbest(object):
         # Note: fsa.scores is tracked by pytorch autograd,
         # since k2.index_select is based on torch.autograd.Function.
         # Detailed in k2/python/k2/ops.py.
-        fsa.scores = k2.index_select(lattice.scores, kept_path.values)
+        fsa.scores = k2.index_select(lattice.scores,
+                                     kept_path.values.to(lattice.scores.device))
         return Nbest(fsa=fsa, shape=utt_to_path_shape, kept_path=kept_path)
 
     def intersect(self, lats: Fsa) -> 'Nbest':

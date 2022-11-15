@@ -125,9 +125,13 @@ class TestMWERLoss(unittest.TestCase):
                                            prob_2_0, prob_3_0,
                                            prob_0_1, prob_1_1,
                                            prob_2_1, prob_3_1])
-            wers = torch.tensor([1, 1, 2, 2, 2, 2, 2, 2])
+            wers = torch.tensor([1, 1, 2, 2, 2, 2, 2, 2]).to(device)
             loss_expected = (prob_normalized * wers).sum()
             assert torch.isclose(loss, loss_expected.to(loss.dtype))
             loss.backward()
             loss_expected.backward()
             assert torch.allclose(prob.grad, prob_lattice.grad, atol=1e-5)
+
+
+if __name__ == '__main__':
+    unittest.main()
