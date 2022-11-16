@@ -1,6 +1,6 @@
 # Copyright (c)  2022  Xiaomi Corporation (authors: Liyong Guo)
 
-from typing import List, Union
+from typing import List, Literal, Union
 
 import torch
 import k2
@@ -14,7 +14,9 @@ class MWERLoss(torch.nn.Module):
 
     def __init__(self,
                  temperature: float = 1.0,
-                 use_double_scores: bool = True):
+                 use_double_scores: bool = True,
+                 reduction: Literal['none', 'mean', 'sum'] = 'sum',
+                 ) -> Union[torch.Tensor, k2.RaggedTensor]:
         '''
         Args:
           temperature:
@@ -26,11 +28,26 @@ class MWERLoss(torch.nn.Module):
           use_double_scores:
             True to use double precision floating point.
             False to use single precision.
+          reduction:
+            Specifies the reduction to apply to the output:
+            'none' | 'sum' | 'mean'.
+            'none': no reduction will be applied.
+                    The returned 'loss' is a k2.RaggedTensor, with
+                    loss.tot_size(0) == batch_size.
+                    loss.tot_size(1) == total_num_paths_of_current_batch
+                    If you want the MWER loss for each utterance, just do:
+                    `loss_per_utt = loss.sum()`
+                    Then loss_per_utt.shape[0] should be batch_size.
+                    See more example usages in 'k2/python/tests/mwer_test.py'
+            'sum': sum loss of each path over the whole batch together.
+            'mean': divide above 'sum' by totol num paths over the whole batch.
         '''
 
+        assert reduction in ('none', 'mean', 'sum')
         super().__init__()
         self.temperature = temperature
         self.use_double_scores = use_double_scores
+        self.reduction = reduction
 
     def forward(self,
                 lattice: k2.Fsa,
@@ -96,17 +113,24 @@ class MWERLoss(torch.nn.Module):
             den_prob.log(), 0, ragged_path_prob.shape.row_ids(1))
         prob_normalized = (path_logp - den_logp).exp()
 
-        loss = (prob_normalized * wers).sum()
+        prob_normalized = prob_normalized * wers
+        if self.reduction == 'sum':
+            loss = prob_normalized.sum()
+        elif self.reduction == 'mean':
+            loss = prob_normalized.mean()
+        else:
+            loss = k2.RaggedTensor(stream_path_shape, prob_normalized)
         return loss
 
 
-def mwer_loss(
-        lattice,
-        ref_texts,
-        nbest_scale=0.5,
-        num_paths=200,
-        temperature=1.0,
-        use_double_scores=True) -> torch.Tensor:
+def mwer_loss(lattice,
+              ref_texts,
+              nbest_scale=0.5,
+              num_paths=200,
+              temperature=1.0,
+              use_double_scores=True,
+              reduction: Literal['none', 'mean', 'sum'] = 'sum',
+              ) -> Union[torch.Tensor, k2.RaggedTensor]:
     '''Compute the Minimum loss given a lattice and corresponding ref_texts.
 
     Args:
@@ -133,8 +157,22 @@ def mwer_loss(
        use_double_scores:
          True to use double precision floating point.
          False to use single precision.
+       reduction:
+         Specifies the reduction to apply to the output:
+         'none' | 'sum' | 'mean'.
+         'none': no reduction will be applied.
+                 The returned 'loss' is a k2.RaggedTensor, with
+                 loss.tot_size(0) == batch_size.
+                 loss.tot_size(1) == total_num_paths_of_current_batch
+                 If you want the MWER loss for each utterance, just do:
+                 `loss_per_utt = loss.sum()`
+                 Then loss_per_utt.shape[0] should be batch_size.
+                 See more example usages in 'k2/python/tests/mwer_test.py'
+         'sum': sum loss of each path over the whole batch together.
+         'mean': divide above 'sum' by totol num paths over the whole batch.
     Returns:
        Minimum Word Error Rate loss.
     '''
-    m = MWERLoss(temperature, use_double_scores)
+    assert reduction in ('none', 'mean', 'sum')
+    m = MWERLoss(temperature, use_double_scores, reduction)
     return m(lattice, ref_texts, nbest_scale, num_paths)

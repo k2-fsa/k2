@@ -37,7 +37,7 @@ class TestMWERLoss(unittest.TestCase):
                 torch.cuda.set_device(1)
                 cls.devices.append(torch.device('cuda', 1))
 
-    def test(self):
+    def _common_test_part(self, reduction, logp, logp_lattice):
         # Note:
         #  log(0.1) == -2.3026
         #  log(0.2) == -1.6094
@@ -45,6 +45,8 @@ class TestMWERLoss(unittest.TestCase):
         #  log(0.4) == -0.9163
         #  log(0.5) == -0.6931
         for device in self.devices:
+            logp = logp.to(device)
+            logp_lattice = logp_lattice.to(device)
             s = """
                 0 1 1 10 -2.3026
                 0 1 5 10 -0.6931
@@ -56,24 +58,12 @@ class TestMWERLoss(unittest.TestCase):
             """
             lattice = k2.Fsa.from_str(s, acceptor=False)
             lattice = k2.Fsa.from_fsas([lattice, lattice])
-
-            # used to verify gradient.
-            prob = torch.tensor([0.1, 0.5, 0.2,
-                                 0.3, 0.4, 0.5]).repeat(2).to(device)
-            prob.requires_grad_()
-            logp = prob.log()
-
-            # assigned to lattice.scores
-            prob_lattice = torch.tensor([0.1, 0.5, 0.2,
-                                         0.3, 0.4, 0.5]).repeat(2).to(device)
-            prob_lattice.requires_grad_()
-            logp_lattice = prob_lattice.log()
-
             lattice.scores = logp_lattice
 
             refs_texts = [[10], [50]]
             loss = k2.mwer_loss(lattice, refs_texts,
-                                nbest_scale=1.0, num_paths=200)
+                                nbest_scale=1.0, num_paths=200,
+                                reduction=reduction)
 
             # each lattice has 4 distinct paths
             # that have different word sequences:
@@ -126,11 +116,51 @@ class TestMWERLoss(unittest.TestCase):
                                            prob_0_1, prob_1_1,
                                            prob_2_1, prob_3_1])
             wers = torch.tensor([1, 1, 2, 2, 2, 2, 2, 2]).to(device)
-            loss_expected = (prob_normalized * wers).sum()
-            assert torch.isclose(loss, loss_expected.to(loss.dtype))
-            loss.backward()
-            loss_expected.backward()
-            assert torch.allclose(prob.grad, prob_lattice.grad, atol=1e-5)
+            prob_normalized = prob_normalized * wers
+            return loss, prob_normalized
+
+    def test(self):
+        for reduction in ['sum', 'mean', 'none']:
+            # used to verify gradient.
+            prob = torch.tensor([0.1, 0.5, 0.2,
+                                 0.3, 0.4, 0.5]).repeat(2)
+            prob.requires_grad_()
+            logp = prob.log()
+
+            # assigned to lattice.scores
+            prob_lattice = torch.tensor([0.1, 0.5, 0.2,
+                                         0.3, 0.4, 0.5]).repeat(2)
+            prob_lattice.requires_grad_()
+            logp_lattice = prob_lattice.log()
+
+            # test reduction == 'sum'
+            loss, prob_normalized = self._common_test_part(reduction,
+                                                           logp,
+                                                           logp_lattice)
+            loss_sum_expected = prob_normalized.sum()
+            loss_mean_expected = prob_normalized.mean()
+            if reduction == 'sum':
+                assert torch.isclose(loss, loss_sum_expected.to(loss.dtype))
+                loss.backward()
+                loss_sum_expected.backward()
+                assert torch.allclose(prob.grad, prob_lattice.grad, atol=1e-5)
+            elif reduction == 'mean':
+                assert torch.isclose(loss, loss_mean_expected.to(loss.dtype))
+                loss.backward()
+                loss_mean_expected.backward()
+                assert torch.allclose(prob.grad, prob_lattice.grad, atol=1e-5)
+            else:
+                assert torch.allclose(loss.values,
+                                      prob_normalized.to(loss.dtype))
+                loss_per_utt = loss.sum()
+                # The test lattice contains two utts, see `_common_test_part`.
+                assert loss_per_utt.shape[0] == 2
+                loss_sum = loss_per_utt.sum()
+                assert torch.isclose(loss_sum,
+                                     loss_sum_expected.to(loss.dtype))
+                loss_sum.backward()
+                loss_sum_expected.backward()
+                assert torch.allclose(prob.grad, prob_lattice.grad, atol=1e-5)
 
 
 if __name__ == '__main__':
