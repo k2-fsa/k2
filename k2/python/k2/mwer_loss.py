@@ -40,7 +40,7 @@ class MWERLoss(torch.nn.Module):
                     Then loss_per_utt.shape[0] should be batch_size.
                     See more example usages in 'k2/python/tests/mwer_test.py'
             'sum': sum loss of each path over the whole batch together.
-            'mean': divide above 'sum' by totol num paths over the whole batch.
+            'mean': divide above 'sum' by total num paths over the whole batch.
         '''
 
         assert reduction in ('none', 'mean', 'sum')
@@ -169,7 +169,7 @@ def mwer_loss(lattice,
                  Then loss_per_utt.shape[0] should be batch_size.
                  See more example usages in 'k2/python/tests/mwer_test.py'
          'sum': sum loss of each path over the whole batch together.
-         'mean': divide above 'sum' by totol num paths over the whole batch.
+         'mean': divide above 'sum' by total num paths over the whole batch.
     Returns:
        Minimum Word Error Rate loss.
     '''
