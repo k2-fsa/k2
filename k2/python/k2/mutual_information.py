@@ -177,8 +177,8 @@ class MutualInformationRecursionFunction(torch.autograd.Function):
         (px_grad, py_grad) = ctx.saved_tensors
         (B,) = ans_grad.shape
         ans_grad = ans_grad.reshape(B, 1, 1)  # (B, 1, 1)
-        px_grad *= ans_grad
-        py_grad *= ans_grad
+        px_grad = px_grad * ans_grad
+        py_grad = py_grad * ans_grad
         return (px_grad, py_grad, None, None, None)
 
 
