@@ -105,16 +105,9 @@ class MWERLoss(torch.nn.Module):
         # Get the probability of each path, in log format,
         # with shape [stream][path].
         path_logp = ragged_nbest_logp.sum() / self.temperature
-        ragged_path_prob = k2.RaggedTensor(stream_path_shape, path_logp.exp())
 
-        # Normalize prob of each path.
-        den_prob = ragged_path_prob.sum()
-        # Note: For torch 1.7.1 and below, it requires a torch.int64 tensor
-        # as index, so we use `to(torch.int64)` below.
-        den_logp = torch.index_select(
-            den_prob.log(), 0,
-            ragged_path_prob.shape.row_ids(1).to(torch.int64))
-        prob_normalized = (path_logp - den_logp).exp()
+        ragged_path_logp = k2.RaggedTensor(stream_path_shape, path_logp)
+        prob_normalized = ragged_path_logp.normalize(use_log=True).values.exp()
 
         prob_normalized = prob_normalized * wers
         if self.reduction == 'sum':
