@@ -93,6 +93,7 @@ class MWERLoss(torch.nn.Module):
             hyp_to_ref_map=nbest.shape.row_ids(1),
             sorted_match_ref=True,
         )
+        # tot_scores is a torch.Tensor with shape [tot_num_paths in this batch]
         tot_scores = levenshtein_alignment.get_tot_scores(
             use_double_scores=self.use_double_scores, log_semiring=False
         )
@@ -108,8 +109,11 @@ class MWERLoss(torch.nn.Module):
 
         # Normalize prob of each path.
         den_prob = ragged_path_prob.sum()
+        # Note: For torch 1.7.1 and below, it requires a torch.int64 tensor
+        # as index, so we use `to(torch.int64)` below.
         den_logp = torch.index_select(
-            den_prob.log(), 0, ragged_path_prob.shape.row_ids(1))
+            den_prob.log(), 0,
+            ragged_path_prob.shape.row_ids(1).to(torch.int64))
         prob_normalized = (path_logp - den_logp).exp()
 
         prob_normalized = prob_normalized * wers
