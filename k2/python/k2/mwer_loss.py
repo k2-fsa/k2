@@ -53,7 +53,7 @@ class MWERLoss(torch.nn.Module):
                 lattice: k2.Fsa,
                 ref_texts: Union[k2.RaggedTensor, List[List[int]]],
                 nbest_scale: float,
-                num_paths: int) -> torch.Tensor:
+                num_paths: int) -> Union[torch.Tensor, k2.RaggedTensor]:
         '''Compute the Minimum Word Error loss given
         a lattice and corresponding ref_texts.
 
