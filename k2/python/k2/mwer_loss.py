@@ -101,7 +101,7 @@ class MWERLoss(torch.nn.Module):
 
         # Group each log_prob into [path][arc]
         ragged_nbest_logp = k2.RaggedTensor(path_arc_shape, nbest.fsa.scores)
-        # Get the probalitity of each path, in log format,
+        # Get the probability of each path, in log format,
         # with shape [stream][path].
         path_logp = ragged_nbest_logp.sum() / self.temperature
         ragged_path_prob = k2.RaggedTensor(stream_path_shape, path_logp.exp())
