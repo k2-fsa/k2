@@ -213,6 +213,11 @@ mutual_information_recursion
 
 .. autofunction:: mutual_information_recursion
 
+mwer_loss
+---------
+
+.. autofunction:: mwer_loss
+
 one_best_decoding
 -----------------
 
@@ -563,8 +568,21 @@ shape
 
 .. autoattribute:: k2.Fsa.shape
 
+MWERLoss
+--------
+
+forward
+^^^^^^^
+
+.. automethod:: k2.MWERLoss.forward
+
 Nbest
 -----
+
+from_lattice
+^^^^^^^^^^^^
+
+.. automethod:: k2.Nbest.from_lattice
 
 intersect
 ^^^^^^^^^
