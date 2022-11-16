@@ -81,6 +81,8 @@ from .fsa_algo import union
 from .fsa_properties import to_str as properties_to_str
 from .mutual_information import joint_mutual_information_recursion
 from .mutual_information import mutual_information_recursion
+from .mwer_loss import MWERLoss
+from .mwer_loss import mwer_loss
 from .nbest import Nbest
 
 from .online_dense_intersecter import DecodeStateInfo
