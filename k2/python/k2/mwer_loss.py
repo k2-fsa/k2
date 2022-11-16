@@ -15,8 +15,7 @@ class MWERLoss(torch.nn.Module):
     def __init__(self,
                  temperature: float = 1.0,
                  use_double_scores: bool = True,
-                 reduction: Literal['none', 'mean', 'sum'] = 'sum',
-                 ) -> Union[torch.Tensor, k2.RaggedTensor]:
+                 reduction: Literal['none', 'mean', 'sum'] = 'sum'):
         '''
         Args:
           temperature:
@@ -43,7 +42,7 @@ class MWERLoss(torch.nn.Module):
             'mean': divide above 'sum' by total num paths over the whole batch.
         '''
 
-        assert reduction in ('none', 'mean', 'sum')
+        assert reduction in ('none', 'mean', 'sum'), reduction
         super().__init__()
         self.temperature = temperature
         self.use_double_scores = use_double_scores
@@ -173,6 +172,6 @@ def mwer_loss(lattice,
     Returns:
        Minimum Word Error Rate loss.
     '''
-    assert reduction in ('none', 'mean', 'sum')
+    assert reduction in ('none', 'mean', 'sum'), reduction
     m = MWERLoss(temperature, use_double_scores, reduction)
     return m(lattice, ref_texts, nbest_scale, num_paths)
