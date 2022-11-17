@@ -16,10 +16,7 @@ def fix_pytorch_1_12():
     torch_dir = Path(torch.__file__).parent
     print("torch_dir", torch_dir)
     mobile_dir = torch_dir / "include" / "torch" / "csrc" / "jit" / "mobile"
-    if mobile_dir.is_dir():
-        print("Skip")
-        return
-    mobile_dir.mkdir()
+    mobile_dir.mkdir(exist_ok=True)
     files = (
         "code.h",
         "debug_info.h",
@@ -30,8 +27,11 @@ def fix_pytorch_1_12():
     base_url = "https://raw.githubusercontent.com/pytorch/pytorch/v1.12.1/torch/csrc/jit/mobile/"  # noqa
     for f in files:
         path = mobile_dir / f
+        if path.is_file():
+            print(f"skipping {path}")
+            continue
         url = base_url + f
-        print(f"Donwloading {url} to {path}")
+        print(f"Downloading {url} to {path}")
         urllib.request.urlretrieve(url, path)
 
 
