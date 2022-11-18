@@ -161,6 +161,27 @@ FsaClassPtr GetLattice(torch::Tensor log_softmax_out,
  */
 std::vector<std::vector<int32_t>> BestPath(const FsaClassPtr &lattice);
 
+class RnntDecodingStream;
+class RnntDecodingStreams;
+using RnntStreamPtr = std::shared_ptr<RnntDecodingStream>;
+using RnntStreamsPtr = std::shared_ptr<RnntDecodingStreams>;
+
+RnntStreamPtr CreateRnntStream(FsaClassPtr decoding_graph);
+
+RnntStreamsPtr CreateRnntStreams(std::vector<RnntStreamPtr> &source_streams,
+                                 int32_t vocab_size, int32_t context_size = 2,
+                                 float beam = 15, int32_t max_contexts = 8,
+                                 int32_t max_states = 64);
+
+std::pair<RaggedShapePtr, Tensor> GetRnntContexts(RnntStreamsPtr rnnt_streams);
+
+void AdvanceRnntStreams(RnntStreamsPtr rnnt_streams, torch::Tensor logprobs);
+
+void TerminateAndFlushRnntStreams(RnntStreamsPtr rnnt_streams);
+
+FsaClassPtr FormatOutput(RnntStreamsPtr rnnt_streams, torch::Tensor num_frames,
+                         bool allow_partial = false);
+
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_TORCH_API_H_
