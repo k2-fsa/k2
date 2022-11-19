@@ -73,7 +73,8 @@ FsaClassPtr GetCtcTopo(int32_t max_token, bool modified, torch::Device device) {
   return std::make_shared<FsaClass>(CtcTopo(max_token, modified, device));
 }
 
-FsaClassPtr GetTrivialGraph(int32_t max_token, torch::Device device) {
+FsaClassPtr GetTrivialGraph(int32_t max_token,
+                            torch::Device device /*=torch::kCPU*/) {
   return std::make_shared<FsaClass>(TrivialGraph(max_token, device));
 }
 

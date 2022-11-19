@@ -188,7 +188,7 @@ std::vector<std::vector<int32_t>> BestPath(const FsaClassPtr &lattice);
  *  @param attribute The attribute name.
  */
 void ScaleTensorAttribute(FsaClassPtr &fsa, float scale,
-                          const std::string &attribute = "scores");
+                          const std::string &attribute);
 
 /** Get tensor type attribute of a Fsa.
  *
