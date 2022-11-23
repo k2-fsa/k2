@@ -525,10 +525,14 @@ class MultiGraphDenseIntersect {
           CompressedArc carc = carcs_data[a_fsas_arc_idx012];
           K2_CHECK_EQ(a_fsas_state_idx1, (int32_t)carc.src_state);
           int32_t a_fsas_dest_state_idx1 = carc.dest_state;
-          arc_map_a_data[arc_idx_out] = a_fsas_arc_idx012;
+          if (arc_map_a_data) {
+            arc_map_a_data[arc_idx_out] = a_fsas_arc_idx012;
+          }
           int32_t scores_index = fsa_info.scores_offset +
                                  (scores_stride * t_idx1) + carc.label_plus_one;
-          arc_map_b_data[arc_idx_out] = scores_index;
+          if (arc_map_b_data) {
+            arc_map_b_data[arc_idx_out] = scores_index;
+          }
 
           float arc_score = carc.score + scores_data[scores_index];
 
