@@ -228,6 +228,7 @@ dev_requirements = [
 install_requires = [
     f"torch=={get_pytorch_version()}",
     "graphviz",
+    "typing_extensions; python_version < '3.8'",
 ]
 
 setuptools.setup(
