@@ -1,6 +1,11 @@
 # Copyright (c)  2022  Xiaomi Corporation (authors: Liyong Guo)
 
-from typing import List, Literal, Union
+try:
+    from typing import Literal  # for Python >= 3.8
+except ImportError:
+    from typing_extensions import Literal  # for python < 3.8
+
+from typing import List, Union
 
 import torch
 import k2

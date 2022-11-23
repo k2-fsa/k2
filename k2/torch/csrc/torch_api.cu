@@ -15,7 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <utility>
+
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/rnnt_decode.h"
 #include "k2/csrc/torch_util.h"
 #include "k2/torch/csrc/decode.h"
 #include "k2/torch/csrc/deserialization.h"
@@ -69,18 +73,22 @@ FsaClassPtr GetCtcTopo(int32_t max_token, bool modified, torch::Device device) {
   return std::make_shared<FsaClass>(CtcTopo(max_token, modified, device));
 }
 
+FsaClassPtr GetTrivialGraph(int32_t max_token,
+                            torch::Device device /*=torch::kCPU*/) {
+  return std::make_shared<FsaClass>(TrivialGraph(max_token, device));
+}
+
 FsaClassPtr LoadFsaClass(const std::string &filename,
                          torch::Device map_location) {
   return std::make_shared<FsaClass>(LoadFsa(filename, map_location));
 }
 
 FsaClassPtr GetLattice(torch::Tensor log_softmax_out,
-                          torch::Tensor log_softmax_out_lens,
-                          FsaClassPtr decoding_graph,
-                          float search_beam, float output_beam,
-                          int32_t min_activate_states,
-                          int32_t max_activate_states,
-                          int32_t subsampling_factor) {
+                       torch::Tensor log_softmax_out_lens,
+                       FsaClassPtr decoding_graph, float search_beam,
+                       float output_beam, int32_t min_activate_states,
+                       int32_t max_activate_states,
+                       int32_t subsampling_factor) {
   int32_t num_sequences = log_softmax_out.size(0);
   K2_CHECK_EQ(num_sequences, log_softmax_out_lens.size(0))
       << "The number of sequences should be equal, given " << num_sequences
@@ -106,6 +114,106 @@ std::vector<std::vector<int32_t>> BestPath(const FsaClassPtr &lattice) {
   auto ragged_aux_labels = GetTexts(paths);
   auto aux_labels_vec = ragged_aux_labels.ToVecVec();
   return aux_labels_vec;
+}
+
+void ScaleTensorAttribute(FsaClassPtr &fsa, float scale,
+                          const std::string &attribute) {
+  K2_CHECK(fsa->HasTensorAttr(attribute))
+      << "The given Fsa doesn't has the attribute : " << attribute;
+  auto old_value = fsa->GetTensorAttr(attribute);
+  K2_CHECK(old_value.scalar_type() == torch::kFloat ||
+           old_value.scalar_type() == torch::kDouble)
+      << "Only support scaling float type attributes, the type of given "
+         "attribute : "
+      << attribute << " is " << old_value.scalar_type();
+  fsa->SetTensorAttr(attribute, old_value * scale);
+}
+
+torch::Tensor GetTensorAttr(FsaClassPtr &fsa, const std::string &attribute) {
+  K2_CHECK(fsa->HasTensorAttr(attribute))
+      << "The given Fsa doesn't has the attribute : " << attribute;
+  return fsa->GetTensorAttr(attribute);
+}
+
+void SetTensorAttr(FsaClassPtr &fsa, const std::string &attribute,
+                   torch::Tensor value) {
+  fsa->SetTensorAttr(attribute, value);
+}
+
+// A wrapper for RnntDecodingStream which can connect the RnntDecodingStream
+// with source Fsa graph, we need this graph to do attribute propagation.
+struct RnntStream {
+  std::shared_ptr<rnnt_decoding::RnntDecodingStream> stream;
+  FsaClassPtr graph;
+};
+
+// A wrapper for RnntDecodingStreams which can connect the RnntDecodingStreams
+// with source streams.
+struct RnntStreams {
+  std::shared_ptr<rnnt_decoding::RnntDecodingStreams> streams;
+  std::vector<std::shared_ptr<RnntStream>> src_streams;
+};
+
+RnntStreamPtr CreateRnntStream(FsaClassPtr decoding_graph) {
+  RnntStream rnnt_stream;
+  rnnt_stream.graph = decoding_graph;
+  rnnt_stream.stream =
+      rnnt_decoding::CreateStream(std::make_shared<Fsa>(decoding_graph->fsa));
+  return std::make_shared<RnntStream>(rnnt_stream);
+}
+
+RnntStreamsPtr CreateRnntStreams(
+    const std::vector<RnntStreamPtr> &source_streams, int32_t vocab_size,
+    int32_t context_size, float beam, int32_t max_contexts,
+    int32_t max_states) {
+  std::vector<std::shared_ptr<rnnt_decoding::RnntDecodingStream>> raw_streams(
+      source_streams.size());
+  for (size_t i = 0; i < raw_streams.size(); ++i) {
+    raw_streams[i] = source_streams[i]->stream;
+  }
+  rnnt_decoding::RnntDecodingConfig config(vocab_size, context_size, beam,
+                                           max_states, max_contexts);
+  RnntStreams rnnt_streams;
+  rnnt_streams.src_streams = source_streams;
+  auto streams = rnnt_decoding::RnntDecodingStreams(raw_streams, config);
+  rnnt_streams.streams =
+      std::make_shared<rnnt_decoding::RnntDecodingStreams>(streams);
+  return std::make_shared<RnntStreams>(rnnt_streams);
+}
+
+std::pair<RaggedShapePtr, torch::Tensor> GetRnntContexts(
+    RnntStreamsPtr rnnt_streams) {
+  RaggedShape shape;
+  Array2<int32_t> contexts;
+  rnnt_streams->streams->GetContexts(&shape, &contexts);
+  torch::Tensor contexts_tensor = ToTorch<int32_t>(contexts);
+  return std::make_pair(std::make_shared<RaggedShape>(shape), contexts_tensor);
+}
+
+void AdvanceRnntStreams(RnntStreamsPtr rnnt_streams, torch::Tensor log_probs) {
+  log_probs = log_probs.to(torch::kFloat);
+  Array2<float> log_probs_array = FromTorch<float>(log_probs, Array2Tag{});
+  rnnt_streams->streams->Advance(log_probs_array);
+}
+
+void TerminateAndFlushRnntStreams(RnntStreamsPtr rnnt_streams) {
+  rnnt_streams->streams->TerminateAndFlushToStreams();
+}
+
+FsaClassPtr FormatOutput(RnntStreamsPtr rnnt_streams,
+                         std::vector<int32_t> num_frames, bool allow_partial) {
+  FsaVec ofsa;
+  Array1<int32_t> array_map;
+  rnnt_streams->streams->FormatOutput(num_frames, allow_partial, &ofsa,
+                                      &array_map);
+  auto arc_map = Ragged<int32_t>(ofsa.shape, array_map).RemoveAxis(1);
+  std::vector<FsaClass> graphs(rnnt_streams->src_streams.size());
+  for (size_t i = 0; i < graphs.size(); ++i) {
+    graphs[i] = *(rnnt_streams->src_streams[i]->graph);
+  }
+  FsaClass lattice(ofsa);
+  lattice.CopyAttrs(graphs, arc_map);
+  return std::make_shared<FsaClass>(lattice);
 }
 
 }  // namespace k2

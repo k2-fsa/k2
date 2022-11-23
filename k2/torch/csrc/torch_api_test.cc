@@ -43,6 +43,23 @@ TEST(ExclusiveSum, NotSharedMemory) {
   EXPECT_TRUE(torch::allclose(dst, expected));
 }
 
+TEST(FsaAttribute, ScaleTensorAttribute) {
+  auto fsa = GetTrivialGraph(5);  // This graph has 6 arcs.
+  auto value = torch::tensor({1.0, 2.0, 3.0, 4.0, 5.0, 6.0}, torch::kFloat32);
+
+  SetTensorAttr(fsa, "scores", value);
+  SetTensorAttr(fsa, "lm_scores", value);
+  ScaleTensorAttribute(fsa, 2.0, "scores");
+  ScaleTensorAttribute(fsa, -1.0, "lm_scores");
+
+  EXPECT_TRUE(torch::allclose(
+      GetTensorAttr(fsa, "scores"),
+      torch::tensor({2.0, 4.0, 6.0, 8.0, 10.0, 12.0}, torch::kFloat32)));
+  EXPECT_TRUE(torch::allclose(
+      GetTensorAttr(fsa, "lm_scores"),
+      torch::tensor({-1.0, -2.0, -3.0, -4.0, -5.0, -6.0}, torch::kFloat32)));
+}
+
 TEST(RaggedShape, TestAllWrappedMethods) {
   auto sizes = torch::tensor({1, 3, 2, 0}, torch::kInt);
   auto row_splits = torch::empty_like(sizes);
@@ -70,6 +87,42 @@ TEST(CtcDecode, TestBasicCtcDecode) {
   auto ctc_topo = GetCtcTopo(49);
 
   auto lattice = GetLattice(log_softmax_out, log_softmax_out_lens, ctc_topo);
+  auto results = BestPath(lattice);
+
+  std::ostringstream oss;
+  for (auto result : results) {
+    for (auto id : result) {
+      oss << id << " ";
+    }
+    oss << "\n";
+  }
+  std::cout << "Decoding results : " << oss.str();
+}
+
+// This test does not do any checking, just to confirm it runs normally.
+TEST(RnntDecode, TestBasicRnntDecode) {
+  namespace F = torch::nn::functional;
+  int32_t vocab_size = 50, frames = 5, num_streams = 3, context_size = 2;
+  auto graph = GetTrivialGraph(vocab_size - 1);
+  std::vector<RnntStreamPtr> raw_streams(num_streams);
+  for (int32_t i = 0; i < num_streams; ++i) {
+    raw_streams[i] = CreateRnntStream(graph);
+  }
+  RnntStreamsPtr streams =
+      CreateRnntStreams(raw_streams, vocab_size, context_size);
+
+  for (int32_t i = 0; i < frames; ++i) {
+    auto contexts = GetRnntContexts(streams);
+    int32_t num_contexts = std::get<1>(contexts).size(0);
+    auto logits = torch::randn({num_contexts, vocab_size}, torch::kFloat32);
+    auto log_probs = F::log_softmax(logits, /*dim*/ 1);
+    AdvanceRnntStreams(streams, log_probs);
+  }
+  TerminateAndFlushRnntStreams(streams);
+
+  std::vector<int32_t> num_frames(num_streams, frames);
+
+  auto lattice = FormatOutput(streams, num_frames, true /*allow_partial*/);
   auto results = BestPath(lattice);
 
   std::ostringstream oss;
