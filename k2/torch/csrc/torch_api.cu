@@ -118,6 +118,12 @@ std::vector<std::vector<int32_t>> BestPath(const FsaClassPtr &lattice) {
 
 void ScaleTensorAttribute(FsaClassPtr &fsa, float scale,
                           const std::string &attribute) {
+  if(attribute == "scores") {
+    auto scores = fsa->Scores();
+    scores = scores * scale;
+    fsa->SetScores(scores);
+    return;
+  }
   K2_CHECK(fsa->HasTensorAttr(attribute))
       << "The given Fsa doesn't has the attribute : " << attribute;
   auto old_value = fsa->GetTensorAttr(attribute);
