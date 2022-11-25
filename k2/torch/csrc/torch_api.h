@@ -177,6 +177,12 @@ FsaClassPtr GetLattice(torch::Tensor log_softmax_out,
  */
 std::vector<std::vector<int32_t>> BestPath(const FsaClassPtr &lattice);
 
+/* Return the best path of a lattice.
+ *
+ * Different from `BestPath`, this function returns a lattice.
+ */
+FsaClassPtr ShortestPath(const FsaClassPtr &lattice);
+
 /** Scale the given attribute for a Fsa.
  *
  *  Note: Support only float type attributes.
