@@ -116,6 +116,11 @@ std::vector<std::vector<int32_t>> BestPath(const FsaClassPtr &lattice) {
   return aux_labels_vec;
 }
 
+FsaClassPtr ShortestPath(const FsaClassPtr &lattice) {
+  FsaClass path = ShortestPath(*lattice);
+  return std::make_shared<FsaClass>(path);
+}
+
 void ScaleTensorAttribute(FsaClassPtr &fsa, float scale,
                           const std::string &attribute) {
   if (attribute == "scores") {
@@ -136,6 +141,12 @@ void ScaleTensorAttribute(FsaClassPtr &fsa, float scale,
 }
 
 torch::Tensor GetTensorAttr(FsaClassPtr &fsa, const std::string &attribute) {
+  if (attribute == "labels") {
+    return fsa->Labels();
+  } else if (attribute == "scores") {
+    return fsa->Scores();
+  }
+
   K2_CHECK(fsa->HasTensorAttr(attribute))
       << "The given Fsa doesn't has the attribute : " << attribute;
   return fsa->GetTensorAttr(attribute);
@@ -143,7 +154,13 @@ torch::Tensor GetTensorAttr(FsaClassPtr &fsa, const std::string &attribute) {
 
 void SetTensorAttr(FsaClassPtr &fsa, const std::string &attribute,
                    torch::Tensor value) {
-  fsa->SetTensorAttr(attribute, value);
+  if (attribute == "labels") {
+    fsa->SetLabels(value);
+  } else if (attribute == "scores") {
+    fsa->SetScores(value);
+  } else {
+    fsa->SetTensorAttr(attribute, value);
+  }
 }
 
 // A wrapper for RnntDecodingStream which can connect the RnntDecodingStream

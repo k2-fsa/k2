@@ -47,7 +47,7 @@ message(STATUS "Enabled languages: ${languages}")
 
 project(k2 ${languages})
 
-set(K2_VERSION "1.23.1")
+set(K2_VERSION "1.23.2")
 
 # ----------------- Supported build types for K2 project -----------------
 set(K2_ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
