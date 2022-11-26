@@ -20,6 +20,8 @@ name: build_conda_cuda_ubuntu
 
 on:
   push:
+    branches:
+      - fix-torch-conda-1.13-1126
     tags:
       - '*'
 
@@ -45,7 +47,7 @@ jobs:
         run: |
           # outputting for debugging purposes
           python scripts/github_actions/generate_build_matrix.py
-          MATRIX=$(python scripts/github_actions/generate_build_matrix.py --enable-cuda)
+          MATRIX=$(python scripts/github_actions/generate_build_matrix.py --enable-cuda --test-only-latest-torch)
           echo "::set-output name=matrix::${MATRIX}"
 
   build_conda_cuda_ubuntu:
