@@ -90,7 +90,10 @@ export K2_BUILD_TYPE
 
 if [ ! -z $K2_IS_GITHUB_ACTIONS ]; then
   export K2_IS_GITHUB_ACTIONS
-  conda remove -q pytorch cudatoolkit
+  conda remove -q pytorch
+  if [ $K2_TORCH_VERSION != "1.13.0" ]; then
+    conda remove -q cudatoolkit
+  fi
   conda clean -q -a
 else
   export K2_IS_GITHUB_ACTIONS=0
@@ -98,7 +101,7 @@ fi
 
 if [ -z $K2_CONDA_TOKEN ]; then
   echo "Auto upload to anaconda.org is disabled since K2_CONDA_TOKEN is not set"
-  if [ $K2_TORCH_VERSION == "1.13" ]; then
+  if [ $K2_TORCH_VERSION == "1.13.0" ]; then
     # From torch 1.13, the command to install torch is
     # conda install pytorch torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
     conda build --no-test --no-anaconda-upload -c pytorch -c nvidia ./scripts/conda-torch-ge-1.13/k2
@@ -106,7 +109,7 @@ if [ -z $K2_CONDA_TOKEN ]; then
     conda build --no-test --no-anaconda-upload -c pytorch -c conda-forge ./scripts/conda/k2
   fi
 else
-  if [ $K2_TORCH_VERSION == "1.13" ]; then
+  if [ $K2_TORCH_VERSION == "1.13.0" ]; then
     # From torch 1.13, the command to install torch is
     # conda install pytorch torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
     conda build --no-test -c pytorch -c nvidia ./scripts/conda-torch-ge-1.13/k2
