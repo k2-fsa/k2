@@ -112,7 +112,7 @@ else
   if [ $K2_TORCH_VERSION == "1.13.0" ]; then
     # From torch 1.13, the command to install torch is
     # conda install pytorch torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
-    conda build --no-test -c pytorch -c nvidia ./scripts/conda-torch-ge-1.13/k2
+    conda build --no-test -c pytorch -c nvidia --token $K2_CONDA_TOKEN ./scripts/conda-torch-ge-1.13/k2
   else
     conda build --no-test -c pytorch -c conda-forge --token $K2_CONDA_TOKEN ./scripts/conda/k2
   fi
