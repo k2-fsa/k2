@@ -5,7 +5,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Install using conda (Linux/macOS) &mdash; k2 1.22 documentation</title>
+  <title>Install using conda (Linux/macOS) &mdash; k2 1.23.2 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -32,7 +32,7 @@
             <a href="../index.html" class="icon icon-home"> k2
           </a>
               <div class="version">
-                1.22
+                1.23.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -99,10 +99,18 @@ or <a class="reference internal" href="pip.html#install-using-pip-via-k2-fsa-org
 want to install k2 on Windows.</p>
 </div>
 <p>All you need is the following line</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda install -c k2-fsa -c pytorch -c nvidia k2 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.13.0 pytorch-cuda<span class="o">=</span><span class="m">11</span>.7 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+</pre></div>
+</div>
+<p>to install the <strong>latest</strong> k2 with Python 3.8, CUDA 11.7, and PyTorch 1.13.0.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>If you want to install PyTorch &lt; 1.13, e.g., PyTorch 1.12.1, please use</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda install -c k2-fsa -c pytorch -c conda-forge k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.6 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.12.1
 </pre></div>
 </div>
 <p>to install the <strong>latest</strong> k2 with Python 3.8, CUDA 11.6, and PyTorch 1.12.1.</p>
+</div>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <p>The above command is just an example. You can choose other versions of Python,
@@ -113,7 +121,7 @@ cudatoolkit, and PyTorch as you want. For instance,</p>
 <p>The above command installs k2 with Python 3.9, cudatoolkit 11.6, and PyTorch 1.12.0</p>
 </div>
 <p>To Install a CPU version, use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda install -c k2-fsa -c pytorch cpuonly k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.12.1
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda install -c k2-fsa -c pytorch cpuonly k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.13.0
 </pre></div>
 </div>
 <p>We provide the following YouTube video showing how to install k2 via conda.</p>
@@ -128,23 +136,6 @@ the following YouTube channel by <a class="reference external" href="https://www
 <div class="video_wrapper" style="">
 <iframe allowfullscreen="true" src="https://www.youtube.com/embed/HerxbUHs-V4" style="border: 0; height: 345px; width: 560px">
 </iframe></div><div class="admonition hint">
-<p class="admonition-title">Hint</p>
-<p>If you are using macOS and encounter the following error while
-running <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">-m</span> <span class="pre">k2.version</span></code> after installation:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ImportError: dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/foo/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, <span class="m">2</span><span class="o">)</span>: Library not loaded: @rpath/libk2context.dylib
-  Referenced from: /Users/fangjun/software/miniconda3/envs/foo/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
-  Reason: image not found
-</pre></div>
-</div>
-<p>You can use:</p>
-<blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">DYLD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CONDA_PREFIX</span>/lib/python3.8/site-packages:<span class="nv">$DYLD_LIBRARY_PATH</span>
-python3 -m k2.version  <span class="c1"># now it should work</span>
-</pre></div>
-</div>
-</div></blockquote>
-</div>
-<div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <p>If you encounter the following error:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ne">ModuleNotFoundError</span><span class="p">:</span> <span class="n">no</span> <span class="n">module</span> <span class="n">named</span> <span class="n">graphviz</span>
