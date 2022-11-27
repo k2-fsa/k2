@@ -1187,6 +1187,59 @@ def ctc_graph(symbols: Union[List[List[int]], k2.RaggedTensor],
     Returns:
         An FsaVec containing the returned ctc graphs, with "Dim0()" the same as
         "len(symbols)"(List[List[int]]) or "dim0"(k2.RaggedTensor)
+
+    **Example 1**
+
+        .. literalinclude:: ./code/ctc_graph/main.py
+           :language: python
+           :linenos:
+           :caption: Usage of k2.ctc_graph
+
+        .. figure:: code/ctc_graph/ctc_graph.svg
+            :alt: CTC graph (modified=False)
+            :align: center
+            :figwidth: 600px
+
+            Note: There is a mandatory blank between state 3 and 5.
+
+        .. figure:: code/ctc_graph/modified_ctc_graph.svg
+            :alt: CTC graph (modified=True)
+            :align: center
+            :figwidth: 600px
+
+            Note: There is **no** mandatory blank between state 3 and 5.
+
+    **Example 2 Construct a CTC graph using composition**
+
+        .. literalinclude:: ./code/ctc_graph/main2.py
+           :language: python
+           :linenos:
+           :caption: Construct a CTC graph using composition
+
+        .. figure:: code/ctc_graph/linear_fsa.svg
+            :alt: Linear FSA
+            :align: center
+            :figwidth: 600px
+
+        .. figure:: code/ctc_graph/ctc_topo.svg
+            :alt: CTC topology (modified=False)
+            :align: center
+            :figwidth: 600px
+
+        .. figure:: code/ctc_graph/ctc_topo_compose_linear_fsa.svg
+            :alt: k2.compose(ctc_topo, linear_fsa)
+            :align: center
+            :figwidth: 600px
+
+        .. figure:: code/ctc_graph/ctc_topo_modified.svg
+            :alt: CTC topology (modified=True)
+            :align: center
+            :figwidth: 600px
+
+        .. figure:: code/ctc_graph/ctc_topo_modified_compose_linear_fsa.svg
+            :alt: k2.compose(ctc_topo_modified, linear_fsa)
+            :align: center
+            :figwidth: 600px
     '''
     if not isinstance(symbols, k2.RaggedTensor):
         symbols = k2.RaggedTensor(symbols, device=device)
@@ -1230,6 +1283,23 @@ def ctc_topo(max_token: int,
     Returns:
       Return either a standard or a modified CTC topology as an FSA
       depending on whether `standard` is True or False.
+
+    **Example**
+
+        .. literalinclude:: ./code/ctc_topo/main.py
+           :language: python
+           :linenos:
+           :caption: Usage of k2.ctc_topo
+
+        .. figure:: code/ctc_topo/ctc_topo.svg
+            :alt: CTC topology
+            :align: center
+            :figwidth: 600px
+
+        .. figure:: code/ctc_topo/modified_ctc_topo.svg
+            :alt: CTC topology
+            :align: center
+            :figwidth: 600px
     '''
     ragged_arc, aux_labels = _k2.ctc_topo(max_token, device, modified)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
