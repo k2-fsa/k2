@@ -51,7 +51,7 @@ jobs:
           K2_IS_FOR_PYPI: 1
           K2_IS_STABLE: 1
         run: |
-          tag=$(python3 -c "import sys; print(''.join(sys.version[:3].split('.')))")
+          tag=$(python3 -c "import sys; print('.'.join(sys.version.split('.')[:2]))")
           export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
           export K2_MAKE_ARGS="-j2"
           python3 setup.py bdist_wheel --python-tag=py${tag}
