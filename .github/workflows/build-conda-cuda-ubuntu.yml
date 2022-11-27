@@ -96,7 +96,11 @@ jobs:
           conda install -y -q anaconda-client
           conda install -y -q conda-build
           conda install -y -q bs4 requests tqdm
-          conda install -y -q -c pytorch -c conda-forge pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
+          if [[ ${{ matrix.torch }} == "1.13.0" ]]; then
+            conda install -y -q -c pytorch -c nvidia pytorch=${{ matrix.torch }} pytorch-cuda=${{ matrix.cuda }}
+          else
+            conda install -y -q -c pytorch -c conda-forge pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
+          fi
 
       - name: Display conda info
         shell: bash -l {0}
