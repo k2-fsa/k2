@@ -772,7 +772,7 @@ that torch currently supports).</p>
 <h2>ctc_graph<a class="headerlink" href="#ctc-graph" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ctc_graph">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">ctc_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1160-L1196"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ctc_graph" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">ctc_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1160-L1249"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ctc_graph" title="Permalink to this definition"></a></dt>
 <dd><p>Construct ctc graphs from symbols.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -808,6 +808,116 @@ FSA will on the same device as <cite>k2.RaggedTensor</cite>.</p></li>
 “len(symbols)”(List[List[int]]) or “dim0”(k2.RaggedTensor)</p>
 </dd>
 </dl>
+<p><strong>Example 1</strong></p>
+<blockquote>
+<div><div class="literal-block-wrapper docutils container" id="id115">
+<div class="code-block-caption"><span class="caption-number">Listing 11 </span><span class="caption-text">Usage of k2.ctc_graph</span><a class="headerlink" href="#id115" title="Permalink to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="ch">#!/usr/bin/env python3</span>
+<span class="linenos"> 2</span>
+<span class="linenos"> 3</span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="linenos"> 4</span>
+<span class="linenos"> 5</span><span class="n">isym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="linenos"> 6</span><span class="s1">blk 0</span>
+<span class="linenos"> 7</span><span class="s1">a 1</span>
+<span class="linenos"> 8</span><span class="s1">b 2</span>
+<span class="linenos"> 9</span><span class="s1">c 3</span>
+<span class="linenos">10</span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="n">osym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="linenos">13</span><span class="s1">a 1</span>
+<span class="linenos">14</span><span class="s1">b 2</span>
+<span class="linenos">15</span><span class="s1">c 3</span>
+<span class="linenos">16</span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="linenos">17</span>
+<span class="linenos">18</span><span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">ctc_graph</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="n">modified</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="linenos">19</span><span class="n">fsa_modified</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">ctc_graph</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="n">modified</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="linenos">20</span>
+<span class="linenos">21</span><span class="n">fsa</span><span class="o">.</span><span class="n">labels_sym</span> <span class="o">=</span> <span class="n">isym</span>
+<span class="linenos">22</span><span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">osym</span>
+<span class="linenos">23</span>
+<span class="linenos">24</span><span class="n">fsa_modified</span><span class="o">.</span><span class="n">labels_sym</span> <span class="o">=</span> <span class="n">isym</span>
+<span class="linenos">25</span><span class="n">fsa_modified</span><span class="o">.</span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">osym</span>
+<span class="linenos">26</span>
+<span class="linenos">27</span><span class="c1"># fsa is an FsaVec, so we use fsa[0] to visualize the first Fsa</span>
+<span class="linenos">28</span><span class="n">fsa</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;ctc_graph.svg&#39;</span><span class="p">,</span>
+<span class="linenos">29</span>            <span class="n">title</span><span class="o">=</span><span class="s1">&#39;CTC graph for the string &quot;abbc&quot; (modified=False)&#39;</span><span class="p">)</span>
+<span class="linenos">30</span><span class="n">fsa_modified</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;modified_ctc_graph.svg&#39;</span><span class="p">,</span>
+<span class="linenos">31</span>                     <span class="n">title</span><span class="o">=</span><span class="s1">&#39;CTC graph for the string &quot;abbc&quot; (modified=True)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<figure class="align-center" id="id116" style="width: 600px">
+<img alt="CTC graph (modified=False)" src="../_images/ctc_graph.svg" /><figcaption>
+<p><span class="caption-number">Fig. 18 </span><span class="caption-text">Note: There is a mandatory blank between state 3 and 5.</span><a class="headerlink" href="#id116" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+<figure class="align-center" id="id117" style="width: 600px">
+<img alt="CTC graph (modified=True)" src="../_images/modified_ctc_graph.svg" /><figcaption>
+<p><span class="caption-number">Fig. 19 </span><span class="caption-text">Note: There is <strong>no</strong> mandatory blank between state 3 and 5.</span><a class="headerlink" href="#id117" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</div></blockquote>
+<p><strong>Example 2 Construct a CTC graph using composition</strong></p>
+<blockquote>
+<div><div class="literal-block-wrapper docutils container" id="id118">
+<div class="code-block-caption"><span class="caption-number">Listing 12 </span><span class="caption-text">Construct a CTC graph using composition</span><a class="headerlink" href="#id118" title="Permalink to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="ch">#!/usr/bin/env python3</span>
+<span class="linenos"> 2</span>
+<span class="linenos"> 3</span><span class="c1"># Construct a CTC graph by intersection</span>
+<span class="linenos"> 4</span>
+<span class="linenos"> 5</span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="linenos"> 6</span>
+<span class="linenos"> 7</span><span class="n">isym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="linenos"> 8</span><span class="s1">blk 0</span>
+<span class="linenos"> 9</span><span class="s1">a 1</span>
+<span class="linenos">10</span><span class="s1">b 2</span>
+<span class="linenos">11</span><span class="s1">c 3</span>
+<span class="linenos">12</span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="linenos">13</span>
+<span class="linenos">14</span><span class="n">osym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="linenos">15</span><span class="s1">a 1</span>
+<span class="linenos">16</span><span class="s1">b 2</span>
+<span class="linenos">17</span><span class="s1">c 3</span>
+<span class="linenos">18</span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="linenos">19</span>
+<span class="linenos">20</span><span class="n">linear_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">linear_fsa</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="linenos">21</span><span class="n">linear_fsa</span><span class="o">.</span><span class="n">labels_sym</span> <span class="o">=</span> <span class="n">isym</span>
+<span class="linenos">22</span>
+<span class="linenos">23</span><span class="n">ctc_topo</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">ctc_topo</span><span class="p">(</span><span class="n">max_token</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">modified</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="linenos">24</span><span class="n">ctc_topo_modified</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">ctc_topo</span><span class="p">(</span><span class="n">max_token</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">modified</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="n">ctc_topo</span><span class="o">.</span><span class="n">labels_sym</span> <span class="o">=</span> <span class="n">isym</span>
+<span class="linenos">27</span><span class="n">ctc_topo</span><span class="o">.</span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">osym</span>
+<span class="linenos">28</span>
+<span class="linenos">29</span><span class="n">ctc_topo_modified</span><span class="o">.</span><span class="n">labels_sym</span> <span class="o">=</span> <span class="n">isym</span>
+<span class="linenos">30</span><span class="n">ctc_topo_modified</span><span class="o">.</span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">osym</span>
+<span class="linenos">31</span>
+<span class="linenos">32</span><span class="n">ctc_graph</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">compose</span><span class="p">(</span><span class="n">ctc_topo</span><span class="p">,</span> <span class="n">linear_fsa</span><span class="p">)</span>
+<span class="linenos">33</span><span class="n">ctc_graph_modified</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">compose</span><span class="p">(</span><span class="n">ctc_topo_modified</span><span class="p">,</span> <span class="n">linear_fsa</span><span class="p">)</span>
+<span class="linenos">34</span>
+<span class="linenos">35</span><span class="n">linear_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;linear_fsa.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Linear FSA of the string &quot;abbc&quot;&#39;</span><span class="p">)</span>
+<span class="linenos">36</span><span class="n">ctc_topo</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;ctc_topo.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;CTC topology&#39;</span><span class="p">)</span>
+<span class="linenos">37</span><span class="n">ctc_topo_modified</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;ctc_topo_modified.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Modified CTC topology&#39;</span><span class="p">)</span>
+<span class="linenos">38</span>
+<span class="linenos">39</span><span class="n">ctc_graph</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;ctc_topo_compose_linear_fsa.svg&#39;</span><span class="p">,</span>
+<span class="linenos">40</span>               <span class="n">title</span><span class="o">=</span><span class="s1">&#39;k2.compose(ctc_topo, linear_fsa)&#39;</span><span class="p">)</span>
+<span class="linenos">41</span>
+<span class="linenos">42</span><span class="n">ctc_graph_modified</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;ctc_topo_modified_compose_linear_fsa.svg&#39;</span><span class="p">,</span>
+<span class="linenos">43</span>                        <span class="n">title</span><span class="o">=</span><span class="s1">&#39;k2.compose(ctc_topo_modified, linear_fsa)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<figure class="align-center" style="width: 600px">
+<img alt="Linear FSA" src="../_images/linear_fsa.svg" /></figure>
+<figure class="align-center" style="width: 600px">
+<img alt="CTC topology (modified=False)" src="../_images/ctc_topo.svg" /></figure>
+<figure class="align-center" style="width: 600px">
+<img alt="k2.compose(ctc_topo, linear_fsa)" src="../_images/ctc_topo_compose_linear_fsa.svg" /></figure>
+<figure class="align-center" style="width: 600px">
+<img alt="CTC topology (modified=True)" src="../_images/ctc_topo_modified.svg" /></figure>
+<figure class="align-center" style="width: 600px">
+<img alt="k2.compose(ctc_topo_modified, linear_fsa)" src="../_images/ctc_topo_modified_compose_linear_fsa.svg" /></figure>
+</div></blockquote>
 </dd></dl>
 
 </section>
@@ -852,7 +962,7 @@ size. If <cite>reduction</cite> is <cite>mean</cite> or <cite>sum</cite>, return
 <h2>ctc_topo<a class="headerlink" href="#ctc-topo" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.ctc_topo">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">ctc_topo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1199-L1236"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ctc_topo" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">ctc_topo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1252-L1306"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.ctc_topo" title="Permalink to this definition"></a></dt>
 <dd><p>Create a CTC topology.</p>
 <p>A token which appears once on the right side (i.e. olabels) may
 appear multiple times on the left side (ilabels), possibly with
@@ -886,6 +996,48 @@ If it is None, then the returned FSA is on CPU.</p></li>
 depending on whether <cite>standard</cite> is True or False.</p>
 </dd>
 </dl>
+<p><strong>Example</strong></p>
+<blockquote>
+<div><div class="literal-block-wrapper docutils container" id="id119">
+<div class="code-block-caption"><span class="caption-number">Listing 13 </span><span class="caption-text">Usage of k2.ctc_topo</span><a class="headerlink" href="#id119" title="Permalink to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="ch">#!/usr/bin/env python3</span>
+<span class="linenos"> 2</span>
+<span class="linenos"> 3</span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="linenos"> 4</span>
+<span class="linenos"> 5</span><span class="n">isym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="linenos"> 6</span><span class="s1">blk 0</span>
+<span class="linenos"> 7</span><span class="s1">a 1</span>
+<span class="linenos"> 8</span><span class="s1">b 2</span>
+<span class="linenos"> 9</span><span class="s1">c 3</span>
+<span class="linenos">10</span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="n">osym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="linenos">13</span><span class="s1">a 1</span>
+<span class="linenos">14</span><span class="s1">b 2</span>
+<span class="linenos">15</span><span class="s1">c 3</span>
+<span class="linenos">16</span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="linenos">17</span>
+<span class="linenos">18</span><span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">ctc_topo</span><span class="p">(</span><span class="n">max_token</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">modified</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="linenos">19</span><span class="n">fsa_modified</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">ctc_topo</span><span class="p">(</span><span class="n">max_token</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">modified</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="linenos">20</span>
+<span class="linenos">21</span><span class="n">fsa</span><span class="o">.</span><span class="n">labels_sym</span> <span class="o">=</span> <span class="n">isym</span>
+<span class="linenos">22</span><span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">osym</span>
+<span class="linenos">23</span>
+<span class="linenos">24</span><span class="n">fsa_modified</span><span class="o">.</span><span class="n">labels_sym</span> <span class="o">=</span> <span class="n">isym</span>
+<span class="linenos">25</span><span class="n">fsa_modified</span><span class="o">.</span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">osym</span>
+<span class="linenos">26</span>
+<span class="linenos">27</span><span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;ctc_topo.svg&#39;</span><span class="p">,</span>
+<span class="linenos">28</span>         <span class="n">title</span><span class="o">=</span><span class="s1">&#39;CTC topology with max_token=3 (modified=False)&#39;</span><span class="p">)</span>
+<span class="linenos">29</span><span class="n">fsa_modified</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;modified_ctc_topo.svg&#39;</span><span class="p">,</span>
+<span class="linenos">30</span>                  <span class="n">title</span><span class="o">=</span><span class="s1">&#39;CTC topology with max_token=3 (modified=True)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<figure class="align-center" style="width: 600px">
+<img alt="CTC topology" src="../_images/ctc_topo1.svg" /></figure>
+<figure class="align-center" style="width: 600px">
+<img alt="CTC topology" src="../_images/modified_ctc_topo.svg" /></figure>
+</div></blockquote>
 </dd></dl>
 
 </section>
@@ -2165,7 +2317,7 @@ sequence is “special”.</p>
 <h2>levenshtein_alignment<a class="headerlink" href="#levenshtein-alignment" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.levenshtein_alignment">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_alignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">refs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyp_to_ref_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sorted_match_ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1308-L1383"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_alignment" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_alignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">refs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hyp_to_ref_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sorted_match_ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1378-L1453"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_alignment" title="Permalink to this definition"></a></dt>
 <dd><p>Get the levenshtein alignment of two FsaVecs</p>
 <p>This function supports both CPU and GPU. But it is very slow on CPU.</p>
 <dl class="field-list simple">
@@ -2230,7 +2382,7 @@ sequences of hyps. You can get the levenshtein distance by calling
 <h2>levenshtein_graph<a class="headerlink" href="#levenshtein-graph" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.levenshtein_graph">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ins_del_score</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">0.501</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1263-L1305"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_graph" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">levenshtein_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ins_del_score</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">0.501</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1333-L1375"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.levenshtein_graph" title="Permalink to this definition"></a></dt>
 <dd><p>Construct levenshtein graphs from symbols.</p>
 <p>See <a class="reference external" href="https://github.com/k2-fsa/k2/pull/828">https://github.com/k2-fsa/k2/pull/828</a> for more details about levenshtein
 graph.</p>
@@ -3319,7 +3471,7 @@ a vector of FSAs if the input is a vector of FSAs.</p>
 <h2>trivial_graph<a class="headerlink" href="#trivial-graph" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.trivial_graph">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">trivial_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1239-L1260"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.trivial_graph" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">trivial_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_token</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1309-L1330"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.trivial_graph" title="Permalink to this definition"></a></dt>
 <dd><p>Create a trivial graph which has only two states. On state 0, there are
 <cite>max_token</cite> self loops(i.e. a loop for each symbol from 1 to max_token), and
 state 1 is the final state.</p>
@@ -3348,7 +3500,7 @@ Note: The returned graph does not contain arcs with label being 0.</p>
 <h2>union<a class="headerlink" href="#union" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.union">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">union</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1386-L1405"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.union" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">union</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fsas</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa_algo.py#L1456-L1475"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.union" title="Permalink to this definition"></a></dt>
 <dd><p>Compute the union of a FsaVec.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
@@ -4194,7 +4346,7 @@ on scores).</p></li>
 
 </section>
 <section id="id11">
-<h3><a href="#id115"><span class="problematic" id="id116">invert_</span></a><a class="headerlink" href="#id11" title="Permalink to this headline"></a></h3>
+<h3><a href="#id120"><span class="problematic" id="id121">invert_</span></a><a class="headerlink" href="#id11" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.invert_">
 <span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">invert_</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L915-L972"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.invert_" title="Permalink to this definition"></a></dt>
@@ -4254,7 +4406,7 @@ but these special attributes won’t be deleted.</p>
 
 </section>
 <section id="requires-grad">
-<h3><a href="#id117"><span class="problematic" id="id118">requires_grad_</span></a><a class="headerlink" href="#requires-grad" title="Permalink to this headline"></a></h3>
+<h3><a href="#id122"><span class="problematic" id="id123">requires_grad_</span></a><a class="headerlink" href="#requires-grad" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.requires_grad_">
 <span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">requires_grad_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L839-L862"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.requires_grad_" title="Permalink to this definition"></a></dt>
@@ -6894,7 +7046,7 @@ Leaves all layers of the shape except for the last one unaffected.</p>
 
 </section>
 <section id="id34">
-<h3><a href="#id119"><span class="problematic" id="id120">requires_grad_</span></a><a class="headerlink" href="#id34" title="Permalink to this headline"></a></h3>
+<h3><a href="#id124"><span class="problematic" id="id125">requires_grad_</span></a><a class="headerlink" href="#id34" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.RaggedTensor.requires_grad_">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">requires_grad_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedTensor</span></span></span><a class="headerlink" href="#k2.RaggedTensor.requires_grad_" title="Permalink to this definition"></a></dt>
@@ -6933,7 +7085,7 @@ RuntimeError exception.</p>
 
 </section>
 <section id="sort">
-<h3><a href="#id121"><span class="problematic" id="id122">sort_</span></a><a class="headerlink" href="#sort" title="Permalink to this headline"></a></h3>
+<h3><a href="#id126"><span class="problematic" id="id127">sort_</span></a><a class="headerlink" href="#sort" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.RaggedTensor.sort_">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">sort_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descending</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#k2.RaggedTensor.sort_" title="Permalink to this definition"></a></dt>
@@ -10864,7 +11016,7 @@ Leaves all layers of the shape except for the last one unaffected.</p>
 
 </section>
 <section id="id97">
-<h3><a href="#id123"><span class="problematic" id="id124">requires_grad_</span></a><a class="headerlink" href="#id97" title="Permalink to this headline"></a></h3>
+<h3><a href="#id128"><span class="problematic" id="id129">requires_grad_</span></a><a class="headerlink" href="#id97" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.requires_grad_">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">requires_grad_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedTensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.requires_grad_" title="Permalink to this definition"></a></dt>
@@ -10903,7 +11055,7 @@ RuntimeError exception.</p>
 
 </section>
 <section id="id98">
-<h3><a href="#id125"><span class="problematic" id="id126">sort_</span></a><a class="headerlink" href="#id98" title="Permalink to this headline"></a></h3>
+<h3><a href="#id130"><span class="problematic" id="id131">sort_</span></a><a class="headerlink" href="#id98" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.sort_">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">sort_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descending</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.sort_" title="Permalink to this definition"></a></dt>
