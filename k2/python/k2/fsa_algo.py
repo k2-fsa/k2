@@ -552,6 +552,28 @@ def arc_sort(fsa: Fsa, ret_arc_map: bool = False
       input `fsa` if the input `fsa` is arc sorted. Otherwise, a new sorted
       fsa is returned and the input `fsa` is NOT modified.
       If ret_arc_map is True, an extra arc map is also returned.
+
+    **Example: Sort a single FSA**
+
+        .. literalinclude:: ./code/arc_sort/main.py
+           :language: python
+           :linenos:
+           :caption: Sort a single FSA
+
+        .. figure:: code/arc_sort/arc_sort_single_before.svg
+            :alt: Fsa before k2.arc_sort
+            :align: center
+            :figwidth: 600px
+
+        .. figure:: code/arc_sort/arc_sort_single_after.svg
+            :alt: Fsa before k2.arc_sort
+            :align: center
+            :figwidth: 600px
+
+        .. figure:: code/arc_sort/arc_sort_single_after_aux_labels.svg
+            :alt: Fsa before k2.arc_sort
+            :align: center
+            :figwidth: 600px
     '''
     if fsa.properties & fsa_properties.ARC_SORTED != 0:
         if ret_arc_map:
