@@ -391,6 +391,8 @@ class Fsa(object):
 
         if isinstance(value, torch.Tensor):
             assert value.shape[0] == self.arcs.values().shape[0]
+            # See https://github.com/k2-fsa/k2/issues/1120
+            assert value.device == self.device
             if name == 'labels':
                 assert value.dtype == torch.int32
                 self.arcs.values()[:, 2] = value
@@ -415,6 +417,8 @@ class Fsa(object):
         elif isinstance(value, k2.RaggedTensor):
             assert value.dim0 == self.arcs.values().shape[0], \
                     f'value.dim0: {value.dim0}, shape[0]: {self.arcs.values().shape[0]}'  # noqa
+            # See https://github.com/k2-fsa/k2/issues/1120
+            assert value.device == self.device, (value.device, self.device)
             self._tensor_attr[name] = value
         else:
             self._non_tensor_attr[name] = value
