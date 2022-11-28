@@ -417,6 +417,8 @@ class Fsa(object):
         elif isinstance(value, k2.RaggedTensor):
             assert value.dim0 == self.arcs.values().shape[0], \
                     f'value.dim0: {value.dim0}, shape[0]: {self.arcs.values().shape[0]}'  # noqa
+            # See https://github.com/k2-fsa/k2/issues/1120
+            assert value.device == self.device
             self._tensor_attr[name] = value
         else:
             self._non_tensor_attr[name] = value
