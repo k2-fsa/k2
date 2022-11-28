@@ -600,6 +600,22 @@ RaggedAny RaggedAny::Normalize(bool use_log) /*const*/ {
   return out;
 }
 
+RaggedAny RaggedAny::Add(torch::Tensor value, py::object alpha) /*const*/ {
+  K2_CHECK((bool)alpha);
+  K2_CHECK(!alpha.is_none());
+
+  DeviceGuard guard(any.Context());
+  Dtype t = any.GetDtype();
+  FOR_REAL_AND_INT32_TYPES(t, T, {
+    Array1<T> value_array = FromTorch<T>(value);
+    Ragged<T> ans =
+        AddPerSublist<T>(any.Specialize<T>(), value_array, alpha.cast<T>());
+    return RaggedAny(ans.Generic());
+  });
+  // Unreachable code
+  return {};
+}
+
 torch::Tensor RaggedAny::Pad(const std::string &mode,
                              py::object padding_value) /*const*/ {
   K2_CHECK((bool)padding_value);

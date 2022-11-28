@@ -132,6 +132,21 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *argmax);
 template <typename T>
 Ragged<T> NormalizePerSublist(Ragged<T> &src, bool use_log);
 
+/* Adds value, scaled by alpha, to src per sublist.
+
+   It implements:
+     src[...][i][j] = src[...][i][j] + alpha * value[i]
+
+   @param [in] src  The source ragged tensor. The add is done on the last axis.
+   @param [in] value  The value to be added to the src, whose dimension MUST
+                      equal the number of sublists along src's last dimension.
+   @param [in] alpha  The number used to scaled value before adding to src.
+
+   @return The added ragged tensor.
+ */
+template <typename T>
+Ragged<T> AddPerSublist(Ragged<T> &src, Array1<T> &value, T alpha);
+
 /*
   Output to an array `and_values` the result of reducing each sub-list along
   the last axis of `src` with operator &, i.e. bit-wise and.
