@@ -763,6 +763,11 @@ __str__
 
 .. automethod:: k2.RaggedTensor.__str__
 
+add
+^^^
+
+.. automethod:: k2.RaggedTensor.add
+
 arange
 ^^^^^^
 
@@ -1225,6 +1230,11 @@ __str__
 ^^^^^^^
 
 .. automethod:: k2.ragged.RaggedTensor.__str__
+
+add
+^^^
+
+.. automethod:: k2.ragged.RaggedTensor.add
 
 arange
 ^^^^^^
