@@ -500,7 +500,7 @@ Ragged<T> Arange(Ragged<T> &src, int32_t axis, int32_t begin, int32_t end) {
                      and NumElements() equal to src.NumElements() +
                      suffix.Dim()
  */
-Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
+Ragged<int32_t> AddSuffixToRagged(const Ragged<int32_t> &src,
                                   const Array1<int32_t> &suffix);
 
 /*
@@ -515,7 +515,7 @@ Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
                      and NumElements() equal to src.NumElements() +
                      prefix.Dim()
  */
-Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
+Ragged<int32_t> AddPrefixToRagged(const Ragged<int32_t> &src,
                                   const Array1<int32_t> &prefix);
 /*
   Insert a new axis at position `axis`, with 0 <= axis <= src.NumAxes(), for
