@@ -1918,7 +1918,7 @@ RaggedShape Arange(RaggedShape &src, int32_t axis, int32_t begin, int32_t end,
   return RaggedShape(axes_out);
 }
 
-Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
+Ragged<int32_t> AddSuffixToRagged(const Ragged<int32_t> &src,
                                   const Array1<int32_t> &suffix) {
   NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
@@ -1953,7 +1953,7 @@ Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
   return Ragged<int32_t>(dst_shape, dst_values);
 }
 
-Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
+Ragged<int32_t> AddPrefixToRagged(const Ragged<int32_t> &src,
                                   const Array1<int32_t> &prefix) {
   NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
