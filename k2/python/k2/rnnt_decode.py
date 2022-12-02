@@ -149,7 +149,9 @@ class RnntDecodingStreams(object):
     def format_output(
             self,
             num_frames: List[int],
-            allow_partial: bool = False
+            allow_partial: bool = False,
+            log_probs: torch.Tensor = None,
+            t2s2c_shape: RaggedShape = None,
     ) -> Fsa:
         """
         Generate the lattice Fsa currently got.
@@ -173,6 +175,10 @@ class RnntDecodingStreams(object):
             If false, we only care about the real final state in the
             decoding graph on the last frame when generating lattice.
             Default False.
+          t2s2c_shape:
+            It is short for time2stream2context_shape,
+            which describes log_probs used to generate lattice.
+            Used to generate arc_map_token.
 
         Returns:
           Return the lattice Fsa with all the attributes propagated.
@@ -180,9 +186,15 @@ class RnntDecodingStreams(object):
         """
         assert len(num_frames) == self.num_streams
 
-        ragged_arcs, out_map = self.streams.format_output(
-            num_frames, allow_partial
-        )
+        if log_probs is not None:
+            assert t2s2c_shape is not None
+            ragged_arcs, out_map, arc_map_token = self.streams.format_output(
+                num_frames, allow_partial, t2s2c_shape
+            )
+        else:
+            ragged_arcs, out_map = self.streams.format_output(
+                num_frames, allow_partial
+            )
         fsa = Fsa(ragged_arcs)
 
         # propagate attributes
@@ -264,4 +276,12 @@ class RnntDecodingStreams(object):
             for name, value in src.named_non_tensor_attr():
                 setattr(fsa, name, value)
 
+        if log_probs is not None:
+            # Make fsa.scores tracked by auto grad.
+            scores_tracked_by_autograd = torch.index_select(
+                log_probs.reshape(-1), 0, arc_map_token)
+            final_arc_index = torch.where(fsa.arcs.values()[:, 2] == -1)
+            scores_tracked_by_autograd[final_arc_index] *= 0
+            assert torch.all(fsa.scores == scores_tracked_by_autograd)
+            fsa.scores = scores_tracked_by_autograd
         return fsa

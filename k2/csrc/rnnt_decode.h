@@ -197,6 +197,12 @@ class RnntDecodingStreams {
                      this arc is a "termination symbol".
    */
   void FormatOutput(const std::vector<int32_t> &num_frames, bool allow_partial,
+                    FsaVec *ofsa, Array1<int32_t> *out_map,
+                    Array1<int32_t> *arc_map_b,
+                    const RaggedShape &t2s2c_shape);
+
+
+  void FormatOutput(const std::vector<int32_t> &num_frames, bool allow_partial,
                     FsaVec *ofsa, Array1<int32_t> *out_map);
 
   /*
