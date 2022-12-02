@@ -1092,7 +1092,7 @@ class TestFsa(unittest.TestCase):
 
             fsa.non_tensor_attr1[0] = 0
             fsa.tensor_attr1[0] = 0
-            fsa.ragged_attr1 = k2.RaggedTensor('[[] [] [-1]]')
+            fsa.ragged_attr1 = k2.RaggedTensor('[[] [] [-1]]').to(device)
             fsa._cache['abc'][0] = 1
 
             # we assume that non-tensor attributes are readonly
