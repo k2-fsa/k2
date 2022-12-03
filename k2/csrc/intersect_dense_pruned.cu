@@ -278,7 +278,6 @@ class MultiGraphDenseIntersectPruned {
     frames_.reserve(T + 2);
 
     if (T_ == 0) frames_.push_back(InitialFrameInfo());
-    int32_t prune_num_frames = 15, prune_shift = 10;
 
     for (int32_t t = 0; t <= b_fsas_->shape.MaxSize(1); t++) {
       if (state_map_.NumKeyBits() == 32) {
@@ -289,12 +288,8 @@ class MultiGraphDenseIntersectPruned {
         K2_CHECK_EQ(state_map_.NumKeyBits(), 40);
         frames_.push_back(PropagateForward<40>(t, frames_.back().get()));
       }
-      if (t != 0 && (T_ + t) % prune_shift == 0 ||
-          t == b_fsas_->shape.MaxSize(1)) {
-        int32_t prune_t_begin =
-            (T_ + t - prune_num_frames) > 0 ? (T_ + t - prune_num_frames) : 0;
-        int32_t prune_t_end = T_ + t;
-        PruneTimeRange(prune_t_begin, prune_t_end);
+      if (t == b_fsas_->shape.MaxSize(1)) {
+        PruneTimeRange(T_ - 1, T_ + t);
       }
     }
     // The FrameInfo for time T+1 will have no states.  We did that
