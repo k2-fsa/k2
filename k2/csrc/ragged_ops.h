@@ -180,7 +180,7 @@ void OrPerSublist(const Ragged<T> &src, T initial_value, Array1<T> *or_values) {
 
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
-  Similar to TF/PyTorch's Stack. The result will have Dim0 == src_size.
+  Similar to TF/PyTorch's Stack. The dimension of the new axis equals src_size.
   All the source RaggedShapes must have the same NumAxes().
 
      @param [in] axis   The new axis whose dimension will equal src_size.
