@@ -26,6 +26,7 @@
 #include <unordered_set>
 
 #include "k2/csrc/context.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"

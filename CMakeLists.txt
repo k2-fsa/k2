@@ -91,12 +91,6 @@ if(NOT K2_WITH_CUDA)
   set(K2_ENABLE_NVTX OFF CACHE BOOL "" FORCE)
 endif()
 
-#if(NOT K2_USE_PYTORCH)
-  #message(FATAL_ERROR "\
-    #Please set K2_USE_PYTORCH to ON.
-    #Support for other frameworks will be added later")
-#endif()
-
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")

@@ -22,6 +22,8 @@
 #include <mutex>  // NOLINT
 
 #include "k2/csrc/context.h"
+#include "k2/csrc/cub.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/nvtx.h"
 
@@ -55,21 +57,40 @@ class CpuContext : public Context {
   void CopyDataTo(size_t num_bytes, const void *src, ContextPtr dst_context,
                   void *dst) override {
     DeviceType device_type = dst_context->GetDeviceType();
-    K2_CHECK_EQ(device_type, kCpu);
-    memcpy(dst, src, num_bytes);
-  };
+    switch (device_type) {
+      case kCpu:
+        memcpy(dst, src, num_bytes);
+        break;
+      case kCuda: {
+        // CPU -> CUDA
+        DeviceGuard guard(dst_context);
+        ContextPtr pinned_context = GetPinnedContext();
+        auto region = NewRegion(pinned_context, num_bytes);
+        memcpy(region->data, src, num_bytes);
+        pinned_context->CopyDataTo(num_bytes, region->data, dst_context, dst);
+        break;
+      }
+      default:
+        K2_LOG(FATAL) << "Unsupported device type: " << device_type;
+        break;
+    }
+  }
 };
 
 class CudaContext : public Context {
  public:
   explicit CudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
 #ifdef K2_WITH_CUDA
-    if (gpu_id_ != -1) {
+    if (gpu_id != -1) {
       auto ret = cudaSetDevice(gpu_id_);
       K2_CHECK_CUDA_ERROR(ret);
+    } else {
+      int current_gpu_id;
+      auto ret = cudaGetDevice(&current_gpu_id);
+      K2_CHECK_CUDA_ERROR(ret);
+      gpu_id_ = current_gpu_id;
     }
-    // TODO(haowen): choose one from available GPUs if gpu_id == -1?
-    // and handle GPU ids from multiple machines.
+
     auto ret = cudaStreamCreate(&stream_);
     K2_CHECK_CUDA_ERROR(ret);
 #else
@@ -92,7 +113,27 @@ class CudaContext : public Context {
   }
 
   void CopyDataTo(size_t num_bytes, const void *src, ContextPtr dst_context,
-                  void *dst) override{};
+                  void *dst) override{
+    DeviceType device_type = dst_context->GetDeviceType();
+    switch (device_type) {
+      case kCpu: {
+        cudaError_t ret =
+            cudaMemcpy(dst, src, num_bytes, cudaMemcpyDeviceToHost);
+        K2_CHECK_CUDA_ERROR(ret);
+        break;
+      }
+      case kCuda: {
+        cudaError_t ret =
+            cudaMemcpyAsync(dst, src, num_bytes, cudaMemcpyDeviceToDevice,
+                            dst_context->GetCudaStream());
+        K2_CHECK_CUDA_ERROR(ret);
+        break;
+      }
+      default:
+        K2_LOG(FATAL) << "Unsupported device type: " << device_type;
+        break;
+    }
+  };
 
   bool IsCompatible(const Context &other) const override {
     return other.GetDeviceType() == kCuda && other.GetDeviceId() == gpu_id_;
@@ -100,6 +141,7 @@ class CudaContext : public Context {
 
   void Deallocate(void *data, void * /*deleter_context*/) override {
 #ifdef K2_WITH_CUDA
+    DeviceGuard guard(gpu_id_);
     auto ret = cudaFree(data);
     K2_CHECK_CUDA_ERROR(ret);
 #endif
@@ -114,17 +156,14 @@ class CudaContext : public Context {
   }
 
   void Sync() const override {
-#ifdef K2_WITH_CUDA
+    DeviceGuard guard(gpu_id_);
     auto ret = cudaStreamSynchronize(stream_);
     K2_CHECK_CUDA_ERROR(ret);
-#endif
   }
 
   ~CudaContext() {
-#ifdef K2_WITH_CUDA
     auto ret = cudaStreamDestroy(stream_);
     K2_CHECK_CUDA_ERROR(ret);
-#endif
   }
 
  private:
@@ -147,6 +186,7 @@ ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
       K2_LOG(WARNING) << "CUDA is not available. Return a CPU context.";
   });
 
+  DeviceGuard guard(gpu_id);
   if (has_cuda) return std::make_shared<CudaContext>(gpu_id);
 
   return GetCpuContext();
