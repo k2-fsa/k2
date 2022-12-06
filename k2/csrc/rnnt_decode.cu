@@ -956,14 +956,14 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
         arcs_out_data[oarc_idx01234] = arc;
         if (arc_map_b != nullptr) {
           t = t - num_padded_frames_data[oarc_idx0];
-          int32_t t2s2c_idx0x_stream = t2s2c_shape_row_splits1[t];
+          int32_t t2s2c_stream_idx0x = t2s2c_shape_row_splits1[t];
           // oarc_idx0 is for stream.
-          int32_t t2s2c_idx01_stream = t2s2c_idx0x_stream + oarc_idx0;
-          int32_t t2s2c_idx01x_context =
-                    t2s2c_shape_row_splits2[t2s2c_idx01_stream];
+          int32_t t2s2c_stream_idx01 = t2s2c_stream_idx0x + oarc_idx0;
+          int32_t t2s2c_context_idx01x =
+                    t2s2c_shape_row_splits2[t2s2c_stream_idx01];
           // oarc_idx2 is for context.
           int32_t oarc_idx2 = oarc_idx012 - oarc_idx01x;
-          int32_t t2s2c_idx012_context = t2s2c_idx01x_context + oarc_idx2;
+          int32_t t2s2c_context_idx012 = t2s2c_context_idx01x + oarc_idx2;
           // Manually map arc to super_final state(i.e. arc.label == -1)
           // to blank_id == 0.
           int32_t arc_label = 0;
@@ -971,7 +971,7 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
             arc_label = arc.label;
           }
           arc_map_token_data[oarc_idx01234] =
-            t2s2c_idx012_context * vocab_size + arc_label;
+            t2s2c_context_idx012 * vocab_size + arc_label;
         }
       });
 
