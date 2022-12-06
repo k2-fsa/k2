@@ -177,8 +177,9 @@ class RnntDecodingStreams(object):
             Default False.
           t2s2c_shape:
             It is short for time2stream2context_shape,
-            which describes log_probs used to generate lattice.
-            Used to generate arc_map_token.
+            which describes shape of log_probs used to generate lattice.
+            Used to generate arc_map_token
+            and make the whole decoding process differentiable.
 
         Returns:
           Return the lattice Fsa with all the attributes propagated.
@@ -277,11 +278,13 @@ class RnntDecodingStreams(object):
                 setattr(fsa, name, value)
 
         if log_probs is not None:
-            # Make fsa.scores tracked by auto grad.
+            # Make fsa.scores tracked by autograd
+            # to make the whole decoding process differentiable.
             scores_tracked_by_autograd = torch.index_select(
                 log_probs.reshape(-1), 0, arc_map_token)
             final_arc_index = torch.where(fsa.arcs.values()[:, 2] == -1)
             scores_tracked_by_autograd[final_arc_index] *= 0
+            # This assertion statement is kind of unit test.
             assert torch.all(fsa.scores == scores_tracked_by_autograd)
             fsa.scores = scores_tracked_by_autograd
         return fsa

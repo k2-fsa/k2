@@ -195,6 +195,18 @@ class RnntDecodingStreams {
                      each individual streams, mapping current arc in ofsa to
                      original decoding graphs. It may contain -1 which means
                      this arc is a "termination symbol".
+      @param [out] arc_map_b  If non-NULL, it is an Array1 with Dim() equals to
+                     ofsa.NumElements() containing the idx0123 into log_probs
+                     generated during decoding.
+                     If NULL, this part will not be calculated.
+                     Name arc_map_b is borrowed from "intersect*" functions.
+                     In these functions,
+                     arc_map_a usually refers to indexes to fst based graphs,
+                     and arc_map_b usually refers to indexes to dense_fsa,
+                     i.e. log_probs from neural nets.
+      @param [in] t2s2c_shape  The shape of log_probs generated during decoding.
+                     It's short for time2stream2context,
+                     needed to generated arc_map_b.
    */
   void FormatOutput(const std::vector<int32_t> &num_frames, bool allow_partial,
                     FsaVec *ofsa, Array1<int32_t> *out_map,
@@ -202,6 +214,9 @@ class RnntDecodingStreams {
                     const RaggedShape &t2s2c_shape);
 
 
+  /*
+   * The same as above, except arc_map_b is not generated.
+   */
   void FormatOutput(const std::vector<int32_t> &num_frames, bool allow_partial,
                     FsaVec *ofsa, Array1<int32_t> *out_map);
 
