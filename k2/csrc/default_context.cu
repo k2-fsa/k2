@@ -90,9 +90,7 @@ class CudaContext : public Context {
       K2_CHECK_CUDA_ERROR(ret);
       gpu_id_ = current_gpu_id;
     }
-
-    auto ret = cudaStreamCreate(&stream_);
-    K2_CHECK_CUDA_ERROR(ret);
+    allocator_ = new cub::CachingDeviceAllocator();
 #else
     K2_LOG(FATAL) << "Unreachable code.";
 #endif
@@ -103,10 +101,9 @@ class CudaContext : public Context {
   void *Allocate(std::size_t bytes, void **deleter_context) override {
     void *p = nullptr;
 #ifdef K2_WITH_CUDA
-    if (bytes) {
-      auto ret = cudaMalloc(&p, bytes);
-      K2_CHECK_CUDA_ERROR(ret);
-    }
+    DeviceGuard guard(gpu_id_);
+    auto ret = allocator_->DeviceAllocate(&p, bytes);  // the default stream is 0
+    K2_CHECK_CUDA_ERROR(ret);
     if (deleter_context != nullptr) *deleter_context = nullptr;
 #endif
     return p;
@@ -133,7 +130,7 @@ class CudaContext : public Context {
         K2_LOG(FATAL) << "Unsupported device type: " << device_type;
         break;
     }
-  };
+  }
 
   bool IsCompatible(const Context &other) const override {
     return other.GetDeviceType() == kCuda && other.GetDeviceId() == gpu_id_;
@@ -142,33 +139,32 @@ class CudaContext : public Context {
   void Deallocate(void *data, void * /*deleter_context*/) override {
 #ifdef K2_WITH_CUDA
     DeviceGuard guard(gpu_id_);
-    auto ret = cudaFree(data);
+    auto ret = allocator_->DeviceFree(data);
     K2_CHECK_CUDA_ERROR(ret);
 #endif
   }
 
   cudaStream_t GetCudaStream() const override {
 #ifdef K2_WITH_CUDA
-    return g_stream_override.OverrideStream(stream_);
+    return g_stream_override.OverrideStream(0);
 #else
-    return cudaStream_t{};
+    return kCudaStreamInvalid;
 #endif
   }
 
   void Sync() const override {
     DeviceGuard guard(gpu_id_);
-    auto ret = cudaStreamSynchronize(stream_);
+    auto ret = cudaStreamSynchronize(GetCudaStream());
     K2_CHECK_CUDA_ERROR(ret);
   }
 
   ~CudaContext() {
-    auto ret = cudaStreamDestroy(stream_);
-    K2_CHECK_CUDA_ERROR(ret);
+    delete allocator_;
   }
 
  private:
   int32_t gpu_id_;
-  cudaStream_t stream_;
+  cub::CachingDeviceAllocator* allocator_;
 };
 
 ContextPtr GetCpuContext() { return std::make_shared<CpuContext>(); }

@@ -165,6 +165,7 @@ if(K2_ENABLE_TESTS)
     array_ops_test.cu
     array_test.cu
     connect_test.cu
+    default_context_test.cu
     dtype_test.cu
     fsa_algo_test.cu
     fsa_test.cu
