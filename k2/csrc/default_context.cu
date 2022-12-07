@@ -120,6 +120,7 @@ class CudaContext : public Context {
         break;
       }
       case kCuda: {
+        DeviceGuard guard(dst_context);
         cudaError_t ret =
             cudaMemcpyAsync(dst, src, num_bytes, cudaMemcpyDeviceToDevice,
                             dst_context->GetCudaStream());

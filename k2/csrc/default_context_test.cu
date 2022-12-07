@@ -43,6 +43,7 @@ static void TestImpl() {
   ContextPtr c = GetCudaContext(0);
   EXPECT_EQ(c->GetDeviceId(), 0);
 
+  // Test zero byte allocation.
   {
     std::vector<int32_t> data;
     Array1<int32_t> src(c, data);

@@ -281,6 +281,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 
 if(K2_USE_PYTORCH)
+  message(STATUS "Build k2 with Pytorch.")
   include(pybind11)
   add_definitions(-DK2_USE_PYTORCH)
   include(torch)
@@ -289,6 +290,8 @@ if(K2_USE_PYTORCH)
     ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py @ONLY
   )
   message(STATUS "Generated ${PROJECT_BINARY_DIR}/torch_version.py")
+else()
+  message(STATUS "Build k2 without Pytorch.")
 endif()
 
 if(K2_WITH_CUDA)
