@@ -102,7 +102,8 @@ class CudaContext : public Context {
     void *p = nullptr;
 #ifdef K2_WITH_CUDA
     DeviceGuard guard(gpu_id_);
-    auto ret = allocator_->DeviceAllocate(&p, bytes);  // the default stream is 0
+    // the default stream is 0
+    auto ret = allocator_->DeviceAllocate(&p, bytes);
     K2_CHECK_CUDA_ERROR(ret);
     if (deleter_context != nullptr) *deleter_context = nullptr;
 #endif
@@ -110,7 +111,7 @@ class CudaContext : public Context {
   }
 
   void CopyDataTo(size_t num_bytes, const void *src, ContextPtr dst_context,
-                  void *dst) override{
+                  void *dst) override {
     DeviceType device_type = dst_context->GetDeviceType();
     switch (device_type) {
       case kCpu: {

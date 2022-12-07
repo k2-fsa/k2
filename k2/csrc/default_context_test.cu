@@ -81,7 +81,6 @@ static void TestImpl() {
 
     CheckArrayData(b, {12, 22});
   }
-
 }
 
 
