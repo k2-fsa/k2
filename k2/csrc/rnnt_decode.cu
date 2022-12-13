@@ -872,6 +872,11 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
   // i.e. padded beginning frames.
   // We need to subtract number of padded frames when calculating
   // the real time index.
+  // num_padded_frames is computed with 2 steps:
+  // Step 1: Initialized with num_frames(real number of time steps).
+  // Step 2: num_padded_frames = number of padded frames - num_frames.
+
+  // Step 1 of computing num_padded_frames.
   auto num_padded_frames = Array1<int32_t>(c_, num_frames);
   int32_t *num_padded_frames_data = num_padded_frames.Data();
   if (arc_map_b != nullptr) {
@@ -879,7 +884,7 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
     t2s2c_shape_row_splits2 = t2s2c_shape.RowSplits(2).Data(),
     t2s2c_shape_row_splits1 = t2s2c_shape.RowSplits(1).Data();
 
-    // Initialize start_offset with num_frames.
+    // Step 2 of computing num_padded_frames.
     K2_EVAL(
         c_, num_streams_, lambda_set_start_offset, (int32_t stream_idx) {
         num_padded_frames_data[stream_idx] =
@@ -964,14 +969,11 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
           // oarc_idx2 is for context.
           int32_t oarc_idx2 = oarc_idx012 - oarc_idx01x;
           int32_t t2s2c_context_idx012 = t2s2c_context_idx01x + oarc_idx2;
-          // Manually map arc to super_final state(i.e. arc.label == -1)
-          // to blank_id == 0.
-          int32_t arc_label = 0;
+          arc_map_token_data[oarc_idx01234] = -1;
           if (arc.label != -1) {
-            arc_label = arc.label;
+            arc_map_token_data[oarc_idx01234] =
+             t2s2c_context_idx012 * vocab_size + arc.label;
           }
-          arc_map_token_data[oarc_idx01234] =
-            t2s2c_context_idx012 * vocab_size + arc_label;
         }
       });
 

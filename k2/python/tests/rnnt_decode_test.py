@@ -73,30 +73,28 @@ class TestRnntDecode(unittest.TestCase):
             ofsa = streams.format_output([3, 4, 5])
             print(ofsa)
 
-    def test_with_arc_map_token(self):
+    def test_arc_map_token(self):
         """
         Almost the same with previous test function
         except testing arc_map_token generation.
-        The correctness of this test is not ensured by itself,
-        but relies on following assertion statement
-        in RnntDecodingStreams::format_output
-            `assert torch.all(fsa.scores == scores_tracked_by_autograd)`
-        See more details in k2/python/k2/rnnt_decode.py
         """
 
         for device in self.devices:
             fsa1 = k2.ctc_topo(5, device=device)
+            fsa1.scores.random_(-20, 0).to(device)
             fsa1.attr1 = torch.tensor([1] * fsa1.num_arcs, device=device)
 
             stream1 = k2.RnntDecodingStream(fsa1)
 
             fsa2 = k2.trivial_graph(3, device=device)
+            fsa2.scores.random_(-20, 0).to(device)
             fsa2.attr1 = torch.tensor([2] * fsa2.num_arcs, device=device)
             fsa2.attr2 = torch.tensor([22] * fsa2.num_arcs, device=device)
 
             stream2 = k2.RnntDecodingStream(fsa2)
 
             fsa3 = k2.ctc_topo(3, modified=True, device=device)
+            fsa3.scores.random_(-20, 0).to(device)
             fsa3.attr3 = k2.RaggedTensor(
                 torch.ones((fsa3.num_arcs, 2), dtype=torch.int32, device=device)
                 * 3

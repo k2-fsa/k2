@@ -38,7 +38,7 @@ class RnntDecodingStream(object):
         decoding graphs for different streams.
 
         Args:
-          graph:
+          fsa:
             The decoding graph used in this stream.
 
         Returns:
@@ -175,6 +175,10 @@ class RnntDecodingStreams(object):
             If false, we only care about the real final state in the
             decoding graph on the last frame when generating lattice.
             Default False.
+          log_probs:
+            A tensor of shape [t2s2c_shape.tot_size(2)][num_symbols].
+            It's a stacked tensor of logprobs passed to function `advance`
+            during decoding.
           t2s2c_shape:
             It is short for time2stream2context_shape,
             which describes shape of log_probs used to generate lattice.
@@ -189,6 +193,7 @@ class RnntDecodingStreams(object):
 
         if log_probs is not None:
             assert t2s2c_shape is not None
+            assert t2s2c_shape.tot_size(2) == log_probs.shape[0]
             ragged_arcs, out_map, arc_map_token = self.streams.format_output(
                 num_frames, allow_partial, t2s2c_shape
             )
@@ -280,11 +285,14 @@ class RnntDecodingStreams(object):
         if log_probs is not None:
             # Make fsa.scores tracked by autograd
             # to make the whole decoding process differentiable.
-            scores_tracked_by_autograd = torch.index_select(
-                log_probs.reshape(-1), 0, arc_map_token)
-            final_arc_index = torch.where(fsa.arcs.values()[:, 2] == -1)
-            scores_tracked_by_autograd[final_arc_index] *= 0
-            # This assertion statement is kind of unit test.
-            assert torch.all(fsa.scores == scores_tracked_by_autograd)
+            scores_tracked_by_autograd = index_select(
+                log_probs.reshape(-1), arc_map_token, default_value=0.0)
+
+            # Decoding graph may contain non-zero scores on arcs.
+            if not torch.all(fsa.scores == scores_tracked_by_autograd):
+                graph_scores = \
+                    fsa.scores.detach() - scores_tracked_by_autograd.detach()
+                scores_tracked_by_autograd = \
+                    scores_tracked_by_autograd + graph_scores
             fsa.scores = scores_tracked_by_autograd
         return fsa
