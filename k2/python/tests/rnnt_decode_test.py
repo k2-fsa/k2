@@ -137,7 +137,7 @@ class TestRnntDecode(unittest.TestCase):
                                         device=device))
             t2stream2context_shape3 = t2s_shape.compose(s2c_shape).to(device)
 
-            # Follow part is copied from:
+            # Following part is copied from:
             # ofsa = streams.format_output([3, 4, 5],
             #                              log_probs=logprobs_list_tensor,
             #                              t2s2c_shape=t2stream2context_shape3)
