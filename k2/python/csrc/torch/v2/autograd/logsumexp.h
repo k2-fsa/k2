@@ -111,7 +111,7 @@ class LogSumExpFunction : public torch::autograd::Function<LogSumExpFunction> {
                 * expf(input_logp_data[idx01] - logsum_values_data[idx0]);
             });
       } else {
-        // use `exp` foradouble
+        // use `exp` for double
         K2_EVAL(
             c, n, set_grad, (int32_t idx01)->void {
               int32_t idx0 = row_ids_data[idx01];
