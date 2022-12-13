@@ -19,6 +19,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -233,6 +234,10 @@ void PybindRaggedAny(py::module &m) {
 
   any.def("sum", &RaggedAny::Sum, py::arg("initial_value") = 0,
           kRaggedAnySumDoc);
+
+  any.def("logsumexp", &RaggedAny::LogSumExp,
+          py::arg("initial_value") = -std::numeric_limits<float>::infinity(),
+          kRaggedAnyLogSumExpDoc);
 
   any.def(
       "numel",
