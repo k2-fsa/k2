@@ -236,13 +236,9 @@ class TestRaggedTensor(unittest.TestCase):
                     dtype=dtype,
                     device=device,
                 )
-                a_0 = torch.tensor(
-                    [-1.1, 2.2, -3.3, 4.4],
-                    dtype=dtype,
-                    device=device,
-                )
-                a_1 = torch.tensor([], dtype=dtype, device=device)
-                a_2 = torch.tensor([5.5, -6.6], dtype=dtype, device=device)
+                a_0 = a[0].clone()
+                a_1 = a[1].clone()
+                a_2 = a[2].clone()
 
                 a.requires_grad_(True)
                 a_0.requires_grad_(True)
@@ -272,13 +268,9 @@ class TestRaggedTensor(unittest.TestCase):
                     dtype=dtype,
                     device=device,
                 )
-                a_0 = torch.tensor(
-                    [-1.1, 2.2, -3.3, 4.4],
-                    dtype=dtype,
-                    device=device,
-                )
-                a_1 = torch.tensor([], dtype=dtype, device=device)
-                a_2 = torch.tensor([5.5, -6.6], dtype=dtype, device=device)
+                a_0 = a[0].clone()
+                a_1 = a[1].clone()
+                a_2 = a[2].clone()
 
                 a.requires_grad_(True)
                 a_0.requires_grad_(True)
