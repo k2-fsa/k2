@@ -936,6 +936,7 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
           arc.dest_state = oarc_idx01xx_next - oarc_idx0xxx;
           arc.label = -1;
           arc.score = 0;
+          out_map_data[oarc_idx01234] = -1;
         } else {
           const Arc *graph_arcs_data = graphs_arcs_data[oarc_idx0];
           arc.src_state = oarc_idx0123 - oarc_idx0xxx;
@@ -951,13 +952,12 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
           // make the generated lattice a valid k2 fsa.
           if (arc_info.graph_arc_idx01 == -1 || arc_info.label == -1) {
             arc.label = 0;
-            arc_info.graph_arc_idx01 = -1;
           } else {
             arc.label = graph_arcs_data[arc_info.graph_arc_idx01].label;
           }
           arc.score = arc_info.score;
+          out_map_data[oarc_idx01234] = arc_info.graph_arc_idx01;
         }
-        out_map_data[oarc_idx01234] = arc_info.graph_arc_idx01;
         arcs_out_data[oarc_idx01234] = arc;
         if (arc_map_b != nullptr) {
           t = t - num_padded_frames_data[oarc_idx0];

@@ -78,7 +78,6 @@ class TestRnntDecode(unittest.TestCase):
         Almost the same with previous test function
         except testing arc_map_token generation.
         """
-
         for device in self.devices:
             fsa1 = k2.ctc_topo(5, device=device)
             fsa1.scores.random_(-20, 0).to(device)
@@ -138,10 +137,31 @@ class TestRnntDecode(unittest.TestCase):
                                         device=device))
             t2stream2context_shape3 = t2s_shape.compose(s2c_shape).to(device)
 
-            ofsa = streams.format_output([3, 4, 5],
-                                         log_probs=logprobs_list_tensor,
-                                         t2s2c_shape=t2stream2context_shape3)
-            print(ofsa)
+            # Follow part is copied from:
+            # ofsa = streams.format_output([3, 4, 5],
+            #                              log_probs=logprobs_list_tensor,
+            #                              t2s2c_shape=t2stream2context_shape3)
+            #
+            # They are copied here to do checks easier.
+            ragged_arcs, out_map, arc_map_token = streams.streams.format_output(
+                [3, 4, 5], False, t2stream2context_shape3
+            )
+            ofsa = k2.Fsa(ragged_arcs)
+            scores_tracked_by_autograd = k2.index_select(
+                logprobs_list_tensor.reshape(-1),
+                arc_map_token, default_value=0.0)
+            ofsa1_num_arcs = ofsa[0].arcs.shape().tot_size(1)
+            ofsa2_num_arcs = ofsa[1].arcs.shape().tot_size(1)
+            out_map_1 = out_map[:ofsa1_num_arcs]
+            out_map_2 = out_map[ofsa1_num_arcs:ofsa1_num_arcs + ofsa2_num_arcs]
+            out_map_3 = out_map[ofsa1_num_arcs + ofsa2_num_arcs:]
+            graph_scores_1 = k2.index_select(fsa1.scores, out_map_1)
+            graph_scores_2 = k2.index_select(fsa2.scores, out_map_2)
+            graph_scores_3 = k2.index_select(fsa3.scores, out_map_3)
+            graph_scores = torch.cat(
+                [graph_scores_1, graph_scores_2, graph_scores_3])
+            assert torch.all(
+                ofsa.scores == scores_tracked_by_autograd + graph_scores)
 
 
 if __name__ == "__main__":
