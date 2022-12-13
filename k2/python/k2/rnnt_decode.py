@@ -289,10 +289,9 @@ class RnntDecodingStreams(object):
                 log_probs.reshape(-1), arc_map_token, default_value=0.0)
 
             # Decoding graph may contain non-zero scores on arcs.
-            if not torch.all(fsa.scores == scores_tracked_by_autograd):
-                graph_scores = \
-                    fsa.scores.detach() - scores_tracked_by_autograd.detach()
-                scores_tracked_by_autograd = \
-                    scores_tracked_by_autograd + graph_scores
+            graph_scores = \
+                fsa.scores.detach() - scores_tracked_by_autograd.detach()
+            scores_tracked_by_autograd = \
+                scores_tracked_by_autograd + graph_scores
             fsa.scores = scores_tracked_by_autograd
         return fsa
