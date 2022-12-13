@@ -935,7 +935,7 @@ Compute the logsumexp of sublists over the last axis of this tensor.
 
 Note:
   It is similar to torch.logsumexp except it accepts a ragged tensor.
-  See https://pytorch.org/docs/stable/generated/torch.logsumexp.html
+  See `<https://pytorch.org/docs/stable/generated/torch.logsumexp.html>`_
   for definition of logsumexp.
 
 Note:
