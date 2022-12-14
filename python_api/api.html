@@ -227,6 +227,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#id30">cat</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#clone">clone</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id31">index</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#logsumexp">logsumexp</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#max">max</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#min">min</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#normalize">normalize</a></li>
@@ -337,31 +338,32 @@
 <li class="toctree-l4"><a class="reference internal" href="#id88">cat</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id89">clone</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id90">index</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id91">max</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id92">min</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id93">normalize</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id94">numel</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id95">pad</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id96">remove_axis</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id97">remove_values_eq</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id98">remove_values_leq</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id99">requires_grad_</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id100">sort_</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id101">sum</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id102">to</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id103">to_str_simple</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id104">tolist</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id105">tot_size</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id106">unique</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id107">device</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id108">dim0</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id109">dtype</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id110">grad</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id111">is_cuda</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id112">num_axes</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id113">requires_grad</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id114">shape</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id115">values</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id91">logsumexp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id93">max</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id94">min</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id95">normalize</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id96">numel</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id97">pad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id98">remove_axis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id99">remove_values_eq</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id100">remove_values_leq</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id101">requires_grad_</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id102">sort_</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id103">sum</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id104">to</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id105">to_str_simple</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id106">tolist</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id107">tot_size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id108">unique</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id109">device</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id110">dim0</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id111">dtype</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id112">grad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id113">is_cuda</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id114">num_axes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id115">requires_grad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id116">shape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id117">values</a></li>
 </ul>
 </li>
 </ul>
@@ -464,8 +466,8 @@ If ret_arc_map is True, an extra arc map is also returned.</p>
 </dl>
 <p><strong>Example: Sort a single FSA</strong></p>
 <blockquote>
-<div><div class="literal-block-wrapper docutils container" id="id116">
-<div class="code-block-caption"><span class="caption-number">Listing 10 </span><span class="caption-text">Sort a single FSA</span><a class="headerlink" href="#id116" title="Permalink to this code"></a></div>
+<div><div class="literal-block-wrapper docutils container" id="id118">
+<div class="code-block-caption"><span class="caption-number">Listing 10 </span><span class="caption-text">Sort a single FSA</span><a class="headerlink" href="#id118" title="Permalink to this code"></a></div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="ch">#!/usr/bin/env python3</span>
 <span class="linenos"> 2</span>
 <span class="linenos"> 3</span><span class="kn">import</span> <span class="nn">k2</span>
@@ -812,8 +814,8 @@ FSA will on the same device as <cite>k2.RaggedTensor</cite>.</p></li>
 </dl>
 <p><strong>Example 1</strong></p>
 <blockquote>
-<div><div class="literal-block-wrapper docutils container" id="id117">
-<div class="code-block-caption"><span class="caption-number">Listing 11 </span><span class="caption-text">Usage of k2.ctc_graph</span><a class="headerlink" href="#id117" title="Permalink to this code"></a></div>
+<div><div class="literal-block-wrapper docutils container" id="id119">
+<div class="code-block-caption"><span class="caption-number">Listing 11 </span><span class="caption-text">Usage of k2.ctc_graph</span><a class="headerlink" href="#id119" title="Permalink to this code"></a></div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="ch">#!/usr/bin/env python3</span>
 <span class="linenos"> 2</span>
 <span class="linenos"> 3</span><span class="kn">import</span> <span class="nn">k2</span>
@@ -848,21 +850,21 @@ FSA will on the same device as <cite>k2.RaggedTensor</cite>.</p></li>
 </pre></div>
 </div>
 </div>
-<figure class="align-center" id="id118" style="width: 600px">
+<figure class="align-center" id="id120" style="width: 600px">
 <img alt="CTC graph (modified=False)" src="../_images/ctc_graph.svg" /><figcaption>
-<p><span class="caption-number">Fig. 18 </span><span class="caption-text">Note: There is a mandatory blank between state 3 and 5.</span><a class="headerlink" href="#id118" title="Permalink to this image"></a></p>
+<p><span class="caption-number">Fig. 18 </span><span class="caption-text">Note: There is a mandatory blank between state 3 and 5.</span><a class="headerlink" href="#id120" title="Permalink to this image"></a></p>
 </figcaption>
 </figure>
-<figure class="align-center" id="id119" style="width: 600px">
+<figure class="align-center" id="id121" style="width: 600px">
 <img alt="CTC graph (modified=True)" src="../_images/modified_ctc_graph.svg" /><figcaption>
-<p><span class="caption-number">Fig. 19 </span><span class="caption-text">Note: There is <strong>no</strong> mandatory blank between state 3 and 5.</span><a class="headerlink" href="#id119" title="Permalink to this image"></a></p>
+<p><span class="caption-number">Fig. 19 </span><span class="caption-text">Note: There is <strong>no</strong> mandatory blank between state 3 and 5.</span><a class="headerlink" href="#id121" title="Permalink to this image"></a></p>
 </figcaption>
 </figure>
 </div></blockquote>
 <p><strong>Example 2 Construct a CTC graph using composition</strong></p>
 <blockquote>
-<div><div class="literal-block-wrapper docutils container" id="id120">
-<div class="code-block-caption"><span class="caption-number">Listing 12 </span><span class="caption-text">Construct a CTC graph using composition</span><a class="headerlink" href="#id120" title="Permalink to this code"></a></div>
+<div><div class="literal-block-wrapper docutils container" id="id122">
+<div class="code-block-caption"><span class="caption-number">Listing 12 </span><span class="caption-text">Construct a CTC graph using composition</span><a class="headerlink" href="#id122" title="Permalink to this code"></a></div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="ch">#!/usr/bin/env python3</span>
 <span class="linenos"> 2</span>
 <span class="linenos"> 3</span><span class="c1"># Construct a CTC graph by intersection</span>
@@ -1005,8 +1007,8 @@ depending on whether <cite>standard</cite> is True or False.</p>
 </dl>
 <p><strong>Example</strong></p>
 <blockquote>
-<div><div class="literal-block-wrapper docutils container" id="id121">
-<div class="code-block-caption"><span class="caption-number">Listing 13 </span><span class="caption-text">Usage of k2.ctc_topo</span><a class="headerlink" href="#id121" title="Permalink to this code"></a></div>
+<div><div class="literal-block-wrapper docutils container" id="id123">
+<div class="code-block-caption"><span class="caption-number">Listing 13 </span><span class="caption-text">Usage of k2.ctc_topo</span><a class="headerlink" href="#id123" title="Permalink to this code"></a></div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="ch">#!/usr/bin/env python3</span>
 <span class="linenos"> 2</span>
 <span class="linenos"> 3</span><span class="kn">import</span> <span class="nn">k2</span>
@@ -4358,7 +4360,7 @@ on scores).</p></li>
 
 </section>
 <section id="id11">
-<h3><a href="#id122"><span class="problematic" id="id123">invert_</span></a><a class="headerlink" href="#id11" title="Permalink to this headline"></a></h3>
+<h3><a href="#id124"><span class="problematic" id="id125">invert_</span></a><a class="headerlink" href="#id11" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.invert_">
 <span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">invert_</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L919-L976"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.invert_" title="Permalink to this definition"></a></dt>
@@ -4418,7 +4420,7 @@ but these special attributes won’t be deleted.</p>
 
 </section>
 <section id="requires-grad">
-<h3><a href="#id124"><span class="problematic" id="id125">requires_grad_</span></a><a class="headerlink" href="#requires-grad" title="Permalink to this headline"></a></h3>
+<h3><a href="#id126"><span class="problematic" id="id127">requires_grad_</span></a><a class="headerlink" href="#requires-grad" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.requires_grad_">
 <span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">requires_grad_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L843-L866"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.requires_grad_" title="Permalink to this definition"></a></dt>
@@ -6678,6 +6680,75 @@ dtype <code class="docutils literal notranslate"><span class="pre">torch.int32</
 </dd></dl>
 
 </section>
+<section id="logsumexp">
+<h3>logsumexp<a class="headerlink" href="#logsumexp" title="Permalink to this headline"></a></h3>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.RaggedTensor.logsumexp">
+<span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">logsumexp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-</span> <span class="pre">inf</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.RaggedTensor.logsumexp" title="Permalink to this definition"></a></dt>
+<dd><p>Compute the logsumexp of sublists over the last axis of this tensor.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It is similar to torch.logsumexp except it accepts a ragged tensor.
+See <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.logsumexp.html">https://pytorch.org/docs/stable/generated/torch.logsumexp.html</a>
+for definition of logsumexp.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If a sublist is empty, the logsumexp for it is the provided
+<code class="docutils literal notranslate"><span class="pre">initial_value</span></code>.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This operation only supports float type input,
+i.e., with dtype being torch.float32 or torch.float64.</p>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">RaggedTensor([[-0.25, -0.25, -0.25, -0.25],</span>
+<span class="go">              [],</span>
+<span class="go">              [-0.5, -0.5]], dtype=torch.float32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">logsumexp</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">tensor([1.1363,   -inf, 0.1931], grad_fn=&lt;LogSumExpFunction&gt;&gt;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">tensor(-inf, grad_fn=&lt;SumBackward0&gt;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">grad</span>
+<span class="go">tensor([0.2500, 0.2500, 0.2500, 0.2500, 0.5000, 0.5000])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># if a is a 3-d ragged tensor</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[[</span><span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">]],</span> <span class="p">[[],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">]]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">RaggedTensor([[[-0.25, -0.25, -0.25, -0.25]],</span>
+<span class="go">              [[],</span>
+<span class="go">               [-0.5, -0.5]]], dtype=torch.float32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">logsumexp</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">tensor([1.1363,   -inf, 0.1931], grad_fn=&lt;LogSumExpFunction&gt;&gt;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">tensor(-inf, grad_fn=&lt;SumBackward0&gt;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">grad</span>
+<span class="go">tensor([0.2500, 0.2500, 0.2500, 0.2500, 0.5000, 0.5000])</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>initial_value</strong> – If a sublist is empty, its logsumexp is this value.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a 1-D tensor with the same dtype of this tensor
+containing the computed logsumexp.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
 <section id="max">
 <h3>max<a class="headerlink" href="#max" title="Permalink to this headline"></a></h3>
 <dl class="py method">
@@ -7097,7 +7168,7 @@ Leaves all layers of the shape except for the last one unaffected.</p>
 
 </section>
 <section id="id34">
-<h3><a href="#id126"><span class="problematic" id="id127">requires_grad_</span></a><a class="headerlink" href="#id34" title="Permalink to this headline"></a></h3>
+<h3><a href="#id128"><span class="problematic" id="id129">requires_grad_</span></a><a class="headerlink" href="#id34" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.RaggedTensor.requires_grad_">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">requires_grad_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedTensor</span></span></span><a class="headerlink" href="#k2.RaggedTensor.requires_grad_" title="Permalink to this definition"></a></dt>
@@ -7136,7 +7207,7 @@ RuntimeError exception.</p>
 
 </section>
 <section id="sort">
-<h3><a href="#id128"><span class="problematic" id="id129">sort_</span></a><a class="headerlink" href="#sort" title="Permalink to this headline"></a></h3>
+<h3><a href="#id130"><span class="problematic" id="id131">sort_</span></a><a class="headerlink" href="#sort" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.RaggedTensor.sort_">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">sort_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descending</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#k2.RaggedTensor.sort_" title="Permalink to this definition"></a></dt>
@@ -10688,7 +10759,76 @@ dtype <code class="docutils literal notranslate"><span class="pre">torch.int32</
 
 </section>
 <section id="id91">
-<h3>max<a class="headerlink" href="#id91" title="Permalink to this headline"></a></h3>
+<h3>logsumexp<a class="headerlink" href="#id91" title="Permalink to this headline"></a></h3>
+<dl class="py method">
+<dt class="sig sig-object py" id="k2.ragged.RaggedTensor.logsumexp">
+<span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">logsumexp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-</span> <span class="pre">inf</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.logsumexp" title="Permalink to this definition"></a></dt>
+<dd><p>Compute the logsumexp of sublists over the last axis of this tensor.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It is similar to torch.logsumexp except it accepts a ragged tensor.
+See <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.logsumexp.html">https://pytorch.org/docs/stable/generated/torch.logsumexp.html</a>
+for definition of logsumexp.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If a sublist is empty, the logsumexp for it is the provided
+<code class="docutils literal notranslate"><span class="pre">initial_value</span></code>.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This operation only supports float type input,
+i.e., with dtype being torch.float32 or torch.float64.</p>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">k2.ragged</span> <span class="k">as</span> <span class="nn">k2r</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">RaggedTensor([[-0.25, -0.25, -0.25, -0.25],</span>
+<span class="go">              [],</span>
+<span class="go">              [-0.5, -0.5]], dtype=torch.float32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">logsumexp</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">tensor([1.1363,   -inf, 0.1931], grad_fn=&lt;LogSumExpFunction&gt;&gt;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">tensor(-inf, grad_fn=&lt;SumBackward0&gt;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">grad</span>
+<span class="go">tensor([0.2500, 0.2500, 0.2500, 0.2500, 0.5000, 0.5000])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># if a is a 3-d ragged tensor</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">k2r</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[[</span><span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">]],</span> <span class="p">[[],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">]]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">RaggedTensor([[[-0.25, -0.25, -0.25, -0.25]],</span>
+<span class="go">              [[],</span>
+<span class="go">               [-0.5, -0.5]]], dtype=torch.float32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">logsumexp</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span>
+<span class="go">tensor([1.1363,   -inf, 0.1931], grad_fn=&lt;LogSumExpFunction&gt;&gt;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span>
+<span class="go">tensor(-inf, grad_fn=&lt;SumBackward0&gt;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">grad</span>
+<span class="go">tensor([0.2500, 0.2500, 0.2500, 0.2500, 0.5000, 0.5000])</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>initial_value</strong> – If a sublist is empty, its logsumexp is this value.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Return a 1-D tensor with the same dtype of this tensor
+containing the computed logsumexp.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="id93">
+<h3>max<a class="headerlink" href="#id93" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.max">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.max" title="Permalink to this definition"></a></dt>
@@ -10725,8 +10865,8 @@ It shares the same dtype and device with <code class="docutils literal notransla
 </dd></dl>
 
 </section>
-<section id="id92">
-<h3>min<a class="headerlink" href="#id92" title="Permalink to this headline"></a></h3>
+<section id="id94">
+<h3>min<a class="headerlink" href="#id94" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.min">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">min</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.min" title="Permalink to this definition"></a></dt>
@@ -10763,8 +10903,8 @@ It shares the same dtype and device with <code class="docutils literal notransla
 </dd></dl>
 
 </section>
-<section id="id93">
-<h3>normalize<a class="headerlink" href="#id93" title="Permalink to this headline"></a></h3>
+<section id="id95">
+<h3>normalize<a class="headerlink" href="#id95" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.normalize">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">normalize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_log</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedTensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.normalize" title="Permalink to this definition"></a></dt>
@@ -10843,8 +10983,8 @@ is defined as:</p>
 </dd></dl>
 
 </section>
-<section id="id94">
-<h3>numel<a class="headerlink" href="#id94" title="Permalink to this headline"></a></h3>
+<section id="id96">
+<h3>numel<a class="headerlink" href="#id96" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.numel">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">numel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.numel" title="Permalink to this definition"></a></dt>
@@ -10870,8 +11010,8 @@ is defined as:</p>
 </dd></dl>
 
 </section>
-<section id="id95">
-<h3>pad<a class="headerlink" href="#id95" title="Permalink to this headline"></a></h3>
+<section id="id97">
+<h3>pad<a class="headerlink" href="#id97" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.pad">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">pad</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.pad" title="Permalink to this definition"></a></dt>
@@ -10922,8 +11062,8 @@ If a list is empty, then the given <cite>padding_value</cite> is also used for f
 </dd></dl>
 
 </section>
-<section id="id96">
-<h3>remove_axis<a class="headerlink" href="#id96" title="Permalink to this headline"></a></h3>
+<section id="id98">
+<h3>remove_axis<a class="headerlink" href="#id98" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.remove_axis">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">remove_axis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedTensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.remove_axis" title="Permalink to this definition"></a></dt>
@@ -11020,8 +11160,8 @@ last axis it is just removed and the number of elements may be changed.</p>
 </dd></dl>
 
 </section>
-<section id="id97">
-<h3>remove_values_eq<a class="headerlink" href="#id97" title="Permalink to this headline"></a></h3>
+<section id="id99">
+<h3>remove_values_eq<a class="headerlink" href="#id99" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.remove_values_eq">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">remove_values_eq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedTensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.remove_values_eq" title="Permalink to this definition"></a></dt>
@@ -11059,8 +11199,8 @@ target.  Leaves all layers of the shape except for the last one unaffected.</p>
 </dd></dl>
 
 </section>
-<section id="id98">
-<h3>remove_values_leq<a class="headerlink" href="#id98" title="Permalink to this headline"></a></h3>
+<section id="id100">
+<h3>remove_values_leq<a class="headerlink" href="#id100" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.remove_values_leq">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">remove_values_leq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedTensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.remove_values_leq" title="Permalink to this definition"></a></dt>
@@ -11105,8 +11245,8 @@ Leaves all layers of the shape except for the last one unaffected.</p>
 </dd></dl>
 
 </section>
-<section id="id99">
-<h3><a href="#id130"><span class="problematic" id="id131">requires_grad_</span></a><a class="headerlink" href="#id99" title="Permalink to this headline"></a></h3>
+<section id="id101">
+<h3><a href="#id132"><span class="problematic" id="id133">requires_grad_</span></a><a class="headerlink" href="#id101" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.requires_grad_">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">requires_grad_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_k2.ragged.RaggedTensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.requires_grad_" title="Permalink to this definition"></a></dt>
@@ -11144,8 +11284,8 @@ RuntimeError exception.</p>
 </dd></dl>
 
 </section>
-<section id="id100">
-<h3><a href="#id132"><span class="problematic" id="id133">sort_</span></a><a class="headerlink" href="#id100" title="Permalink to this headline"></a></h3>
+<section id="id102">
+<h3><a href="#id134"><span class="problematic" id="id135">sort_</span></a><a class="headerlink" href="#id102" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.sort_">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">sort_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descending</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.sort_" title="Permalink to this definition"></a></dt>
@@ -11199,8 +11339,8 @@ a 1-D tensor of dtype <code class="docutils literal notranslate"><span class="pr
 </dd></dl>
 
 </section>
-<section id="id101">
-<h3>sum<a class="headerlink" href="#id101" title="Permalink to this headline"></a></h3>
+<section id="id103">
+<h3>sum<a class="headerlink" href="#id103" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.sum">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">sum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.sum" title="Permalink to this definition"></a></dt>
@@ -11246,8 +11386,8 @@ containing the computed sum.</p>
 </dd></dl>
 
 </section>
-<section id="id102">
-<h3>to<a class="headerlink" href="#id102" title="Permalink to this headline"></a></h3>
+<section id="id104">
+<h3>to<a class="headerlink" href="#id104" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.to">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#k2.ragged.RaggedTensor.to" title="Permalink to this definition"></a></dt>
@@ -11352,8 +11492,8 @@ Otherwise, a new tensor is returned.</p>
 </dd></dl>
 
 </section>
-<section id="id103">
-<h3>to_str_simple<a class="headerlink" href="#id103" title="Permalink to this headline"></a></h3>
+<section id="id105">
+<h3>to_str_simple<a class="headerlink" href="#id105" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.to_str_simple">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">to_str_simple</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.to_str_simple" title="Permalink to this definition"></a></dt>
@@ -11380,8 +11520,8 @@ is more compact than <code class="docutils literal notranslate"><span class="pre
 </dd></dl>
 
 </section>
-<section id="id104">
-<h3>tolist<a class="headerlink" href="#id104" title="Permalink to this headline"></a></h3>
+<section id="id106">
+<h3>tolist<a class="headerlink" href="#id106" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.tolist">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">tolist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.tolist" title="Permalink to this definition"></a></dt>
@@ -11410,8 +11550,8 @@ and structure as <code class="docutils literal notranslate"><span class="pre">se
 </dd></dl>
 
 </section>
-<section id="id105">
-<h3>tot_size<a class="headerlink" href="#id105" title="Permalink to this headline"></a></h3>
+<section id="id107">
+<h3>tot_size<a class="headerlink" href="#id107" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.tot_size">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">tot_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.tot_size" title="Permalink to this definition"></a></dt>
@@ -11437,8 +11577,8 @@ equivalent to the property <code class="docutils literal notranslate"><span clas
 </dd></dl>
 
 </section>
-<section id="id106">
-<h3>unique<a class="headerlink" href="#id106" title="Permalink to this headline"></a></h3>
+<section id="id108">
+<h3>unique<a class="headerlink" href="#id108" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.unique">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">unique</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_k2.ragged.RaggedTensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_num_repeats</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need_new2old_indexes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">_k2.ragged.RaggedTensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">_k2.ragged.RaggedTensor</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.unique" title="Permalink to this definition"></a></dt>
@@ -11578,8 +11718,8 @@ input sublist that the i-th output sublist corresponds to.</p></li>
 </dd></dl>
 
 </section>
-<section id="id107">
-<h3>device<a class="headerlink" href="#id107" title="Permalink to this headline"></a></h3>
+<section id="id109">
+<h3>device<a class="headerlink" href="#id109" title="Permalink to this headline"></a></h3>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.device">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.device" title="Permalink to this definition"></a></dt>
@@ -11598,8 +11738,8 @@ input sublist that the i-th output sublist corresponds to.</p></li>
 </dd></dl>
 
 </section>
-<section id="id108">
-<h3>dim0<a class="headerlink" href="#id108" title="Permalink to this headline"></a></h3>
+<section id="id110">
+<h3>dim0<a class="headerlink" href="#id110" title="Permalink to this headline"></a></h3>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.dim0">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">dim0</span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.dim0" title="Permalink to this definition"></a></dt>
@@ -11616,8 +11756,8 @@ input sublist that the i-th output sublist corresponds to.</p></li>
 </dd></dl>
 
 </section>
-<section id="id109">
-<h3>dtype<a class="headerlink" href="#id109" title="Permalink to this headline"></a></h3>
+<section id="id111">
+<h3>dtype<a class="headerlink" href="#id111" title="Permalink to this headline"></a></h3>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.dtype">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">dtype</span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.dtype" title="Permalink to this definition"></a></dt>
@@ -11638,8 +11778,8 @@ input sublist that the i-th output sublist corresponds to.</p></li>
 </dd></dl>
 
 </section>
-<section id="id110">
-<h3>grad<a class="headerlink" href="#id110" title="Permalink to this headline"></a></h3>
+<section id="id112">
+<h3>grad<a class="headerlink" href="#id112" title="Permalink to this headline"></a></h3>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.grad">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">grad</span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.grad" title="Permalink to this definition"></a></dt>
@@ -11666,8 +11806,8 @@ calls to <code class="docutils literal notranslate"><span class="pre">backward()
 </dd></dl>
 
 </section>
-<section id="id111">
-<h3>is_cuda<a class="headerlink" href="#id111" title="Permalink to this headline"></a></h3>
+<section id="id113">
+<h3>is_cuda<a class="headerlink" href="#id113" title="Permalink to this headline"></a></h3>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.is_cuda">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">is_cuda</span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.is_cuda" title="Permalink to this definition"></a></dt>
@@ -11690,8 +11830,8 @@ otherwise.</p>
 </dd></dl>
 
 </section>
-<section id="id112">
-<h3>num_axes<a class="headerlink" href="#id112" title="Permalink to this headline"></a></h3>
+<section id="id114">
+<h3>num_axes<a class="headerlink" href="#id114" title="Permalink to this headline"></a></h3>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.num_axes">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">num_axes</span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.num_axes" title="Permalink to this definition"></a></dt>
@@ -11717,8 +11857,8 @@ otherwise.</p>
 </dd></dl>
 
 </section>
-<section id="id113">
-<h3>requires_grad<a class="headerlink" href="#id113" title="Permalink to this headline"></a></h3>
+<section id="id115">
+<h3>requires_grad<a class="headerlink" href="#id115" title="Permalink to this headline"></a></h3>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.requires_grad">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">requires_grad</span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.requires_grad" title="Permalink to this definition"></a></dt>
@@ -11737,8 +11877,8 @@ Return <code class="docutils literal notranslate"><span class="pre">False</span>
 </dd></dl>
 
 </section>
-<section id="id114">
-<h3>shape<a class="headerlink" href="#id114" title="Permalink to this headline"></a></h3>
+<section id="id116">
+<h3>shape<a class="headerlink" href="#id116" title="Permalink to this headline"></a></h3>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.shape">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.shape" title="Permalink to this definition"></a></dt>
@@ -11754,8 +11894,8 @@ Return <code class="docutils literal notranslate"><span class="pre">False</span>
 </dd></dl>
 
 </section>
-<section id="id115">
-<h3>values<a class="headerlink" href="#id115" title="Permalink to this headline"></a></h3>
+<section id="id117">
+<h3>values<a class="headerlink" href="#id117" title="Permalink to this headline"></a></h3>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="k2.ragged.RaggedTensor.values">
 <span class="sig-prename descclassname"><span class="pre">RaggedTensor.</span></span><span class="sig-name descname"><span class="pre">values</span></span><a class="headerlink" href="#k2.ragged.RaggedTensor.values" title="Permalink to this definition"></a></dt>

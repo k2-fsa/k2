@@ -793,6 +793,11 @@ index
 
 .. automethod:: k2.RaggedTensor.index
 
+logsumexp
+^^^^^^^^^
+
+.. automethod:: k2.RaggedTensor.logsumexp
+
 max
 ^^^
 
@@ -1260,6 +1265,11 @@ index
 ^^^^^
 
 .. automethod:: k2.ragged.RaggedTensor.index
+
+logsumexp
+^^^^^^^^^
+
+.. automethod:: k2.ragged.RaggedTensor.logsumexp
 
 max
 ^^^
