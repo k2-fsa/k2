@@ -1,5 +1,6 @@
 # please keep the list sorted
 set(torch_srcs
+  self_alignment.cu
   arc.cu
   fsa.cu
   fsa_algo.cu

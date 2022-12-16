@@ -1,0 +1,220 @@
+/**
+ * @copyright
+ * Copyright      2022  Xiaomi Corporation (authors: Liyong Guo)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef K2_CSRC_SELF_ALIGNMENT_H_
+#define K2_CSRC_SELF_ALIGNMENT_H_
+
+#include <torch/extension.h>
+
+#include <vector>
+
+#include "k2/python/csrc/torch.h"
+
+namespace k2 {
+
+FsaVec SelfAlignment(
+    torch::Tensor ranges,  // [B][S][T+1] if !modified, [B][S][T] if modified.
+    torch::Tensor x_lens,  // [B][S+1][T]
+    torch::Tensor blank_connections,
+    torch::Tensor y,
+    // const Ragged<int32_t> &y,
+    torch::optional<torch::Tensor> boundary,  // [B][4], int64_t.
+    torch::Tensor p,
+    Array1<int32_t> *arc_map) {
+    ContextPtr context;
+    if (ranges.device().type() == torch::kCPU) {
+      context = GetCpuContext();
+    } else if (ranges.is_cuda()) {
+      context = GetCudaContext(ranges.device().index());
+    } else {
+      K2_LOG(FATAL) << "Unsupported device: " << ranges.device()
+                    << "\nOnly CPU and CUDA are supported";
+    }
+ 
+    TORCH_CHECK(ranges.dim() == 3, "ranges must be 3-dimensional");
+    // U is always 5
+    const int32_t B = ranges.size(0), T = ranges.size(1), U = ranges.size(2);
+
+
+    Array1<int32_t> out_map(context, 1);
+    *arc_map = std::move(out_map);
+    K2_LOG(INFO) << "hello" << B << T << U;
+    // K2_LOG(INFO) << ranges[0][5];
+    // K2_LOG(INFO) << ranges[0];
+    Dtype t = ScalarTypeToDtype(ranges.scalar_type());
+    K2_CHECK_EQ(kInt64Dtype, t);
+    K2_CHECK_EQ(torch::kLong, ranges.scalar_type());
+    K2_CHECK_EQ(torch::kInt, x_lens.scalar_type()); // int32_t
+    // Dtype t = ScalarTypeToDtype(ranges.GetDtype());
+    // std::is_same<ranges.scalar_type(), torch::kLong>::value;
+      // static_assert(std::is_same<t, kInt64Dtype>::value, "ranges is not kInt64Dtype")
+    // const int32_t *row_ids_data = row_ids.data_ptr<int32_t>();
+    // FOR_REAL_TYPES(t, t, {
+        const int64_t *ranges_data = ranges.data_ptr<int64_t>();
+        const int32_t *x_lens_data = x_lens.data_ptr<int32_t>();
+        const int32_t *blank_connections_data = blank_connections.data_ptr<int32_t>();
+        const int32_t *y_data = y.data_ptr<int32_t>();
+              int32_t stride_0 = ranges.stride(0),
+                      stride_1 = ranges.stride(1),
+                      stride_2 = ranges.stride(2);
+              int32_t blk_stride_0 = blank_connections.stride(0),
+                      blk_stride_1 = blank_connections.stride(1),
+                      blk_stride_2 = blank_connections.stride(2);
+    K2_LOG(INFO) << "stride_0: " << stride_0;
+    K2_LOG(INFO) << "stride_1: " << stride_1;
+    K2_LOG(INFO) << "stride_2: " << stride_2;
+    int64_t numel = ranges.numel();
+    Array1<int64_t> re_ranges(context, numel);
+    // f2s: fsa to states
+    K2_CHECK_EQ(x_lens.numel(), B);
+    Array1<int32_t> f2s_row_splits(context, B + 1);
+    int32_t * f2s_row_splits_data = f2s_row_splits.Data();
+    K2_EVAL(context, B, lambda_set_f2s_row_splits, (int32_t fsa_idx0) {
+        // f2s_row_splits_data[0] = 0;
+        int32_t t = x_lens_data[fsa_idx0];
+        // + 1 in "t * U + 1" is for super-final state.
+        f2s_row_splits_data[fsa_idx0] = t * U + 1;
+    });
+    ExclusiveSum(f2s_row_splits, &f2s_row_splits);
+
+    RaggedShape fsa_to_states =
+            RaggedShape2(&f2s_row_splits, nullptr, -1);
+    int32_t num_states = fsa_to_states.NumElements();
+    Array1<int32_t> s2c_row_splits(context, num_states + 1);
+    int32_t *s2c_row_splits_data = s2c_row_splits.Data();
+    const int32_t *fts_row_splits1_data = fsa_to_states.RowSplits(1).Data(),
+                  *fts_row_ids1_data = fsa_to_states.RowIds(1).Data();
+
+    // set the arcs number for each state
+    K2_EVAL(
+        context, num_states, lambda_set_num_arcs, (int32_t state_idx01)->void {
+          int32_t fsa_idx0 = fts_row_ids1_data[state_idx01],
+                  state_idx0x = fts_row_splits1_data[fsa_idx0],
+                  state_idx0x_next = fts_row_splits1_data[fsa_idx0 + 1],
+                  state_idx1 = state_idx01 - state_idx0x,
+                  t = state_idx1 / U,
+                  token_index = state_idx1 % U;
+          if (state_idx1 == x_lens_data[fsa_idx0] * U) {
+            // final arc to super final state.
+            s2c_row_splits_data[state_idx01] = 1;
+            return;
+          }
+          int32_t range_offset = fsa_idx0 * stride_0 + t * stride_1 + token_index * stride_2;
+          int32_t blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
+          int32_t next_state_idx1 = blank_connections_data[blank_connections_data_offset];
+          if (token_index < U - 1) {
+            s2c_row_splits_data[state_idx01] = 1;
+            if (next_state_idx1 >= 0) {
+              s2c_row_splits_data[state_idx01] = 2;
+            }
+          } else {
+            s2c_row_splits_data[state_idx01] = 0;
+            if (next_state_idx1 >= 0) {
+              s2c_row_splits_data[state_idx01] = 1;
+            }
+          }
+      });
+
+    ExclusiveSum(s2c_row_splits, &s2c_row_splits);
+    RaggedShape states_to_arcs =
+            RaggedShape2(&s2c_row_splits, nullptr, -1);
+
+    RaggedShape ofsa_shape = ComposeRaggedShapes(fsa_to_states, states_to_arcs);
+    int32_t num_arcs = ofsa_shape.NumElements();
+    Array1<Arc> arcs(context, num_arcs);
+    Arc *arcs_data = arcs.Data();
+    const int32_t *row_splits1_data = ofsa_shape.RowSplits(1).Data(),
+                  *row_ids1_data = ofsa_shape.RowIds(1).Data(),
+                  *row_splits2_data = ofsa_shape.RowSplits(2).Data(),
+                  *row_ids2_data = ofsa_shape.RowIds(2).Data();
+
+    // auto y_shape = y.shape;
+    // const int32_t * y_data = y.values.Data();
+    int32_t y_stride_0 = y.stride(0),
+            y_stride_1 = y.stride(1);
+    K2_EVAL(
+          context, num_arcs, lambda_set_arcs, (int32_t arc_idx012)->void {
+            int32_t state_idx01 = row_ids2_data[arc_idx012],
+                    fsa_idx0 = row_ids1_data[state_idx01],
+                    state_idx0x = row_splits1_data[fsa_idx0],
+                    state_idx0x_next = row_splits1_data[fsa_idx0 + 1],
+                    arc_idx01x = row_splits2_data[state_idx01],
+                    state_idx1 = state_idx01 - state_idx0x,
+                    arc_idx2 = arc_idx012 - arc_idx01x,
+                    t = state_idx1 / U,
+                    token_index = state_idx1 % U;  // token_index is belong to [0, U)
+            Arc arc;
+            if (state_idx1 == x_lens_data[fsa_idx0] * U) {
+              arc.src_state = state_idx1;
+              arc.dest_state = state_idx1 + 1;
+              arc.label = -1;
+              arc.score = 0.0;
+              arcs_data[arc_idx012] = arc;
+              return;
+            }
+            int32_t rangged_offset = fsa_idx0 * stride_0 + t * stride_1 + token_index * stride_2;
+            int32_t actual_u = ranges_data[rangged_offset];
+            int32_t y_offset = fsa_idx0 * y_stride_0 + actual_u;
+            int32_t arc_label =  y_data[y_offset];
+            int32_t blank_connections_data_offset, next_state_idx1;
+            arc.src_state = state_idx1;
+            // arc.
+            if (token_index < U - 1) {
+              switch (arc_idx2) {
+                case 0:
+                  arc.dest_state = state_idx1 + 1;
+                  arc.label = arc_label;
+                  break;
+                case 1:
+                  blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
+                  next_state_idx1 = blank_connections_data[blank_connections_data_offset];
+                  K2_CHECK_GE(next_state_idx1, 0);
+                  arc.dest_state = next_state_idx1 + (t + 1) * U;
+                  arc.label = 0;
+                  break;
+                default:
+                   K2_LOG(FATAL) << "Arc index must be less than 3";
+              }
+            } else {
+              K2_CHECK_EQ(arc_idx2, 0);
+              blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
+              next_state_idx1 = blank_connections_data[blank_connections_data_offset];
+              K2_CHECK_GE(next_state_idx1, 0);
+              arc.dest_state = next_state_idx1 + (t + 1) * U;
+              arc.label = 0;
+            }
+            arcs_data[arc_idx012] = arc;
+    });
+    return Ragged<Arc>(ofsa_shape, arcs);
+
+
+
+    int64_t * re_reanges_data = re_ranges.Data();
+    K2_LOG(INFO) << "numel: " << numel;
+    K2_EVAL(context, numel, lambda_set_range, (int32_t i) {
+        re_reanges_data[i] = ranges_data[i];
+        });
+    auto cpu_range = re_ranges.To(GetCpuContext());
+
+}
+
+}  // namespace k2
+
+#endif  // K2_CSRC_SELF_ALIGNMENT_H_

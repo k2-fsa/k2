@@ -74,6 +74,7 @@ set(context_srcs
   reverse.cu
   rm_epsilon.cu
   rnnt_decode.cu
+  self_alignment.cu
   tensor.cu
   tensor_ops.cu
   thread_pool.cu

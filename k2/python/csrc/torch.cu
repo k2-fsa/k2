@@ -34,6 +34,7 @@
 #include "k2/python/csrc/torch/ragged.h"
 #include "k2/python/csrc/torch/ragged_ops.h"
 #include "k2/python/csrc/torch/rnnt_decode.h"
+#include "k2/python/csrc/torch/self_alignment.h"
 #include "k2/python/csrc/torch/v2/k2.h"
 
 void PybindTorch(py::module &m) {
@@ -47,6 +48,7 @@ void PybindTorch(py::module &m) {
   PybindRagged(m);
   PybindRaggedOps(m);
   PybindRnntDecode(m);
+  PybindSelfAlignment(m);
 
   k2::PybindV2(m);
 }
