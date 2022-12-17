@@ -31,7 +31,7 @@ function(download_moderngpu)
 
   FetchContent_GetProperties(moderngpu)
   if(NOT moderngpu)
-    message(STATUS "Downloading moderngpu")
+    message(STATUS "Downloading moderngpu from ${moderngpu_URL}")
     FetchContent_Populate(moderngpu)
   endif()
   message(STATUS "moderngpu is downloaded to ${moderngpu_SOURCE_DIR}")

@@ -166,6 +166,24 @@ class TestShortestPath(unittest.TestCase):
 
             assert torch.all(torch.eq(expected_labels, best_path.labels))
 
+    def test_nonconnected_fst(self):
+        # Non-connected because of no arc from state-3 to state-4.
+        s = '''
+            0 1 1 9
+            1 2 2 8
+            2 3 3 7
+            4 5 5 6
+            5 6 6 5
+            6 7 8 4
+            7 8 -1 0
+            8
+        '''
+        for device in self.devices:
+            fsa = k2.Fsa.from_str(s).to(device)
+            fsa = k2.create_fsa_vec([fsa])
+            best_path = k2.shortest_path(fsa, use_double_scores=False)
+            assert best_path.num_arcs == 0
+
 
 if __name__ == '__main__':
     unittest.main()

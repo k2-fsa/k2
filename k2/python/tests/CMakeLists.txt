@@ -19,7 +19,6 @@ endfunction()
 set(py_test_files
   add_epsilon_self_loops_test.py
   arc_sort_test.py
-  array_ops_test.py
   cat_test.py
   compose_arc_maps_test.py
   closure_test.py
@@ -57,8 +56,10 @@ set(py_test_files
   linear_fst_with_self_loops_test.py
   multi_gpu_test.py
   mutual_information_test.py
+  mwer_test.py
   nbest_test.py
   numerical_gradient_check_test.py
+  online_dense_intersecter_test.py
   ragged_ops_test.py
   ragged_shape_test.py
   ragged_tensor_test.py

@@ -47,7 +47,7 @@ message(STATUS "Enabled languages: ${languages}")
 
 project(k2 ${languages})
 
-set(K2_VERSION "1.19")
+set(K2_VERSION "1.23.2")
 
 # ----------------- Supported build types for K2 project -----------------
 set(K2_ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
@@ -191,7 +191,7 @@ endif()
 if(NOT K2_COMPILER_SUPPORTS_CXX14)
   message(FATAL_ERROR "
     k2 requires a compiler supporting at least C++14.
-    If you are using GCC, please upgrade it to at least version 5.0.
+    If you are using GCC, please upgrade it to at least version 7.0.
     If you are using Clang, please upgrade it to at least version 3.4.")
 endif()
 
@@ -354,6 +354,7 @@ if(WIN32)
   # 4624: destructor was implicitly defined as deleted
   # 4700: uninitialized local variable 'device' used
   # 4722: destructor never returns
+  # 4805: '|': unsafe mix of type 'uintptr_t' and type 'bool' in operation
   # 4819: The file contains a character that cannot be presented in the current code page.
   # 4838: conversion from 'type_1' to 'type_2' requires a narrowing conversion
   # 4996: "getenv": This function is unsafe
@@ -366,8 +367,8 @@ if(WIN32)
       /wd4101
       /wd4190
       /wd4224
-      /wd4251
       /wd4244
+      /wd4251
       /wd4267
       /wd4275
       /wd4305
@@ -376,6 +377,7 @@ if(WIN32)
       /wd4624
       /wd4700
       /wd4722
+      /wd4805
       /wd4819
       /wd4838
       /wd4996

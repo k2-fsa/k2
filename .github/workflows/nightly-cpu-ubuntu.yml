@@ -20,6 +20,12 @@ on:
   push:
     branches:
       - nightly
+    paths:
+      - '.github/workflows/nightly-cpu-ubuntu.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   schedule:
     # minute (0-59)
     # hour (0-23)
@@ -28,6 +34,10 @@ on:
     # day of the week (0-6)
     # nightly build at 23:50 UTC time every day
     - cron: "50 23 * * *"
+
+concurrency:
+  group: nightly_cpu_ubuntu-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   BUILD_TYPE: Release

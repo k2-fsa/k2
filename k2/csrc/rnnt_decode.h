@@ -26,6 +26,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/array_of_ragged.h"
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/macros.h"
 
@@ -100,6 +101,10 @@ struct ArcInfo {
   // The score on the arc; contains both the graph score (if any) and the score
   // from the RNN-T joiner.
   float score;
+
+  // label of this arc (i.e. the label of the associated arc in the decoding
+  // graph. We keep it here to make identifying final arcs easier.
+  int32_t label;
 
   // dest_state is the state index within the array of states on the next frame;
   // it would be an (idx1 or idx2) depending whether this is part of an
@@ -178,6 +183,11 @@ class RnntDecodingStreams {
                     ever received).
                     It MUST satisfy `num_frames.size() == num_streams_`, and
                     `num_frames[i] <= srcs_[i].prev_frames.size()`.
+      @param [in] allow_partial If true and there is no final state active,
+                                we will treat all the states on the last frame
+                                to be final state. If false, we only
+                                care about the real final state in the decoding
+                                graph on the last frame when generating lattice.
       @param [out] ofsa  The output lattice will write to here, its num_axes
                          equals to 3, will be re-allocated.
       @param [out] out_map  It is an Array1 with Dim() equals to
@@ -186,8 +196,8 @@ class RnntDecodingStreams {
                      original decoding graphs. It may contain -1 which means
                      this arc is a "termination symbol".
    */
-  void FormatOutput(const std::vector<int32_t> &num_frames, FsaVec *ofsa,
-                    Array1<int32_t> *out_map);
+  void FormatOutput(const std::vector<int32_t> &num_frames, bool allow_partial,
+                    FsaVec *ofsa, Array1<int32_t> *out_map);
 
   /*
     Terminate the decoding process of current RnntDecodingStreams object, it

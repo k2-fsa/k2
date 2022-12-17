@@ -126,11 +126,16 @@ class Fsa(object):
         It is useful when loading an Fsa from file.
 
         Args:
-          tensor:
-            A torch tensor of dtype `torch.int32` with 4 columns.
+          arcs:
+            When the `arcs` is an instance of `torch.Tensor`, it is
+            a torch tensor of dtype `torch.int32` with 4 columns.
             Each row represents an arc. Column 0 is the src_state,
             column 1 the dest_state, column 2 the label, and column
             3 the score.
+            When the `arcs` is an instance of `_k2.RaggedArc`, it is a
+            Ragged containing `_k2.Arc` returned by internal functions
+            (i.e. C++/CUDA functions) or got from other Fsa object
+            by `fsa.arcs`.
 
             Caution:
               Scores are floats and their binary pattern is
@@ -386,6 +391,8 @@ class Fsa(object):
 
         if isinstance(value, torch.Tensor):
             assert value.shape[0] == self.arcs.values().shape[0]
+            # See https://github.com/k2-fsa/k2/issues/1120
+            assert value.device == self.device
             if name == 'labels':
                 assert value.dtype == torch.int32
                 self.arcs.values()[:, 2] = value
@@ -410,6 +417,8 @@ class Fsa(object):
         elif isinstance(value, k2.RaggedTensor):
             assert value.dim0 == self.arcs.values().shape[0], \
                     f'value.dim0: {value.dim0}, shape[0]: {self.arcs.values().shape[0]}'  # noqa
+            # See https://github.com/k2-fsa/k2/issues/1120
+            assert value.device == self.device, (value.device, self.device)
             self._tensor_attr[name] = value
         else:
             self._non_tensor_attr[name] = value
@@ -746,7 +755,7 @@ class Fsa(object):
         '''Compute scores on arcs, representing log probabilities;
         with log_semiring=True you could call these log posteriors,
         but if log_semiring=False they can only be interpreted as the
-        difference betwen the best-path score and the score of the
+        difference between the best-path score and the score of the
         best path that includes this arc.
 
         This version is not differentiable; see also :func:`get_arc_post`.

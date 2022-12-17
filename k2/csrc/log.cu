@@ -22,6 +22,8 @@
 
 #include "k2/csrc/log.h"
 
+#include <time.h>
+
 #ifdef K2_HAVE_EXECINFO_H
 #include <execinfo.h>  // To get stack trace in error messages.
 #ifdef K2_HAVE_CXXABI_H
@@ -32,11 +34,32 @@
 
 #include <stdlib.h>
 
+#include <chrono>  // NOLINT
+#include <ctime>
 #include <string>
 
 namespace k2 {
 
 namespace internal {
+
+std::string GetTimeStamp() {
+  using namespace std::chrono;  // NOLINT
+  auto now = system_clock::now();
+  std::time_t time = system_clock::to_time_t(now);
+  std::tm tm;
+#ifndef _MSC_VER
+  localtime_r(&time, &tm);
+#else
+  localtime_s(&tm, &time);
+#endif
+  char s[128];
+  std::strftime(s, sizeof(s), "%F %T", &tm);
+  int32_t ms =
+      duration_cast<milliseconds>(now.time_since_epoch()).count() % 1000;
+  std::ostringstream os;
+  os << s << "." << ms;
+  return os.str();
+}
 
 static bool LocateSymbolRange(const std::string &trace_name, std::size_t *begin,
                               std::size_t *end) {

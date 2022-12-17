@@ -32,7 +32,7 @@ void PybindV2(py::module &m) {
 
   PybindRaggedShape(ragged);
 
-  m.attr("RaggedShape") = ragged.attr("RaggedShape");  // TODO: remove it
+  m.attr("RaggedShape") = ragged.attr("RaggedShape");
 
   PybindRaggedAny(ragged);
 }

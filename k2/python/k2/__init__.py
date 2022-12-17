@@ -81,7 +81,13 @@ from .fsa_algo import union
 from .fsa_properties import to_str as properties_to_str
 from .mutual_information import joint_mutual_information_recursion
 from .mutual_information import mutual_information_recursion
+from .mwer_loss import MWERLoss
+from .mwer_loss import mwer_loss
 from .nbest import Nbest
+
+from .online_dense_intersecter import DecodeStateInfo
+from .online_dense_intersecter import OnlineDenseIntersecter
+
 from .ops import cat
 from .ops import compose_arc_maps
 from .ops import index_add
@@ -109,7 +115,6 @@ from .utils import create_fsa_vec
 from .utils import create_sparse
 from .utils import is_rand_equivalent
 from .utils import get_best_matching_stats
-from .utils import monotonic_lower_bound
 from .utils import to_dot
 from .utils import to_str
 from .utils import to_str_simple
@@ -117,6 +122,10 @@ from .utils import to_tensor
 from .utils import random_fsa
 from .utils import random_fsa_vec
 from _k2.version import with_cuda
+
+from .decode import get_aux_labels
+from .decode import get_lattice
+from .decode import one_best_decoding
 
 cmake_prefix_path = _Path(__file__).parent / "share" / "cmake"
 del _Path

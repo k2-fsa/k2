@@ -38,6 +38,11 @@ To build a release version, use:
 .. code-block:: bash
 
   cd /some/path/k2
+
+  # If you are using torch 1.12.x, please run the following fix.
+  # See https://github.com/pytorch/pytorch/issues/88290
+  python3 ./scripts/github_actions/fix_torch.py
+
   mkdir build_release
   cd build_release
   cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -71,6 +76,11 @@ To build a debug version, use:
 .. code-block:: bash
 
   cd /some/path/k2
+
+  # If you are using torch 1.12.x, please run the following fix.
+  # See https://github.com/pytorch/pytorch/issues/88290
+  python3 ./scripts/github_actions/fix_torch.py
+
   mkdir build_debug
   cd build_debug
   cmake -DCMAKE_BUILD_TYPE=Debug ..

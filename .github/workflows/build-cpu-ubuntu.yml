@@ -22,8 +22,24 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '.github/workflows/build-cpu-ubuntu.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   pull_request:
     types: [labeled]
+    paths:
+      - '.github/workflows/build-cpu-ubuntu.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+
+concurrency:
+  group: build-cpu-ubuntu-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   BUILD_TYPE: Release
@@ -91,24 +107,6 @@ jobs:
 
           python3 -c "import torch; print('torch version:', torch.__version__)"
 
-      - name: Build k2
-        shell: bash
-        run: |
-          pwd
-          mkdir build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
-          cat k2/csrc/version.h
-          cat CMakeCache.txt
-
-          make VERBOSE=1 -j2
-
-      - name: Run tests
-        shell: bash
-        run: |
-          cd build
-          ctest --output-on-failure
-
       - name: Build wheel
         shell: bash
         run: |
@@ -123,3 +121,24 @@ jobs:
         with:
           name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-18.04-cpu
           path: dist/*.whl
+
+      - name: Build k2
+        shell: bash
+        env:
+          torch: ${{ matrix.torch }}
+        run: |
+          pwd
+          ./scripts/github_actions/fix_torch.sh
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
+          cat k2/csrc/version.h
+          cat CMakeCache.txt
+
+          make VERBOSE=1 -j2
+
+      - name: Run tests
+        shell: bash
+        run: |
+          cd build
+          ctest --output-on-failure

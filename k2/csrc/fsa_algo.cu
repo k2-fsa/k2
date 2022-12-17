@@ -877,7 +877,7 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
   ContextPtr &context = fsas.Context();
 
   // allocate an extra element for ExclusiveSum
-  Array1<int32_t> num_best_arcs_per_fsa(context, num_fsas + 1);
+  Array1<int32_t> num_best_arcs_per_fsa(context, num_fsas + 1, 0);
   int32_t *num_best_arcs_per_fsa_data = num_best_arcs_per_fsa.Data();
   const int32_t *row_splits1_data = fsas.RowSplits(1).Data();
 
@@ -912,6 +912,12 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
           cur_state = arcs_data[cur_index].src_state + state_idx01;
           cur_index = entering_arcs_data[cur_state];
           ++num_arcs;
+        }
+        if (cur_state != state_idx01) {
+          // Previous condition equals to
+          // arcs_data[cur_index].src_state != 0.
+          // Current fsa is non-connected.
+          num_arcs = 0;
         }
         num_best_arcs_per_fsa_data[fsas_idx0] = num_arcs;
       });
@@ -1073,10 +1079,15 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
             // If exactly one step would also be enough to take us past the
             // boundary.
             if (entering_arcs_powers_acc(0, prev_src_state_idx01) == -1) {
-              // cur_num_best_states is 0-based.
-              // "+ 1" makes it 1-based.
-              num_best_arcs_per_fsa_data[fsas_idx0] =
-                cur_num_best_states_this_fsa + 1;
+              if (prev_src_state_idx01 == begin_state_idx01) {
+                // cur_num_best_states is 0-based.
+                // "+ 1" makes it 1-based.
+                num_best_arcs_per_fsa_data[fsas_idx0] =
+                  cur_num_best_states_this_fsa + 1;
+              } else {
+                // Current fsa is non-connected.
+                num_best_arcs_per_fsa_data[fsas_idx0] = 0;
+              }
             }
             return;
           } else {

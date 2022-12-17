@@ -31,7 +31,7 @@ The following versions of Python, CUDA, and PyTorch are known to work.
 
 Before compiling k2, some preparation work has to be done:
 
-  - Have a compiler supporting at least C++14, e.g., GCC >= 5.0, Clang >= 3.4.
+  - Have a compiler supporting at least C++14, e.g., GCC >= 7.0, Clang >= 3.4.
   - Install CMake. CMake 3.11.0 and 3.18.0 are known to work.
   - Install Python3.
   - Install PyTorch.
@@ -45,9 +45,16 @@ After setting up the environment, we are ready to build k2:
 
   git clone https://github.com/k2-fsa/k2.git
   cd k2
+  export K2_MAKE_ARGS="-j6"
   python3 setup.py install
 
 That is all you need to run.
+
+.. hint::
+
+   We use ``export K2_MAKE_ARGS="-j6"`` to pass ``-j6`` to ``make``
+   to reduce compilation time.
+   If you have many GPUs and enough RAM, you can choose a larger value.
 
 .. caution::
 

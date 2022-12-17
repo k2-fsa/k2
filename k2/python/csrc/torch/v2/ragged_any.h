@@ -22,6 +22,8 @@
 
 #ifndef K2_PYTHON_CSRC_TORCH_V2_RAGGED_ANY_H_
 #define K2_PYTHON_CSRC_TORCH_V2_RAGGED_ANY_H_
+#include <limits>
+#include <numeric>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -201,6 +203,21 @@ struct RaggedAny {
    */
   torch::Tensor Sum(float initial_value = 0) const;
 
+  /** Compute the logsumexp over the last axis of the ragged tensor.
+
+     It is a wrapper around k2::LogSumPerSublist.
+
+     @note It only accepts input with dtype
+     `torch.float32` or `torch.float64`.
+
+     @param initial_value If a sublist is empty,
+     the logsumexp of it is just initial_value.
+
+     @return Return the logsumexp of each sublist as a 1-D tensor.
+   */
+  torch::Tensor LogSumExp(
+      float initial_value = -std::numeric_limits<float>::infinity()) const;
+
   /** Index a ragged tensor (supporting only axis==0 at present).
 
      It requires that the ragged tensor has at least 3 axes.
@@ -249,6 +266,8 @@ struct RaggedAny {
 
   /// Wrapper for k2::NormalizePerSublist
   RaggedAny Normalize(bool use_log) /*const*/;
+
+  RaggedAny Add(torch::Tensor value, py::object alpha) /*const*/;
 
   /// Wrapper for k2::PadRagged
   torch::Tensor Pad(const std::string &mode,

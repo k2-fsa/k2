@@ -21,9 +21,18 @@ name: Generate doc
 on:
   push:
     branches:
-    - master
-    - doc
-    - doc-test
+      - master
+      - doc
+      - doc-test
+    paths:
+      - '.github/workflows/build-doc.yml'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+      - 'docs/**'
+
+concurrency:
+  group: build-doc-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   # debug is faster in terms of compilation time
@@ -61,9 +70,11 @@ jobs:
       - name: Install PyTorch ${{ matrix.torch }}
         shell: bash
         run: |
+          sudo apt-get -qq install graphviz
           python3 -m pip install -qq --upgrade pip
           python3 -m pip install -qq wheel twine typing_extensions
           python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          python3 -m pip install -qq graphviz
 
           python3 -c "import torch; print('torch version:', torch.__version__)"
 

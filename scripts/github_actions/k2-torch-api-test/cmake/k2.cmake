@@ -1,11 +1,17 @@
 # PYTHON_EXECUTABLE is set by cmake/pybind11.cmake
-message(STATUS "Python executable: ${PYTHON_EXECUTABLE}")
+if(DEFINED ENV{K2_INSTALL_PREFIX})
+  message(STATUS "Using environment variable K2_INSTALL_PREFIX: $ENV{K2_INSTALL_PREFIX}")
+  set(K2_CMAKE_PREFIX_PATH $ENV{K2_INSTALL_PREFIX})
+else()
+  # PYTHON_EXECUTABLE is set by cmake/pybind11.cmake
+  message(STATUS "Python executable: ${PYTHON_EXECUTABLE}")
 
-execute_process(
-  COMMAND "${PYTHON_EXECUTABLE}" -c "import k2; print(k2.cmake_prefix_path)"
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  OUTPUT_VARIABLE K2_CMAKE_PREFIX_PATH
-)
+  execute_process(
+    COMMAND "${PYTHON_EXECUTABLE}" -c "import k2; print(k2.cmake_prefix_path)"
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    OUTPUT_VARIABLE K2_CMAKE_PREFIX_PATH
+  )
+endif()
 
 message(STATUS "K2_CMAKE_PREFIX_PATH: ${K2_CMAKE_PREFIX_PATH}")
 list(APPEND CMAKE_PREFIX_PATH "${K2_CMAKE_PREFIX_PATH}")

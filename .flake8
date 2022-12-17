@@ -26,3 +26,5 @@ ignore =
   F401,
   # W504, line break after binary operator
   W504,
+  # W503, line break before binary operator
+  W503,
