@@ -34,7 +34,7 @@ FsaVec SelfAlignment(
     // Currently, only [B][S][T] is supported.
     torch::Tensor ranges,
     torch::Tensor x_lens,  // [B][T]
-    torch::Tensor blank_connections,
+    // torch::Tensor blank_connections,
     torch::Tensor y,
     // const Ragged<int32_t> &y,
     torch::Tensor logits,
@@ -69,14 +69,14 @@ FsaVec SelfAlignment(
         const float *logits_data = logits.data_ptr<float>();
         const int32_t *ranges_data = ranges.data_ptr<int32_t>();
         const int32_t *x_lens_data = x_lens.data_ptr<int32_t>();
-        const int32_t *blank_connections_data = blank_connections.data_ptr<int32_t>();
+        // const int32_t *blank_connections_data = blank_connections.data_ptr<int32_t>();
         const int32_t *y_data = y.data_ptr<int32_t>();
               int32_t rng_stride_0 = ranges.stride(0),
                       rng_stride_1 = ranges.stride(1),
                       rng_stride_2 = ranges.stride(2);
-              int32_t blk_stride_0 = blank_connections.stride(0),
-                      blk_stride_1 = blank_connections.stride(1),
-                      blk_stride_2 = blank_connections.stride(2);
+              // int32_t blk_stride_0 = blank_connections.stride(0),
+              //         blk_stride_1 = blank_connections.stride(1),
+              //         blk_stride_2 = blank_connections.stride(2);
               int32_t lg_stride_0 = logits.stride(0),
                       lg_stride_1 = logits.stride(1),
                       lg_stride_2 = logits.stride(2),
@@ -131,15 +131,15 @@ FsaVec SelfAlignment(
             return;
           }
           int32_t range_offset = fsa_idx0 * rng_stride_0 + t * rng_stride_1 + token_index * rng_stride_2;
-          int32_t blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
-          int32_t next_state_idx1 = blank_connections_data[blank_connections_data_offset];
+          // int32_t blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
+          // int32_t next_state_idx1 = blank_connections_data[blank_connections_data_offset];
 
-          int32_t next_state_idx1_tmp = -1;
+          int32_t next_state_idx1 = -1;
           // blank connections of last frame is -1
           // So we need process t == x_lens_data[fsa_idx0]
           if (t < x_lens_data[fsa_idx0] - 1) {
             int32_t range_offset_of_lower_bound_of_next_time_step = fsa_idx0 * rng_stride_0 + (t + 1) * rng_stride_1;
-            next_state_idx1_tmp = ranges_data[range_offset] - ranges_data[range_offset_of_lower_bound_of_next_time_step];
+            next_state_idx1 = ranges_data[range_offset] - ranges_data[range_offset_of_lower_bound_of_next_time_step];
           }
           // K2_CHECK_EQ(next_state_idx1_tmp, next_state_idx1);
           if (token_index < U - 1) {
@@ -198,10 +198,11 @@ FsaVec SelfAlignment(
               return;
             }
             int32_t range_offset = fsa_idx0 * rng_stride_0 + t * rng_stride_1 + token_index * rng_stride_2;
+            int32_t range_offset_of_lower_bound_of_next_time_step = fsa_idx0 * rng_stride_0 + (t + 1) * rng_stride_1;
             int32_t actual_u = ranges_data[range_offset];
             int32_t y_offset = fsa_idx0 * y_stride_0 + actual_u;
             int32_t arc_label =  y_data[y_offset];
-            int32_t blank_connections_data_offset, next_state_idx1, logits_offset;
+            int32_t next_state_idx1, logits_offset;
             arc.src_state = state_idx1;
             // arc.
             if (token_index < U - 1) {
@@ -216,8 +217,9 @@ FsaVec SelfAlignment(
                   // arc.score = 0;
                   break;
                 case 1:
-                  blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
-                  next_state_idx1 = blank_connections_data[blank_connections_data_offset];
+                  next_state_idx1 = ranges_data[range_offset] - ranges_data[range_offset_of_lower_bound_of_next_time_step];
+                  // blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
+                  // next_state_idx1 = blank_connections_data[blank_connections_data_offset];
                   // blank connections of last frame is always -1,
                   // So states with num_arcs > 2 (i.e. with arc_idx2==1) could not belong to last frame, i.e. x_lens_data[fsa_idx0] - 1.
                   // K2_CHECK_LE(t, x_lens_data[fsa_idx0] - 1);
@@ -234,8 +236,9 @@ FsaVec SelfAlignment(
               }
             } else {
               K2_CHECK_EQ(arc_idx2, 0);
-              blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
-              next_state_idx1 = blank_connections_data[blank_connections_data_offset];
+              // blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
+              // next_state_idx1 = blank_connections_data[blank_connections_data_offset];
+              next_state_idx1 = ranges_data[range_offset] - ranges_data[range_offset_of_lower_bound_of_next_time_step];
               // K2_CHECK_GE(next_state_idx1, 0);
               arc.dest_state = next_state_idx1 + (t + 1) * U;
               arc.label = 0;
