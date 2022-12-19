@@ -35,8 +35,7 @@ FsaVec SelfAlignment(
     torch::Tensor blank_connections,
     torch::Tensor y,
     // const Ragged<int32_t> &y,
-    torch::optional<torch::Tensor> boundary,  // [B][4], int64_t.
-    torch::Tensor p,
+    torch::Tensor logits,
     // FsaVec * ofsa,
     Array1<int32_t> *arc_map);
 

@@ -30,13 +30,14 @@
 namespace k2 {
 
 FsaVec SelfAlignment(
-    torch::Tensor ranges,  // [B][S][T+1] if !modified, [B][S][T] if modified.
-    torch::Tensor x_lens,  // [B][S+1][T]
+    // Normally, ranges is with shape [B][S][T+1] if !modified, [B][S][T] if modified.
+    // Currently, only [B][S][T] is supported.
+    torch::Tensor ranges,
+    torch::Tensor x_lens,  // [B][T]
     torch::Tensor blank_connections,
     torch::Tensor y,
     // const Ragged<int32_t> &y,
-    torch::optional<torch::Tensor> boundary,  // [B][4], int64_t.
-    torch::Tensor p,
+    torch::Tensor logits,
     Array1<int32_t> *arc_map) {
     ContextPtr context;
     if (ranges.device().type() == torch::kCPU) {
@@ -53,42 +54,45 @@ FsaVec SelfAlignment(
     const int32_t B = ranges.size(0), T = ranges.size(1), U = ranges.size(2);
 
 
-    Array1<int32_t> out_map(context, 1);
-    *arc_map = std::move(out_map);
-    K2_LOG(INFO) << "hello" << B << T << U;
     // K2_LOG(INFO) << ranges[0][5];
     // K2_LOG(INFO) << ranges[0];
     Dtype t = ScalarTypeToDtype(ranges.scalar_type());
-    K2_CHECK_EQ(kInt64Dtype, t);
-    K2_CHECK_EQ(torch::kLong, ranges.scalar_type());
+    // K2_CHECK_EQ(kInt64Dtype, t);
+    // K2_CHECK_EQ(torch::kLong, ranges.scalar_type());
+    K2_CHECK_EQ(torch::kInt, ranges.scalar_type());
     K2_CHECK_EQ(torch::kInt, x_lens.scalar_type()); // int32_t
     // Dtype t = ScalarTypeToDtype(ranges.GetDtype());
     // std::is_same<ranges.scalar_type(), torch::kLong>::value;
       // static_assert(std::is_same<t, kInt64Dtype>::value, "ranges is not kInt64Dtype")
     // const int32_t *row_ids_data = row_ids.data_ptr<int32_t>();
     // FOR_REAL_TYPES(t, t, {
-        const int64_t *ranges_data = ranges.data_ptr<int64_t>();
+        const float *logits_data = logits.data_ptr<float>();
+        const int32_t *ranges_data = ranges.data_ptr<int32_t>();
         const int32_t *x_lens_data = x_lens.data_ptr<int32_t>();
         const int32_t *blank_connections_data = blank_connections.data_ptr<int32_t>();
         const int32_t *y_data = y.data_ptr<int32_t>();
-              int32_t stride_0 = ranges.stride(0),
-                      stride_1 = ranges.stride(1),
-                      stride_2 = ranges.stride(2);
+              int32_t rng_stride_0 = ranges.stride(0),
+                      rng_stride_1 = ranges.stride(1),
+                      rng_stride_2 = ranges.stride(2);
               int32_t blk_stride_0 = blank_connections.stride(0),
                       blk_stride_1 = blank_connections.stride(1),
                       blk_stride_2 = blank_connections.stride(2);
-    K2_LOG(INFO) << "stride_0: " << stride_0;
-    K2_LOG(INFO) << "stride_1: " << stride_1;
-    K2_LOG(INFO) << "stride_2: " << stride_2;
-    int64_t numel = ranges.numel();
-    Array1<int64_t> re_ranges(context, numel);
+              int32_t lg_stride_0 = logits.stride(0),
+                      lg_stride_1 = logits.stride(1),
+                      lg_stride_2 = logits.stride(2),
+                      lg_stride_3 = logits.stride(3);
+    // K2_LOG(INFO) << "stride_0: " << stride_0;
+    // K2_LOG(INFO) << "stride_1: " << stride_1;
+    // K2_LOG(INFO) << "stride_2: " << stride_2;
+    // int32_t numel = ranges.numel();
+    // Array1<int32_t> re_ranges(context, numel);
     // f2s: fsa to states
     K2_CHECK_EQ(x_lens.numel(), B);
     Array1<int32_t> f2s_row_splits(context, B + 1);
     int32_t * f2s_row_splits_data = f2s_row_splits.Data();
     K2_EVAL(context, B, lambda_set_f2s_row_splits, (int32_t fsa_idx0) {
-        // f2s_row_splits_data[0] = 0;
         int32_t t = x_lens_data[fsa_idx0];
+        K2_CHECK_LE(t, T);
         // + 1 in "t * U + 1" is for super-final state.
         f2s_row_splits_data[fsa_idx0] = t * U + 1;
     });
@@ -111,24 +115,45 @@ FsaVec SelfAlignment(
                   state_idx1 = state_idx01 - state_idx0x,
                   t = state_idx1 / U,
                   token_index = state_idx1 % U;
-          if (state_idx1 == x_lens_data[fsa_idx0] * U) {
+
+          K2_CHECK_LE(t, x_lens_data[fsa_idx0]);
+          if (state_idx1 == x_lens_data[fsa_idx0] * U - 1) {
+            // x_lens[fsa_idx0] * U is the state_idx1 of super final-state.
+            // x_lens[fsa_idx0] * U - 1 is the state pointing to super final-state.
             // final arc to super final state.
             s2c_row_splits_data[state_idx01] = 1;
             return;
           }
-          int32_t range_offset = fsa_idx0 * stride_0 + t * stride_1 + token_index * stride_2;
+          if (state_idx1 == x_lens_data[fsa_idx0] * U) {
+            // x_lens[fsa_idx0] * U is the state_idx1 of super final-state.
+            // final state has no leaving arcs.
+            s2c_row_splits_data[state_idx01] = 0;
+            return;
+          }
+          int32_t range_offset = fsa_idx0 * rng_stride_0 + t * rng_stride_1 + token_index * rng_stride_2;
           int32_t blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
           int32_t next_state_idx1 = blank_connections_data[blank_connections_data_offset];
+
+          int32_t next_state_idx1_tmp = -1;
+          // blank connections of last frame is -1
+          // So we need process t == x_lens_data[fsa_idx0]
+          if (t < x_lens_data[fsa_idx0] - 1) {
+            int32_t range_offset_of_lower_bound_of_next_time_step = fsa_idx0 * rng_stride_0 + (t + 1) * rng_stride_1;
+            next_state_idx1_tmp = ranges_data[range_offset] - ranges_data[range_offset_of_lower_bound_of_next_time_step];
+          }
+          // K2_CHECK_EQ(next_state_idx1_tmp, next_state_idx1);
           if (token_index < U - 1) {
+            // Typically, U == 5,
+            // the [0, 1, 2, 3] states for each time step may have a vertial arc plus an optional horizontal blank arc.
             s2c_row_splits_data[state_idx01] = 1;
             if (next_state_idx1 >= 0) {
               s2c_row_splits_data[state_idx01] = 2;
             }
           } else {
-            s2c_row_splits_data[state_idx01] = 0;
-            if (next_state_idx1 >= 0) {
-              s2c_row_splits_data[state_idx01] = 1;
-            }
+            // Typically, U == 5,
+            // the [4] state for each time step have and only have an horizontal blank arc.
+            // K2_CHECK_GE(next_state_idx1, 0);
+            s2c_row_splits_data[state_idx01] = 1;
           }
       });
 
@@ -139,6 +164,8 @@ FsaVec SelfAlignment(
     RaggedShape ofsa_shape = ComposeRaggedShapes(fsa_to_states, states_to_arcs);
     int32_t num_arcs = ofsa_shape.NumElements();
     Array1<Arc> arcs(context, num_arcs);
+    Array1<int32_t> out_map(context, num_arcs);
+    int32_t* out_map_data = out_map.Data();
     Arc *arcs_data = arcs.Data();
     const int32_t *row_splits1_data = ofsa_shape.RowSplits(1).Data(),
                   *row_ids1_data = ofsa_shape.RowIds(1).Data(),
@@ -161,19 +188,20 @@ FsaVec SelfAlignment(
                     t = state_idx1 / U,
                     token_index = state_idx1 % U;  // token_index is belong to [0, U)
             Arc arc;
-            if (state_idx1 == x_lens_data[fsa_idx0] * U) {
+            if (state_idx1 == x_lens_data[fsa_idx0] * U - 1) {
               arc.src_state = state_idx1;
               arc.dest_state = state_idx1 + 1;
               arc.label = -1;
               arc.score = 0.0;
               arcs_data[arc_idx012] = arc;
+              out_map_data[arc_idx012] = -1;
               return;
             }
-            int32_t rangged_offset = fsa_idx0 * stride_0 + t * stride_1 + token_index * stride_2;
-            int32_t actual_u = ranges_data[rangged_offset];
+            int32_t range_offset = fsa_idx0 * rng_stride_0 + t * rng_stride_1 + token_index * rng_stride_2;
+            int32_t actual_u = ranges_data[range_offset];
             int32_t y_offset = fsa_idx0 * y_stride_0 + actual_u;
             int32_t arc_label =  y_data[y_offset];
-            int32_t blank_connections_data_offset, next_state_idx1;
+            int32_t blank_connections_data_offset, next_state_idx1, logits_offset;
             arc.src_state = state_idx1;
             // arc.
             if (token_index < U - 1) {
@@ -181,13 +209,25 @@ FsaVec SelfAlignment(
                 case 0:
                   arc.dest_state = state_idx1 + 1;
                   arc.label = arc_label;
+                  logits_offset = fsa_idx0 * lg_stride_0 + t * lg_stride_1 + token_index * lg_stride_2 + arc_label * lg_stride_3;
+                  // K2_CHECK_LE(logits_offset, 135);
+                  arc.score = logits_data[logits_offset];
+                  out_map_data[arc_idx012] = logits_offset;
+                  // arc.score = 0;
                   break;
                 case 1:
                   blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
                   next_state_idx1 = blank_connections_data[blank_connections_data_offset];
-                  K2_CHECK_GE(next_state_idx1, 0);
+                  // blank connections of last frame is always -1,
+                  // So states with num_arcs > 2 (i.e. with arc_idx2==1) could not belong to last frame, i.e. x_lens_data[fsa_idx0] - 1.
+                  // K2_CHECK_LE(t, x_lens_data[fsa_idx0] - 1);
+                  // K2_CHECK_GE(next_state_idx1, 0);
                   arc.dest_state = next_state_idx1 + (t + 1) * U;
                   arc.label = 0;
+                  logits_offset = fsa_idx0 * lg_stride_0 + t * lg_stride_1 + token_index * lg_stride_2;
+                  arc.score = logits_data[logits_offset];
+                  out_map_data[arc_idx012] = logits_offset;
+                  // arc.score = 0.0;
                   break;
                 default:
                    K2_LOG(FATAL) << "Arc index must be less than 3";
@@ -196,22 +236,27 @@ FsaVec SelfAlignment(
               K2_CHECK_EQ(arc_idx2, 0);
               blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
               next_state_idx1 = blank_connections_data[blank_connections_data_offset];
-              K2_CHECK_GE(next_state_idx1, 0);
+              // K2_CHECK_GE(next_state_idx1, 0);
               arc.dest_state = next_state_idx1 + (t + 1) * U;
               arc.label = 0;
+              logits_offset = fsa_idx0 * lg_stride_0 + t * lg_stride_1 + token_index * lg_stride_2;
+              arc.score = logits_data[logits_offset];
+              out_map_data[arc_idx012] = logits_offset;
+              // arc.score = 0.0;
             }
             arcs_data[arc_idx012] = arc;
     });
+    *arc_map = std::move(out_map);
     return Ragged<Arc>(ofsa_shape, arcs);
 
 
 
-    int64_t * re_reanges_data = re_ranges.Data();
-    K2_LOG(INFO) << "numel: " << numel;
-    K2_EVAL(context, numel, lambda_set_range, (int32_t i) {
-        re_reanges_data[i] = ranges_data[i];
-        });
-    auto cpu_range = re_ranges.To(GetCpuContext());
+    // int32_t * re_reanges_data = re_ranges.Data();
+    // K2_LOG(INFO) << "numel: " << numel;
+    // K2_EVAL(context, numel, lambda_set_range, (int32_t i) {
+    //     re_reanges_data[i] = ranges_data[i];
+    //     });
+    // auto cpu_range = re_ranges.To(GetCpuContext());
 
 }
 
