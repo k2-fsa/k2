@@ -24,6 +24,12 @@ function(download_moderngpu)
   set(moderngpu_URL  "https://github.com/moderngpu/moderngpu/archive/8ec9ac0de8672de7217d014917eedec5317f75f3.zip")
   set(moderngpu_HASH "SHA256=1c20ffbb81d6f7bbe6107aaa5ee6d37392677c8a5fc7894935149c3ef0a3c2fb")
 
+  # If you don't have access to the Internet, please download the file to your
+  # local drive and use the line below (you need to change it accordingly.
+  # I am placing it in /star-fj/fangjun/download/github, but you can place it
+  # anywhere you like)
+  # set(moderngpu_URL  "file:///star-fj/fangjun/download/github/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip")
+
   FetchContent_Declare(moderngpu
     URL               ${moderngpu_URL}
     URL_HASH          ${moderngpu_HASH}
