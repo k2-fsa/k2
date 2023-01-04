@@ -24,6 +24,13 @@ function(download_pybind11)
   set(pybind11_URL  "https://github.com/pybind/pybind11/archive/5bc0943ed96836f46489f53961f6c438d2935357.zip")
   set(pybind11_HASH "SHA256=ff65a1a8c9e6ceec11e7ed9d296f2e22a63e9ff0c4264b3af29c72b4f18f25a0")
 
+  # If you don't have access to the Internet, please download the file to your
+  # local drive and use the line below (you need to change it accordingly.
+  # I am placing it in /star-fj/fangjun/download/github, but you can place it
+  # anywhere you like)
+  # set(pybind11_URL  "file:///star-fj/fangjun/download/github/pybind11-5bc0943ed96836f46489f53961f6c438d2935357.zip")
+
+
   set(double_quotes "\"")
   set(dollar "\$")
   set(semicolon "\;")

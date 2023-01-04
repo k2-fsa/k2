@@ -27,6 +27,12 @@ function(download_kaldifeat)
   set(kaldifeat_URL "https://github.com/csukuangfj/kaldifeat/archive/refs/tags/v1.20.tar.gz")
   set(kaldifeat_HASH "SHA256=509110abbb4bf510831a9abbf1f3e7a0768f9e505d7f25defeaf6545566e1aaf")
 
+  # If you don't have access to the Internet, please download the file to your
+  # local drive and use the line below (you need to change it accordingly.
+  # I am placing it in /star-fj/fangjun/download/github, but you can place it
+  # anywhere you like)
+  # set(kaldifeat_URL "file:///star-fj/fangjun/download/github/kaldifeat-1.20.tar.gz")
+
   set(kaldifeat_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
   FetchContent_Declare(kaldifeat
