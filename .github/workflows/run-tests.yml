@@ -50,7 +50,6 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         cuda: ["11.7"]
-        gcc: ["7"]
         torch: ["1.13.1"]
         python-version: ["3.11"]
         build_type: ["Release", "Debug"]
@@ -73,13 +72,6 @@ jobs:
         run: |
           which nvcc
           nvcc --version
-
-      - name: Install GCC ${{ matrix.gcc }}
-        run: |
-          sudo apt-get install -y gcc-${{ matrix.gcc }} g++-${{ matrix.gcc }}
-          echo "CC=/usr/bin/gcc-${{ matrix.gcc }}" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
-          echo "CUDAHOSTCXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
 
       - name: Display GCC version
         run: |

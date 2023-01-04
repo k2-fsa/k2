@@ -59,13 +59,6 @@ jobs:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
 
-      - name: Install GCC 7
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo apt-get install -y gcc-7 g++-7
-          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
-
       - name: Display GCC version
         run: |
           gcc --version
