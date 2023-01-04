@@ -94,9 +94,24 @@ struct RnntDecodingConfig {
 
 struct ArcInfo {
   // The arc-index within the RnntDecodingStream::graph that corresponds to this
-  // arc, or -1 if this arc is a "termination symbol" (these do not appear in
-  // the graph).
+  // arc if non-negative.
+  // There is an implicit self-loop arc for each state, which are represented
+  // by -(state_index + 1), see following comments of dest_state_in_graph.
   int32_t graph_arc_idx01;
+
+  // Note:
+  //   1. To save memory, value of this variable is calculated
+  //      from graph_arc_idx01.
+  //   2. It is differnt from variable dest_state.
+  //      dest_state_in_graph is the destination state index in decoding graph.
+  //      dest_state below is the state index in "generated lattice".
+  // There are two kinds of arcs in decoding graph:
+  //   1. Implicit self-loop arcs, dest_state of these arcs are calculated
+  //      with -(graph_arc_idx01 + 1).
+  //      (Note, graph_arc_idx01 is negative for these arcs)
+  //   2. Other arcs shown in decoding graph, dest_state of these arcs are
+  //      calculated with graph_arcs_data[ai.graph_arc_idx01].dest_state
+  // int32_t dest_state_in_graph;
 
   // The score on the arc; contains both the graph score (if any) and the score
   // from the RNN-T joiner.
@@ -200,6 +215,38 @@ class RnntDecodingStreams {
                     FsaVec *ofsa, Array1<int32_t> *out_map);
 
   /*
+    Generate the lattice.
+    Note: Almost the same with previous overloaded version,
+          except for an extra `is_final` argument.
+
+    Note: The prev_frames_ only contains decoded by current object, in order to
+          generate the lattice we will first gather all the previous frames from
+          individual streams.
+
+      @param [in] num_frames  A vector containing the number of frames we want
+                    to gather for each stream (note: the frames we have
+                    ever received).
+                    It MUST satisfy `num_frames.size() == num_streams_`, and
+                    `num_frames[i] <= srcs_[i].prev_frames.size()`.
+      @param [in] allow_partial If true and there is no final state active,
+                                we will treat all the states on the last frame
+                                to be final state. If false, we only
+                                care about the real final state in the decoding
+                                graph on the last frame when generating lattice.
+      @param [in] is_final If true, function GetFinalArcs() will be called.
+                           If false, the same with previous overloaded version.
+      @param [out] ofsa  The output lattice will write to here, its num_axes
+                         equals to 3, will be re-allocated.
+      @param [out] out_map  It is an Array1 with Dim() equals to
+                     ofsa.NumElements() containing the idx01 into the graph of
+                     each individual streams, mapping current arc in ofsa to
+                     original decoding graphs. It may contain -1 which means
+                     this arc is a "termination symbol".
+   */
+  void FormatOutput(const std::vector<int32_t> &num_frames, bool allow_partial,
+                    bool is_final, FsaVec *ofsa, Array1<int32_t> *out_map);
+
+  /*
     Terminate the decoding process of current RnntDecodingStreams object, it
     will update the states & scores of each individual stream and split &
     append the prev_frames_ in current object to the `prev_frames` of the
@@ -261,8 +308,30 @@ class RnntDecodingStreams {
 
       @return Return the renumbering object indicating which arc will be kept.
    */
-  Renumbering DoFisrtPassPruning(RaggedShape &unprund_arcs_shape,
+  Renumbering DoFirstPassPruning(RaggedShape &unprund_arcs_shape,
                                  const Array2<float> &logprobs);
+
+  /*
+     Get final arcs when last frame is received, i.e. passing is_final=True to
+     function `FormatOutput`.
+     Comparing with openfst, a valid fsa in k2 needs arcs with label==-1
+     pointing to a super final state. This function is handling these arcs.
+     See detail of the problem solved by this function at
+     https://github.com/k2-fsa/k2/pull/1089
+
+     If we name varialbes for last two steps of a lattice as:
+     arcs:                      last frame arcs                 final arcs
+     states: {last frame state} ---------------> {final states} ---------> {super final state}
+
+     This function mainly do following steps:
+     1. get last_frame from prev_frames_
+     2. expand last frame and get final states
+     3. re-assign dest state of last frame arcs to final states
+     4. populate final arcs
+     5. append final arcs to prev_frames_
+   */
+  void GetFinalArcs();
+
   /*
      Group states by contexts.
 

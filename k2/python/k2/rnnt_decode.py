@@ -149,7 +149,8 @@ class RnntDecodingStreams(object):
     def format_output(
             self,
             num_frames: List[int],
-            allow_partial: bool = False
+            allow_partial: bool = False,
+            is_final: bool = False,
     ) -> Fsa:
         """
         Generate the lattice Fsa currently got.
@@ -173,6 +174,11 @@ class RnntDecodingStreams(object):
             If false, we only care about the real final state in the
             decoding graph on the last frame when generating lattice.
             Default False.
+          is_final:
+            If true, function GetFinalArcs() will be called.
+            See detail of the problem solved by GetFinalArcs() at
+            https://github.com/k2-fsa/k2/pull/1089
+
 
         Returns:
           Return the lattice Fsa with all the attributes propagated.
@@ -181,7 +187,7 @@ class RnntDecodingStreams(object):
         assert len(num_frames) == self.num_streams
 
         ragged_arcs, out_map = self.streams.format_output(
-            num_frames, allow_partial
+            num_frames, allow_partial, is_final,
         )
         fsa = Fsa(ragged_arcs)
 
