@@ -118,10 +118,10 @@ CUDA toolkit you are using.</p></li>
 </ul>
 </div></blockquote>
 <p>After setting up the environment, we are ready to build k2:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/k2-fsa/k2.git
-<span class="nb">cd</span> k2
-<span class="nb">export</span> <span class="nv">K2_MAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-j6&quot;</span>
-python3 setup.py install
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/k2-fsa/k2.git
+<span class="nb">cd</span><span class="w"> </span>k2
+<span class="nb">export</span><span class="w"> </span><span class="nv">K2_MAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-j6&quot;</span>
+python3<span class="w"> </span>setup.py<span class="w"> </span>install
 </pre></div>
 </div>
 <p>That is all you need to run.</p>
@@ -138,10 +138,10 @@ If you have many GPUs and enough RAM, you can choose a larger value.</p>
 k2 and the two machines have different types of GPUs, please use the
 following commands to install k2.</p>
 <blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/k2-fsa/k2.git
-<span class="nb">cd</span> k2
-<span class="nb">export</span> <span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-DK2_BUILD_FOR_ALL_ARCHS=ON&quot;</span>
-python3 setup.py install
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/k2-fsa/k2.git
+<span class="nb">cd</span><span class="w"> </span>k2
+<span class="nb">export</span><span class="w"> </span><span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-DK2_BUILD_FOR_ALL_ARCHS=ON&quot;</span>
+python3<span class="w"> </span>setup.py<span class="w"> </span>install
 </pre></div>
 </div>
 </div></blockquote>

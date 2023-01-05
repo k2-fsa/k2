@@ -105,23 +105,23 @@ Other versions are not tested.</p></li>
 </ul>
 </div></blockquote>
 <p>Second, let’s clone the repository to some path <code class="docutils literal notranslate"><span class="pre">/some/path</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> /some/path
-git clone https://github.com/k2-fsa/k2.git
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/some/path
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/k2-fsa/k2.git
 
 <span class="c1"># Normally, you would first fork the repo and use</span>
 <span class="c1"># git clone https://github.com/your_github_username/k2.git</span>
 </pre></div>
 </div>
 <p>To build a release version, use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> /some/path/k2
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/some/path/k2
 
 <span class="c1"># If you are using torch 1.12.x, please run the following fix.</span>
 <span class="c1"># See https://github.com/pytorch/pytorch/issues/88290</span>
-python3 ./scripts/github_actions/fix_torch.py
+python3<span class="w"> </span>./scripts/github_actions/fix_torch.py
 
-mkdir build_release
-<span class="nb">cd</span> build_release
-cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Release ..
+mkdir<span class="w"> </span>build_release
+<span class="nb">cd</span><span class="w"> </span>build_release
+cmake<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release<span class="w"> </span>..
 
 <span class="c1"># Note: If you plan to run k2 on a different machine than the one you used to</span>
 <span class="c1"># build k2 and the two machines have different types of GPUs, please use the</span>
@@ -130,34 +130,34 @@ cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Release ..
 <span class="c1"># cmake -DCMAKE_BUILD_TYPE=Release -DK2_BUILD_FOR_ALL_ARCHS=ON ..</span>
 <span class="c1">#</span>
 
-make -j
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PYTHONPATH</span> <span class="c1"># for `import k2`</span>
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span> <span class="c1"># for `import _k2`</span>
+make<span class="w"> </span>-j
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PYTHONPATH</span><span class="w"> </span><span class="c1"># for `import k2`</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span><span class="w"> </span><span class="c1"># for `import _k2`</span>
 
 <span class="c1"># To test that your build is successful, run</span>
-python3 -c <span class="s2">&quot;import k2; print(k2.__file__)&quot;</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import k2; print(k2.__file__)&quot;</span>
 <span class="c1"># It should print /some/path/k2/k2/python/k2/__init.py</span>
 
-python3 -c <span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
 <span class="c1"># It should print /some/path/k2/build_release/lib/_k2.cpython-38-x86_64-linux-gnu.so</span>
 <span class="c1"># (I assume that you&#39;re using Python 3.8, so there is a string 38 above)</span>
 
 <span class="c1"># If you are going to install https://github.com/k2-fsa/sherpa after installing</span>
 <span class="c1"># k2, please run</span>
-<span class="nb">export</span> <span class="nv">K2_INSTALL_PREFIX</span><span class="o">=</span>/some/path/k2/build_release
+<span class="nb">export</span><span class="w"> </span><span class="nv">K2_INSTALL_PREFIX</span><span class="o">=</span>/some/path/k2/build_release
 <span class="c1"># before you install sherpa</span>
 </pre></div>
 </div>
 <p>To build a debug version, use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> /some/path/k2
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/some/path/k2
 
 <span class="c1"># If you are using torch 1.12.x, please run the following fix.</span>
 <span class="c1"># See https://github.com/pytorch/pytorch/issues/88290</span>
-python3 ./scripts/github_actions/fix_torch.py
+python3<span class="w"> </span>./scripts/github_actions/fix_torch.py
 
-mkdir build_debug
-<span class="nb">cd</span> build_debug
-cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Debug ..
+mkdir<span class="w"> </span>build_debug
+<span class="nb">cd</span><span class="w"> </span>build_debug
+cmake<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Debug<span class="w"> </span>..
 
 <span class="c1"># Note: If you plan to run k2 on a different machine than the one you used to</span>
 <span class="c1"># build k2 and the two machines have different types of GPUs, please use the</span>
@@ -166,21 +166,21 @@ cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Debug ..
 <span class="c1"># cmake -DCMAKE_BUILD_TYPE=Debug -DK2_BUILD_FOR_ALL_ARCHS=ON ..</span>
 <span class="c1">#</span>
 
-make -j
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PYTHONPATH</span> <span class="c1"># for `import k2`</span>
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span> <span class="c1"># for `import _k2`</span>
+make<span class="w"> </span>-j
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PYTHONPATH</span><span class="w"> </span><span class="c1"># for `import k2`</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span><span class="w"> </span><span class="c1"># for `import _k2`</span>
 
 <span class="c1"># To test that your build is successful, run</span>
-python3 -c <span class="s2">&quot;import k2; print(k2.__file__)&quot;</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import k2; print(k2.__file__)&quot;</span>
 <span class="c1"># It should print /some/path/k2/k2/python/k2/__init.py</span>
 
-python3 -c <span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
 <span class="c1"># It should print /some/path/k2/build_debug/lib/_k2.cpython-38-x86_64-linux-gnu.so</span>
 <span class="c1"># (I assume that you&#39;re using Python 3.8, so there is a string 38 above)</span>
 
 <span class="c1"># If you are going to install https://github.com/k2-fsa/sherpa after installing</span>
 <span class="c1"># k2, please run</span>
-<span class="nb">export</span> <span class="nv">K2_INSTALL_PREFIX</span><span class="o">=</span>/some/path/k2/build_debug
+<span class="nb">export</span><span class="w"> </span><span class="nv">K2_INSTALL_PREFIX</span><span class="o">=</span>/some/path/k2/build_debug
 <span class="c1"># before you install sherpa</span>
 </pre></div>
 </div>
@@ -197,40 +197,40 @@ working on CPU, you can create a new directory to build a CUDA version
 to test your code.</p>
 <p>That is, while adding and testing new features, use:</p>
 <blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> k2
-mkdir build-cpu
-<span class="nb">cd</span> build-cpu
-cmake -DK2_WITH_CUDA<span class="o">=</span>OFF -DCMAKE_BUILD_TYPE<span class="o">=</span>Debug ..
-make -j5
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>k2
+mkdir<span class="w"> </span>build-cpu
+<span class="nb">cd</span><span class="w"> </span>build-cpu
+cmake<span class="w"> </span>-DK2_WITH_CUDA<span class="o">=</span>OFF<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Debug<span class="w"> </span>..
+make<span class="w"> </span>-j5
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span>
 <span class="c1"># make test # to test your code</span>
 </pre></div>
 </div>
 </div></blockquote>
 <p>After it is working for CPU, you can use:</p>
 <blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> k2
-mkdir build-cuda
-<span class="nb">cd</span> build-cuda
-cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Debug ..
-make -j5
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>k2
+mkdir<span class="w"> </span>build-cuda
+<span class="nb">cd</span><span class="w"> </span>build-cuda
+cmake<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Debug<span class="w"> </span>..
+make<span class="w"> </span>-j5
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span>
 <span class="c1"># make test # to test your code</span>
 </pre></div>
 </div>
 </div></blockquote>
 </div>
 <p>To run tests, use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> /some/path/k2/build_release <span class="c1"># or switch to build_debug</span>
-make -j
-make <span class="nb">test</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/some/path/k2/build_release<span class="w"> </span><span class="c1"># or switch to build_debug</span>
+make<span class="w"> </span>-j
+make<span class="w"> </span><span class="nb">test</span>
 <span class="c1"># alternatively, you can run</span>
 <span class="c1"># ctest -j5</span>
 </pre></div>
 </div>
 <p>To run a specific C++ test, use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> /some/path/k2/build_release <span class="c1"># or switch to build_debug</span>
-make cu_ragged_test
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/some/path/k2/build_release<span class="w"> </span><span class="c1"># or switch to build_debug</span>
+make<span class="w"> </span>cu_ragged_test
 <span class="c1"># You will find an executable ./bin/cu_ragged_test</span>
 ./cu_ragged_test
 <span class="c1">#</span>
@@ -242,7 +242,7 @@ make cu_ragged_test
 <span class="c1"># TEST(RaggedShapeOpsTest, CatMoreAxes) {</span>
 <span class="c1">#</span>
 <span class="c1"># To run the above test case only, use</span>
-./cu_ragged_test --gtest_filter<span class="o">=</span><span class="s2">&quot;RaggedShapeOpsTest.CatMoreAxes&quot;</span>
+./cu_ragged_test<span class="w"> </span>--gtest_filter<span class="o">=</span><span class="s2">&quot;RaggedShapeOpsTest.CatMoreAxes&quot;</span>
 <span class="c1">#</span>
 <span class="c1"># The option `--gtest_filter` supports regular expressions.</span>
 <span class="c1">#</span>
@@ -250,15 +250,15 @@ make cu_ragged_test
 </pre></div>
 </div>
 <p>To run a specific Python test, use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> /some/path/k2/build_release <span class="c1"># or switch to build_debug</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/some/path/k2/build_release<span class="w"> </span><span class="c1"># or switch to build_debug</span>
 
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PYTHONPATH</span> <span class="c1"># for `import k2`</span>
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span> <span class="c1"># for `import _k2`</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/../k2/python:<span class="nv">$PYTHONPATH</span><span class="w"> </span><span class="c1"># for `import k2`</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span><span class="w"> </span><span class="c1"># for `import _k2`</span>
 
-python3 ../k2/python/tests/index_test.py
+python3<span class="w"> </span>../k2/python/tests/index_test.py
 
 <span class="c1"># Alternatively, you can use</span>
-ctest --verbose -R index_test_py
+ctest<span class="w"> </span>--verbose<span class="w"> </span>-R<span class="w"> </span>index_test_py
 
 <span class="c1"># At the head of each Python test file, you can find an instruction</span>
 <span class="c1"># describing how to run that test file.</span>
@@ -271,8 +271,8 @@ ctest --verbose -R index_test_py
 <blockquote>
 <div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
 <span class="nv">K2_ROOT</span><span class="o">=</span>/some/path/k2
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$K2_ROOT</span>/k2/python:<span class="nv">$PYTHONPATH</span>
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$K2_ROOT</span>/build_release/lib:<span class="nv">$PYTHONPATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$K2_ROOT</span>/k2/python:<span class="nv">$PYTHONPATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$K2_ROOT</span>/build_release/lib:<span class="nv">$PYTHONPATH</span>
 </pre></div>
 </div>
 </div></blockquote>
@@ -281,26 +281,26 @@ e.g., <code class="docutils literal notranslate"><span class="pre">activate_k2_d
 <blockquote>
 <div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
 <span class="nv">K2_ROOT</span><span class="o">=</span>/some/path/k2
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$K2_ROOT</span>/k2/python:<span class="nv">$PYTHONPATH</span>
-<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$K2_ROOT</span>/build_debug/lib:<span class="nv">$PYTHONPATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$K2_ROOT</span>/k2/python:<span class="nv">$PYTHONPATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$K2_ROOT</span>/build_debug/lib:<span class="nv">$PYTHONPATH</span>
 </pre></div>
 </div>
 </div></blockquote>
 <p>To use a release build of k2, run:</p>
 <blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span> /path/to/activate_k2_release.sh
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span><span class="w"> </span>/path/to/activate_k2_release.sh
 </pre></div>
 </div>
 </div></blockquote>
 <p>To use a debug build of k2, run:</p>
 <blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span> /path/to/activate_k2_debug.sh
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span><span class="w"> </span>/path/to/activate_k2_debug.sh
 </pre></div>
 </div>
 </div></blockquote>
 <p>To check whether you are using a release version or a debug version, run:</p>
 <blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3 -c <span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
 </pre></div>
 </div>
 </div></blockquote>
@@ -308,7 +308,7 @@ e.g., <code class="docutils literal notranslate"><span class="pre">activate_k2_d
 the above output contains a string <code class="docutils literal notranslate"><span class="pre">build_release</span></code> or <code class="docutils literal notranslate"><span class="pre">build_debug</span></code>.</p>
 <p>Alternatively, you can run:</p>
 <blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3 -m k2.version
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>k2.version
 </pre></div>
 </div>
 </div></blockquote>

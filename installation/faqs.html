@@ -108,8 +108,8 @@ k2 from source.</p>
 and copy the downloaded file to the machine you use to compile k2.</p>
 <p>The commands you need are as follows:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># assume that you place the downloaded file in the /tmp directory</span>
-<span class="nb">cd</span> /tmp
-wget https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz
+<span class="nb">cd</span><span class="w"> </span>/tmp
+wget<span class="w"> </span>https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz
 </pre></div>
 </div>
 <p>and then change <a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#L23">https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#L23</a>:</p>
@@ -121,46 +121,46 @@ wget https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz
 <section id="mkl-related-issues-on-macos">
 <h2>MKL related issues on macOS<a class="headerlink" href="#mkl-related-issues-on-macos" title="Permalink to this headline"></a></h2>
 <p>If you have the following error while importing <code class="docutils literal notranslate"><span class="pre">k2</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python3 -c <span class="s2">&quot;import k2&quot;</span>
-Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
-  File <span class="s2">&quot;/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py&quot;</span>, line <span class="m">24</span>, <span class="k">in</span> &lt;module&gt;
-    from _k2 import DeterminizeWeightPushingType
-ImportError: dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, <span class="m">2</span><span class="o">)</span>: Library not loaded: @rpath/libmkl_intel_ilp64.2.dylib
-  Referenced from: /Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
-  Reason: image not found
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import k2&quot;</span>
+Traceback<span class="w"> </span><span class="o">(</span>most<span class="w"> </span>recent<span class="w"> </span>call<span class="w"> </span>last<span class="o">)</span>:
+<span class="w">  </span>File<span class="w"> </span><span class="s2">&quot;/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py&quot;</span>,<span class="w"> </span>line<span class="w"> </span><span class="m">24</span>,<span class="w"> </span><span class="k">in</span><span class="w"> </span>&lt;module&gt;
+<span class="w">    </span>from<span class="w"> </span>_k2<span class="w"> </span>import<span class="w"> </span>DeterminizeWeightPushingType
+ImportError:<span class="w"> </span>dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so,<span class="w"> </span><span class="m">2</span><span class="o">)</span>:<span class="w"> </span>Library<span class="w"> </span>not<span class="w"> </span>loaded:<span class="w"> </span>@rpath/libmkl_intel_ilp64.2.dylib
+<span class="w">  </span>Referenced<span class="w"> </span>from:<span class="w"> </span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
+<span class="w">  </span>Reason:<span class="w"> </span>image<span class="w"> </span>not<span class="w"> </span>found
 </pre></div>
 </div>
 <p>You can use the following commands to fix it:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ <span class="nb">cd</span> <span class="nv">$CONDA_PREFIX</span>/lib
-$ ls -lh libmkl_intel_ilp64.*
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span><span class="nv">$CONDA_PREFIX</span>/lib
+$<span class="w"> </span>ls<span class="w"> </span>-lh<span class="w"> </span>libmkl_intel_ilp64.*
 </pre></div>
 </div>
 <p>It will show something like below:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ ls -lh libmkl_intel_ilp64.*
--rwxrwxr-x  <span class="m">2</span> fangjun  staff    19M Oct <span class="m">18</span>  <span class="m">2021</span> libmkl_intel_ilp64.1.dylib
--rwxrwxr-x  <span class="m">2</span> fangjun  staff    19M Oct <span class="m">18</span>  <span class="m">2021</span> libmkl_intel_ilp64.dylib
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ls<span class="w"> </span>-lh<span class="w"> </span>libmkl_intel_ilp64.*
+-rwxrwxr-x<span class="w">  </span><span class="m">2</span><span class="w"> </span>fangjun<span class="w">  </span>staff<span class="w">    </span>19M<span class="w"> </span>Oct<span class="w"> </span><span class="m">18</span><span class="w">  </span><span class="m">2021</span><span class="w"> </span>libmkl_intel_ilp64.1.dylib
+-rwxrwxr-x<span class="w">  </span><span class="m">2</span><span class="w"> </span>fangjun<span class="w">  </span>staff<span class="w">    </span>19M<span class="w"> </span>Oct<span class="w"> </span><span class="m">18</span><span class="w">  </span><span class="m">2021</span><span class="w"> </span>libmkl_intel_ilp64.dylib
 </pre></div>
 </div>
 <p>The fix is to create a symlink inside <code class="docutils literal notranslate"><span class="pre">$CONDA_PREFIX/lib</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ ln -s libmkl_intel_ilp64.dylib libmkl_intel_ilp64.2.dylib
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ln<span class="w"> </span>-s<span class="w"> </span>libmkl_intel_ilp64.dylib<span class="w"> </span>libmkl_intel_ilp64.2.dylib
 </pre></div>
 </div>
 <p>After the above fix, you may get a different error like below:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python3 -c <span class="s2">&quot;import k2&quot;</span>
-Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
-  File <span class="s2">&quot;/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py&quot;</span>, line <span class="m">24</span>, <span class="k">in</span> &lt;module&gt;
-    from _k2 import DeterminizeWeightPushingType
-ImportError: dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, <span class="m">2</span><span class="o">)</span>: Library not loaded: @rpath/libmkl_core.2.dylib
-  Referenced from: /Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
-  Reason: image not found
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import k2&quot;</span>
+Traceback<span class="w"> </span><span class="o">(</span>most<span class="w"> </span>recent<span class="w"> </span>call<span class="w"> </span>last<span class="o">)</span>:
+<span class="w">  </span>File<span class="w"> </span><span class="s2">&quot;/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py&quot;</span>,<span class="w"> </span>line<span class="w"> </span><span class="m">24</span>,<span class="w"> </span><span class="k">in</span><span class="w"> </span>&lt;module&gt;
+<span class="w">    </span>from<span class="w"> </span>_k2<span class="w"> </span>import<span class="w"> </span>DeterminizeWeightPushingType
+ImportError:<span class="w"> </span>dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so,<span class="w"> </span><span class="m">2</span><span class="o">)</span>:<span class="w"> </span>Library<span class="w"> </span>not<span class="w"> </span>loaded:<span class="w"> </span>@rpath/libmkl_core.2.dylib
+<span class="w">  </span>Referenced<span class="w"> </span>from:<span class="w"> </span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
+<span class="w">  </span>Reason:<span class="w"> </span>image<span class="w"> </span>not<span class="w"> </span>found
 </pre></div>
 </div>
 <p>Please follow the above approach to create another symlink for <code class="docutils literal notranslate"><span class="pre">libmkl_core.2.dylib</span></code>.</p>
 <p>In summary, the commands you need to fix mkl related issues are listed below:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ <span class="nb">cd</span> <span class="nv">$CONDA_PREFIX</span>/lib
-$ ln -s libmkl_intel_ilp64.dylib libmkl_intel_ilp64.2.dylib
-$ ln -s libmkl_core.dylib libmkl_core.2.dylib
-$ ln -s libmkl_intel_thread.dylib libmkl_intel_thread.2.dylib
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span><span class="nv">$CONDA_PREFIX</span>/lib
+$<span class="w"> </span>ln<span class="w"> </span>-s<span class="w"> </span>libmkl_intel_ilp64.dylib<span class="w"> </span>libmkl_intel_ilp64.2.dylib
+$<span class="w"> </span>ln<span class="w"> </span>-s<span class="w"> </span>libmkl_core.dylib<span class="w"> </span>libmkl_core.2.dylib
+$<span class="w"> </span>ln<span class="w"> </span>-s<span class="w"> </span>libmkl_intel_thread.dylib<span class="w"> </span>libmkl_intel_thread.2.dylib
 </pre></div>
 </div>
 </section>
@@ -180,25 +180,25 @@ types of GPUs.</p>
 <p>The fix is to pass <code class="docutils literal notranslate"><span class="pre">-DK2_BUILD_FOR_ALL_ARCHS=ON</span></code> to <code class="docutils literal notranslate"><span class="pre">cmake</span></code>.</p>
 <p>If you have followed <a class="reference internal" href="for_developers.html#installation-for-developers"><span class="std std-ref">For developers</span></a> to install k2, you need
 to change</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Release ..
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release<span class="w"> </span>..
 </pre></div>
 </div>
 <p>to</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Release -DK2_BUILD_FOR_ALL_ARCHS<span class="o">=</span>ON ..
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release<span class="w"> </span>-DK2_BUILD_FOR_ALL_ARCHS<span class="o">=</span>ON<span class="w"> </span>..
 </pre></div>
 </div>
 <p>If you have followed <a class="reference internal" href="from_source.html#install-k2-from-source"><span class="std std-ref">Install from source</span></a> to install k2, you need to
 change</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/k2-fsa/k2.git
-<span class="nb">cd</span> k2
-python3 setup.py install
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/k2-fsa/k2.git
+<span class="nb">cd</span><span class="w"> </span>k2
+python3<span class="w"> </span>setup.py<span class="w"> </span>install
 </pre></div>
 </div>
 <p>to</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/k2-fsa/k2.git
-<span class="nb">cd</span> k2
-<span class="nb">export</span> <span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-DK2_BUILD_FOR_ALL_ARCHS=ON&quot;</span>
-python3 setup.py install
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/k2-fsa/k2.git
+<span class="nb">cd</span><span class="w"> </span>k2
+<span class="nb">export</span><span class="w"> </span><span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-DK2_BUILD_FOR_ALL_ARCHS=ON&quot;</span>
+python3<span class="w"> </span>setup.py<span class="w"> </span>install
 </pre></div>
 </div>
 </section>

@@ -99,14 +99,14 @@ or <a class="reference internal" href="pip.html#install-using-pip-via-k2-fsa-org
 want to install k2 on Windows.</p>
 </div>
 <p>All you need is the following line</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda install -c k2-fsa -c pytorch -c nvidia k2 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.13.0 pytorch-cuda<span class="o">=</span><span class="m">11</span>.7 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>k2-fsa<span class="w"> </span>-c<span class="w"> </span>pytorch<span class="w"> </span>-c<span class="w"> </span>nvidia<span class="w"> </span>k2<span class="w"> </span><span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.13.0<span class="w"> </span>pytorch-cuda<span class="o">=</span><span class="m">11</span>.7<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
 </pre></div>
 </div>
 <p>to install the <strong>latest</strong> k2 with Python 3.8, CUDA 11.7, and PyTorch 1.13.0.</p>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <p>If you want to install PyTorch &lt; 1.13, e.g., PyTorch 1.12.1, please use</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda install -c k2-fsa -c pytorch -c conda-forge k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.6 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.12.1
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>k2-fsa<span class="w"> </span>-c<span class="w"> </span>pytorch<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>k2<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8<span class="w"> </span><span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.6<span class="w"> </span><span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.12.1
 </pre></div>
 </div>
 <p>to install the <strong>latest</strong> k2 with Python 3.8, CUDA 11.6, and PyTorch 1.12.1.</p>
@@ -115,13 +115,13 @@ want to install k2 on Windows.</p>
 <p class="admonition-title">Hint</p>
 <p>The above command is just an example. You can choose other versions of Python,
 cudatoolkit, and PyTorch as you want. For instance,</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda install -c k2-fsa -c pytorch -c conda-forge k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.9 <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.6 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.12.0
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>k2-fsa<span class="w"> </span>-c<span class="w"> </span>pytorch<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>k2<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.9<span class="w"> </span><span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.6<span class="w"> </span><span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.12.0
 </pre></div>
 </div>
 <p>The above command installs k2 with Python 3.9, cudatoolkit 11.6, and PyTorch 1.12.0</p>
 </div>
 <p>To Install a CPU version, use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda install -c k2-fsa -c pytorch cpuonly k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.13.0
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>k2-fsa<span class="w"> </span>-c<span class="w"> </span>pytorch<span class="w"> </span>cpuonly<span class="w"> </span>k2<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8<span class="w"> </span><span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.13.0
 </pre></div>
 </div>
 <p>We provide the following YouTube video showing how to install k2 via conda.</p>
@@ -161,7 +161,7 @@ Supported versions are given in the above badges.</p>
 </section>
 <section id="search-for-available-versions">
 <h2>Search for available versions<a class="headerlink" href="#search-for-available-versions" title="Permalink to this headline"></a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda search -c k2-fsa k2
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>search<span class="w"> </span>-c<span class="w"> </span>k2-fsa<span class="w"> </span>k2
 </pre></div>
 </div>
 <p>lists the available versions. An example output is given below:</p>
@@ -182,45 +182,45 @@ k2                   0.3.3.dev20210510_cuda11.1 cuda11.1_py3.6_torch1.8.1  k2-fs
 <section id="detailed-installation-instructions">
 <h2>Detailed installation instructions<a class="headerlink" href="#detailed-installation-instructions" title="Permalink to this headline"></a></h2>
 <p>To install k2, let’s first create a virtual environment:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ conda create -n foo <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.7
-Collecting package metadata <span class="o">(</span>current_repodata.json<span class="o">)</span>: <span class="k">done</span>
-Solving environment: <span class="k">done</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>conda<span class="w"> </span>create<span class="w"> </span>-n<span class="w"> </span>foo<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.7
+Collecting<span class="w"> </span>package<span class="w"> </span>metadata<span class="w"> </span><span class="o">(</span>current_repodata.json<span class="o">)</span>:<span class="w"> </span><span class="k">done</span>
+Solving<span class="w"> </span>environment:<span class="w"> </span><span class="k">done</span>
 
 <span class="c1">## Package Plan ##</span>
 
-  environment location: /xxx/anaconda3/2020.11/envs/foo
+<span class="w">  </span>environment<span class="w"> </span>location:<span class="w"> </span>/xxx/anaconda3/2020.11/envs/foo
 
-  added / updated specs:
-    - <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.7
-
-
-The following NEW packages will be INSTALLED:
-
-  _libgcc_mutex      pkgs/main/linux-64::_libgcc_mutex-0.1-main
-  ca-certificates    pkgs/main/linux-64::ca-certificates-2021.4.13-h06a4308_1
-  certifi            pkgs/main/linux-64::certifi-2020.12.5-py37h06a4308_0
-  ld_impl_linux-64   pkgs/main/linux-64::ld_impl_linux-64-2.33.1-h53a641e_7
-  libffi             pkgs/main/linux-64::libffi-3.3-he6710b0_2
-  libgcc-ng          pkgs/main/linux-64::libgcc-ng-9.1.0-hdf63c60_0
-  libstdcxx-ng       pkgs/main/linux-64::libstdcxx-ng-9.1.0-hdf63c60_0
-  ncurses            pkgs/main/linux-64::ncurses-6.2-he6710b0_1
-  openssl            pkgs/main/linux-64::openssl-1.1.1k-h27cfd23_0
-  pip                pkgs/main/linux-64::pip-21.0.1-py37h06a4308_0
-  python             pkgs/main/linux-64::python-3.7.10-hdb3f193_0
-  readline           pkgs/main/linux-64::readline-8.1-h27cfd23_0
-  setuptools         pkgs/main/linux-64::setuptools-52.0.0-py37h06a4308_0
-  sqlite             pkgs/main/linux-64::sqlite-3.35.4-hdfb4753_0
-  tk                 pkgs/main/linux-64::tk-8.6.10-hbc83047_0
-  wheel              pkgs/main/noarch::wheel-0.36.2-pyhd3eb1b0_0
-  xz                 pkgs/main/linux-64::xz-5.2.5-h7b6447c_0
-  zlib               pkgs/main/linux-64::zlib-1.2.11-h7b6447c_3
+<span class="w">  </span>added<span class="w"> </span>/<span class="w"> </span>updated<span class="w"> </span>specs:
+<span class="w">    </span>-<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.7
 
 
-Proceed <span class="o">([</span>y<span class="o">]</span>/n<span class="o">)</span>? y
+The<span class="w"> </span>following<span class="w"> </span>NEW<span class="w"> </span>packages<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>INSTALLED:
 
-Preparing transaction: <span class="k">done</span>
-Verifying transaction: <span class="k">done</span>
-Executing transaction: <span class="k">done</span>
+<span class="w">  </span>_libgcc_mutex<span class="w">      </span>pkgs/main/linux-64::_libgcc_mutex-0.1-main
+<span class="w">  </span>ca-certificates<span class="w">    </span>pkgs/main/linux-64::ca-certificates-2021.4.13-h06a4308_1
+<span class="w">  </span>certifi<span class="w">            </span>pkgs/main/linux-64::certifi-2020.12.5-py37h06a4308_0
+<span class="w">  </span>ld_impl_linux-64<span class="w">   </span>pkgs/main/linux-64::ld_impl_linux-64-2.33.1-h53a641e_7
+<span class="w">  </span>libffi<span class="w">             </span>pkgs/main/linux-64::libffi-3.3-he6710b0_2
+<span class="w">  </span>libgcc-ng<span class="w">          </span>pkgs/main/linux-64::libgcc-ng-9.1.0-hdf63c60_0
+<span class="w">  </span>libstdcxx-ng<span class="w">       </span>pkgs/main/linux-64::libstdcxx-ng-9.1.0-hdf63c60_0
+<span class="w">  </span>ncurses<span class="w">            </span>pkgs/main/linux-64::ncurses-6.2-he6710b0_1
+<span class="w">  </span>openssl<span class="w">            </span>pkgs/main/linux-64::openssl-1.1.1k-h27cfd23_0
+<span class="w">  </span>pip<span class="w">                </span>pkgs/main/linux-64::pip-21.0.1-py37h06a4308_0
+<span class="w">  </span>python<span class="w">             </span>pkgs/main/linux-64::python-3.7.10-hdb3f193_0
+<span class="w">  </span>readline<span class="w">           </span>pkgs/main/linux-64::readline-8.1-h27cfd23_0
+<span class="w">  </span>setuptools<span class="w">         </span>pkgs/main/linux-64::setuptools-52.0.0-py37h06a4308_0
+<span class="w">  </span>sqlite<span class="w">             </span>pkgs/main/linux-64::sqlite-3.35.4-hdfb4753_0
+<span class="w">  </span>tk<span class="w">                 </span>pkgs/main/linux-64::tk-8.6.10-hbc83047_0
+<span class="w">  </span>wheel<span class="w">              </span>pkgs/main/noarch::wheel-0.36.2-pyhd3eb1b0_0
+<span class="w">  </span>xz<span class="w">                 </span>pkgs/main/linux-64::xz-5.2.5-h7b6447c_0
+<span class="w">  </span>zlib<span class="w">               </span>pkgs/main/linux-64::zlib-1.2.11-h7b6447c_3
+
+
+Proceed<span class="w"> </span><span class="o">([</span>y<span class="o">]</span>/n<span class="o">)</span>?<span class="w"> </span>y
+
+Preparing<span class="w"> </span>transaction:<span class="w"> </span><span class="k">done</span>
+Verifying<span class="w"> </span>transaction:<span class="w"> </span><span class="k">done</span>
+Executing<span class="w"> </span>transaction:<span class="w"> </span><span class="k">done</span>
 <span class="c1">#</span>
 <span class="c1"># To activate this environment, use</span>
 <span class="c1">#</span>
@@ -254,125 +254,125 @@ the following command to install k2:</p>
 </div></blockquote>
 </div>
 <p>The output of the above command is:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span> $ conda install -c k2-fsa -c pytorch -c conda-forge k2 <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8 <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.1 <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
-Collecting package metadata <span class="o">(</span>current_repodata.json<span class="o">)</span>: <span class="k">done</span>
-Solving environment: <span class="k">done</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span><span class="w"> </span>$<span class="w"> </span>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>k2-fsa<span class="w"> </span>-c<span class="w"> </span>pytorch<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>k2<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8<span class="w"> </span><span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.1<span class="w"> </span><span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
+Collecting<span class="w"> </span>package<span class="w"> </span>metadata<span class="w"> </span><span class="o">(</span>current_repodata.json<span class="o">)</span>:<span class="w"> </span><span class="k">done</span>
+Solving<span class="w"> </span>environment:<span class="w"> </span><span class="k">done</span>
 
 <span class="c1">## Package Plan ##</span>
 
-  environment location: /xxx/anaconda3/2020.11/envs/foo
+<span class="w">  </span>environment<span class="w"> </span>location:<span class="w"> </span>/xxx/anaconda3/2020.11/envs/foo
 
-  added / updated specs:
-    - <span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.1
-    - k2
-    - <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
-    - <span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
-
-
-The following packages will be downloaded:
-
-    package                    <span class="p">|</span>            build
-    ---------------------------<span class="p">|</span>-----------------
-    cudatoolkit-11.1.1         <span class="p">|</span>       h6406543_8        <span class="m">1</span>.20 GB  conda-forge
-    k2-0.3.3.dev20210509_cuda11.1<span class="p">|</span>cuda11.1_py3.8_torch1.8.1        <span class="m">61</span>.4 MB  k2-fsa
-    pytorch-1.8.1              <span class="p">|</span>py3.8_cuda11.1_cudnn8.0.5_0        <span class="m">1</span>.27 GB  pytorch
-    ------------------------------------------------------------
-                                           Total:        <span class="m">2</span>.54 GB
-
-The following NEW packages will be INSTALLED:
-
-  _openmp_mutex      conda-forge/linux-64::_openmp_mutex-4.5-1_llvm
-  blas               pkgs/main/linux-64::blas-1.0-mkl
-  cudatoolkit        conda-forge/linux-64::cudatoolkit-11.1.1-h6406543_8
-  k2                 k2-fsa/linux-64::k2-0.3.3.dev20210509_cuda11.1-cuda11.1_py3.8_torch1.8.1
-  libuv              conda-forge/linux-64::libuv-1.41.0-h7f98852_0
-  llvm-openmp        conda-forge/linux-64::llvm-openmp-11.1.0-h4bd325d_1
-  mkl                conda-forge/linux-64::mkl-2020.4-h726a3e6_304
-  mkl-service        conda-forge/linux-64::mkl-service-2.3.0-py38h1e0a361_2
-  mkl_fft            conda-forge/linux-64::mkl_fft-1.3.0-py38h5c078b8_1
-  mkl_random         conda-forge/linux-64::mkl_random-1.2.0-py38hc5bc63f_1
-  ninja              conda-forge/linux-64::ninja-1.10.2-h4bd325d_0
-  numpy              pkgs/main/linux-64::numpy-1.19.2-py38h54aff64_0
-  numpy-base         pkgs/main/linux-64::numpy-base-1.19.2-py38hfa32c7d_0
-  python_abi         conda-forge/linux-64::python_abi-3.8-1_cp38
-  pytorch            pytorch/linux-64::pytorch-1.8.1-py3.8_cuda11.1_cudnn8.0.5_0
-  six                conda-forge/noarch::six-1.16.0-pyh6c4a22f_0
-  typing_extensions  conda-forge/noarch::typing_extensions-3.7.4.3-py_0
-
-The following packages will be UPDATED:
-
-  certifi            pkgs/main::certifi-2020.12.5-py37h06a~ --&gt; conda-forge::certifi-2020.12.5-py38h578d9bd_1
-  libgcc-ng           pkgs/main::libgcc-ng-9.1.0-hdf63c60_0 --&gt; conda-forge::libgcc-ng-9.3.0-h2828fa1_19
-  libstdcxx-ng       pkgs/main::libstdcxx-ng-9.1.0-hdf63c6~ --&gt; conda-forge::libstdcxx-ng-9.3.0-h6de172a_19
-  pip                pkgs/main/linux-64::pip-21.0.1-py37h0~ --&gt; conda-forge/noarch::pip-21.1.1-pyhd8ed1ab_0
-  python                                  <span class="m">3</span>.7.10-hdb3f193_0 --&gt; <span class="m">3</span>.8.8-hdb3f193_5
-
-The following packages will be SUPERSEDED by a higher-priority channel:
-
-  _libgcc_mutex           pkgs/main::_libgcc_mutex-0.1-main --&gt; conda-forge::_libgcc_mutex-0.1-conda_forge
-  ca-certificates    pkgs/main::ca-certificates-2021.4.13-~ --&gt; conda-forge::ca-certificates-2020.12.5-ha878542_0
-  openssl              pkgs/main::openssl-1.1.1k-h27cfd23_0 --&gt; conda-forge::openssl-1.1.1k-h7f98852_0
-  setuptools         pkgs/main::setuptools-52.0.0-py37h06a~ --&gt; conda-forge::setuptools-49.6.0-py38h578d9bd_3
+<span class="w">  </span>added<span class="w"> </span>/<span class="w"> </span>updated<span class="w"> </span>specs:
+<span class="w">    </span>-<span class="w"> </span><span class="nv">cudatoolkit</span><span class="o">=</span><span class="m">11</span>.1
+<span class="w">    </span>-<span class="w"> </span>k2
+<span class="w">    </span>-<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+<span class="w">    </span>-<span class="w"> </span><span class="nv">pytorch</span><span class="o">=</span><span class="m">1</span>.8.1
 
 
-Proceed <span class="o">([</span>y<span class="o">]</span>/n<span class="o">)</span>? y
+The<span class="w"> </span>following<span class="w"> </span>packages<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>downloaded:
+
+<span class="w">    </span>package<span class="w">                    </span><span class="p">|</span><span class="w">            </span>build
+<span class="w">    </span>---------------------------<span class="p">|</span>-----------------
+<span class="w">    </span>cudatoolkit-11.1.1<span class="w">         </span><span class="p">|</span><span class="w">       </span>h6406543_8<span class="w">        </span><span class="m">1</span>.20<span class="w"> </span>GB<span class="w">  </span>conda-forge
+<span class="w">    </span>k2-0.3.3.dev20210509_cuda11.1<span class="p">|</span>cuda11.1_py3.8_torch1.8.1<span class="w">        </span><span class="m">61</span>.4<span class="w"> </span>MB<span class="w">  </span>k2-fsa
+<span class="w">    </span>pytorch-1.8.1<span class="w">              </span><span class="p">|</span>py3.8_cuda11.1_cudnn8.0.5_0<span class="w">        </span><span class="m">1</span>.27<span class="w"> </span>GB<span class="w">  </span>pytorch
+<span class="w">    </span>------------------------------------------------------------
+<span class="w">                                           </span>Total:<span class="w">        </span><span class="m">2</span>.54<span class="w"> </span>GB
+
+The<span class="w"> </span>following<span class="w"> </span>NEW<span class="w"> </span>packages<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>INSTALLED:
+
+<span class="w">  </span>_openmp_mutex<span class="w">      </span>conda-forge/linux-64::_openmp_mutex-4.5-1_llvm
+<span class="w">  </span>blas<span class="w">               </span>pkgs/main/linux-64::blas-1.0-mkl
+<span class="w">  </span>cudatoolkit<span class="w">        </span>conda-forge/linux-64::cudatoolkit-11.1.1-h6406543_8
+<span class="w">  </span>k2<span class="w">                 </span>k2-fsa/linux-64::k2-0.3.3.dev20210509_cuda11.1-cuda11.1_py3.8_torch1.8.1
+<span class="w">  </span>libuv<span class="w">              </span>conda-forge/linux-64::libuv-1.41.0-h7f98852_0
+<span class="w">  </span>llvm-openmp<span class="w">        </span>conda-forge/linux-64::llvm-openmp-11.1.0-h4bd325d_1
+<span class="w">  </span>mkl<span class="w">                </span>conda-forge/linux-64::mkl-2020.4-h726a3e6_304
+<span class="w">  </span>mkl-service<span class="w">        </span>conda-forge/linux-64::mkl-service-2.3.0-py38h1e0a361_2
+<span class="w">  </span>mkl_fft<span class="w">            </span>conda-forge/linux-64::mkl_fft-1.3.0-py38h5c078b8_1
+<span class="w">  </span>mkl_random<span class="w">         </span>conda-forge/linux-64::mkl_random-1.2.0-py38hc5bc63f_1
+<span class="w">  </span>ninja<span class="w">              </span>conda-forge/linux-64::ninja-1.10.2-h4bd325d_0
+<span class="w">  </span>numpy<span class="w">              </span>pkgs/main/linux-64::numpy-1.19.2-py38h54aff64_0
+<span class="w">  </span>numpy-base<span class="w">         </span>pkgs/main/linux-64::numpy-base-1.19.2-py38hfa32c7d_0
+<span class="w">  </span>python_abi<span class="w">         </span>conda-forge/linux-64::python_abi-3.8-1_cp38
+<span class="w">  </span>pytorch<span class="w">            </span>pytorch/linux-64::pytorch-1.8.1-py3.8_cuda11.1_cudnn8.0.5_0
+<span class="w">  </span>six<span class="w">                </span>conda-forge/noarch::six-1.16.0-pyh6c4a22f_0
+<span class="w">  </span>typing_extensions<span class="w">  </span>conda-forge/noarch::typing_extensions-3.7.4.3-py_0
+
+The<span class="w"> </span>following<span class="w"> </span>packages<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>UPDATED:
+
+<span class="w">  </span>certifi<span class="w">            </span>pkgs/main::certifi-2020.12.5-py37h06a~<span class="w"> </span>--&gt;<span class="w"> </span>conda-forge::certifi-2020.12.5-py38h578d9bd_1
+<span class="w">  </span>libgcc-ng<span class="w">           </span>pkgs/main::libgcc-ng-9.1.0-hdf63c60_0<span class="w"> </span>--&gt;<span class="w"> </span>conda-forge::libgcc-ng-9.3.0-h2828fa1_19
+<span class="w">  </span>libstdcxx-ng<span class="w">       </span>pkgs/main::libstdcxx-ng-9.1.0-hdf63c6~<span class="w"> </span>--&gt;<span class="w"> </span>conda-forge::libstdcxx-ng-9.3.0-h6de172a_19
+<span class="w">  </span>pip<span class="w">                </span>pkgs/main/linux-64::pip-21.0.1-py37h0~<span class="w"> </span>--&gt;<span class="w"> </span>conda-forge/noarch::pip-21.1.1-pyhd8ed1ab_0
+<span class="w">  </span>python<span class="w">                                  </span><span class="m">3</span>.7.10-hdb3f193_0<span class="w"> </span>--&gt;<span class="w"> </span><span class="m">3</span>.8.8-hdb3f193_5
+
+The<span class="w"> </span>following<span class="w"> </span>packages<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>SUPERSEDED<span class="w"> </span>by<span class="w"> </span>a<span class="w"> </span>higher-priority<span class="w"> </span>channel:
+
+<span class="w">  </span>_libgcc_mutex<span class="w">           </span>pkgs/main::_libgcc_mutex-0.1-main<span class="w"> </span>--&gt;<span class="w"> </span>conda-forge::_libgcc_mutex-0.1-conda_forge
+<span class="w">  </span>ca-certificates<span class="w">    </span>pkgs/main::ca-certificates-2021.4.13-~<span class="w"> </span>--&gt;<span class="w"> </span>conda-forge::ca-certificates-2020.12.5-ha878542_0
+<span class="w">  </span>openssl<span class="w">              </span>pkgs/main::openssl-1.1.1k-h27cfd23_0<span class="w"> </span>--&gt;<span class="w"> </span>conda-forge::openssl-1.1.1k-h7f98852_0
+<span class="w">  </span>setuptools<span class="w">         </span>pkgs/main::setuptools-52.0.0-py37h06a~<span class="w"> </span>--&gt;<span class="w"> </span>conda-forge::setuptools-49.6.0-py38h578d9bd_3
 
 
-Downloading and Extracting Packages
-k2-0.3.3.dev20210509 <span class="p">|</span> <span class="m">61</span>.4 MB   <span class="p">|</span> <span class="c1">############################################################################################ | 100%</span>
-pytorch-1.8.1        <span class="p">|</span> <span class="m">1</span>.27 GB   <span class="p">|</span> <span class="c1">############################################################################################ | 100%</span>
-cudatoolkit-11.1.1   <span class="p">|</span> <span class="m">1</span>.20 GB   <span class="p">|</span> <span class="c1">############################################################################################ | 100%</span>
-Preparing transaction: <span class="k">done</span>
-Verifying transaction: <span class="k">done</span>
-Executing transaction: - By downloading and using the CUDA Toolkit conda packages, you accept the terms and conditions of the CUDA End
-User License Agreement <span class="o">(</span>EULA<span class="o">)</span>: https://docs.nvidia.com/cuda/eula/index.html
+Proceed<span class="w"> </span><span class="o">([</span>y<span class="o">]</span>/n<span class="o">)</span>?<span class="w"> </span>y
+
+
+Downloading<span class="w"> </span>and<span class="w"> </span>Extracting<span class="w"> </span>Packages
+k2-0.3.3.dev20210509<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">61</span>.4<span class="w"> </span>MB<span class="w">   </span><span class="p">|</span><span class="w"> </span><span class="c1">############################################################################################ | 100%</span>
+pytorch-1.8.1<span class="w">        </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>.27<span class="w"> </span>GB<span class="w">   </span><span class="p">|</span><span class="w"> </span><span class="c1">############################################################################################ | 100%</span>
+cudatoolkit-11.1.1<span class="w">   </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>.20<span class="w"> </span>GB<span class="w">   </span><span class="p">|</span><span class="w"> </span><span class="c1">############################################################################################ | 100%</span>
+Preparing<span class="w"> </span>transaction:<span class="w"> </span><span class="k">done</span>
+Verifying<span class="w"> </span>transaction:<span class="w"> </span><span class="k">done</span>
+Executing<span class="w"> </span>transaction:<span class="w"> </span>-<span class="w"> </span>By<span class="w"> </span>downloading<span class="w"> </span>and<span class="w"> </span>using<span class="w"> </span>the<span class="w"> </span>CUDA<span class="w"> </span>Toolkit<span class="w"> </span>conda<span class="w"> </span>packages,<span class="w"> </span>you<span class="w"> </span>accept<span class="w"> </span>the<span class="w"> </span>terms<span class="w"> </span>and<span class="w"> </span>conditions<span class="w"> </span>of<span class="w"> </span>the<span class="w"> </span>CUDA<span class="w"> </span>End
+User<span class="w"> </span>License<span class="w"> </span>Agreement<span class="w"> </span><span class="o">(</span>EULA<span class="o">)</span>:<span class="w"> </span>https://docs.nvidia.com/cuda/eula/index.html
 
 <span class="k">done</span>
 </pre></div>
 </div>
 <p>To verify that k2 is installed successfully, use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span> $ python3 -m k2.version
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span><span class="w"> </span>$<span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>k2.version
 </pre></div>
 </div>
 <p>It should print something like the following:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span> $ python3 -m k2.version
-/xxx/anaconda3/2020.11/envs/foo/lib/python3.8/runpy.py:127: RuntimeWarning: <span class="s1">&#39;k2.version&#39;</span> found <span class="k">in</span> sys.modules after import of package <span class="s1">&#39;k2&#39;</span>, but prior to execution of <span class="s1">&#39;k2.version&#39;</span><span class="p">;</span> this may result <span class="k">in</span> unpredictable behaviour
-  warn<span class="o">(</span>RuntimeWarning<span class="o">(</span>msg<span class="o">))</span>
-Collecting environment information...
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span><span class="w"> </span>$<span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>k2.version
+/xxx/anaconda3/2020.11/envs/foo/lib/python3.8/runpy.py:127:<span class="w"> </span>RuntimeWarning:<span class="w"> </span><span class="s1">&#39;k2.version&#39;</span><span class="w"> </span>found<span class="w"> </span><span class="k">in</span><span class="w"> </span>sys.modules<span class="w"> </span>after<span class="w"> </span>import<span class="w"> </span>of<span class="w"> </span>package<span class="w"> </span><span class="s1">&#39;k2&#39;</span>,<span class="w"> </span>but<span class="w"> </span>prior<span class="w"> </span>to<span class="w"> </span>execution<span class="w"> </span>of<span class="w"> </span><span class="s1">&#39;k2.version&#39;</span><span class="p">;</span><span class="w"> </span>this<span class="w"> </span>may<span class="w"> </span>result<span class="w"> </span><span class="k">in</span><span class="w"> </span>unpredictable<span class="w"> </span>behaviour
+<span class="w">  </span>warn<span class="o">(</span>RuntimeWarning<span class="o">(</span>msg<span class="o">))</span>
+Collecting<span class="w"> </span>environment<span class="w"> </span>information...
 
-k2 version: <span class="m">0</span>.3.3
-Build type: Release
-Git SHA1: 397b5b154d93b82eb58bc2eee11ca835b5aa138c
-Git date: Sun May <span class="m">9</span> <span class="m">06</span>:38:52 <span class="m">2021</span>
-Cuda used to build k2: <span class="m">11</span>.1
-cuDNN used to build k2: <span class="m">8</span>.0.5
-Python version used to build k2: <span class="m">3</span>.8
-OS used to build k2: Ubuntu <span class="m">16</span>.04.7 LTS
-CMake version: <span class="m">3</span>.18.4
-GCC version: <span class="m">5</span>.5.0
-CMAKE_CUDA_FLAGS:  --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_35,code<span class="o">=</span>sm_35 --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_50,code<span class="o">=</span>sm_50 --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_60,code<span class="o">=</span>sm_60 --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_61,code<span class="o">=</span>sm_61 --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_70,code<span class="o">=</span>sm_70 --expt-extended-lambda -gencode <span class="nv">arch</span><span class="o">=</span>compute_75,code<span class="o">=</span>sm_75 -D_GLIBCXX_USE_CXX11_ABI<span class="o">=</span><span class="m">0</span> --compiler-options -Wall --compiler-options -Wno-unknown-pragmas
-CMAKE_CXX_FLAGS:  -D_GLIBCXX_USE_CXX11_ABI<span class="o">=</span><span class="m">0</span>
-PyTorch version used to build k2: <span class="m">1</span>.8.1
-PyTorch is using Cuda: <span class="m">11</span>.1
-NVTX enabled: True
-Disable debug: True
-Sync kernels : False
-Disable checks: False
+k2<span class="w"> </span>version:<span class="w"> </span><span class="m">0</span>.3.3
+Build<span class="w"> </span>type:<span class="w"> </span>Release
+Git<span class="w"> </span>SHA1:<span class="w"> </span>397b5b154d93b82eb58bc2eee11ca835b5aa138c
+Git<span class="w"> </span>date:<span class="w"> </span>Sun<span class="w"> </span>May<span class="w"> </span><span class="m">9</span><span class="w"> </span><span class="m">06</span>:38:52<span class="w"> </span><span class="m">2021</span>
+Cuda<span class="w"> </span>used<span class="w"> </span>to<span class="w"> </span>build<span class="w"> </span>k2:<span class="w"> </span><span class="m">11</span>.1
+cuDNN<span class="w"> </span>used<span class="w"> </span>to<span class="w"> </span>build<span class="w"> </span>k2:<span class="w"> </span><span class="m">8</span>.0.5
+Python<span class="w"> </span>version<span class="w"> </span>used<span class="w"> </span>to<span class="w"> </span>build<span class="w"> </span>k2:<span class="w"> </span><span class="m">3</span>.8
+OS<span class="w"> </span>used<span class="w"> </span>to<span class="w"> </span>build<span class="w"> </span>k2:<span class="w"> </span>Ubuntu<span class="w"> </span><span class="m">16</span>.04.7<span class="w"> </span>LTS
+CMake<span class="w"> </span>version:<span class="w"> </span><span class="m">3</span>.18.4
+GCC<span class="w"> </span>version:<span class="w"> </span><span class="m">5</span>.5.0
+CMAKE_CUDA_FLAGS:<span class="w">  </span>--expt-extended-lambda<span class="w"> </span>-gencode<span class="w"> </span><span class="nv">arch</span><span class="o">=</span>compute_35,code<span class="o">=</span>sm_35<span class="w"> </span>--expt-extended-lambda<span class="w"> </span>-gencode<span class="w"> </span><span class="nv">arch</span><span class="o">=</span>compute_50,code<span class="o">=</span>sm_50<span class="w"> </span>--expt-extended-lambda<span class="w"> </span>-gencode<span class="w"> </span><span class="nv">arch</span><span class="o">=</span>compute_60,code<span class="o">=</span>sm_60<span class="w"> </span>--expt-extended-lambda<span class="w"> </span>-gencode<span class="w"> </span><span class="nv">arch</span><span class="o">=</span>compute_61,code<span class="o">=</span>sm_61<span class="w"> </span>--expt-extended-lambda<span class="w"> </span>-gencode<span class="w"> </span><span class="nv">arch</span><span class="o">=</span>compute_70,code<span class="o">=</span>sm_70<span class="w"> </span>--expt-extended-lambda<span class="w"> </span>-gencode<span class="w"> </span><span class="nv">arch</span><span class="o">=</span>compute_75,code<span class="o">=</span>sm_75<span class="w"> </span>-D_GLIBCXX_USE_CXX11_ABI<span class="o">=</span><span class="m">0</span><span class="w"> </span>--compiler-options<span class="w"> </span>-Wall<span class="w"> </span>--compiler-options<span class="w"> </span>-Wno-unknown-pragmas
+CMAKE_CXX_FLAGS:<span class="w">  </span>-D_GLIBCXX_USE_CXX11_ABI<span class="o">=</span><span class="m">0</span>
+PyTorch<span class="w"> </span>version<span class="w"> </span>used<span class="w"> </span>to<span class="w"> </span>build<span class="w"> </span>k2:<span class="w"> </span><span class="m">1</span>.8.1
+PyTorch<span class="w"> </span>is<span class="w"> </span>using<span class="w"> </span>Cuda:<span class="w"> </span><span class="m">11</span>.1
+NVTX<span class="w"> </span>enabled:<span class="w"> </span>True
+Disable<span class="w"> </span>debug:<span class="w"> </span>True
+Sync<span class="w"> </span>kernels<span class="w"> </span>:<span class="w"> </span>False
+Disable<span class="w"> </span>checks:<span class="w"> </span>False
 </pre></div>
 </div>
 <p>The following code verifies that you can create an example FSA with k2:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span> $ python3
-Python <span class="m">3</span>.8.8 <span class="o">(</span>default, Apr <span class="m">13</span> <span class="m">2021</span>, <span class="m">19</span>:58:26<span class="o">)</span>
-<span class="o">[</span>GCC <span class="m">7</span>.3.0<span class="o">]</span> :: Anaconda, Inc. on linux
-Type <span class="s2">&quot;help&quot;</span>, <span class="s2">&quot;copyright&quot;</span>, <span class="s2">&quot;credits&quot;</span> or <span class="s2">&quot;license&quot;</span> <span class="k">for</span> more information.
-&gt;&gt;&gt; import k2
-&gt;&gt;&gt; <span class="nv">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>foo<span class="o">)</span><span class="w"> </span>$<span class="w"> </span>python3
+Python<span class="w"> </span><span class="m">3</span>.8.8<span class="w"> </span><span class="o">(</span>default,<span class="w"> </span>Apr<span class="w"> </span><span class="m">13</span><span class="w"> </span><span class="m">2021</span>,<span class="w"> </span><span class="m">19</span>:58:26<span class="o">)</span>
+<span class="o">[</span>GCC<span class="w"> </span><span class="m">7</span>.3.0<span class="o">]</span><span class="w"> </span>::<span class="w"> </span>Anaconda,<span class="w"> </span>Inc.<span class="w"> </span>on<span class="w"> </span>linux
+Type<span class="w"> </span><span class="s2">&quot;help&quot;</span>,<span class="w"> </span><span class="s2">&quot;copyright&quot;</span>,<span class="w"> </span><span class="s2">&quot;credits&quot;</span><span class="w"> </span>or<span class="w"> </span><span class="s2">&quot;license&quot;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>more<span class="w"> </span>information.
+&gt;&gt;&gt;<span class="w"> </span>import<span class="w"> </span>k2
+&gt;&gt;&gt;<span class="w"> </span><span class="nv">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
 <span class="s1">... 0 1 -1 0.1</span>
 <span class="s1">... 1</span>
 <span class="s1">... &#39;&#39;&#39;</span>
-&gt;&gt;&gt; <span class="nv">fsa</span> <span class="o">=</span> k2.Fsa.from_str<span class="o">(</span>s<span class="o">)</span>
-&gt;&gt;&gt; fsa.draw<span class="o">(</span><span class="s1">&#39;hello.svg&#39;</span>, <span class="nv">title</span><span class="o">=</span><span class="s1">&#39;hello&#39;</span><span class="o">)</span>
-&lt;graphviz.dot.Digraph object at 0x7ff88b1ca610&gt;
+&gt;&gt;&gt;<span class="w"> </span><span class="nv">fsa</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>k2.Fsa.from_str<span class="o">(</span>s<span class="o">)</span>
+&gt;&gt;&gt;<span class="w"> </span>fsa.draw<span class="o">(</span><span class="s1">&#39;hello.svg&#39;</span>,<span class="w"> </span><span class="nv">title</span><span class="o">=</span><span class="s1">&#39;hello&#39;</span><span class="o">)</span>
+&lt;graphviz.dot.Digraph<span class="w"> </span>object<span class="w"> </span>at<span class="w"> </span>0x7ff88b1ca610&gt;
 </pre></div>
 </div>
 <figure class="align-center">
