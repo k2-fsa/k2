@@ -44,20 +44,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04]
-        torch: ["1.7.1"]
-        python-version: [3.8]
+        os: [ubuntu-latest]
+        torch: ["1.13.1"]
+        python-version: ["3.8"]
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
-      - name: Install GCC 7
-        run: |
-          sudo apt-get install -y gcc-7 g++-7
-          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
