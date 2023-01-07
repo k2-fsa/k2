@@ -45,7 +45,7 @@ jobs:
         run: |
           # outputting for debugging purposes
           python scripts/github_actions/generate_build_matrix.py
-          MATRIX=$(python scripts/github_actions/generate_build_matrix.py --enable-cuda --test-only-latest-torch)
+          MATRIX=$(python scripts/github_actions/generate_build_matrix.py --enable-cuda)
           echo "::set-output name=matrix::${MATRIX}"
 
   build_conda_cuda_ubuntu:
