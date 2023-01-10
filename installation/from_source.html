@@ -5,7 +5,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Install from source &mdash; k2 1.23.2 documentation</title>
+  <title>Install from source &mdash; k2 1.23.3 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -32,7 +32,7 @@
             <a href="../index.html" class="icon icon-home"> k2
           </a>
               <div class="version">
-                1.23.2
+                1.23.3
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -45,6 +45,7 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Installation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="cuda-cudnn.html">CUDA and cuDNN</a></li>
 <li class="toctree-l2"><a class="reference internal" href="conda.html">Install using conda (Linux/macOS)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pip.html">Install using pip (k2-fsa.org)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pip_pypi.html">Install using pip (pypi.org)</a></li>
@@ -112,11 +113,18 @@ that cuDNN cannot be found.</p>
 <li><p>Install CMake. CMake 3.11.0 and 3.18.0 are known to work.</p></li>
 <li><p>Install Python3.</p></li>
 <li><p>Install PyTorch.</p></li>
-<li><p>Install CUDA toolkit.</p></li>
-<li><p>Install cuDNN. Please install a version that is compatible with the
-CUDA toolkit you are using.</p></li>
+<li><p>Install CUDA toolkit and cuDNN.</p></li>
 </ul>
 </div></blockquote>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>You can use <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">cmake</span></code> to install the latest version of CMake.</p>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>cudatoolkit installed by <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span></code> cannot be used to compile <code class="docutils literal notranslate"><span class="pre">k2</span></code>.</p>
+<p>Please follow <a class="reference internal" href="cuda-cudnn.html#cuda-and-cudnn"><span class="std std-ref">CUDA and cuDNN</span></a> to install cudatoolkit and cuDNN.</p>
+</div>
 <p>After setting up the environment, we are ready to build k2:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/k2-fsa/k2.git
 <span class="nb">cd</span><span class="w"> </span>k2

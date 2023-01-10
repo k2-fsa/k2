@@ -38,6 +38,7 @@ below:
 .. toctree::
    :maxdepth: 1
 
+   cuda-cudnn.rst
    conda
    pip
    pip_pypi

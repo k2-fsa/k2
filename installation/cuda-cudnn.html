@@ -1,0 +1,630 @@
+<!-- see https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CUDA and cuDNN &mdash; k2 1.23.3 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Install using conda (Linux/macOS)" href="conda.html" />
+    <link rel="prev" title="Installation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> k2
+          </a>
+              <div class="version">
+                1.23.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Installation</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">CUDA and cuDNN</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cuda-10-1">CUDA 10.1</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#install-cudnn-for-cuda-10-1">Install cuDNN for CUDA 10.1</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#set-environment-variables-for-cuda-10-1">Set environment variables for CUDA 10.1</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#cuda-10-2">CUDA 10.2</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#install-cudnn-for-cuda-10-2">Install cuDNN for CUDA 10.2</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#set-environment-variables-for-cuda-10-2">Set environment variables for CUDA 10.2</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#cuda-11-0">CUDA 11.0</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#install-cudnn-for-cuda-11-0">Install cuDNN for CUDA 11.0</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#set-environment-variables-for-cuda-11-0">Set environment variables for CUDA 11.0</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#cuda-11-3">CUDA 11.3</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#install-cudnn-for-cuda-11-3">Install cuDNN for CUDA 11.3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#set-environment-variables-for-cuda-11-3">Set environment variables for CUDA 11.3</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#cuda-11-5">CUDA 11.5</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#install-cudnn-for-cuda-11-5">Install cuDNN for CUDA 11.5</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#set-environment-variables-for-cuda-11-5">Set environment variables for CUDA 11.5</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#cuda-11-6">CUDA 11.6</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#install-cudnn-for-cuda-11-6">Install cuDNN for CUDA 11.6</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#set-environment-variables-for-cuda-11-6">Set environment variables for CUDA 11.6</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#cuda-11-7">CUDA 11.7</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#install-cudnn-for-cuda-11-7">Install cuDNN for CUDA 11.7</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#set-environment-variables-for-cuda-11-7">Set environment variables for CUDA 11.7</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="conda.html">Install using conda (Linux/macOS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pip.html">Install using pip (k2-fsa.org)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pip_pypi.html">Install using pip (pypi.org)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="from_source.html">Install from source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="for_developers.html">For developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faqs.html">FAQs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#reporting-issues">Reporting issues</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/index.html">Python API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Installation</a> &raquo;</li>
+      <li>CUDA and cuDNN</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/installation/cuda-cudnn.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cuda-and-cudnn">
+<span id="id1"></span><h1>CUDA and cuDNN<a class="headerlink" href="#cuda-and-cudnn" title="Permalink to this headline"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">k2</span></code> supports <code class="docutils literal notranslate"><span class="pre">CUDA</span> <span class="pre">&gt;=</span> <span class="pre">10.1</span></code>.</p>
+<p>If you want to build <code class="docutils literal notranslate"><span class="pre">k2</span></code> from source with GPU support, you have to install
+<code class="docutils literal notranslate"><span class="pre">cudatoolkit</span></code> and <code class="docutils literal notranslate"><span class="pre">cuDNN</span></code> first. This section describes how to do that.</p>
+<p>You don’t need to use <code class="docutils literal notranslate"><span class="pre">sudo</span></code> to install <code class="docutils literal notranslate"><span class="pre">cudatoolkit</span></code> and <code class="docutils literal notranslate"><span class="pre">cuDNN</span></code>.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p><code class="docutils literal notranslate"><span class="pre">cudatoolkit</span></code> installed by <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span></code> is not sufficient to compile <code class="docutils literal notranslate"><span class="pre">k2</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">cudatoolkit</span></code> installed by <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span></code> is not sufficient to compile <code class="docutils literal notranslate"><span class="pre">k2</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">cudatoolkit</span></code> installed by <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span></code> is not sufficient to compile <code class="docutils literal notranslate"><span class="pre">k2</span></code>.</p>
+</div>
+<p>You can choose any CUDA version that is suitable for you.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You can install multiple CUDA versions into difference directories on your
+system.</p>
+<p>If you follow this section, you can use <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">activate-cuda-10.1.sh</span></code>
+to activate CUDA 10.1 and <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">activate-cuda-10.2.sh</span></code> to activate
+CUDA 10.2, for instance.</p>
+</div>
+<section id="cuda-10-1">
+<h2>CUDA 10.1<a class="headerlink" href="#cuda-10-1" title="Permalink to this headline"></a></h2>
+<p>You can use the following commands to install CUDA 10.1. We install it
+into <code class="docutils literal notranslate"><span class="pre">/ceph-sh1/fangjun/software/cuda-10.1.243</span></code>. You can replace it
+if needed.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>http://developer.download.nvidia.com/compute/cuda/10.1/Prod/local_installers/cuda_10.1.243_418.87.00_linux.run
+
+chmod<span class="w"> </span>+x<span class="w"> </span>cuda_10.1.243_418.87.00_linux.run
+
+./cuda_10.1.243_418.87.00_linux.run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--silent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--toolkit<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--installpath<span class="o">=</span>/ceph-sh1/fangjun/software/cuda-10.1.243<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-opengl-libs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-drm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-man-page
+</pre></div>
+</div>
+<section id="install-cudnn-for-cuda-10-1">
+<h3>Install cuDNN for CUDA 10.1<a class="headerlink" href="#install-cudnn-for-cuda-10-1" title="Permalink to this headline"></a></h3>
+<p>Now, install <code class="docutils literal notranslate"><span class="pre">cuDNN</span></code> for CUDA 10.1.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-10.1-linux-x64-v8.0.2.39.tgz
+
+tar<span class="w"> </span>xvf<span class="w"> </span>cudnn-10.1-linux-x64-v8.0.2.39.tgz<span class="w"> </span>--strip-components<span class="o">=</span><span class="m">1</span><span class="w"> </span>-C<span class="w"> </span>/ceph-sh1/fangjun/software/cuda-10.1.243
+</pre></div>
+</div>
+</section>
+<section id="set-environment-variables-for-cuda-10-1">
+<h3>Set environment variables for CUDA 10.1<a class="headerlink" href="#set-environment-variables-for-cuda-10-1" title="Permalink to this headline"></a></h3>
+<p>Note that we have to set the following environment variables after installing
+CUDA 10.1. You can save the following code to <code class="docutils literal notranslate"><span class="pre">activate-cuda-10.1.sh</span></code>
+and use <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">activate-cuda-10.1.sh</span></code> if you want to activate CUDA 10.1.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_HOME</span><span class="o">=</span>/ceph-sh1/fangjun/software/cuda-10.1.243
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/bin:<span class="nv">$PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT_DIR</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_BIN_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_INC_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/targets/x86_64-linux
+<span class="nb">export</span><span class="w"> </span><span class="nv">CFLAGS</span><span class="o">=</span>-I<span class="nv">$CUDA_HOME</span>/targets/x86_64-linux/include:<span class="nv">$CFLAGS</span>
+</pre></div>
+</div>
+<p>To check that you have installed CUDA 10.1 successfully, please run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which<span class="w"> </span>nvcc
+
+nvcc<span class="w"> </span>--version
+</pre></div>
+</div>
+<p>The output should look like the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/ceph-sh1/fangjun/software/cuda-10.1.243/bin/nvcc
+
+nvcc:<span class="w"> </span>NVIDIA<span class="w"> </span><span class="o">(</span>R<span class="o">)</span><span class="w"> </span>Cuda<span class="w"> </span>compiler<span class="w"> </span>driver
+Copyright<span class="w"> </span><span class="o">(</span>c<span class="o">)</span><span class="w"> </span><span class="m">2005</span>-2019<span class="w"> </span>NVIDIA<span class="w"> </span>Corporation
+Built<span class="w"> </span>on<span class="w"> </span>Sun_Jul_28_19:07:16_PDT_2019
+Cuda<span class="w"> </span>compilation<span class="w"> </span>tools,<span class="w"> </span>release<span class="w"> </span><span class="m">10</span>.1,<span class="w"> </span>V10.1.243
+</pre></div>
+</div>
+</section>
+</section>
+<section id="cuda-10-2">
+<h2>CUDA 10.2<a class="headerlink" href="#cuda-10-2" title="Permalink to this headline"></a></h2>
+<p>You can use the following commands to install CUDA 10.2. We install it
+into <code class="docutils literal notranslate"><span class="pre">/ceph-sh1/fangjun/software/cuda-10.2.89</span></code>. You can replace it
+if needed.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/cuda_10.2.89_440.33.01_linux.run
+
+chmod<span class="w"> </span>+x<span class="w"> </span>cuda_10.2.89_440.33.01_linux.run
+
+./cuda_10.2.89_440.33.01_linux.run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--silent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--toolkit<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--installpath<span class="o">=</span>/ceph-sh1/fangjun/software/cuda-10.2.89<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-opengl-libs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-drm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-man-page
+</pre></div>
+</div>
+<section id="install-cudnn-for-cuda-10-2">
+<h3>Install cuDNN for CUDA 10.2<a class="headerlink" href="#install-cudnn-for-cuda-10-2" title="Permalink to this headline"></a></h3>
+<p>Now, install <code class="docutils literal notranslate"><span class="pre">cuDNN</span></code> for CUDA 10.2.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-10.2-linux-x64-v8.0.2.39.tgz
+
+tar<span class="w"> </span>xvf<span class="w"> </span>cudnn-10.2-linux-x64-v8.0.2.39.tgz<span class="w"> </span>--strip-components<span class="o">=</span><span class="m">1</span><span class="w"> </span>-C<span class="w"> </span>/ceph-sh1/fangjun/software/cuda-10.2.89
+</pre></div>
+</div>
+</section>
+<section id="set-environment-variables-for-cuda-10-2">
+<h3>Set environment variables for CUDA 10.2<a class="headerlink" href="#set-environment-variables-for-cuda-10-2" title="Permalink to this headline"></a></h3>
+<p>Note that we have to set the following environment variables after installing
+CUDA 10.2. You can save the following code to <code class="docutils literal notranslate"><span class="pre">activate-cuda-10.2.sh</span></code>
+and use <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">activate-cuda-10.2.sh</span></code> if you want to activate CUDA 10.2.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_HOME</span><span class="o">=</span>/ceph-sh1/fangjun/software/cuda-10.2.89
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/bin:<span class="nv">$PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT_DIR</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_BIN_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_INC_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/targets/x86_64-linux
+<span class="nb">export</span><span class="w"> </span><span class="nv">CFLAGS</span><span class="o">=</span>-I<span class="nv">$CUDA_HOME</span>/targets/x86_64-linux/include:<span class="nv">$CFLAGS</span>
+</pre></div>
+</div>
+<p>To check that you have installed CUDA 10.2 successfully, please run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which<span class="w"> </span>nvcc
+
+nvcc<span class="w"> </span>--version
+</pre></div>
+</div>
+<p>The output should look like the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/ceph-sh1/fangjun/software/cuda-10.2.89/bin/nvcc
+
+nvcc:<span class="w"> </span>NVIDIA<span class="w"> </span><span class="o">(</span>R<span class="o">)</span><span class="w"> </span>Cuda<span class="w"> </span>compiler<span class="w"> </span>driver
+Copyright<span class="w"> </span><span class="o">(</span>c<span class="o">)</span><span class="w"> </span><span class="m">2005</span>-2019<span class="w"> </span>NVIDIA<span class="w"> </span>Corporation
+Built<span class="w"> </span>on<span class="w"> </span>Wed_Oct_23_19:24:38_PDT_2019
+Cuda<span class="w"> </span>compilation<span class="w"> </span>tools,<span class="w"> </span>release<span class="w"> </span><span class="m">10</span>.2,<span class="w"> </span>V10.2.89
+</pre></div>
+</div>
+</section>
+</section>
+<section id="cuda-11-0">
+<h2>CUDA 11.0<a class="headerlink" href="#cuda-11-0" title="Permalink to this headline"></a></h2>
+<p>You can use the following commands to install CUDA 11.0. We install it
+into <code class="docutils literal notranslate"><span class="pre">/ceph-sh1/fangjun/software/cuda-11.0.3</span></code>. You can replace it
+if needed.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://developer.download.nvidia.com/compute/cuda/11.0.3/local_installers/cuda_11.0.3_450.51.06_linux.run
+
+chmod<span class="w"> </span>+x<span class="w"> </span>cuda_11.0.3_450.51.06_linux.run
+
+./cuda_11.0.3_450.51.06_linux.run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--silent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--toolkit<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--installpath<span class="o">=</span>/ceph-sh1/fangjun/software/cuda-11.0.3<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-opengl-libs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-drm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-man-page
+</pre></div>
+</div>
+<section id="install-cudnn-for-cuda-11-0">
+<h3>Install cuDNN for CUDA 11.0<a class="headerlink" href="#install-cudnn-for-cuda-11-0" title="Permalink to this headline"></a></h3>
+<p>Now, install <code class="docutils literal notranslate"><span class="pre">cuDNN</span></code> for CUDA 11.0.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.0-linux-x64-v8.0.5.39.tgz
+
+tar<span class="w"> </span>xvf<span class="w"> </span>cudnn-11.0-linux-x64-v8.0.4.30.tgz<span class="w"> </span>--strip-components<span class="o">=</span><span class="m">1</span><span class="w"> </span>-C<span class="w"> </span>/ceph-sh1/fangjun/software/cuda-11.0.3
+</pre></div>
+</div>
+</section>
+<section id="set-environment-variables-for-cuda-11-0">
+<h3>Set environment variables for CUDA 11.0<a class="headerlink" href="#set-environment-variables-for-cuda-11-0" title="Permalink to this headline"></a></h3>
+<p>Note that we have to set the following environment variables after installing
+CUDA 11.0. You can save the following code to <code class="docutils literal notranslate"><span class="pre">activate-cuda-11.0.sh</span></code>
+and use <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">activate-cuda-11.0.sh</span></code> if you want to activate CUDA 11.0.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_HOME</span><span class="o">=</span>/ceph-sh1/fangjun/software/cuda-11.0.3
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/bin:<span class="nv">$PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT_DIR</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_BIN_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_INC_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/targets/x86_64-linux
+<span class="nb">export</span><span class="w"> </span><span class="nv">CFLAGS</span><span class="o">=</span>-I<span class="nv">$CUDA_HOME</span>/targets/x86_64-linux/include:<span class="nv">$CFLAGS</span>
+</pre></div>
+</div>
+<p>To check that you have installed CUDA 11.0 successfully, please run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which<span class="w"> </span>nvcc
+
+nvcc<span class="w"> </span>--version
+</pre></div>
+</div>
+<p>The output should look like the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/ceph-sh1/fangjun/software/cuda-11.0.3/bin/nvcc
+
+nvcc:<span class="w"> </span>NVIDIA<span class="w"> </span><span class="o">(</span>R<span class="o">)</span><span class="w"> </span>Cuda<span class="w"> </span>compiler<span class="w"> </span>driver
+Copyright<span class="w"> </span><span class="o">(</span>c<span class="o">)</span><span class="w"> </span><span class="m">2005</span>-2020<span class="w"> </span>NVIDIA<span class="w"> </span>Corporation
+Built<span class="w"> </span>on<span class="w"> </span>Wed_Jul_22_19:09:09_PDT_2020
+Cuda<span class="w"> </span>compilation<span class="w"> </span>tools,<span class="w"> </span>release<span class="w"> </span><span class="m">11</span>.0,<span class="w"> </span>V11.0.221
+Build<span class="w"> </span>cuda_11.0_bu.TC445_37.28845127_0
+</pre></div>
+</div>
+</section>
+</section>
+<section id="cuda-11-3">
+<h2>CUDA 11.3<a class="headerlink" href="#cuda-11-3" title="Permalink to this headline"></a></h2>
+<p>You can use the following commands to install CUDA 11.3. We install it
+into <code class="docutils literal notranslate"><span class="pre">/ceph-sh1/fangjun/software/cuda-11.3.1</span></code>. You can replace it
+if needed.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://developer.download.nvidia.com/compute/cuda/11.3.1/local_installers/cuda_11.3.1_465.19.01_linux.run
+
+chmod<span class="w"> </span>+x<span class="w"> </span>cuda_11.3.1_465.19.01_linux.run
+
+./cuda_11.3.1_465.19.01_linux.run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--silent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--toolkit<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--installpath<span class="o">=</span>/ceph-sh1/fangjun/software/cuda-11.3.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-opengl-libs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-drm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-man-page
+</pre></div>
+</div>
+<section id="install-cudnn-for-cuda-11-3">
+<h3>Install cuDNN for CUDA 11.3<a class="headerlink" href="#install-cudnn-for-cuda-11-3" title="Permalink to this headline"></a></h3>
+<p>Now, install <code class="docutils literal notranslate"><span class="pre">cuDNN</span></code> for CUDA 11.3.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.3-linux-x64-v8.2.0.53.tgz
+
+tar<span class="w"> </span>xvf<span class="w"> </span>cudnn-11.3-linux-x64-v8.2.1.32.tgz<span class="w"> </span>--strip-components<span class="o">=</span><span class="m">1</span><span class="w"> </span>-C<span class="w"> </span>/ceph-sh1/fangjun/software/cuda-11.3.1
+</pre></div>
+</div>
+</section>
+<section id="set-environment-variables-for-cuda-11-3">
+<h3>Set environment variables for CUDA 11.3<a class="headerlink" href="#set-environment-variables-for-cuda-11-3" title="Permalink to this headline"></a></h3>
+<p>Note that we have to set the following environment variables after installing
+CUDA 11.3. You can save the following code to <code class="docutils literal notranslate"><span class="pre">activate-cuda-11.3.sh</span></code>
+and use <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">activate-cuda-11.3.sh</span></code> if you want to activate CUDA 11.3.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_HOME</span><span class="o">=</span>/ceph-sh1/fangjun/software/cuda-11.3.1
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/bin:<span class="nv">$PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT_DIR</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_BIN_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_INC_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/targets/x86_64-linux
+<span class="nb">export</span><span class="w"> </span><span class="nv">CFLAGS</span><span class="o">=</span>-I<span class="nv">$CUDA_HOME</span>/targets/x86_64-linux/include:<span class="nv">$CFLAGS</span>
+</pre></div>
+</div>
+<p>To check that you have installed CUDA 11.3 successfully, please run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which<span class="w"> </span>nvcc
+
+nvcc<span class="w"> </span>--version
+</pre></div>
+</div>
+<p>The output should look like the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/ceph-sh1/fangjun/software/cuda-11.3.1/bin/nvcc
+
+nvcc:<span class="w"> </span>NVIDIA<span class="w"> </span><span class="o">(</span>R<span class="o">)</span><span class="w"> </span>Cuda<span class="w"> </span>compiler<span class="w"> </span>driver
+Copyright<span class="w"> </span><span class="o">(</span>c<span class="o">)</span><span class="w"> </span><span class="m">2005</span>-2021<span class="w"> </span>NVIDIA<span class="w"> </span>Corporation
+Built<span class="w"> </span>on<span class="w"> </span>Mon_May__3_19:15:13_PDT_2021
+Cuda<span class="w"> </span>compilation<span class="w"> </span>tools,<span class="w"> </span>release<span class="w"> </span><span class="m">11</span>.3,<span class="w"> </span>V11.3.109
+Build<span class="w"> </span>cuda_11.3.r11.3/compiler.29920130_0
+</pre></div>
+</div>
+</section>
+</section>
+<section id="cuda-11-5">
+<h2>CUDA 11.5<a class="headerlink" href="#cuda-11-5" title="Permalink to this headline"></a></h2>
+<p>You can use the following commands to install CUDA 11.5. We install it
+into <code class="docutils literal notranslate"><span class="pre">/ceph-sh1/fangjun/software/cuda-11.5.2</span></code>. You can replace it
+if needed.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://developer.download.nvidia.com/compute/cuda/11.5.2/local_installers/cuda_11.5.2_495.29.05_linux.run
+
+chmod<span class="w"> </span>+x<span class="w"> </span>cuda_11.5.2_495.29.05_linux.run
+
+./cuda_11.5.2_495.29.05_linux.run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--silent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--toolkit<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--installpath<span class="o">=</span>/ceph-sh1/fangjun/software/cuda-11.5.2<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-opengl-libs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-drm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-man-page
+</pre></div>
+</div>
+<section id="install-cudnn-for-cuda-11-5">
+<h3>Install cuDNN for CUDA 11.5<a class="headerlink" href="#install-cudnn-for-cuda-11-5" title="Permalink to this headline"></a></h3>
+<p>Now, install <code class="docutils literal notranslate"><span class="pre">cuDNN</span></code> for CUDA 11.5.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz
+
+tar<span class="w"> </span>xvf<span class="w"> </span>cudnn-linux-x86_64-8.3.2.44_cuda11.5-archive.tar.xz<span class="w"> </span>--strip-components<span class="o">=</span><span class="m">1</span><span class="w"> </span>-C<span class="w"> </span>/ceph-sh1/fangjun/software/cuda-11.5.2
+</pre></div>
+</div>
+</section>
+<section id="set-environment-variables-for-cuda-11-5">
+<h3>Set environment variables for CUDA 11.5<a class="headerlink" href="#set-environment-variables-for-cuda-11-5" title="Permalink to this headline"></a></h3>
+<p>Note that we have to set the following environment variables after installing
+CUDA 11.5. You can save the following code to <code class="docutils literal notranslate"><span class="pre">activate-cuda-11.5.sh</span></code>
+and use <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">activate-cuda-11.5.sh</span></code> if you want to activate CUDA 11.5.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_HOME</span><span class="o">=</span>/ceph-sh1/fangjun/software/cuda-11.5.2
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/bin:<span class="nv">$PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT_DIR</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_BIN_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_INC_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/targets/x86_64-linux
+<span class="nb">export</span><span class="w"> </span><span class="nv">CFLAGS</span><span class="o">=</span>-I<span class="nv">$CUDA_HOME</span>/targets/x86_64-linux/include:<span class="nv">$CFLAGS</span>
+</pre></div>
+</div>
+<p>To check that you have installed CUDA 11.5 successfully, please run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which<span class="w"> </span>nvcc
+
+nvcc<span class="w"> </span>--version
+</pre></div>
+</div>
+<p>The output should look like the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/ceph-sh1/fangjun/software/cuda-11.5.2/bin/nvcc
+
+nvcc:<span class="w"> </span>NVIDIA<span class="w"> </span><span class="o">(</span>R<span class="o">)</span><span class="w"> </span>Cuda<span class="w"> </span>compiler<span class="w"> </span>driver
+Copyright<span class="w"> </span><span class="o">(</span>c<span class="o">)</span><span class="w"> </span><span class="m">2005</span>-2021<span class="w"> </span>NVIDIA<span class="w"> </span>Corporation
+Built<span class="w"> </span>on<span class="w"> </span>Thu_Nov_18_09:45:30_PST_2021
+Cuda<span class="w"> </span>compilation<span class="w"> </span>tools,<span class="w"> </span>release<span class="w"> </span><span class="m">11</span>.5,<span class="w"> </span>V11.5.119
+Build<span class="w"> </span>cuda_11.5.r11.5/compiler.30672275_0
+</pre></div>
+</div>
+</section>
+</section>
+<section id="cuda-11-6">
+<h2>CUDA 11.6<a class="headerlink" href="#cuda-11-6" title="Permalink to this headline"></a></h2>
+<p>You can use the following commands to install CUDA 11.6. We install it
+into <code class="docutils literal notranslate"><span class="pre">/ceph-sh1/fangjun/software/cuda-11.6.1</span></code>. You can replace it
+if needed.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://developer.download.nvidia.com/compute/cuda/11.6.1/local_installers/cuda_11.6.1_510.47.03_linux.run
+
+chmod<span class="w"> </span>+x<span class="w"> </span>cuda_11.6.1_510.47.03_linux.run
+
+./cuda_11.6.1_510.47.03_linux.run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--silent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--toolkit<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--installpath<span class="o">=</span>/ceph-sh1/fangjun/software/cuda-11.6.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-opengl-libs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-drm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-man-page
+</pre></div>
+</div>
+<section id="install-cudnn-for-cuda-11-6">
+<h3>Install cuDNN for CUDA 11.6<a class="headerlink" href="#install-cudnn-for-cuda-11-6" title="Permalink to this headline"></a></h3>
+<p>Now, install <code class="docutils literal notranslate"><span class="pre">cuDNN</span></code> for CUDA 11.6.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.3-linux-x64-v8.2.0.53.tgz
+
+<span class="c1"># Note: cudnn-11.3 works for CUDA 11.x</span>
+tar<span class="w"> </span>xvf<span class="w"> </span>cudnn-11.3-linux-x64-v8.2.1.32.tgz<span class="w"> </span>--strip-components<span class="o">=</span><span class="m">1</span><span class="w"> </span>-C<span class="w"> </span>/ceph-sh1/fangjun/software/cuda-11.6.1
+</pre></div>
+</div>
+</section>
+<section id="set-environment-variables-for-cuda-11-6">
+<h3>Set environment variables for CUDA 11.6<a class="headerlink" href="#set-environment-variables-for-cuda-11-6" title="Permalink to this headline"></a></h3>
+<p>Note that we have to set the following environment variables after installing
+CUDA 11.6. You can save the following code to <code class="docutils literal notranslate"><span class="pre">activate-cuda-11.6.sh</span></code>
+and use <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">activate-cuda-11.6.sh</span></code> if you want to activate CUDA 11.6.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_HOME</span><span class="o">=</span>/ceph-sh1/fangjun/software/cuda-11.6.1
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/bin:<span class="nv">$PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT_DIR</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_BIN_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_INC_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/targets/x86_64-linux
+<span class="nb">export</span><span class="w"> </span><span class="nv">CFLAGS</span><span class="o">=</span>-I<span class="nv">$CUDA_HOME</span>/targets/x86_64-linux/include:<span class="nv">$CFLAGS</span>
+</pre></div>
+</div>
+<p>To check that you have installed CUDA 11.6 successfully, please run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which<span class="w"> </span>nvcc
+
+nvcc<span class="w"> </span>--version
+</pre></div>
+</div>
+<p>The output should look like the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/ceph-sh1/fangjun/software/cuda-11.6.1/bin/nvcc
+
+nvcc:<span class="w"> </span>NVIDIA<span class="w"> </span><span class="o">(</span>R<span class="o">)</span><span class="w"> </span>Cuda<span class="w"> </span>compiler<span class="w"> </span>driver
+Copyright<span class="w"> </span><span class="o">(</span>c<span class="o">)</span><span class="w"> </span><span class="m">2005</span>-2022<span class="w"> </span>NVIDIA<span class="w"> </span>Corporation
+Built<span class="w"> </span>on<span class="w"> </span>Thu_Feb_10_18:23:41_PST_2022
+Cuda<span class="w"> </span>compilation<span class="w"> </span>tools,<span class="w"> </span>release<span class="w"> </span><span class="m">11</span>.6,<span class="w"> </span>V11.6.112
+Build<span class="w"> </span>cuda_11.6.r11.6/compiler.30978841_0
+</pre></div>
+</div>
+</section>
+</section>
+<section id="cuda-11-7">
+<h2>CUDA 11.7<a class="headerlink" href="#cuda-11-7" title="Permalink to this headline"></a></h2>
+<p>You can use the following commands to install CUDA 11.7. We install it
+into <code class="docutils literal notranslate"><span class="pre">/ceph-sh1/fangjun/software/cuda-11.7.1</span></code>. You can replace it
+if needed.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://developer.download.nvidia.com/compute/cuda/11.7.1/local_installers/cuda_11.7.1_515.65.01_linux.run
+
+chmod<span class="w"> </span>+x<span class="w"> </span>cuda_11.7.1_515.65.01_linux.run
+
+./cuda_11.7.1_515.65.01_linux.run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--silent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--toolkit<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--installpath<span class="o">=</span>/ceph-sh1/fangjun/software/cuda-11.7.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-opengl-libs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-drm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-man-page
+</pre></div>
+</div>
+<section id="install-cudnn-for-cuda-11-7">
+<h3>Install cuDNN for CUDA 11.7<a class="headerlink" href="#install-cudnn-for-cuda-11-7" title="Permalink to this headline"></a></h3>
+<p>Now, install <code class="docutils literal notranslate"><span class="pre">cuDNN</span></code> for CUDA 11.7.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.3-linux-x64-v8.2.0.53.tgz
+
+<span class="c1"># Note: cudnn-11.3 works for CUDA 11.x</span>
+tar<span class="w"> </span>xvf<span class="w"> </span>cudnn-11.3-linux-x64-v8.2.1.32.tgz<span class="w"> </span>--strip-components<span class="o">=</span><span class="m">1</span><span class="w"> </span>-C<span class="w"> </span>/ceph-sh1/fangjun/software/cuda-11.7.1
+</pre></div>
+</div>
+</section>
+<section id="set-environment-variables-for-cuda-11-7">
+<h3>Set environment variables for CUDA 11.7<a class="headerlink" href="#set-environment-variables-for-cuda-11-7" title="Permalink to this headline"></a></h3>
+<p>Note that we have to set the following environment variables after installing
+CUDA 11.7. You can save the following code to <code class="docutils literal notranslate"><span class="pre">activate-cuda-11.7.sh</span></code>
+and use <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">activate-cuda-11.7.sh</span></code> if you want to activate CUDA 11.7.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_HOME</span><span class="o">=</span>/ceph-sh1/fangjun/software/cuda-11.7.1
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/bin:<span class="nv">$PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT_DIR</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_BIN_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_INC_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/targets/x86_64-linux
+<span class="nb">export</span><span class="w"> </span><span class="nv">CFLAGS</span><span class="o">=</span>-I<span class="nv">$CUDA_HOME</span>/targets/x86_64-linux/include:<span class="nv">$CFLAGS</span>
+</pre></div>
+</div>
+<p>To check that you have installed CUDA 11.7 successfully, please run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which<span class="w"> </span>nvcc
+
+nvcc<span class="w"> </span>--version
+</pre></div>
+</div>
+<p>The output should look like the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/ceph-sh1/fangjun/software/cuda-11.7.1/bin/nvcc
+
+nvcc:<span class="w"> </span>NVIDIA<span class="w"> </span><span class="o">(</span>R<span class="o">)</span><span class="w"> </span>Cuda<span class="w"> </span>compiler<span class="w"> </span>driver
+Copyright<span class="w"> </span><span class="o">(</span>c<span class="o">)</span><span class="w"> </span><span class="m">2005</span>-2022<span class="w"> </span>NVIDIA<span class="w"> </span>Corporation
+Built<span class="w"> </span>on<span class="w"> </span>Wed_Jun__8_16:49:14_PDT_2022
+Cuda<span class="w"> </span>compilation<span class="w"> </span>tools,<span class="w"> </span>release<span class="w"> </span><span class="m">11</span>.7,<span class="w"> </span>V11.7.99
+Build<span class="w"> </span>cuda_11.7.r11.7/compiler.31442593_0
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="conda.html" class="btn btn-neutral float-right" title="Install using conda (Linux/macOS)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020-2022, k2 development team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+
+</body>
+</html>
