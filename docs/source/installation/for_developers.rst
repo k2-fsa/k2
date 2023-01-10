@@ -23,6 +23,17 @@ First, you have to install CMake, CUDA toolkit (with cuDNN), and PyTorch:
 
   - Your Python version has to be at least 3.6.
 
+.. hint::
+
+  You can use ``pip install cmake`` to install the latest version of CMake.
+
+.. caution::
+
+  cudatoolkit installed by ``conda install`` cannot be used to compile ``k2``.
+
+  Please follow :ref:`cuda_and_cudnn` to install cudatoolkit and cuDNN.
+
+
 Second, let's clone the repository to some path ``/some/path``:
 
 .. code-block:: bash
