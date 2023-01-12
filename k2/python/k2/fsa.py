@@ -223,6 +223,10 @@ class Fsa(object):
 
         self._tensor_attr['scores'] = _k2.as_float(self.arcs.values()[:, -1])
         self._tensor_attr["labels"] = self.arcs.values()[:, 2]
+        # The attribute "fsa.labels_version" is used to check whether
+        # "fsa.labels" has been inappropriately modified,
+        # by comparing "fsa.labels_version" and "fsa.labels._version".
+        # See https://github.com/k2-fsa/k2/pull/1140 for details.
         self.labels_version = self._tensor_attr["labels"]._version
         if aux_labels is not None:
             if isinstance(aux_labels, torch.Tensor):
