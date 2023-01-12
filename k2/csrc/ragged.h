@@ -20,6 +20,7 @@
 #ifndef K2_CSRC_RAGGED_H_
 #define K2_CSRC_RAGGED_H_
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -175,7 +176,7 @@ class RaggedShape {
   explicit RaggedShape(const std::vector<RaggedShapeLayer> &layers,
                        bool check = !internal::kDisableDebug)
       : layers_(layers) {
-    // the check can be disabled by settin the environment variable
+    // the check can be disabled by setting the environment variable
     // K2_DISABLE_CHECKS.
     if (check && !internal::DisableChecks()) Check();
   }
@@ -506,6 +507,27 @@ ToType(int64_t, Long)
   // that Array1's that are the row_ids or row_splits of a Ragged object are
   // not mutable so they can be re-used.
   Ragged<T> Clone() const { return Ragged<T>(shape, values.Clone()); }
+
+  // Convert a ragged tensor with 2 axes into a vector of vector.
+  //
+  // CAUTION: this->NumAxes() must be 2.
+  std::vector<std::vector<T>> ToVecVec() const {
+    K2_CHECK_EQ(NumAxes(), 2);
+    if (Context()->GetDeviceType() == kCuda) {
+      return this->To(GetCpuContext()).ToVecVec();
+    }
+    int32_t dim0 = this->Dim0();
+    std::vector<std::vector<T>> ans(dim0);
+    const int32_t *row_splits_data = RowSplits(1).Data();
+    const T *values_data = values.Data();
+    for (int32_t i = 0; i != dim0; ++i) {
+      int32_t len = row_splits_data[i + 1] - row_splits_data[i];
+      ans[i].resize(len);
+      std::copy(values_data + row_splits_data[i],
+                values_data + row_splits_data[i + 1], ans[i].begin());
+    }
+    return ans;
+  }
 };
 
 // e.g. will produce something like "[ [ 3 4 ] [ 1 ] ]".

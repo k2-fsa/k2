@@ -91,6 +91,32 @@ void SegmentedReduce(const Ragged<T> &src, T initial_value, Array1<T> *dst) {
 }
 
 template <typename T>
+Ragged<T> AddPerSublist(Ragged<T> &src, Array1<T> &value, T alpha) {
+  NVTX_RANGE(K2_FUNC);
+
+  ContextPtr &context = src.Context();
+  int32_t num_axes = src.NumAxes();
+  K2_CHECK_EQ(src.TotSize(num_axes - 2), value.Dim());
+
+  Array1<T> ans_values(context, src.values.Dim());
+  Ragged<T> ans(src.shape, ans_values);
+
+  const int32_t *row_ids_data = src.RowIds(num_axes - 1).Data();
+  T *ans_data = ans.values.Data();
+  const T *src_data = src.values.Data(),
+          *value_data = value.Data();
+
+  K2_EVAL(
+      context, ans_values.Dim(), lambda_do_add, (int32_t i)->void {
+        int32_t row = row_ids_data[i];
+        T value = value_data[row];
+
+        ans_data[i] = src_data[i] + value * alpha;
+      });
+  return ans;
+}
+
+template <typename T>
 Ragged<T> NormalizePerSublist(Ragged<T> &src, bool use_log) {
   NVTX_RANGE(K2_FUNC);
   K2_STATIC_ASSERT(

@@ -27,6 +27,12 @@ function(download_googltest)
   set(googletest_URL  "https://github.com/google/googletest/archive/release-1.10.0.tar.gz")
   set(googletest_HASH "SHA256=9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb")
 
+  # If you don't have access to the Internet, please download the file to your
+  # local drive and use the line below (you need to change it accordingly.
+  # I am placing it in /star-fj/fangjun/download/github, but you can place it
+  # anywhere you like)
+  # set(googletest_URL  "file:///star-fj/fangjun/download/github/googletest-release-1.10.0.tar.gz")
+
   set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
   set(gtest_disable_pthreads ON CACHE BOOL "" FORCE)
@@ -39,7 +45,7 @@ function(download_googltest)
 
   FetchContent_GetProperties(googletest)
   if(NOT googletest_POPULATED)
-    message(STATUS "Downloading googletest")
+    message(STATUS "Downloading googletest from ${googletest_URL}")
     FetchContent_Populate(googletest)
   endif()
   message(STATUS "googletest is downloaded to ${googletest_SOURCE_DIR}")

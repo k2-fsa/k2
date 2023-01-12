@@ -196,13 +196,18 @@ class TestFsa(unittest.TestCase):
             6 -9.2
         '''
 
-        for i in range(4):
+        for i in range(5):
             if i == 0:
                 fsa = k2.Fsa.from_openfst(s)
             elif i == 1:
                 fsa = k2.Fsa.from_openfst(s, acceptor=True)
             elif i == 2:
                 fsa = k2.Fsa.from_openfst(s, num_aux_labels=0)
+            elif i == 3:
+                # Test k2.Fsa.from_str(k2.to_str(openfst=True), openfst=True)
+                fsa_tmp = k2.Fsa.from_str(s, acceptor=True, openfst=True)
+                fsa_tmp_str = k2.to_str(fsa_tmp, openfst=True)
+                fsa = k2.Fsa.from_str(fsa_tmp_str, acceptor=True, openfst=True)
             else:
                 fsa = k2.Fsa.from_openfst(s, aux_label_names=[])
 
@@ -215,9 +220,8 @@ class TestFsa(unittest.TestCase):
             2 4 2 -6.2
             3 6 3 -7.2
             5 0 1 -8.2
-            6 8 -1 -9.2
-            7 8 -1 0
-            8
+            6 -9.2
+            7 0
             '''
             assert _remove_leading_spaces(expected_str) == \
                     _remove_leading_spaces(k2.to_str_simple(fsa, openfst=True))
@@ -256,9 +260,22 @@ class TestFsa(unittest.TestCase):
             7
             6 -9.2
         '''
-        fsa = k2.Fsa.from_openfst(s,
-                                  num_aux_labels=0,
-                                  ragged_label_names=['ragged'])
+        for i in range(2):
+            if i == 0:
+                fsa = k2.Fsa.from_openfst(s,
+                                          num_aux_labels=0,
+                                          ragged_label_names=['ragged'])
+            else:
+                # Test k2.Fsa.from_str(k2.to_str(openfst=True), openfst=True)
+                fsa_tmp = k2.Fsa.from_str(s,
+                                          num_aux_labels=0,
+                                          ragged_label_names=['ragged'],
+                                          openfst=True)
+                fsa_tmp_str = k2.to_str(fsa_tmp, openfst=True)
+                fsa = k2.Fsa.from_str(fsa_tmp_str,
+                                      num_aux_labels=0,
+                                      ragged_label_names=['ragged'],
+                                      openfst=True)
 
         expected_str = '''
         0 1 2 [ ] -1.2
@@ -269,9 +286,8 @@ class TestFsa(unittest.TestCase):
         2 4 2 [ ] -6.2
         3 6 3 [ ] -7.2
         5 0 1 [ 13 ] -8.2
-        6 8 -1 [ ] -9.2
-        7 8 -1 [ ] 0
-        8
+        6 -9.2
+        7 0
         '''
         string = _remove_leading_spaces(k2.to_str(fsa, openfst=True))
         print("fsa=", string)
@@ -522,11 +538,16 @@ class TestFsa(unittest.TestCase):
             7 -9.2
             6
         '''
-        for i in range(3):
+        for i in range(4):
             if i == 0:
                 fsa = k2.Fsa.from_openfst(s, acceptor=False)
             elif i == 1:
                 fsa = k2.Fsa.from_openfst(s, num_aux_labels=1)
+            elif i == 2:
+                # Test k2.Fsa.from_str(k2.to_str(openfst=True), openfst=True)
+                fsa_tmp = k2.Fsa.from_str(s, acceptor=False, openfst=True)
+                fsa_tmp_str = k2.to_str(fsa_tmp, openfst=True)
+                fsa = k2.Fsa.from_str(fsa_tmp_str, acceptor=False, openfst=True)
             else:
                 fsa = k2.Fsa.from_openfst(s, aux_label_names=['aux_labels'])
 
@@ -552,9 +573,8 @@ class TestFsa(unittest.TestCase):
                 2 4 2 22 -6.2
                 3 6 3 36 -7.2
                 5 0 1 50 -8.2
-                6 8 -1 -1 0
-                7 8 -1 -1 -9.2
-                8
+                6 0
+                7 -9.2
             '''
             assert _remove_leading_spaces(expected_str) == \
                     _remove_leading_spaces(k2.to_str_simple(fsa, openfst=True))
@@ -572,9 +592,16 @@ class TestFsa(unittest.TestCase):
             7 -9.2
             6
         '''
-        for i in range(2):
+        for i in range(3):
             if i == 0:
                 fsa = k2.Fsa.from_openfst(s, num_aux_labels=3)
+            elif i == 1:
+                # Test k2.Fsa.from_str(k2.to_str(openfst=True), openfst=True)
+                fsa_tmp = k2.Fsa.from_str(s, num_aux_labels=3, openfst=True)
+                fsa_tmp_str = k2.to_str(fsa_tmp, openfst=True)
+                fsa = k2.Fsa.from_str(fsa_tmp_str,
+                                      num_aux_labels=3,
+                                      openfst=True)
             else:
                 fsa = k2.Fsa.from_openfst(s,
                                           aux_label_names=[
@@ -620,9 +647,8 @@ class TestFsa(unittest.TestCase):
                 2 4 2 22 -6.2
                 3 6 3 36 -7.2
                 5 0 1 50 -8.2
-                6 8 -1 -1 0
-                7 8 -1 -1 -9.2
-                8
+                6 0
+                7 -9.2
             '''
             assert _remove_leading_spaces(expected_str) == \
                     _remove_leading_spaces(k2.to_str_simple(fsa, openfst=True))
@@ -1066,7 +1092,7 @@ class TestFsa(unittest.TestCase):
 
             fsa.non_tensor_attr1[0] = 0
             fsa.tensor_attr1[0] = 0
-            fsa.ragged_attr1 = k2.RaggedTensor('[[] [] [-1]]')
+            fsa.ragged_attr1 = k2.RaggedTensor('[[] [] [-1]]').to(device)
             fsa._cache['abc'][0] = 1
 
             # we assume that non-tensor attributes are readonly

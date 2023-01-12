@@ -930,6 +930,64 @@ Returns:
   containing the computed sum.
 )doc";
 
+static constexpr const char *kRaggedAnyLogSumExpDoc = R"doc(
+Compute the logsumexp of sublists over the last axis of this tensor.
+
+Note:
+  It is similar to torch.logsumexp except it accepts a ragged tensor.
+  See `<https://pytorch.org/docs/stable/generated/torch.logsumexp.html>`_
+  for definition of logsumexp.
+
+Note:
+  If a sublist is empty, the logsumexp for it is the provided
+  ``initial_value``.
+
+Note:
+  This operation only supports float type input,
+  i.e., with dtype being torch.float32 or torch.float64.
+
+>>> import torch
+>>> import k2
+>>> import k2.ragged as k2r
+>>> a = k2r.RaggedTensor([[-0.25, -0.25, -0.25, -0.25], [], [-0.5, -0.5]], dtype=torch.float32)
+>>> a.requires_grad_(True)
+RaggedTensor([[-0.25, -0.25, -0.25, -0.25],
+              [],
+              [-0.5, -0.5]], dtype=torch.float32)
+>>> b = a.logsumexp()
+>>> b
+tensor([1.1363,   -inf, 0.1931], grad_fn=<LogSumExpFunction>>)
+>>> c = b.sum()
+>>> c
+tensor(-inf, grad_fn=<SumBackward0>)
+>>> c.backward()
+>>> a.grad
+tensor([0.2500, 0.2500, 0.2500, 0.2500, 0.5000, 0.5000])
+>>>
+>>> # if a is a 3-d ragged tensor
+>>> a = k2r.RaggedTensor([[[-0.25, -0.25, -0.25, -0.25]], [[], [-0.5, -0.5]]], dtype=torch.float32)
+>>> a.requires_grad_(True)
+RaggedTensor([[[-0.25, -0.25, -0.25, -0.25]],
+              [[],
+               [-0.5, -0.5]]], dtype=torch.float32)
+>>> b = a.logsumexp()
+>>> b
+tensor([1.1363,   -inf, 0.1931], grad_fn=<LogSumExpFunction>>)
+>>> c = b.sum()
+>>> c
+tensor(-inf, grad_fn=<SumBackward0>)
+>>> c.backward()
+>>> a.grad
+tensor([0.2500, 0.2500, 0.2500, 0.2500, 0.5000, 0.5000])
+
+Args:
+  initial_value:
+    If a sublist is empty, its logsumexp is this value.
+Returns:
+  Return a 1-D tensor with the same dtype of this tensor
+  containing the computed logsumexp.
+)doc";
+
 static constexpr const char *kRaggedAnyNumelDoc = R"doc(
 Returns:
   Return number of elements in this tensor. It equals to
@@ -1792,6 +1850,36 @@ Args:
     It indicates which kind of normalization to be applied.
 Returns:
   Returns a 1-D tensor, sharing the same dtype and device with ``self``.
+)doc";
+
+static constexpr const char *kRaggedAnyAddDoc = R"doc(
+Add value scaled by alpha to source ragged tensor over the last axis.
+
+It implements:
+
+    dest[...][i][j] = src[...][i][j] + alpha * value[i]
+
+>>> import k2.ragged as k2r
+>>> import torch
+>>> src = k2r.RaggedTensor([[1, 3], [1], [2, 8]], dtype=torch.int32)
+>>> value = torch.tensor([1, 2, 3], dtype=torch.int32)
+>>> src.add(value, 1)
+RaggedTensor([[2, 4],
+              [3],
+              [5, 11]], dtype=torch.int32)
+>>> src.add(value, -1)
+RaggedTensor([[0, 2],
+              [-1],
+              [-1, 5]], dtype=torch.int32)
+
+Args:
+  value:
+      The value to be added to the ``self``, whose dimension MUST
+      equal the number of sublists along the last dimension of ``self``.
+  alpha:
+      The number used to scaled value before adding to ``self``.
+Returns:
+  Returns a new RaggedTensor, sharing the same dtype and device with ``self``.
 )doc";
 
 static constexpr const char *kRaggedAnyPadDoc = R"doc(

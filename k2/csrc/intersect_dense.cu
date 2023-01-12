@@ -72,8 +72,25 @@ using namespace intersect_dense_internal;  // NOLINT
    speech recognition-type tasks.  This version does only forward-backward
    pruning in the backward pass; the forward pass does no pruning.
 
-   Can use either different decoding graphs (one per acoustic sequence) or a
-   shared graph.
+   Note:
+       In `MultiGraphDenseIntersectPruned` a_fsas is shared if Dim0 = 1.
+       However, in following `MultiGraphDenseIntersect`,
+       a_fsas could never be shared.
+
+       While an element in b_fsas could be shared,
+       if its index appears multiple times in a_to_b_map.
+       For example, in mmi.py, each element in b_fsas is shared by its
+       corresponding num_graph and den_graph.
+       (Search a_to_b_map in
+       https://github.com/k2-fsa/icefall/blob/master/icefall/mmi.py)
+
+   Conclusions:
+       1. Each element in a_fsas maps ONE and ONLY ONE element in b_fsas.
+       2. An element in b_fsas is shared,
+          if its index appears in a_to_b_map multiple times.
+       3. An element in b_fsas is NOT used during intersection,
+          if its index does not appear in a_to_b_map.
+
 
    How to use this object:
        Construct it
@@ -247,7 +264,8 @@ class MultiGraphDenseIntersect {
           c_, product, lambda_set_keep, (int32_t i)->void {
             // i is actually an idx012 of a state.
 
-            // the following works because each FSA has (its num-states * T_+1)
+            // the following works because each FSA has
+            // (its num-states * (T_+1))
             // states allocated to it.  However (i / (T_+1)) does not directly
             // map to a state index.
             int32_t fsa_idx0 = a_fsas_row_ids1_data[(i / (T + 1))];
@@ -507,10 +525,14 @@ class MultiGraphDenseIntersect {
           CompressedArc carc = carcs_data[a_fsas_arc_idx012];
           K2_CHECK_EQ(a_fsas_state_idx1, (int32_t)carc.src_state);
           int32_t a_fsas_dest_state_idx1 = carc.dest_state;
-          arc_map_a_data[arc_idx_out] = a_fsas_arc_idx012;
+          if (arc_map_a_data) {
+            arc_map_a_data[arc_idx_out] = a_fsas_arc_idx012;
+          }
           int32_t scores_index = fsa_info.scores_offset +
                                  (scores_stride * t_idx1) + carc.label_plus_one;
-          arc_map_b_data[arc_idx_out] = scores_index;
+          if (arc_map_b_data) {
+            arc_map_b_data[arc_idx_out] = scores_index;
+          }
 
           float arc_score = carc.score + scores_data[scores_index];
 
@@ -698,9 +720,7 @@ class MultiGraphDenseIntersect {
                     num_fsas_per_t_cpu = num_fsas_per_t.To(c_cpu);
     K2_CHECK_EQ(num_fsas_per_t.Dim(), T_ + 1);
 
-    Array1<int32_t> a_fsas_row_splits1_cpu = a_fsas_.RowSplits(1).To(c_cpu),
-                    a_fsas_row_splits12_cpu =
-                        a_fsas_.RowSplits(2)[a_fsas_.RowSplits(1)].To(c_cpu);
+    Array1<int32_t> a_fsas_row_splits1_cpu = a_fsas_.RowSplits(1).To(c_cpu);
     int32_t tot_arcs = a_fsas_.NumElements(), tot_states = a_fsas_.TotSize(1);
 
     steps_.resize(T_ + 1);

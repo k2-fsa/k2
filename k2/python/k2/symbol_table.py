@@ -127,8 +127,19 @@ class SymbolTable(Generic[Symbol]):
           An instance of :class:`SymbolTable`.
 
         '''
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             return SymbolTable.from_str(f.read().strip())
+
+    def to_str(self) -> str:
+        '''
+        Returns:
+          Return a string representation of this object. You can pass
+          it to the method ``from_str`` to recreate an identical object.
+        '''
+        s = ''
+        for idx, symbol in sorted(self._id2sym.items()):
+            s += f'{symbol} {idx}\n'
+        return s
 
     def to_file(self, filename: str):
         '''Serialize the SymbolTable to a file.
@@ -247,6 +258,16 @@ class SymbolTable(Generic[Symbol]):
 
     def __len__(self) -> int:
         return len(self._id2sym)
+
+    def __eq__(self, other: 'SymbolTable') -> bool:
+        if len(self) != len(other):
+            return False
+
+        for s in self.symbols:
+            if self[s] != other[s]:
+                return False
+
+        return True
 
     @property
     def ids(self) -> List[int]:

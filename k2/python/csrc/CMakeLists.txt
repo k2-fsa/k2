@@ -32,11 +32,22 @@ endif()
 pybind11_add_module(_k2 ${k2_srcs})
 target_link_libraries(_k2 PRIVATE context)
 target_link_libraries(_k2 PRIVATE fsa)
+
+if(APPLE)
+  # To fix the following error:
+  # ImportError: /xxx/lib/_k2.cpython-38-x86_64-linux-gnu.so: undefined symbol: THPDtypeType
+  target_link_libraries(_k2 PRIVATE ${TORCH_DIR}/lib/libtorch_python.dylib)
+elseif(UNIX)
+  target_link_libraries(_k2 PRIVATE ${TORCH_DIR}/lib/libtorch_python.so)
+endif()
+
 target_include_directories(_k2 PRIVATE ${CMAKE_SOURCE_DIR})
 target_include_directories(_k2 PRIVATE ${CMAKE_BINARY_DIR})
 set_target_properties(_k2 PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-target_link_libraries(_k2 PRIVATE "-Wl,-rpath,${k2_rpath_origin}/k2/${CMAKE_INSTALL_LIBDIR}")
+if(NOT WIN32)
+  target_link_libraries(_k2 PRIVATE "-Wl,-rpath,${k2_rpath_origin}/k2/${CMAKE_INSTALL_LIBDIR}")
+endif()
 
 if(UNIX AND NOT APPLE)
   # It causes errors on macOS

@@ -1,10 +1,6 @@
 /**
- * @brief python wrappers for array_ops.h
+ * Copyright      2022  Xiaomi Corporation (authors: Fangjun Kuang)
  *
- * @copyright
- * Copyright      2021  Xiaomi Corp.       (author: Wei Kang)
- *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,11 +16,28 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_ARRAY_OPS_H_
-#define K2_PYTHON_CSRC_TORCH_ARRAY_OPS_H_
+#include "gtest/gtest.h"
+#include "k2/torch/csrc/hypothesis.h"
 
-#include "k2/python/csrc/torch.h"
+namespace k2 {
 
-void PybindArrayOps(py::module &m);
+TEST(Hypothesis, Key) {
+  Hypothesis hyp;
+  hyp.ys = {1, 2, 3};
+  EXPECT_EQ(hyp.Key(), "1-2-3");
+}
 
-#endif  // K2_PYTHON_CSRC_TORCH_ARRAY_OPS_H_
+TEST(Hypotheses, ConstructorFromVector) {
+  std::vector<Hypothesis> hyp_vec;
+  hyp_vec.emplace_back(Hypothesis({1, 2, 3}, -1.5));
+  hyp_vec.emplace_back(Hypothesis({30}, -2.5));
+
+  EXPECT_EQ(hyp_vec[0].ys.size(), 3);
+  EXPECT_EQ(hyp_vec[1].ys.size(), 1);
+
+  Hypotheses hyps(std::move(hyp_vec));
+
+  EXPECT_TRUE(hyp_vec.empty());
+}
+
+}  // namespace k2

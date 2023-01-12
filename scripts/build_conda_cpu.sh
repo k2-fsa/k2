@@ -45,7 +45,7 @@ echo "K2_ROOT_DIR: $K2_ROOT_DIR"
 
 which python
 python -m torch.utils.collect_env
-K2_PYTHON_VERSION=$(python -c "import sys; print(sys.version[:3])")
+K2_PYTHON_VERSION=$(python -c "import sys; print('.'.join(sys.version.split('.')[:2]))")
 
 if [ -z $K2_TORCH_VERSION ]; then
   echo "env var K2_TORCH_VERSION is not set, defaults to 1.7.1"

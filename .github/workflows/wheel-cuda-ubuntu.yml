@@ -7,6 +7,10 @@ on:
     tags:
       - '*'
 
+concurrency:
+  group: PyPI_CUDA_Ubuntu-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BUILD_TYPE: Release
 
@@ -17,10 +21,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04]
-        cuda: ["10.1"]
-        gcc: ["5"]
-        torch: ["1.7.1"]
-        python-version: [3.6, 3.7, 3.8]
+        cuda: ["11.7"]
+        gcc: ["7"]
+        torch: ["1.13.1"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v2
@@ -86,7 +90,7 @@ jobs:
           K2_IS_FOR_PYPI: 1
           K2_IS_STABLE: 1
         run: |
-          tag=$(python3 -c "import sys; print(''.join(sys.version[:3].split('.')))")
+          tag=$(python3 -c "import sys; print('.'.join(sys.version.split('.')[:2]))")
           export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
           export K2_MAKE_ARGS="-j2"
           python3 setup.py bdist_wheel --python-tag=py${tag}

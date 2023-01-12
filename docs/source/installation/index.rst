@@ -38,11 +38,13 @@ below:
 .. toctree::
    :maxdepth: 1
 
+   cuda-cudnn.rst
    conda
    pip
    pip_pypi
    from_source
    for_developers
+   faqs
 
 .. |conda_python_versions| image:: ./images/python_ge_3.6-blue.svg
   :alt: Supported python versions

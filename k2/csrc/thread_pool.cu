@@ -57,7 +57,7 @@ void ThreadPool::ProcessTasks() {
   while (keep_running_) {
     while (tasks_.empty() && keep_running_) {
       // Wait for the `not_empty_` condition.
-      // RunTask() or the destructor will signal it.
+      // SubmitTask() or the destructor will signal it.
       not_empty_cond_.wait(lock);
     }
 

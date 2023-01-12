@@ -552,7 +552,7 @@ struct LogAdd<float> {
     }
     // diff is negative.  x is now the larger one.
 
-    if (diff >= K2_MIN_LOG_DIFF_DOUBLE) {
+    if (diff >= K2_MIN_LOG_DIFF_FLOAT) {
       float res;
       res = x + log1pf(expf(diff));
       return res;

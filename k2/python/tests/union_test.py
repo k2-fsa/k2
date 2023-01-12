@@ -59,9 +59,9 @@ class TestUnion(unittest.TestCase):
             2
         '''
         for device in self.devices:
-            fsa0 = k2.Fsa.from_str(s0)
-            fsa1 = k2.Fsa.from_str(s1)
-            fsa2 = k2.Fsa.from_str(s2)
+            fsa0 = k2.Fsa.from_str(s0).to(device)
+            fsa1 = k2.Fsa.from_str(s1).to(device)
+            fsa2 = k2.Fsa.from_str(s2).to(device)
 
             fsa0.tensor_attr = torch.tensor([1, 2, 3, 4, 5, 6],
                                             dtype=torch.int32,

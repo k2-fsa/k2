@@ -33,6 +33,10 @@ on:
     tags:
       - '*'
 
+concurrency:
+  group: build_conda_cpu_macos-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   K2_BUILD_TYPE: Release
 
@@ -72,6 +76,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          channels: conda-forge
           activate-environment: k2
 
       - name: Display Python version
@@ -113,5 +118,5 @@ jobs:
       - name: Upload generated files
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-macos-10.15
           path: /usr/local/miniconda/envs/k2/conda-bld/osx-64/*.tar.bz2

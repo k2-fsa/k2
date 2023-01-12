@@ -22,8 +22,24 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '.github/workflows/run-tests.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   pull_request:
     types: [labeled]
+    paths:
+      - '.github/workflows/run-tests.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+
+concurrency:
+  group: run-tests-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   run-tests:
@@ -32,11 +48,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04]
-        cuda: ["11.6"]
-        gcc: ["7"]
-        torch: ["1.12.0"]
-        python-version: ["3.10"]
+        os: [ubuntu-latest]
+        cuda: ["11.7"]
+        torch: ["1.13.1"]
+        python-version: ["3.11"]
         build_type: ["Release", "Debug"]
 
     steps:
@@ -57,13 +72,6 @@ jobs:
         run: |
           which nvcc
           nvcc --version
-
-      - name: Install GCC ${{ matrix.gcc }}
-        run: |
-          sudo apt-get install -y gcc-${{ matrix.gcc }} g++-${{ matrix.gcc }}
-          echo "CC=/usr/bin/gcc-${{ matrix.gcc }}" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
-          echo "CUDAHOSTCXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
 
       - name: Display GCC version
         run: |
@@ -103,8 +111,11 @@ jobs:
 
       - name: Configure CMake
         shell: bash
+        env:
+          torch: ${{ matrix.torch }}
         run: |
           pwd
+          ./scripts/github_actions/fix_torch.sh
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..

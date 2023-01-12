@@ -47,7 +47,7 @@ message(STATUS "Enabled languages: ${languages}")
 
 project(k2 ${languages})
 
-set(K2_VERSION "1.17")
+set(K2_VERSION "1.23.3")
 
 # ----------------- Supported build types for K2 project -----------------
 set(K2_ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
@@ -77,6 +77,14 @@ option(K2_ENABLE_BENCHMARK "Whether to enable benchmark" ON)
 option(K2_WITH_CUDA "Whether to build k2 with CUDA" ${_K2_WITH_CUDA})
 option(K2_ENABLE_NVTX "Whether to build k2 with the NVTX library" ON)
 option(K2_ENABLE_TESTS "Whether to build tests" ON)
+
+# You have to enable this option if you will run k2 on a machine different from
+# the one you used to build k2 and the two machines have different types of GPUs
+#
+# We set it to OFF by default since most users will use the same machine to build
+# and run k2. If you enable it, it will take much longer to build k2 and the
+# resulting shared library also becomes larger in filesize.
+option(K2_BUILD_FOR_ALL_ARCHS "Whether to build k2 for all GPU architectures" OFF)
 
 if(NOT K2_WITH_CUDA)
   message(STATUS "Set K2_ENABLE_NVTX to OFF since K2_WITH_CUDA is OFF")
@@ -183,7 +191,7 @@ endif()
 if(NOT K2_COMPILER_SUPPORTS_CXX14)
   message(FATAL_ERROR "
     k2 requires a compiler supporting at least C++14.
-    If you are using GCC, please upgrade it to at least version 5.0.
+    If you are using GCC, please upgrade it to at least version 7.0.
     If you are using Clang, please upgrade it to at least version 3.4.")
 endif()
 
@@ -234,19 +242,24 @@ if(K2_WITH_CUDA)
   endif()
   message(STATUS "K2_COMPUTE_ARCH_CANDIDATES ${K2_COMPUTE_ARCH_CANDIDATES}")
 
-  set(K2_COMPUTE_ARCHS)
+  if(NOT K2_BUILD_FOR_ALL_ARCHS)
+    set(K2_COMPUTE_ARCHS)
 
-  foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
-    if("${K2_COMPUTE_ARCH_FLAGS}" MATCHES ${COMPUTE_ARCH})
-      message(STATUS "Adding arch ${COMPUTE_ARCH}")
-      list(APPEND K2_COMPUTE_ARCHS ${COMPUTE_ARCH})
-    else()
-      message(STATUS "Skipping arch ${COMPUTE_ARCH}")
+    foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
+      if("${K2_COMPUTE_ARCH_FLAGS}" MATCHES ${COMPUTE_ARCH})
+        message(STATUS "Adding arch ${COMPUTE_ARCH}")
+        list(APPEND K2_COMPUTE_ARCHS ${COMPUTE_ARCH})
+      else()
+        message(STATUS "Skipping arch ${COMPUTE_ARCH}")
+      endif()
+    endforeach()
+
+    if(NOT K2_COMPUTE_ARCHS)
+      set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
     endif()
-  endforeach()
-
-  if(NOT K2_COMPUTE_ARCHS)
-    set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
+  else()
+      message(STATUS "Build k2 for all GPU architectures")
+      set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
   endif()
 
   message(STATUS "K2_COMPUTE_ARCHS: ${K2_COMPUTE_ARCHS}")
@@ -341,6 +354,7 @@ if(WIN32)
   # 4624: destructor was implicitly defined as deleted
   # 4700: uninitialized local variable 'device' used
   # 4722: destructor never returns
+  # 4805: '|': unsafe mix of type 'uintptr_t' and type 'bool' in operation
   # 4819: The file contains a character that cannot be presented in the current code page.
   # 4838: conversion from 'type_1' to 'type_2' requires a narrowing conversion
   # 4996: "getenv": This function is unsafe
@@ -353,8 +367,8 @@ if(WIN32)
       /wd4101
       /wd4190
       /wd4224
-      /wd4251
       /wd4244
+      /wd4251
       /wd4267
       /wd4275
       /wd4305
@@ -363,6 +377,7 @@ if(WIN32)
       /wd4624
       /wd4700
       /wd4722
+      /wd4805
       /wd4819
       /wd4838
       /wd4996

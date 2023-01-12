@@ -55,7 +55,7 @@ cd $k2_dir
 export K2_ROOT_DIR=$k2_dir
 echo "K2_ROOT_DIR: $K2_ROOT_DIR"
 
-K2_PYTHON_VERSION=$(python3 -c "import sys; print(sys.version[:3])")
+K2_PYTHON_VERSION=$(python -c "import sys; print('.'.join(sys.version.split('.')[:2]))")
 
 if [ -z $K2_CUDA_VERSION ]; then
   echo "env var K2_CUDA_VERSION is not set, defaults to 10.1"
@@ -90,7 +90,10 @@ export K2_BUILD_TYPE
 
 if [ ! -z $K2_IS_GITHUB_ACTIONS ]; then
   export K2_IS_GITHUB_ACTIONS
-  conda remove -q pytorch cudatoolkit
+  conda remove -q pytorch
+  if [[ $K2_TORCH_VERSION != "1.13.0" && $K2_TORCH_VERSION != "1.13.1" ]]; then
+    conda remove -q cudatoolkit
+  fi
   conda clean -q -a
 else
   export K2_IS_GITHUB_ACTIONS=0
@@ -98,7 +101,19 @@ fi
 
 if [ -z $K2_CONDA_TOKEN ]; then
   echo "Auto upload to anaconda.org is disabled since K2_CONDA_TOKEN is not set"
-  conda build --no-test --no-anaconda-upload -c pytorch -c conda-forge ./scripts/conda/k2
+  if [[ $K2_TORCH_VERSION == "1.13.0" || $K2_TORCH_VERSION == "1.13.1" ]]; then
+    # From torch 1.13, the command to install torch is
+    # conda install pytorch torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
+    conda build --no-test --no-anaconda-upload -c pytorch -c nvidia ./scripts/conda-torch-ge-1.13/k2
+  else
+    conda build --no-test --no-anaconda-upload -c pytorch -c conda-forge ./scripts/conda/k2
+  fi
 else
-  conda build --no-test -c pytorch -c conda-forge --token $K2_CONDA_TOKEN ./scripts/conda/k2
+  if [[ $K2_TORCH_VERSION == "1.13.0" || $K2_TORCH_VERSION == "1.13.1" ]]; then
+    # From torch 1.13, the command to install torch is
+    # conda install pytorch torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
+    conda build --no-test -c pytorch -c nvidia --token $K2_CONDA_TOKEN ./scripts/conda-torch-ge-1.13/k2
+  else
+    conda build --no-test -c pytorch -c conda-forge --token $K2_CONDA_TOKEN ./scripts/conda/k2
+  fi
 fi

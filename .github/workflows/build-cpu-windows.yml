@@ -21,8 +21,24 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '.github/workflows/build-cpu-windows.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
   pull_request:
     types: [labeled]
+    paths:
+      - '.github/workflows/build-cpu-windows.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+
+concurrency:
+  group: build-cpu-windows-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   BUILD_TYPE: Release
@@ -84,10 +100,29 @@ jobs:
           cmake --version
           cmake --help
 
-      - name: Configure CMake
+
+
+      - name: Build wheel
         shell: bash
         run: |
-          mkdir build_release
+          export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release"
+          python3 setup.py bdist_wheel
+          ls -lh dist/
+          pip install ./dist/*.whl
+
+      - name: Upload Wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-2019-cpu
+          path: dist/*.whl
+
+      - name: Configure CMake
+        shell: bash
+        env:
+          torch: ${{ matrix.torch }}
+        run: |
+          python3 ./scripts/github_actions/fix_torch.py
+          mkdir -p build_release
           cd build_release
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
           ls -lh
@@ -103,14 +138,6 @@ jobs:
           ls -lh lib/*/*
           ls -lh bin/*/*
 
-      - name: Build wheel
-        shell: bash
-        run: |
-          export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release"
-          python3 setup.py bdist_wheel
-          ls -lh dist/
-          pip install ./dist/*.whl
-
       - name: Run tests
         shell: bash
         run: |
@@ -118,8 +145,3 @@ jobs:
           # disable python tests for k2host
           ctest -C Release --output-on-failure -E host
 
-      - name: Upload Wheel
-        uses: actions/upload-artifact@v2
-        with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-2019-cpu
-          path: dist/*.whl

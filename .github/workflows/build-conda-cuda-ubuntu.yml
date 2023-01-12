@@ -23,6 +23,10 @@ on:
     tags:
       - '*'
 
+concurrency:
+  group: build_conda_cuda_ubuntu-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   K2_BUILD_TYPE: Release
 
@@ -78,6 +82,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          channels: conda-forge
           activate-environment: k2
 
       - name: Display Python version
@@ -92,7 +97,11 @@ jobs:
           conda install -y -q anaconda-client
           conda install -y -q conda-build
           conda install -y -q bs4 requests tqdm
-          conda install -y -q -c pytorch -c conda-forge pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
+          if [[ ${{ matrix.torch }} == "1.13.0" || ${{ matrix.torch }} == "1.13.1" ]]; then
+            conda install -y -q -c pytorch -c nvidia pytorch=${{ matrix.torch }} pytorch-cuda=${{ matrix.cuda }}
+          else
+            conda install -y -q -c pytorch -c conda-forge pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
+          fi
 
       - name: Display conda info
         shell: bash -l {0}
@@ -125,3 +134,13 @@ jobs:
         run: |
           export K2_BUILD_TYPE=$K2_BUILD_TYPE
           ./scripts/build_conda.sh
+
+      - name: Display generated files
+        run: |
+          ls -lh /usr/share/miniconda/envs/k2/conda-bld/linux-64
+
+      - name: Upload generated files
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-cuda-${{ matrix.cuda }}-python-${{ matrix.python-version }}-ubuntu-18.04
+          path: /usr/share/miniconda/envs/k2/conda-bld/linux-64/*.tar.bz2
