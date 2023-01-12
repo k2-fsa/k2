@@ -850,7 +850,8 @@ def rnnt_loss_pruned(
     modified: bool = False,
     normalized: bool = True,
     reduction: Optional[str] = "mean",
-) -> Tensor:
+    return_grad: bool = False,
+) -> Union[Tensor, Tuple[Tensor, Tuple[Tensor, Tensor]]]:
     """A RNN-T loss with pruning, which uses a pruned 'joiner' network output
     as input, i.e. a 4 dimensions tensor with shape (B, T, s_range, C),
     s_range means the symbols number kept for each frame.
@@ -889,10 +890,20 @@ def rnnt_loss_pruned(
         `mean`: apply `torch.mean` over the batches.
         `sum`: the output will be summed.
         Default: `mean`
+      return_grad:
+        Whether to return grads of px and py, this grad standing for the
+        occupation probability is the output of the backward with a
+        `fake gradient`, the `fake gradient` is the same as the gradient you'd
+        get if you did `torch.autograd.grad((-loss.sum()), [px, py])`, note, the
+        loss here is the loss with reduction "none".
+        This is useful to implement the pruned version of rnnt loss.
     Returns:
-      If recursion is `none`, returns a tensor of shape (B,), containing the
-      total RNN-T loss values for each element of the batch, otherwise a scalar
-      with the reduction applied.
+       If return_grad is False, returns a tensor of shape (B,), containing the
+       total RNN-T loss values for each element of the batch if reduction equals
+       to "none", otherwise a scalar with the reduction applied.
+       If return_grad is True, the grads of px and py, which is the output of
+       backward with a `fake gradient`(see above), will be returned too. And the
+       returned value will be a tuple like (loss, (px_grad, py_grad)).
     """
     px, py = get_rnnt_logprobs_pruned(
         logits=logits,
@@ -911,17 +922,21 @@ def rnnt_loss_pruned(
         )  # [B][S][1]
         px += px_external_lm
 
-    negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
+    scores_and_grads = mutual_information_recursion(
+        px=px, py=py, boundary=boundary, return_grad=return_grad
+    )
+    negated_loss = scores_and_grads[0] if return_grad else scores_and_grads
     if reduction == "none":
-        return -negated_loss
+        loss = -negated_loss
     elif reduction == "mean":
-        return -torch.mean(negated_loss)
+        loss = -torch.mean(negated_loss)
     elif reduction == "sum":
-        return -torch.sum(negated_loss)
+        loss = -torch.sum(negated_loss)
     else:
         raise ValueError (
             f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
         )
+    return (loss, scores_and_grads[1]) if return_grad else loss
 
 
 def get_rnnt_logprobs_smoothed(
