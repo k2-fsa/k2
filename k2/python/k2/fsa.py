@@ -222,6 +222,8 @@ class Fsa(object):
             self.__dict__[name] = dict()
 
         self._tensor_attr['scores'] = _k2.as_float(self.arcs.values()[:, -1])
+        self._tensor_attr["labels"] = self.arcs.values()[:, 2]
+        self.labels_version = self._tensor_attr["labels"]._version
         if aux_labels is not None:
             if isinstance(aux_labels, torch.Tensor):
                 self.aux_labels = aux_labels.to(torch.int32)
@@ -396,6 +398,7 @@ class Fsa(object):
             if name == 'labels':
                 assert value.dtype == torch.int32
                 self.arcs.values()[:, 2] = value
+                self.labels_version = self._tensor_attr["labels"]._version
                 # fix_final_labels() will change 0's to -1's and vice versa to
                 # ensure that constraints on where final-labels should appear,
                 # are satisfied.
@@ -430,28 +433,21 @@ class Fsa(object):
         return self.arcs.num_elements()
 
     @property
-    def labels(self) -> torch.Tensor:
-        '''Return the labels.
-
-        Returns:
-          Return a 1-D `torch.Tensor` with dtype `torch.int32`.
-        '''
-        try:
-            return self.arcs.values()[:, 2]
-        except Exception as e:
-            # print the exception because it will probably be lost, since
-            # python's getting code will back off to __getattr__.
-            import traceback
-            traceback.print_exc()
-            raise e
-
-    @property
     def properties(self) -> int:
         # instead of accessing self._properties, we use
         # self.__dict__.{get,set}('_properties') in order to
         # avoid calling __getattr__ and any complexity involved in that.
         properties = self.__dict__.get('_properties', None)
         if properties is not None:
+            if self.labels._version != self.labels_version:
+                raise RuntimeError(
+                    "The fsa attribute (labels) has been inappropriately modified like:\n"
+                    "    fsa.labels[xxx] = yyy\n"
+                    "The correct way should be like:\n"
+                    "    labels = fsa.labels\n"
+                    "    labels[xxx] = yyy\n"
+                    "    fsa.labels = labels"
+                )
             return properties  # Return cached properties.
 
         if self.arcs.num_axes() == 2:
