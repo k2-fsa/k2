@@ -391,7 +391,6 @@ class Fsa(object):
           value:
             Value of the attribute.
         '''
-
         assert name not in ('_tensor_attr', '_non_tensor_attr', 'arcs',
                             '_cache', '_properties', 'properties')
 
@@ -904,7 +903,7 @@ class Fsa(object):
         dest_name_len = len(dest_name)
         to_move = []
         for name, value in list(self._non_tensor_attr.items()):
-            if name[:src_name_len] == src_name:
+            if name[:src_name_len] == src_name and name != "labels_version":
                 # remove src_name from prefix and replace with dest_name
                 new_name = dest_name + name[src_name_len:]
                 to_move.append((name, new_name, value))
@@ -914,6 +913,10 @@ class Fsa(object):
         for name, new_name, value in to_move:
             self._non_tensor_attr[new_name] = value
             del self._non_tensor_attr[name]
+
+        if dest_name == "labels":
+            self.labels_version = self.labels._version
+
         return self
 
     def invert_(self) -> 'Fsa':
@@ -1190,10 +1193,11 @@ class Fsa(object):
         '''
         if include_scores:
             for name, value in self._tensor_attr.items():
-                yield name, value
+                if name != "labels":
+                    yield name, value
         else:
             for name, value in self._tensor_attr.items():
-                if name != 'scores':
+                if name not in ('scores', 'labels'):
                     yield name, value
 
     def named_non_tensor_attr(self) -> Iterator[Tuple[str, Any]]:
