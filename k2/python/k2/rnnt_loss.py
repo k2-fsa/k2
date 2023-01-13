@@ -1156,7 +1156,6 @@ def rnnt_loss_pruned(
     termination_symbol: int,
     boundary: Tensor = None,
     normalized: bool = True,
-    reduction: Optional[str] = "mean",
     return_grad: bool = False,
     rnnt_type: str = "regular",
     delay_penalty: float = 0.0,
