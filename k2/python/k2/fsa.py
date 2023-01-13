@@ -444,7 +444,8 @@ class Fsa(object):
         if properties is not None:
             if self.labels._version != self.labels_version:
                 raise RuntimeError(
-                    "The fsa attribute (labels) has been inappropriately modified like:\n"
+                    "The fsa attribute (labels) has been inappropriately "
+                    "modified like:\n"
                     "    fsa.labels[xxx] = yyy\n"
                     "The correct way should be like:\n"
                     "    labels = fsa.labels\n"
