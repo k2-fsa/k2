@@ -200,7 +200,7 @@ FsaVec SelfAlignment(
             int32_t range_offset = fsa_idx0 * rng_stride_0 + t * rng_stride_1 + token_index * rng_stride_2;
             int32_t range_offset_of_lower_bound_of_next_time_step = fsa_idx0 * rng_stride_0 + (t + 1) * rng_stride_1;
             int32_t actual_u = ranges_data[range_offset];
-            int32_t y_offset = fsa_idx0 * y_stride_0 + actual_u;
+            int32_t y_offset = fsa_idx0 * y_stride_0 + actual_u * y_stride_1;
             int32_t arc_label =  y_data[y_offset];
             int32_t next_state_idx1, logits_offset;
             arc.src_state = state_idx1;
