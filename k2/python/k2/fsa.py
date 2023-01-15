@@ -222,6 +222,12 @@ class Fsa(object):
             self.__dict__[name] = dict()
 
         self._tensor_attr['scores'] = _k2.as_float(self.arcs.values()[:, -1])
+        self._tensor_attr["labels"] = self.arcs.values()[:, 2]
+        # The attribute "fsa.labels_version" is used to check whether
+        # "fsa.labels" has been inappropriately modified,
+        # by comparing "fsa.labels_version" and "fsa.labels._version".
+        # See https://github.com/k2-fsa/k2/pull/1140 for details.
+        self.labels_version = self._tensor_attr["labels"]._version
         if aux_labels is not None:
             if isinstance(aux_labels, torch.Tensor):
                 self.aux_labels = aux_labels.to(torch.int32)
@@ -385,7 +391,6 @@ class Fsa(object):
           value:
             Value of the attribute.
         '''
-
         assert name not in ('_tensor_attr', '_non_tensor_attr', 'arcs',
                             '_cache', '_properties', 'properties')
 
@@ -396,6 +401,7 @@ class Fsa(object):
             if name == 'labels':
                 assert value.dtype == torch.int32
                 self.arcs.values()[:, 2] = value
+                self.labels_version = self._tensor_attr["labels"]._version
                 # fix_final_labels() will change 0's to -1's and vice versa to
                 # ensure that constraints on where final-labels should appear,
                 # are satisfied.
@@ -430,28 +436,22 @@ class Fsa(object):
         return self.arcs.num_elements()
 
     @property
-    def labels(self) -> torch.Tensor:
-        '''Return the labels.
-
-        Returns:
-          Return a 1-D `torch.Tensor` with dtype `torch.int32`.
-        '''
-        try:
-            return self.arcs.values()[:, 2]
-        except Exception as e:
-            # print the exception because it will probably be lost, since
-            # python's getting code will back off to __getattr__.
-            import traceback
-            traceback.print_exc()
-            raise e
-
-    @property
     def properties(self) -> int:
         # instead of accessing self._properties, we use
         # self.__dict__.{get,set}('_properties') in order to
         # avoid calling __getattr__ and any complexity involved in that.
         properties = self.__dict__.get('_properties', None)
         if properties is not None:
+            if self.labels._version != self.labels_version:
+                raise RuntimeError(
+                    "The fsa attribute (labels) has been inappropriately "
+                    "modified like:\n"
+                    "    fsa.labels[xxx] = yyy\n"
+                    "The correct way should be like:\n"
+                    "    labels = fsa.labels\n"
+                    "    labels[xxx] = yyy\n"
+                    "    fsa.labels = labels"
+                )
             return properties  # Return cached properties.
 
         if self.arcs.num_axes() == 2:
@@ -904,7 +904,7 @@ class Fsa(object):
         dest_name_len = len(dest_name)
         to_move = []
         for name, value in list(self._non_tensor_attr.items()):
-            if name[:src_name_len] == src_name:
+            if name[:src_name_len] == src_name and name != "labels_version":
                 # remove src_name from prefix and replace with dest_name
                 new_name = dest_name + name[src_name_len:]
                 to_move.append((name, new_name, value))
@@ -914,6 +914,10 @@ class Fsa(object):
         for name, new_name, value in to_move:
             self._non_tensor_attr[new_name] = value
             del self._non_tensor_attr[name]
+
+        if dest_name == "labels":
+            self.labels_version = self.labels._version
+
         return self
 
     def invert_(self) -> 'Fsa':
@@ -1190,10 +1194,11 @@ class Fsa(object):
         '''
         if include_scores:
             for name, value in self._tensor_attr.items():
-                yield name, value
+                if name != "labels":
+                    yield name, value
         else:
             for name, value in self._tensor_attr.items():
-                if name != 'scores':
+                if name not in ('scores', 'labels'):
                     yield name, value
 
     def named_non_tensor_attr(self) -> Iterator[Tuple[str, Any]]:
