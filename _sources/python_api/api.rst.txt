@@ -538,11 +538,6 @@ grad
 
 .. autoattribute:: k2.Fsa.grad
 
-labels
-^^^^^^
-
-.. autoattribute:: k2.Fsa.labels
-
 num_arcs
 ^^^^^^^^
 

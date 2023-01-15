@@ -164,7 +164,6 @@
 <li class="toctree-l4"><a class="reference internal" href="#id12">to</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id13">device</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#grad">grad</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#labels">labels</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#num-arcs">num_arcs</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#properties">properties</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#properties-str">properties_str</a></li>
@@ -3744,7 +3743,7 @@ and self._non_tensor_attr.</p>
 <h3>__getitem__<a class="headerlink" href="#getitem" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.__getitem__">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1011-L1043"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__getitem__" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1015-L1047"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__getitem__" title="Permalink to this definition"></a></dt>
 <dd><p>Get the i-th FSA.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
@@ -3768,7 +3767,7 @@ and self._non_tensor_attr.</p>
 <h3>__init__<a class="headerlink" href="#id5" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.__init__">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arcs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aux_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L119-L234"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__init__" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arcs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aux_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L119-L240"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__init__" title="Permalink to this definition"></a></dt>
 <dd><p>Build an Fsa from a tensor with optional aux_labels.</p>
 <p>It is useful when loading an Fsa from file.</p>
 <dl class="field-list simple">
@@ -3810,7 +3809,7 @@ by <code class="xref py py-func docutils literal notranslate"><span class="pre">
 <h3>__setattr__<a class="headerlink" href="#setattr" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.__setattr__">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__setattr__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L376-L424"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__setattr__" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__setattr__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L382-L430"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__setattr__" title="Permalink to this definition"></a></dt>
 <dd><div class="admonition caution">
 <p class="admonition-title">Caution</p>
 <p>We save a reference to <cite>value</cite>. If you need to change <cite>value</cite>
@@ -3834,7 +3833,7 @@ afterwards, please consider passing a copy of it.</p>
 <h3>__str__<a class="headerlink" href="#str" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.__str__">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L305-L310"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__str__" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L311-L316"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.__str__" title="Permalink to this definition"></a></dt>
 <dd><p>Return a string representation of this object</p>
 <p>For visualization and debug only.</p>
 <dl class="field-list simple">
@@ -3976,7 +3975,7 @@ on scores).</p></li>
 <h3>_invalidate_cache_<a class="headerlink" href="#invalidate-cache" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa._invalidate_cache_">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_invalidate_cache_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scores_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L236-L267"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._invalidate_cache_" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">_invalidate_cache_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scores_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L242-L273"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa._invalidate_cache_" title="Permalink to this definition"></a></dt>
 <dd><p>Intended for internal use only so its
 name begins with an underline.</p>
 <p>Also, it changes <cite>self</cite> in-place.</p>
@@ -3998,7 +3997,7 @@ to scores. If False, the whole cache is invalidated.</p>
 <h3>as_dict<a class="headerlink" href="#as-dict" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.as_dict">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">as_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1055-L1074"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.as_dict" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">as_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1059-L1078"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.as_dict" title="Permalink to this definition"></a></dt>
 <dd><p>Convert this Fsa to a dict (probably for purposes of serialization
 , e.g., torch.save).</p>
 <div class="admonition caution">
@@ -4021,7 +4020,7 @@ to scores. If False, the whole cache is invalidated.</p>
 <h3><a class="reference internal" href="#convert-attr-to-ragged">convert_attr_to_ragged</a><a class="headerlink" href="#convert-attr-to-ragged" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.convert_attr_to_ragged_">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">convert_attr_to_ragged_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1400-L1433"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.convert_attr_to_ragged_" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">convert_attr_to_ragged_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1405-L1438"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.convert_attr_to_ragged_" title="Permalink to this definition"></a></dt>
 <dd><p>Convert the attribute given by <cite>name</cite> from a 1-D torch.tensor
 to a k2.RaggedTensor.</p>
 <div class="admonition caution">
@@ -4051,7 +4050,7 @@ with dtype torch.int32.</p></li>
 <h3>draw<a class="headerlink" href="#draw" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.draw">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L336-L374"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.draw" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L342-L380"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.draw" title="Permalink to this definition"></a></dt>
 <dd><p>Render FSA as an image via graphviz, and return the Digraph object;
 and optionally save to file <cite>filename</cite>.
 <cite>filename</cite> must have a suffix that graphviz understands, such as
@@ -4082,7 +4081,7 @@ and optionally save to file <cite>filename</cite>.
 <h3>from_openfst<a class="headerlink" href="#from-openfst" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.from_openfst">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">from_openfst</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">acceptor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_aux_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aux_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ragged_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1305-L1363"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.from_openfst" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">from_openfst</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">acceptor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_aux_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aux_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ragged_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1310-L1368"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.from_openfst" title="Permalink to this definition"></a></dt>
 <dd><p>Create an Fsa from a string in OpenFST format (or a slightly more
 general format, if num_aux_labels &gt; 1). See also <a class="reference internal" href="#k2.Fsa.from_str" title="k2.Fsa.from_str"><code class="xref py py-func docutils literal notranslate"><span class="pre">from_str()</span></code></a>.</p>
 <p>The given string <cite>s</cite> consists of lines with the following format:</p>
@@ -4141,7 +4140,7 @@ a string will be unchanged.</p></li>
 <h3>from_str<a class="headerlink" href="#from-str" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.from_str">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">from_str</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">acceptor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_aux_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aux_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ragged_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openfst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1223-L1303"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.from_str" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">from_str</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">acceptor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_aux_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aux_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ragged_label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openfst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1228-L1308"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.from_str" title="Permalink to this definition"></a></dt>
 <dd><p>Create an Fsa from a string in the k2 or OpenFst format.
 (See also <a class="reference internal" href="#k2.Fsa.from_openfst" title="k2.Fsa.from_openfst"><code class="xref py py-func docutils literal notranslate"><span class="pre">from_openfst()</span></code></a>).</p>
 <p>The given string <cite>s</cite> consists of lines with the following format:</p>
@@ -4265,7 +4264,7 @@ from each state to the final state.</p>
 <h3>get_filler<a class="headerlink" href="#get-filler" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.get_filler">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">get_filler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attribute_name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L312-L334"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.get_filler" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">get_filler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attribute_name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L318-L340"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.get_filler" title="Permalink to this definition"></a></dt>
 <dd><p>Return the filler value associated with attribute names.</p>
 <p>This is 0 unless otherwise specified, but you can override this by
 for example, doing:</p>
@@ -4343,7 +4342,7 @@ on scores).</p></li>
 <h3>invert<a class="headerlink" href="#id10" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.invert">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L978-L989"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.invert" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L982-L993"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.invert" title="Permalink to this definition"></a></dt>
 <dd><p>Swap the <cite>labels</cite> and <cite>aux_labels</cite>.</p>
 <p>If there are symbol tables associated with <cite>labels</cite> and
 <cite>aux_labels</cite>, they are also swapped.</p>
@@ -4363,7 +4362,7 @@ on scores).</p></li>
 <h3><a href="#id124"><span class="problematic" id="id125">invert_</span></a><a class="headerlink" href="#id11" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.invert_">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">invert_</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L919-L976"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.invert_" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">invert_</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L923-L980"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.invert_" title="Permalink to this definition"></a></dt>
 <dd><p>Swap the <cite>labels</cite> and <cite>aux_labels</cite>.</p>
 <p>If there are symbol tables associated with <cite>labels</cite> and
 <cite>aux_labels</cite>, they are also swapped.</p>
@@ -4388,7 +4387,7 @@ is an <strong>in-place</strong> operation.</p>
 <h3><a class="reference internal" href="#rename-tensor-attribute">rename_tensor_attribute</a><a class="headerlink" href="#rename-tensor-attribute" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.rename_tensor_attribute_">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">rename_tensor_attribute_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dest_name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L868-L917"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.rename_tensor_attribute_" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">rename_tensor_attribute_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dest_name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L868-L921"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.rename_tensor_attribute_" title="Permalink to this definition"></a></dt>
 <dd><p>Rename a tensor attribute (or, as a special case ‘labels’),
 and also rename non-tensor attributes that are associated with it,
 i.e. that have it as a prefix.</p>
@@ -4453,7 +4452,7 @@ name ends with <cite>_</cite>.</p>
 <h3><a class="reference internal" href="#set-scores-stochastic">set_scores_stochastic</a><a class="headerlink" href="#set-scores-stochastic" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.set_scores_stochastic_">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">set_scores_stochastic_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scores</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1374-L1398"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.set_scores_stochastic_" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">set_scores_stochastic_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scores</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1379-L1403"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.set_scores_stochastic_" title="Permalink to this definition"></a></dt>
 <dd><p>Normalize the given <cite>scores</cite> and assign it to <cite>self.scores</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -4480,7 +4479,7 @@ will modify <cite>self</cite> <strong>in-place</strong>.</p>
 <h3>to<a class="headerlink" href="#id12" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.Fsa.to">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1085-L1121"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.to" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/fsa.py#L1089-L1125"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.Fsa.to" title="Permalink to this definition"></a></dt>
 <dd><p>Move the FSA onto a given device.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -4520,23 +4519,6 @@ It supports only cpu and cuda devices.</p>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-</section>
-<section id="labels">
-<h3>labels<a class="headerlink" href="#labels" title="Permalink to this headline"></a></h3>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="k2.Fsa.labels">
-<span class="sig-prename descclassname"><span class="pre">Fsa.</span></span><span class="sig-name descname"><span class="pre">labels</span></span><a class="headerlink" href="#k2.Fsa.labels" title="Permalink to this definition"></a></dt>
-<dd><p>Return the labels.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Return a 1-D <cite>torch.Tensor</cite> with dtype <cite>torch.int32</cite>.</p>
 </dd>
 </dl>
 </dd></dl>
