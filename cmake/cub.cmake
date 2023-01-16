@@ -23,6 +23,15 @@ function(download_cub)
   set(cub_URL  "https://github.com/NVlabs/cub/archive/1.15.0.tar.gz")
   set(cub_HASH "SHA256=1781ee5eb7f00acfee5bff88e3acfc67378f6b3c24281335e18ae19e1f2ff685")
 
+  # If you don't have access to the Internet, please download the file to your
+  # local drive and use the line below (you need to change it accordingly.
+  # I am placing it in /star-fj/fangjun/download/github, but you can place it
+  # anywhere you like)
+  if(EXISTS "/star-fj/fangjun/download/github/cub-1.15.0.tar.gz")
+    set(cub_URL  "file:///star-fj/fangjun/download/github/cub-1.15.0.tar.gz")
+  elseif(EXISTS "/star-fj/fangjun/tmp/cub-1.15.0.tar.gz")
+    set(cub_URL  "file:///star-fj/fangjun/tmp/cub-1.15.0.tar.gz")
+  endif()
 
   FetchContent_Declare(cub
     URL               ${cub_URL}
