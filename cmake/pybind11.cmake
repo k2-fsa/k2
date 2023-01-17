@@ -28,7 +28,11 @@ function(download_pybind11)
   # local drive and use the line below (you need to change it accordingly.
   # I am placing it in /star-fj/fangjun/download/github, but you can place it
   # anywhere you like)
-  # set(pybind11_URL  "file:///star-fj/fangjun/download/github/pybind11-5bc0943ed96836f46489f53961f6c438d2935357.zip")
+  if(EXISTS "/star-fj/fangjun/download/github/pybind11-5bc0943ed96836f46489f53961f6c438d2935357.zip")
+    set(pybind11_URL  "file:///star-fj/fangjun/download/github/pybind11-5bc0943ed96836f46489f53961f6c438d2935357.zip")
+  elseif(EXISTS "/tmp/pybind11-5bc0943ed96836f46489f53961f6c438d2935357.zip")
+    set(pybind11_URL  "file:///tmp/pybind11-5bc0943ed96836f46489f53961f6c438d2935357.zip")
+  endif()
 
 
   set(double_quotes "\"")

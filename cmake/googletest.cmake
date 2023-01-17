@@ -31,7 +31,11 @@ function(download_googltest)
   # local drive and use the line below (you need to change it accordingly.
   # I am placing it in /star-fj/fangjun/download/github, but you can place it
   # anywhere you like)
-  # set(googletest_URL  "file:///star-fj/fangjun/download/github/googletest-release-1.10.0.tar.gz")
+  if(EXISTS "/star-fj/fangjun/download/github/googletest-release-1.10.0.tar.gz")
+    set(googletest_URL  "file:///star-fj/fangjun/download/github/googletest-release-1.10.0.tar.gz")
+  elseif(EXISTS "/tmp/googletest-release-1.10.0.tar.gz")
+    set(googletest_URL  "file:///tmp/googletest-release-1.10.0.tar.gz")
+  endif()
 
   set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)

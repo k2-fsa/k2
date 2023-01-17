@@ -28,7 +28,11 @@ function(download_moderngpu)
   # local drive and use the line below (you need to change it accordingly.
   # I am placing it in /star-fj/fangjun/download/github, but you can place it
   # anywhere you like)
-  # set(moderngpu_URL  "file:///star-fj/fangjun/download/github/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip")
+  if(EXISTS "/star-fj/fangjun/download/github/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip")
+    set(moderngpu_URL  "file:///star-fj/fangjun/download/github/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip")
+  elseif(EXISTS "/tmp/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip")
+    set(moderngpu_URL  "file:///tmp/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip")
+  endif()
 
   FetchContent_Declare(moderngpu
     URL               ${moderngpu_URL}
