@@ -29,8 +29,8 @@ function(download_cub)
   # anywhere you like)
   if(EXISTS "/star-fj/fangjun/download/github/cub-1.15.0.tar.gz")
     set(cub_URL  "file:///star-fj/fangjun/download/github/cub-1.15.0.tar.gz")
-  elseif(EXISTS "/star-fj/fangjun/tmp/cub-1.15.0.tar.gz")
-    set(cub_URL  "file:///star-fj/fangjun/tmp/cub-1.15.0.tar.gz")
+  elseif(EXISTS "/tmp/cub-1.15.0.tar.gz")
+    set(cub_URL  "file:///tmp/cub-1.15.0.tar.gz")
   endif()
 
   FetchContent_Declare(cub
