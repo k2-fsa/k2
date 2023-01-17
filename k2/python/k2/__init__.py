@@ -23,6 +23,7 @@ if (
 from _k2 import DeterminizeWeightPushingType
 from _k2 import simple_ragged_index_select
 from _k2 import swoosh_l
+from _k2 import swoosh_r
 
 from .ragged import RaggedShape
 from .ragged import RaggedTensor
