@@ -88,27 +88,31 @@ class SwooshFunction
     const float *x_data = x.data_ptr<float>();
     const float *r2_data = r2.data_ptr<float>();
 
-    torch::Tensor g = torch::empty(x.sizes(), torch::kByte).to(x.device());
+    torch::Tensor g = torch::empty(x.sizes(), torch::kByte).contiguous().to(x.device());
 
     float *y_data = y.data_ptr<float>();
     uint8_t *g_data = g.data_ptr<uint8_t>();
+
+    float shift = kShift;
+    float coeff = kCoeff;
+    float offset = kOffset;
 
     K2_EVAL(
         context, x.numel(), lambda_compute_swoosh_forward, (int32_t i)->void {
           float xi = x_data[i];
           float yi = xi;  // will be the swoosh output
           float gi = 1;   // will be the gradient of log(1+exp(x-kShift))
-          float e = expf(xi - kShift);
+          float e = expf(xi - shift);
           gi = e / (1.0f + e);
           float l = log1pf(e);
-          yi = l - kCoeff * xi - kOffset;
+          yi = l - coeff * xi - offset;
           if (dropout_prob != 0.0f) {
             float ri = r_data[i];
             if (ri < dropout_prob) {
               yi = 0;
               //  gi currently represents swoosh'(x) + kCoeff, so
               //  this value corresponds to swoosh'(x) = 0
-              gi = kCoeff;
+              gi = coeff;
             } else {
               yi *= 1.0f / (1.0f - dropout_prob);
             }
@@ -136,13 +140,15 @@ class SwooshFunction
     const uint8_t *g_data = g.data_ptr<uint8_t>();
 
     torch::Tensor out_grad = y_grad[0];
+    out_grad = out_grad.contiguous();
     int32_t stride = out_grad.stride(-1);
     const float *out_grad_data = out_grad.data_ptr<float>();
 
-    torch::Tensor in_grad = torch::empty(g.sizes(), torch::kFloat32).to(g.device());
+    torch::Tensor in_grad = torch::empty(g.sizes(), torch::kFloat32).contiguous().to(g.device());
     float *in_grad_data = in_grad.data_ptr<float>();
 
     ContextPtr context = GetContext(out_grad);
+    float coeff = kCoeff;
     K2_EVAL(
         context, g.numel(), lambda_compute_swoosh_backward, (int32_t i)->void {
           float oi = out_grad_data[i * stride];
@@ -150,7 +156,7 @@ class SwooshFunction
           float ii = 1;
           float fi = 1;  // functional grad
 
-          fi = ((gi * (1.005f / 255.0f)) - kCoeff) / (1.0f - dropout_prob);
+          fi = ((gi * (1.005f / 255.0f)) - coeff) / (1.0f - dropout_prob);
           ii = oi * fi;
           in_grad_data[i] = ii;
         });
