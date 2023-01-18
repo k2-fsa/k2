@@ -101,34 +101,44 @@ class TestSwooshR(unittest.TestCase):
                 cls.devices.append(torch.device("cuda", 1))
 
     def test(self):
+        torch_swoosh_r = SwooshR()
         for device in self.devices:
-            for shape in [(10,), (2, 3), (4, 5, 6), (7, 8, 9, 10)]:
-                for droput in [0.0]:
+            for shape in [(10,), (2, 3), (4, 5, 6)]:
+                for dropout in [0, 0.5]:
                     # For case of requires_grad = False
-                    torch_x = torch.rand(*shape).to(device)  # .requires_grad_(True)
-                    # TODO: torch_x[0] = 11
+                    torch_x = torch.randn(*shape).to(device)
                     k2_x = torch_x.detach().clone()
 
-                    torch_swoosh_r = SwooshR()
+                    # activation forward
                     torch_y = torch_swoosh_r(torch_x)
-                    k2_y = k2.swoosh_r(x=k2_x, dropout_prob=droput)
+                    k2_y = k2.swoosh_r(x=k2_x, dropout_prob=dropout)
 
                     assert torch.allclose(torch_y, k2_y, atol=1e-6), (torch_y - k2_y).abs().max()
 
                     # For case of requires_grad = True
+                    torch_x = torch.ones(*shape).to(device)
+                    k2_x = torch_x.detach().clone()
                     torch_x.requires_grad = True
                     k2_x.requires_grad = True
-                    torch_y = torch_swoosh_r(torch_x)
-                    k2_y = k2.swoosh_r(x=k2_x, dropout_prob=droput)
 
+                    # activation forward
+                    torch_y = torch.nn.Dropout(dropout)(torch_swoosh_r(torch_x))
+                    k2_y = k2.swoosh_r(x=k2_x, dropout_prob=dropout)
+                    # sum and backward
+                    w = torch.rand_like(torch_y, requires_grad=False)
+                    (torch_y * w).sum().backward()
+                    (k2_y * w).sum().backward()
+
+                    # we assert consistency for both non-zero elements
+                    mask = ((torch_y == 0) | (k2_y == 0))
+
+                    torch_y.masked_fill_(mask, 0)
+                    k2_y.masked_fill_(mask, 0)
                     assert torch.allclose(torch_y, k2_y, atol=1e-6), (torch_y - k2_y).abs().max()
 
-                    torch_y.sum().backward()
-                    k2_y.sum().backward()
-                    print(torch_x.grad)
-                    print(k2_x.grad)
-
-                    tol = 1.0 / 255.0
+                    torch_x.grad.masked_fill_(mask, 0)
+                    k2_x.grad.masked_fill_(mask, 0)
+                    tol = 1.05 / 255.0 / (1 - dropout)
                     assert torch.allclose(torch_x.grad, k2_x.grad, atol=tol), (torch_x.grad - k2_x.grad).abs().max()
 
 

@@ -98,13 +98,10 @@ class SwooshFunction
           float xi = x_data[i];
           float yi = xi;  // will be the swoosh output
           float gi = 1;   // will be the gradient of log(1+exp(x-kShift))
-          if (xi < 10) {
-            float e = expf(xi - kShift);
-            gi = e / (1.0f + e);
-            float l = log1pf(e);
-            yi = l - kCoeff * xi - kOffset;
-          }
-          // else just keep yi = xi, g=1 if xi >= 10
+          float e = expf(xi - kShift);
+          gi = e / (1.0f + e);
+          float l = log1pf(e);
+          yi = l - kCoeff * xi - kOffset;
           if (dropout_prob != 0.0f) {
             float ri = r_data[i];
             if (ri < dropout_prob) {
@@ -112,6 +109,8 @@ class SwooshFunction
               //  gi currently represents swoosh'(x) + kCoeff, so
               //  this value corresponds to swoosh'(x) = 0
               gi = kCoeff;
+            } else {
+              yi *= 1.0f / (1.0f - dropout_prob);
             }
           }
 
@@ -137,7 +136,7 @@ class SwooshFunction
     const uint8_t *g_data = g.data_ptr<uint8_t>();
 
     torch::Tensor out_grad = y_grad[0];
-    int64_t stride = out_grad.strides()[0];
+    int32_t stride = out_grad.stride(-1);
     const float *out_grad_data = out_grad.data_ptr<float>();
 
     torch::Tensor in_grad = torch::empty(g.sizes(), torch::kFloat32).to(g.device());
