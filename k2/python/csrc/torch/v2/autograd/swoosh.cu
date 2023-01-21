@@ -71,22 +71,16 @@ class SwooshFunction
 
     torch::Tensor y = torch::empty_like(x).contiguous();
 
+    torch::Tensor r_total = torch::rand(x.numel() * 2, x.options()).contiguous();
     // for dropout
-    torch::Tensor r;
-    const float *r_data = nullptr;
-    if (dropout_prob != 0.0f) {
-      r = torch::rand_like(x).contiguous();
-      r_data = r.data_ptr<float>();
-    }
-
+    const float *r_data = r_total.data_ptr<float>();
     // for uint8 quantization
-    torch::Tensor r2 = torch::rand_like(x).contiguous();
+    const float *r2_data = r_data + x.numel();
 
     auto context = GetContext(x);
     DeviceGuard guard(context);
 
     const float *x_data = x.data_ptr<float>();
-    const float *r2_data = r2.data_ptr<float>();
 
     torch::Tensor g = torch::empty(x.sizes(), torch::kByte).contiguous().to(x.device());
 
@@ -119,8 +113,8 @@ class SwooshFunction
           }
 
           y_data[i] = yi;
-          unsigned char g_int =
-              (unsigned char)(gi * (255.0f / 1.005f) + r2_data[i]);
+          uint8_t g_int =
+              (uint8_t)(gi * (255.0f / 1.005f) + r2_data[i]);
           g_data[i] = g_int;
         });
 
@@ -141,6 +135,7 @@ class SwooshFunction
 
     torch::Tensor out_grad = y_grad[0];
     out_grad = out_grad.contiguous();
+
     int32_t stride = out_grad.stride(-1);
     const float *out_grad_data = out_grad.data_ptr<float>();
 

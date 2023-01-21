@@ -116,7 +116,7 @@ class TestSwooshR(unittest.TestCase):
                     assert torch.allclose(torch_y, k2_y, atol=1e-6), (torch_y - k2_y).abs().max()
 
                     # For case of requires_grad = True
-                    torch_x = torch.ones(*shape).to(device)
+                    torch_x = torch.rand(*shape).to(device)
                     k2_x = torch_x.detach().clone()
                     torch_x.requires_grad = True
                     k2_x.requires_grad = True
