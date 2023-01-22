@@ -96,9 +96,14 @@ class SwooshFunction
           float xi = x_data[i];
           float yi = xi;  // will be the swoosh output
           float gi = 1;   // will be the gradient of log(1+exp(x-kShift))
-          float e = expf(xi - shift);
-          gi = e / (1.0f + e);
+          float xi_offset = xi - shift;
+          float e = expf(xi_offset);
+          // gi = e / (1.0f + e);
+          gi = 1.0f - 1.0f / (1.0f + e);
           float l = log1pf(e);
+          if (isinf(l)) {
+            l = xi_offset;
+          }
           yi = l - coeff * xi - offset;
           if (dropout_prob != 0.0f) {
             float ri = r_data[i];
