@@ -77,12 +77,14 @@ class SwooshFunction
     // for uint8 quantization
     const float *r2_data = r_data + x.numel();
 
-    auto context = GetContext(x);
-    DeviceGuard guard(context);
+    ContextPtr context = GetContext(x);
 
     const float *x_data = x.data_ptr<float>();
 
-    torch::Tensor g = torch::empty(x.sizes(), torch::kByte).contiguous().to(x.device());
+    auto opts = torch::TensorOptions()
+                    .dtype(torch::kByte)
+                    .device(x.device());
+    torch::Tensor g = torch::empty(x.sizes(), opts).contiguous();
 
     float *y_data = y.data_ptr<float>();
     uint8_t *g_data = g.data_ptr<uint8_t>();
@@ -144,7 +146,10 @@ class SwooshFunction
     int32_t stride = out_grad.stride(-1);
     const float *out_grad_data = out_grad.data_ptr<float>();
 
-    torch::Tensor in_grad = torch::empty(g.sizes(), torch::kFloat32).contiguous().to(g.device());
+    auto opts = torch::TensorOptions()
+                    .dtype(torch::kFloat32)
+                    .device(g.device());
+    torch::Tensor in_grad = torch::empty(g.sizes(), opts).contiguous();
     float *in_grad_data = in_grad.data_ptr<float>();
 
     ContextPtr context = GetContext(out_grad);
