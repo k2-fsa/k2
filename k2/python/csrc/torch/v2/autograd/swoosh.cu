@@ -71,11 +71,17 @@ class SwooshFunction
 
     torch::Tensor y = torch::empty_like(x).contiguous();
 
-    torch::Tensor r_total = torch::rand(x.numel() * 2, x.options()).contiguous();
     // for dropout
-    const float *r_data = r_total.data_ptr<float>();
+    torch::Tensor r;
+    const float *r_data = nullptr;
+    if (dropout_prob != 0.0f) {
+      r = torch::rand_like(x).contiguous();
+      r_data = r.data_ptr<float>();
+    }
+
     // for uint8 quantization
-    const float *r2_data = r_data + x.numel();
+    torch::Tensor r2 = torch::rand(x.numel(), x.options()).contiguous();
+    const float *r2_data = r2.data_ptr<float>();
 
     ContextPtr context = GetContext(x);
 
