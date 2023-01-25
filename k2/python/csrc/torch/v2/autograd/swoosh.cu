@@ -58,7 +58,6 @@ class SwooshFunction
   static torch::Tensor forward(torch::autograd::AutogradContext *ctx,
                                torch::Tensor x, float dropout_prob) {
     bool requires_grad = x.requires_grad();
-    auto x_dtype = x.dtype();
 
     x = x.to(torch::kFloat32);
 
@@ -106,7 +105,6 @@ class SwooshFunction
           float gi = 1;   // will be the gradient of log(1+exp(x-kShift))
           float xi_offset = xi - shift;
           float e = expf(xi_offset);
-          // gi = e / (1.0f + e);
           gi = 1.0f - 1.0f / (1.0f + e);
           float l = log1pf(e);
           if (isinf(l)) {
