@@ -34,7 +34,6 @@ class SwooshRFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x: torch.Tensor) -> torch.Tensor:
         requires_grad = x.requires_grad
-        x_dtype = x.dtype
 
         if x.dtype == torch.float16:
             x = x.to(torch.float32)
@@ -113,7 +112,9 @@ class TestSwooshR(unittest.TestCase):
                     torch_y = torch_swoosh_r(torch_x)
                     k2_y = k2.swoosh_r(x=k2_x, dropout_prob=dropout)
 
-                    assert torch.allclose(torch_y, k2_y, atol=1e-6), (torch_y - k2_y).abs().max()
+                    assert torch.allclose(torch_y, k2_y, atol=1e-6), (
+                        (torch_y - k2_y).abs().max()
+                    )
 
                     # For case of requires_grad = True
                     torch_x = torch.rand(*shape).to(device)
@@ -130,16 +131,20 @@ class TestSwooshR(unittest.TestCase):
                     (k2_y * w).sum().backward()
 
                     # we assert consistency for both non-zero elements
-                    mask = ((torch_y == 0) | (k2_y == 0))
+                    mask = (torch_y == 0) | (k2_y == 0)
 
                     torch_y.masked_fill_(mask, 0)
                     k2_y.masked_fill_(mask, 0)
-                    assert torch.allclose(torch_y, k2_y, atol=1e-6), (torch_y - k2_y).abs().max()
+                    assert torch.allclose(torch_y, k2_y, atol=1e-6), (
+                        (torch_y - k2_y).abs().max()
+                    )
 
                     torch_x.grad.masked_fill_(mask, 0)
                     k2_x.grad.masked_fill_(mask, 0)
                     tol = 1.05 / 255.0 / (1 - dropout)
-                    assert torch.allclose(torch_x.grad, k2_x.grad, atol=tol), (torch_x.grad - k2_x.grad).abs().max()
+                    assert torch.allclose(torch_x.grad, k2_x.grad, atol=tol), (
+                        (torch_x.grad - k2_x.grad).abs().max()
+                    )
 
 
 if __name__ == "__main__":
