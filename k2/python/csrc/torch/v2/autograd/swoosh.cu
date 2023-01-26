@@ -82,7 +82,8 @@ class SwooshFunction
     torch::Tensor r2 = torch::rand(x.numel(), x.options()).contiguous();
     const float *r2_data = r2.data_ptr<float>();
 
-    ContextPtr context = GetContext(x);
+    auto context = GetContext(x);
+    DeviceGuard guard(context);
 
     const float *x_data = x.data_ptr<float>();
 
@@ -156,7 +157,9 @@ class SwooshFunction
     torch::Tensor in_grad = torch::empty(g.sizes(), opts).contiguous();
     float *in_grad_data = in_grad.data_ptr<float>();
 
-    ContextPtr context = GetContext(out_grad);
+    auto context = GetContext(out_grad);
+    DeviceGuard guard(context);
+
     float coeff = kCoeff;
     K2_EVAL(
         context, g.numel(), lambda_compute_swoosh_backward, (int32_t i)->void {
@@ -183,6 +186,92 @@ using SwooshRFunction = SwooshFunction<SwooshRConstants>;
 template class SwooshFunction<SwooshLConstants>;
 template class SwooshFunction<SwooshRConstants>;
 
+// simple version of SwooshL that does not redefine the backprop, used in
+// ActivationDropoutAndLinearFunction.
+template <typename SwooshConstants>
+torch::Tensor SwooshForward(torch::Tensor x) {
+  static constexpr float kShift = SwooshConstants::kShift;
+  static constexpr float kCoeff = SwooshConstants::kCoeff;
+  static constexpr float kOffset = SwooshConstants::kOffset;
+
+  x = x.to(torch::kFloat32).contiguous();
+  float *x_data = x.data_ptr<float>();
+
+  torch::Tensor y = torch::empty_like(x).contiguous();
+  float *y_data = y.data_ptr<float>();
+
+  float shift = kShift;
+  float coeff = kCoeff;
+  float offset = kOffset;
+  auto context = GetContext(x);
+  DeviceGuard guard(context);
+
+  K2_EVAL(
+      context, x.numel(), lambda_swoosh_forward, (int32_t i)->void {
+        float xi = x_data[i];
+        float yi = xi;  // will be the swoosh output
+        float xi_offset = xi - shift;
+        float e = expf(xi_offset);
+        float log_sum = log1pf(e);
+        if (isinf(log_sum)) {
+          log_sum = xi_offset;
+        }
+        yi = log_sum - coeff * xi - offset;
+        y_data[i] = yi;
+      });
+
+  return y;
+}
+
+// swooshl(x) = log(1 + exp(x-4)) - 0.08 * x - 0.035
+// x_deriv = -0.08 + exp(x-4) / (1 + exp(x-4))
+//         = -0.08 + (1 -  1 / (1 + exp(x-4)))
+//         = 0.92 - 1 / (1 + exp(x-4))
+// note: 1 + exp(x_offset) might be infinity, but 1 / (1 + exp(x_offset)) will be
+// 0 in that case.  This is partly why we rearranged the expression above, to avoid
+// infinity / infinity = nan.
+template <typename SwooshConstants>
+std::tuple<torch::Tensor, torch::Tensor> SwooshForwardAndDeriv(torch::Tensor x) {
+  static constexpr float kShift = SwooshConstants::kShift;
+  static constexpr float kCoeff = SwooshConstants::kCoeff;
+  static constexpr float kOffset = SwooshConstants::kOffset;
+
+  x = x.to(torch::kFloat32).contiguous();
+  float *x_data = x.data_ptr<float>();
+
+  torch::Tensor y = torch::empty_like(x).contiguous();
+  float *y_data = y.data_ptr<float>();
+
+  torch::Tensor deriv = torch::empty_like(x).contiguous();
+  float *d_data = deriv.data_ptr<float>();
+
+  float shift = kShift;
+  float coeff = kCoeff;
+  float offset = kOffset;
+
+  auto context = GetContext(x);
+  DeviceGuard guard(context);
+
+  K2_EVAL(
+      context, x.numel(), lambda_swoosh_forward, (int32_t i)->void {
+        float xi = x_data[i];
+        float yi = xi;  // will be the swoosh output
+        float xi_offset = xi - shift;
+        float denom = 1.0f + expf(xi_offset);
+        float inv_denom = 1.0 / denom;
+        float di = 0.92f - inv_denom;  // deriv
+        float log_denom = logf(denom);
+        if (isinf(log_denom)) {
+          log_denom = xi_offset;
+        }
+        yi = log_denom - coeff * xi - offset;
+        y_data[i] = yi;
+        d_data[i] = di;
+      });
+
+  return {y, deriv};
+}
+
 void PybindSwoosh(py::module &m) {
   m.def(
       "swoosh_l",
@@ -201,6 +290,42 @@ void PybindSwoosh(py::module &m) {
         return SwooshRFunction::apply(x, dropout_prob);
       },
       py::arg("x"), py::arg("dropout_prob"));
+
+  m.def(
+      "swoosh_l_forward",
+      [](torch::Tensor x) -> torch::Tensor {
+        auto context = GetContext(x);
+        DeviceGuard guard(context);
+        return SwooshForward<SwooshLConstants>(x);
+      },
+      py::arg("x"));
+
+  m.def(
+      "swoosh_r_forward",
+      [](torch::Tensor x) -> torch::Tensor {
+        auto context = GetContext(x);
+        DeviceGuard guard(context);
+        return SwooshForward<SwooshRConstants>(x);
+      },
+      py::arg("x"));
+
+  m.def(
+      "swoosh_l_forward_and_deriv",
+      [](torch::Tensor x) -> std::tuple<torch::Tensor, torch::Tensor> {
+        auto context = GetContext(x);
+        DeviceGuard guard(context);
+        return SwooshForwardAndDeriv<SwooshLConstants>(x);
+      },
+      py::arg("x"));
+
+  m.def(
+      "swoosh_r_forward_and_deriv",
+      [](torch::Tensor x) -> std::tuple<torch::Tensor, torch::Tensor> {
+        auto context = GetContext(x);
+        DeviceGuard guard(context);
+        return SwooshForwardAndDeriv<SwooshRConstants>(x);
+      },
+      py::arg("x"));
 }
 
 }  // namespace k2
