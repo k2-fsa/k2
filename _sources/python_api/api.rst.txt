@@ -303,6 +303,16 @@ simple_ragged_index_select
 
 .. autofunction:: simple_ragged_index_select
 
+swoosh_l
+--------
+
+.. autofunction:: swoosh_l
+
+swoosh_r
+--------
+
+.. autofunction:: swoosh_r
+
 to_dot
 ------
 
