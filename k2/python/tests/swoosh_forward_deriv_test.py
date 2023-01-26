@@ -18,7 +18,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R swoosh_l_test_py
+#  ctest --verbose -R swoosh_forward_deriv_test_py
 
 import unittest
 
@@ -64,10 +64,10 @@ def SwooshRForward(x: torch.Tensor):
 
 def SwooshRForwardAndDeriv(x: torch.Tensor):
     x_offset = x - 1
-    # swooshl(x) = log(1 + exp(x-4)) - 0.08 * x - 0.035
-    # x_deriv = -0.08 + exp(x-4) / (1 + exp(x-4))
-    #         = -0.08 + (1 -  1 / (1 + exp(x-4)))
-    #         = 0.92 - 1 / (1 + exp(x-4))
+    # swooshr(x) = log(1 + exp(x-1)) - 0.08 * x - 0.313261687
+    # x_deriv = -0.08 + exp(x-1) / (1 + exp(x-1))
+    #         = -0.08 + (1 -  1 / (1 + exp(x-1)))
+    #         = 0.92 - 1 / (1 + exp(x-1))
     # note: 1 + exp(x_offset) might be infinity, but 1 / (1 + exp(x_offset)) will be
     # 0 in that case.  This is partly why we rearranged the expression above, to avoid
     # infinity / infinity = nan.
@@ -125,7 +125,9 @@ class TestSwooshL(unittest.TestCase):
                     torch_x = torch.randn(*shape).to(device)
                     k2_x = torch_x.detach().clone()
 
-                    torch_y, torch_deriv = torch_forward_and_deviv_dict[func](torch_x)
+                    torch_y, torch_deriv = torch_forward_and_deviv_dict[func](
+                        torch_x
+                    )
                     k2_y, k2_deriv = k2_forward_and_deviv_dict[func](k2_x)
                     assert torch.allclose(torch_y, k2_y, atol=1e-6), (
                         device,
@@ -139,10 +141,8 @@ class TestSwooshL(unittest.TestCase):
                         shape,
                         (torch_deriv - k2_deriv).abs().max(),
                     )
-                    print(torch_deriv)
-                    print(k2_deriv)
 
 
 if __name__ == "__main__":
-    torch.manual_seed(20230116)
+    torch.manual_seed(20230126)
     unittest.main()
