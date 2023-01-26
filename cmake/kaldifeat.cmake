@@ -31,7 +31,11 @@ function(download_kaldifeat)
   # local drive and use the line below (you need to change it accordingly.
   # I am placing it in /star-fj/fangjun/download/github, but you can place it
   # anywhere you like)
-  # set(kaldifeat_URL "file:///star-fj/fangjun/download/github/kaldifeat-1.20.tar.gz")
+  if(EXISTS "/star-fj/fangjun/download/github/kaldifeat-1.20.tar.gz")
+    set(kaldifeat_URL "file:///star-fj/fangjun/download/github/kaldifeat-1.20.tar.gz")
+  elseif(EXISTS "/tmp/kaldifeat-1.20.tar.gz")
+    set(kaldifeat_URL "file:///tmp/kaldifeat-1.20.tar.gz")
+  endif()
 
   set(kaldifeat_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
