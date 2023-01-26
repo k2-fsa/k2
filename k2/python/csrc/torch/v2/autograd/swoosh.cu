@@ -251,12 +251,12 @@ std::tuple<torch::Tensor, torch::Tensor> SwooshForwardAndDeriv(
   DeviceGuard guard(context);
 
   K2_EVAL(
-      context, x.numel(), lambda_swoosh_forward, (int32_t i)->void {
+      context, x.numel(), lambda_swoosh_forward_and_deriv, (int32_t i)->void {
         float xi = x_data[i];
         float yi = xi;  // will be the swoosh output
         float xi_offset = xi - shift;
         float denom = 1.0f + expf(xi_offset);
-        float inv_denom = 1.0 / denom;
+        float inv_denom = 1.0f / denom;
         float di = 0.92f - inv_denom;  // deriv
         float log_denom = logf(denom);
         if (isinf(log_denom)) {
