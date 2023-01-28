@@ -56,9 +56,9 @@ class SwooshRFunction(torch.autograd.Function):
                 floor = coeff
                 ceil = 1.0 + coeff + 0.005
 
-                d_scaled = (grad - floor) * (255.0 / (ceil - floor)) + torch.rand_like(
-                    grad
-                )
+                d_scaled = (grad - floor) * (
+                    255.0 / (ceil - floor)
+                ) + torch.rand_like(grad)
                 if __name__ == "__main__":
                     # for self-testing only.
                     assert d_scaled.min() >= 0.0
