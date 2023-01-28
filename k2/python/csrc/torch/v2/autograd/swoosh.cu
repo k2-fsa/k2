@@ -58,6 +58,9 @@ class SwooshFunction
 
   static torch::Tensor forward(torch::autograd::AutogradContext *ctx,
                                torch::Tensor x, float dropout_prob) {
+    auto context = GetContext(x);
+    DeviceGuard guard(context);
+
     bool requires_grad = x.requires_grad();
 
     x = x.to(torch::kFloat32);
@@ -82,9 +85,6 @@ class SwooshFunction
     // for uint8 quantization
     torch::Tensor r2 = torch::rand(x.numel(), x.options()).contiguous();
     const float *r2_data = r2.data_ptr<float>();
-
-    auto context = GetContext(x);
-    DeviceGuard guard(context);
 
     const float *x_data = x.data_ptr<float>();
 
@@ -149,13 +149,13 @@ class SwooshFunction
     int32_t stride = out_grad.stride(-1);
     const float *out_grad_data = out_grad.data_ptr<float>();
 
+    auto context = GetContext(out_grad);
+    DeviceGuard guard(context);
+
     auto opts =
         torch::TensorOptions().dtype(torch::kFloat32).device(g.device());
     torch::Tensor in_grad = torch::empty(g.sizes(), opts).contiguous();
     float *in_grad_data = in_grad.data_ptr<float>();
-
-    auto context = GetContext(out_grad);
-    DeviceGuard guard(context);
 
     float coeff = kCoeff;
     K2_EVAL(
@@ -187,12 +187,15 @@ template class SwooshFunction<SwooshRConstants>;
 // ActivationDropoutAndLinearFunction.
 template <typename SwooshConstants>
 torch::Tensor SwooshForward(torch::Tensor x) {
+  auto context = GetContext(x);
+  DeviceGuard guard(context);
+
   static constexpr float kShift = SwooshConstants::kShift;
   static constexpr float kCoeff = SwooshConstants::kCoeff;
   static constexpr float kOffset = SwooshConstants::kOffset;
 
   x = x.to(torch::kFloat32).contiguous();
-  float *x_data = x.data_ptr<float>();
+  const float *x_data = x.data_ptr<float>();
 
   torch::Tensor y = torch::empty_like(x).contiguous();
   float *y_data = y.data_ptr<float>();
@@ -200,8 +203,6 @@ torch::Tensor SwooshForward(torch::Tensor x) {
   float shift = kShift;
   float coeff = kCoeff;
   float offset = kOffset;
-  auto context = GetContext(x);
-  DeviceGuard guard(context);
 
   K2_EVAL(
       context, x.numel(), lambda_swoosh_forward, (int32_t i)->void {
@@ -230,12 +231,15 @@ torch::Tensor SwooshForward(torch::Tensor x) {
 template <typename SwooshConstants>
 std::tuple<torch::Tensor, torch::Tensor> SwooshForwardAndDeriv(
     torch::Tensor x) {
+  auto context = GetContext(x);
+  DeviceGuard guard(context);
+
   static constexpr float kShift = SwooshConstants::kShift;
   static constexpr float kCoeff = SwooshConstants::kCoeff;
   static constexpr float kOffset = SwooshConstants::kOffset;
 
   x = x.to(torch::kFloat32).contiguous();
-  float *x_data = x.data_ptr<float>();
+  const float *x_data = x.data_ptr<float>();
 
   torch::Tensor y = torch::empty_like(x).contiguous();
   float *y_data = y.data_ptr<float>();
@@ -246,9 +250,6 @@ std::tuple<torch::Tensor, torch::Tensor> SwooshForwardAndDeriv(
   float shift = kShift;
   float coeff = kCoeff;
   float offset = kOffset;
-
-  auto context = GetContext(x);
-  DeviceGuard guard(context);
 
   K2_EVAL(
       context, x.numel(), lambda_swoosh_forward_and_deriv, (int32_t i)->void {
