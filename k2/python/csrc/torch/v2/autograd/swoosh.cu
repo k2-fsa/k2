@@ -24,6 +24,94 @@
 
 namespace k2 {
 
+static constexpr const char *kSwooshLDoc = R"doc(
+Compute ``swoosh_l(x) = log(1 + exp(x-4)) - 0.08x - 0.035``,
+and optionally apply dropout.
+If x.requires_grad is True, it returns ``dropout(swoosh_l(l))``.
+In order to reduce momory, the function derivative ``swoosh_l'(x)``
+is encoded into 8-bits.
+If x.requires_grad is False, it returns ``swoosh_l(x)``.
+
+Args:
+  x:
+    A Tensor.
+  dropout_prob:
+    A float number. The default value is 0.
+)doc";
+
+static constexpr const char *kSwooshRDoc = R"doc(
+Compute ``swoosh_r(x) = log(1 + exp(x-1)) - 0.08x - 0.313261687``,
+and optionally apply dropout.
+If x.requires_grad is True, it returns ``dropout(swoosh_r(l))``.
+In order to reduce momory, the function derivative ``swoosh_r'(x)``
+is encoded into 8-bits.
+If x.requires_grad is False, it returns ``swoosh_r(x)``.
+
+Args:
+  x:
+    A Tensor.
+  dropout_prob:
+    A float number. The default value is 0.
+)doc";
+
+static constexpr const char *kSwooshLForwardDoc = R"doc(
+Compute ``swoosh_l(x) = log(1 + exp(x-4)) - 0.08x - 0.035``.
+
+Args:
+  x:
+    A Tensor.
+)doc";
+
+static constexpr const char *kSwooshRForwardDoc = R"doc(
+Compute ``swoosh_r(x) = log(1 + exp(x-1)) - 0.08x - 0.313261687``.
+
+Args:
+  x:
+    A Tensor.
+)doc";
+
+static constexpr const char *kSwooshLForwardAndDerivDoc = R"doc(
+Compute ``swoosh_l(x) = log(1 + exp(x-4)) - 0.08x - 0.035``,
+and also the derivative ``swoosh_l'(x) = 0.92 - 1 / (1 + exp(x-4))``.
+
+Note:
+
+  .. math::
+
+    \text{swoosh_l}'(x) &= -0.08 + \exp(x-4) / (1 + \exp(x-4)) \\
+                        &= -0.08 + (1 -  1 / (1 + \exp(x-4))) \\
+                        &= 0.92 - 1 / (1 + \exp(x-4))
+
+  ``1 + exp(x-4)`` might be infinity, but ``1 / (1 + exp(x-4))`` will
+  be 0 in that case. This is partly why we rearranged the expression above, to
+  avoid infinity / infinity = nan.
+
+Args:
+  x:
+    A Tensor.
+)doc";
+
+static constexpr const char *kSwooshRForwardAndDerivDoc = R"doc(
+Compute ``swoosh_r(x) = log(1 + exp(x-1)) - 0.08x - 0.313261687``,
+and also the derivative ``swoosh_r'(x) = 0.92 - 1 / (1 + exp(x-1))``.
+
+Note:
+
+  .. math::
+
+    \text{swoosh_r}'(x) &= -0.08 + \exp(x-1) / (1 + \exp(x-1)) \\
+                        &= -0.08 + (1 -  1 / (1 + \exp(x-1))) \\
+                        &= 0.92 - 1 / (1 + \exp(x-1))
+
+  ``1 + exp(x-1)`` might be infinity, but ``1 / (1 + exp(x-1))`` will
+  be 0 in that case. This is partly why we rearranged the expression above, to
+  avoid infinity / infinity = nan.
+
+Args:
+  x:
+    A Tensor.
+)doc";
+
 struct SwooshLConstants {
   static constexpr float kShift = 4;
   static constexpr float kCoeff = 0.08;
@@ -279,7 +367,7 @@ void PybindSwoosh(py::module &m) {
         DeviceGuard guard(context);
         return SwooshLFunction::apply(x, dropout_prob);
       },
-      py::arg("x"), py::arg("dropout_prob"));
+      py::arg("x"), py::arg("dropout_prob") = 0.0f, kSwooshLDoc);
 
   m.def(
       "swoosh_r",
@@ -288,7 +376,7 @@ void PybindSwoosh(py::module &m) {
         DeviceGuard guard(context);
         return SwooshRFunction::apply(x, dropout_prob);
       },
-      py::arg("x"), py::arg("dropout_prob"));
+      py::arg("x"), py::arg("dropout_prob") = 0.0f, kSwooshRDoc);
 
   m.def(
       "swoosh_l_forward",
@@ -297,7 +385,7 @@ void PybindSwoosh(py::module &m) {
         DeviceGuard guard(context);
         return SwooshForward<SwooshLConstants>(x);
       },
-      py::arg("x"));
+      py::arg("x"), kSwooshLForwardDoc);
 
   m.def(
       "swoosh_r_forward",
@@ -306,7 +394,7 @@ void PybindSwoosh(py::module &m) {
         DeviceGuard guard(context);
         return SwooshForward<SwooshRConstants>(x);
       },
-      py::arg("x"));
+      py::arg("x"), kSwooshRForwardDoc);
 
   m.def(
       "swoosh_l_forward_and_deriv",
@@ -315,7 +403,7 @@ void PybindSwoosh(py::module &m) {
         DeviceGuard guard(context);
         return SwooshForwardAndDeriv<SwooshLConstants>(x);
       },
-      py::arg("x"));
+      py::arg("x"), kSwooshLForwardAndDerivDoc);
 
   m.def(
       "swoosh_r_forward_and_deriv",
@@ -324,7 +412,7 @@ void PybindSwoosh(py::module &m) {
         DeviceGuard guard(context);
         return SwooshForwardAndDeriv<SwooshRConstants>(x);
       },
-      py::arg("x"));
+      py::arg("x"), kSwooshRForwardAndDerivDoc);
 }
 
 }  // namespace k2
