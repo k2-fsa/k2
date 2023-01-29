@@ -308,10 +308,30 @@ swoosh_l
 
 .. autofunction:: swoosh_l
 
+swoosh_l_forward
+----------------
+
+.. autofunction:: swoosh_l_forward
+
+swoosh_l_forward_and_deriv
+--------------------------
+
+.. autofunction:: swoosh_l_forward_and_deriv
+
 swoosh_r
 --------
 
 .. autofunction:: swoosh_r
+
+swoosh_r_forward
+----------------
+
+.. autofunction:: swoosh_r_forward
+
+swoosh_r_forward_and_deriv
+--------------------------
+
+.. autofunction:: swoosh_r_forward_and_deriv
 
 to_dot
 ------

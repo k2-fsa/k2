@@ -17,6 +17,7 @@
         <script src="../_static/jquery.js"></script>
         <script src="../_static/underscore.js"></script>
         <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -110,7 +111,11 @@
 <li class="toctree-l3"><a class="reference internal" href="#shortest-path">shortest_path</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#simple-ragged-index-select">simple_ragged_index_select</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#swoosh-l">swoosh_l</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#swoosh-l-forward">swoosh_l_forward</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#swoosh-l-forward-and-deriv">swoosh_l_forward_and_deriv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#swoosh-r">swoosh_r</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#swoosh-r-forward">swoosh_r_forward</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#swoosh-r-forward-and-deriv">swoosh_r_forward_and_deriv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#to-dot">to_dot</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#to-str">to_str</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#to-str-simple">to_str_simple</a></li>
@@ -3344,16 +3349,122 @@ True to use double.</p></li>
 <h2>swoosh_l<a class="headerlink" href="#swoosh-l" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.swoosh_l">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">swoosh_l</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dropout_prob</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.swoosh_l" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">swoosh_l</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dropout_prob</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.swoosh_l" title="Permalink to this definition"></a></dt>
+<dd><p>Compute <code class="docutils literal notranslate"><span class="pre">swoosh_l(x)</span> <span class="pre">=</span> <span class="pre">log(1</span> <span class="pre">+</span> <span class="pre">exp(x-4))</span> <span class="pre">-</span> <span class="pre">0.08x</span> <span class="pre">-</span> <span class="pre">0.035</span></code>,
+and optionally apply dropout.
+If x.requires_grad is True, it returns <code class="docutils literal notranslate"><span class="pre">dropout(swoosh_l(l))</span></code>.
+In order to reduce momory, the function derivative <code class="docutils literal notranslate"><span class="pre">swoosh_l'(x)</span></code>
+is encoded into 8-bits.
+If x.requires_grad is False, it returns <code class="docutils literal notranslate"><span class="pre">swoosh_l(x)</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – A Tensor.</p></li>
+<li><p><strong>dropout_prob</strong> – A float number. The default value is 0.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="swoosh-l-forward">
+<h2>swoosh_l_forward<a class="headerlink" href="#swoosh-l-forward" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.swoosh_l_forward">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">swoosh_l_forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.swoosh_l_forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute <code class="docutils literal notranslate"><span class="pre">swoosh_l(x)</span> <span class="pre">=</span> <span class="pre">log(1</span> <span class="pre">+</span> <span class="pre">exp(x-4))</span> <span class="pre">-</span> <span class="pre">0.08x</span> <span class="pre">-</span> <span class="pre">0.035</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – A Tensor.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="swoosh-l-forward-and-deriv">
+<h2>swoosh_l_forward_and_deriv<a class="headerlink" href="#swoosh-l-forward-and-deriv" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.swoosh_l_forward_and_deriv">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">swoosh_l_forward_and_deriv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#k2.swoosh_l_forward_and_deriv" title="Permalink to this definition"></a></dt>
+<dd><p>Compute <code class="docutils literal notranslate"><span class="pre">swoosh_l(x)</span> <span class="pre">=</span> <span class="pre">log(1</span> <span class="pre">+</span> <span class="pre">exp(x-4))</span> <span class="pre">-</span> <span class="pre">0.08x</span> <span class="pre">-</span> <span class="pre">0.035</span></code>,
+and also the derivative <code class="docutils literal notranslate"><span class="pre">swoosh_l'(x)</span> <span class="pre">=</span> <span class="pre">0.92</span> <span class="pre">-</span> <span class="pre">1</span> <span class="pre">/</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">exp(x-4))</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\text{swoosh_l}'(x) &amp;= -0.08 + \exp(x-4) / (1 + \exp(x-4)) \\
+                    &amp;= -0.08 + (1 -  1 / (1 + \exp(x-4))) \\
+                    &amp;= 0.92 - 1 / (1 + \exp(x-4))\end{split}\]</div>
+<p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">exp(x-4)</span></code> might be infinity, but <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">/</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">exp(x-4))</span></code> will
+be 0 in that case. This is partly why we rearranged the expression above, to
+avoid infinity / infinity = nan.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – A Tensor.</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 <section id="swoosh-r">
 <h2>swoosh_r<a class="headerlink" href="#swoosh-r" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.swoosh_r">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">swoosh_r</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dropout_prob</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.swoosh_r" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">swoosh_r</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dropout_prob</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.swoosh_r" title="Permalink to this definition"></a></dt>
+<dd><p>Compute <code class="docutils literal notranslate"><span class="pre">swoosh_r(x)</span> <span class="pre">=</span> <span class="pre">log(1</span> <span class="pre">+</span> <span class="pre">exp(x-1))</span> <span class="pre">-</span> <span class="pre">0.08x</span> <span class="pre">-</span> <span class="pre">0.313261687</span></code>,
+and optionally apply dropout.
+If x.requires_grad is True, it returns <code class="docutils literal notranslate"><span class="pre">dropout(swoosh_r(l))</span></code>.
+In order to reduce momory, the function derivative <code class="docutils literal notranslate"><span class="pre">swoosh_r'(x)</span></code>
+is encoded into 8-bits.
+If x.requires_grad is False, it returns <code class="docutils literal notranslate"><span class="pre">swoosh_r(x)</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – A Tensor.</p></li>
+<li><p><strong>dropout_prob</strong> – A float number. The default value is 0.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="swoosh-r-forward">
+<h2>swoosh_r_forward<a class="headerlink" href="#swoosh-r-forward" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.swoosh_r_forward">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">swoosh_r_forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#k2.swoosh_r_forward" title="Permalink to this definition"></a></dt>
+<dd><p>Compute <code class="docutils literal notranslate"><span class="pre">swoosh_r(x)</span> <span class="pre">=</span> <span class="pre">log(1</span> <span class="pre">+</span> <span class="pre">exp(x-1))</span> <span class="pre">-</span> <span class="pre">0.08x</span> <span class="pre">-</span> <span class="pre">0.313261687</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – A Tensor.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="swoosh-r-forward-and-deriv">
+<h2>swoosh_r_forward_and_deriv<a class="headerlink" href="#swoosh-r-forward-and-deriv" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.swoosh_r_forward_and_deriv">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">swoosh_r_forward_and_deriv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#k2.swoosh_r_forward_and_deriv" title="Permalink to this definition"></a></dt>
+<dd><p>Compute <code class="docutils literal notranslate"><span class="pre">swoosh_r(x)</span> <span class="pre">=</span> <span class="pre">log(1</span> <span class="pre">+</span> <span class="pre">exp(x-1))</span> <span class="pre">-</span> <span class="pre">0.08x</span> <span class="pre">-</span> <span class="pre">0.313261687</span></code>,
+and also the derivative <code class="docutils literal notranslate"><span class="pre">swoosh_r'(x)</span> <span class="pre">=</span> <span class="pre">0.92</span> <span class="pre">-</span> <span class="pre">1</span> <span class="pre">/</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">exp(x-1))</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\text{swoosh_r}'(x) &amp;= -0.08 + \exp(x-1) / (1 + \exp(x-1)) \\
+                    &amp;= -0.08 + (1 -  1 / (1 + \exp(x-1))) \\
+                    &amp;= 0.92 - 1 / (1 + \exp(x-1))\end{split}\]</div>
+<p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">exp(x-1)</span></code> might be infinity, but <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">/</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">exp(x-1))</span></code> will
+be 0 in that case. This is partly why we rearranged the expression above, to
+avoid infinity / infinity = nan.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – A Tensor.</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 <section id="to-dot">
