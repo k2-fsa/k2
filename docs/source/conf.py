@@ -49,6 +49,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.linkcode',
     'sphinx.ext.napoleon',
+    'sphinx.ext.mathjax',
     'sphinx_autodoc_typehints',
     'sphinx_rtd_theme',
     'sphinxcontrib.bibtex',
