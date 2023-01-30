@@ -317,7 +317,7 @@ torch::Tensor SwooshForward(torch::Tensor x) {
 // be 0 in that case.  This is partly why we rearranged the expression above, to
 // avoid infinity / infinity = nan.
 template <typename SwooshConstants>
-std::tuple<torch::Tensor, torch::Tensor> SwooshForwardAndDeriv(
+std::pair<torch::Tensor, torch::Tensor> SwooshForwardAndDeriv(
     torch::Tensor x) {
   auto context = GetContext(x);
   DeviceGuard guard(context);
