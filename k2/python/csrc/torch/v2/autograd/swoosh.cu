@@ -398,7 +398,7 @@ void PybindSwoosh(py::module &m) {
 
   m.def(
       "swoosh_l_forward_and_deriv",
-      [](torch::Tensor x) -> std::tuple<torch::Tensor, torch::Tensor> {
+      [](torch::Tensor x) -> std::pair<torch::Tensor, torch::Tensor> {
         auto context = GetContext(x);
         DeviceGuard guard(context);
         return SwooshForwardAndDeriv<SwooshLConstants>(x);
@@ -407,7 +407,7 @@ void PybindSwoosh(py::module &m) {
 
   m.def(
       "swoosh_r_forward_and_deriv",
-      [](torch::Tensor x) -> std::tuple<torch::Tensor, torch::Tensor> {
+      [](torch::Tensor x) -> std::pair<torch::Tensor, torch::Tensor> {
         auto context = GetContext(x);
         DeviceGuard guard(context);
         return SwooshForwardAndDeriv<SwooshRConstants>(x);
