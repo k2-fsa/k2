@@ -23,7 +23,7 @@ You can choose any CUDA version that is suitable for you.
 
 .. note::
 
-  You can install multiple CUDA versions into difference directories on your
+  You can install multiple CUDA versions into different directories on your
   system.
 
 
@@ -207,7 +207,7 @@ Now, install ``cuDNN`` for CUDA 11.0.
 
   wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.0-linux-x64-v8.0.5.39.tgz
 
-  tar xvf cudnn-11.0-linux-x64-v8.0.4.30.tgz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.0.3
+  tar xvf cudnn-11.0-linux-x64-v8.0.5.39.tgz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.0.3
 
 Set environment variables for CUDA 11.0
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -281,7 +281,7 @@ Now, install ``cuDNN`` for CUDA 11.3.
 
   wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.3-linux-x64-v8.2.0.53.tgz
 
-  tar xvf cudnn-11.3-linux-x64-v8.2.1.32.tgz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.3.1
+  tar xvf cudnn-11.3-linux-x64-v8.2.0.53.tgz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.3.1
 
 Set environment variables for CUDA 11.3
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -428,7 +428,7 @@ Now, install ``cuDNN`` for CUDA 11.6.
   wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.3-linux-x64-v8.2.0.53.tgz
 
   # Note: cudnn-11.3 works for CUDA 11.x
-  tar xvf cudnn-11.3-linux-x64-v8.2.1.32.tgz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.6.1
+  tar xvf cudnn-11.3-linux-x64-v8.2.0.53.tgz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.6.1
 
 Set environment variables for CUDA 11.6
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -502,7 +502,7 @@ Now, install ``cuDNN`` for CUDA 11.7.
   wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.3-linux-x64-v8.2.0.53.tgz
 
   # Note: cudnn-11.3 works for CUDA 11.x
-  tar xvf cudnn-11.3-linux-x64-v8.2.1.32.tgz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.7.1
+  tar xvf cudnn-11.3-linux-x64-v8.2.0.53.tgz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.7.1
 
 Set environment variables for CUDA 11.7
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
