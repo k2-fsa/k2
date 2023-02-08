@@ -460,7 +460,7 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   for (int32_t axis = 1; axis < num_axes; axis++) {
     // we are not creating the actual row_ids here, except for axis 1; we are
     // creating "composed row_ids" which map to the index on axis 0.
-    Array1<int32_t> row_ids = ans.RowIds(axis);
+    Array1<int32_t>& row_ids = ans.RowIds(axis);
     RowSplitsToRowIds(new_offsets.Row(axis), &row_ids);
   }
 
