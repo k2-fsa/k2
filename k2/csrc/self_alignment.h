@@ -32,11 +32,8 @@ namespace k2 {
 FsaVec SelfAlignment(
     torch::Tensor ranges,  // [B][S][T+1] if !modified, [B][S][T] if modified.
     torch::Tensor x_lens,  // [B][S+1][T]
-    // torch::Tensor blank_connections,
     torch::Tensor y,
-    // const Ragged<int32_t> &y,
     torch::Tensor logits,
-    // FsaVec * ofsa,
     Array1<int32_t> *arc_map);
 
 }  // namespace k2

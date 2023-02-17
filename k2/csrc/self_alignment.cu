@@ -1,8 +1,6 @@
 /**
- * @copyright
  * Copyright      2022  Xiaomi Corporation (authors: Liyong Guo)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,39 +57,20 @@ FsaVec SelfAlignment(
     const int32_t B = ranges.size(0), T = ranges.size(1), U = ranges.size(2);
 
 
-    // K2_LOG(INFO) << ranges[0][5];
-    // K2_LOG(INFO) << ranges[0];
     Dtype t = ScalarTypeToDtype(ranges.scalar_type());
-    // K2_CHECK_EQ(kInt64Dtype, t);
-    // K2_CHECK_EQ(torch::kLong, ranges.scalar_type());
     K2_CHECK_EQ(torch::kInt, ranges.scalar_type());
     K2_CHECK_EQ(torch::kInt, x_lens.scalar_type()); // int32_t
-    // Dtype t = ScalarTypeToDtype(ranges.GetDtype());
-    // std::is_same<ranges.scalar_type(), torch::kLong>::value;
-      // static_assert(std::is_same<t, kInt64Dtype>::value, "ranges is not kInt64Dtype")
-    // const int32_t *row_ids_data = row_ids.data_ptr<int32_t>();
-    // FOR_REAL_TYPES(t, t, {
-        const float *logits_data = logits.data_ptr<float>();
-        const int32_t *ranges_data = ranges.data_ptr<int32_t>();
-        const int32_t *x_lens_data = x_lens.data_ptr<int32_t>();
-        // const int32_t *blank_connections_data = blank_connections.data_ptr<int32_t>();
-        const int32_t *y_data = y.data_ptr<int32_t>();
-              int32_t rng_stride_0 = ranges.stride(0),
-                      rng_stride_1 = ranges.stride(1),
-                      rng_stride_2 = ranges.stride(2);
-              // int32_t blk_stride_0 = blank_connections.stride(0),
-              //         blk_stride_1 = blank_connections.stride(1),
-              //         blk_stride_2 = blank_connections.stride(2);
-              int32_t lg_stride_0 = logits.stride(0),
-                      lg_stride_1 = logits.stride(1),
-                      lg_stride_2 = logits.stride(2),
-                      lg_stride_3 = logits.stride(3);
-    // K2_LOG(INFO) << "stride_0: " << stride_0;
-    // K2_LOG(INFO) << "stride_1: " << stride_1;
-    // K2_LOG(INFO) << "stride_2: " << stride_2;
-    // int32_t numel = ranges.numel();
-    // Array1<int32_t> re_ranges(context, numel);
-    // f2s: fsa to states
+    const float *logits_data = logits.data_ptr<float>();
+    const int32_t *ranges_data = ranges.data_ptr<int32_t>();
+    const int32_t *x_lens_data = x_lens.data_ptr<int32_t>();
+    const int32_t *y_data = y.data_ptr<int32_t>();
+    const int32_t rng_stride_0 = ranges.stride(0),
+                  rng_stride_1 = ranges.stride(1),
+                  rng_stride_2 = ranges.stride(2);
+    const int32_t lg_stride_0 = logits.stride(0),
+                  lg_stride_1 = logits.stride(1),
+                  lg_stride_2 = logits.stride(2),
+                  lg_stride_3 = logits.stride(3);
     K2_CHECK_EQ(x_lens.numel(), B);
     Array1<int32_t> f2s_row_splits(context, B + 1);
     int32_t * f2s_row_splits_data = f2s_row_splits.Data();
@@ -136,8 +115,6 @@ FsaVec SelfAlignment(
             return;
           }
           int32_t range_offset = fsa_idx0 * rng_stride_0 + t * rng_stride_1 + token_index * rng_stride_2;
-          // int32_t blank_connections_data_offset = fsa_idx0 * blk_stride_0 + t * blk_stride_1 + token_index * blk_stride_2;
-          // int32_t next_state_idx1 = blank_connections_data[blank_connections_data_offset];
 
           int32_t next_state_idx1 = -1;
           // blank connections of last frame is -1
@@ -256,15 +233,6 @@ FsaVec SelfAlignment(
     });
     *arc_map = std::move(out_map);
     return Ragged<Arc>(ofsa_shape, arcs);
-
-
-
-    // int32_t * re_reanges_data = re_ranges.Data();
-    // K2_LOG(INFO) << "numel: " << numel;
-    // K2_EVAL(context, numel, lambda_set_range, (int32_t i) {
-    //     re_reanges_data[i] = ranges_data[i];
-    //     });
-    // auto cpu_range = re_ranges.To(GetCpuContext());
 
 }
 

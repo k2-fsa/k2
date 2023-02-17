@@ -35,12 +35,8 @@ void PybindSelfAlignment(py::module &m) {
         k2::DeviceGuard guard(k2::GetContext(ranges));
         k2::Array1<int32_t> label_map;
         k2::FsaVec ofsa = k2::SelfAlignment(ranges, x_lens, y, logits, &label_map);
-        // k2::FsaVec ofsa = k2::SelfAlignment(ranges, x_lens, blank_connections, y, logits, &label_map);
-        // k2::SelfAlignment(ranges, x_lens, blank_connections, y.any.Specialize<int32_t>(), boundary, p, &ofsa, &label_map);
-        // k2::SelfAlignment(ranges, x_lens, blank_connections, boundary, p, &ofsa, &label_map);
         torch::Tensor tensor = ToTorch(label_map);
         return std::make_pair(ofsa, tensor);
       },
       py::arg("ranges"), py::arg("x_lens"), py::arg("y"), py::arg("logits"));
-      // py::arg("ranges"), py::arg("x_lens"), py::arg("blank_connections"), py::arg("boundary"), py::arg("p"));
 }
