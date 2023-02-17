@@ -319,7 +319,7 @@ the FSA given in :numref:`autograd example`:
   fsa.scores = nnet_output
   fsa.draw('autograd_tropical.svg')
   fsa_vec = k2.create_fsa_vec([fsa])
-  total_scores = fsa.get_tot_scores(log_semiring=False, use_double_scores=False)
+  total_scores = fsa_vec.get_tot_scores(log_semiring=False, use_double_scores=False)
 
   total_scores.backward()
   print(nnet_output.grad)
