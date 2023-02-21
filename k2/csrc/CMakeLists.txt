@@ -79,14 +79,13 @@ set(context_srcs
   thread_pool.cu
   timer.cu
   top_sort.cu
-  torch_util.cu
   utils.cu
   nbest.cu
 )
 
 
 if(K2_USE_PYTORCH)
-  list(APPEND context_srcs pytorch_context.cu)
+  list(APPEND context_srcs pytorch_context.cu torch_util.cu)
 else()
   list(APPEND context_srcs default_context.cu)
 endif()

@@ -92,8 +92,9 @@ if(NOT K2_WITH_CUDA)
 endif()
 
 if(NOT K2_USE_PYTORCH)
-  message(FATAL_ERROR "\
-    Please set K2_USE_PYTORCH to ON.
+  message(WARNING "\
+    K2_USE_PYTORCH is OFF, only k2 core lib will be build.
+    If you want using with PyTorch, please turn it ON. 
     Support for other frameworks will be added later")
 endif()
 
