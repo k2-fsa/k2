@@ -426,7 +426,9 @@ install(FILES
   DESTINATION share/cmake/k2
 )
 
-install(FILES
-  ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py
-  DESTINATION ./
-)
+if(K2_USE_PYTORCH)
+  install(FILES
+    ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py
+    DESTINATION ./
+  )
+endif()
