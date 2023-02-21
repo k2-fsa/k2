@@ -91,6 +91,14 @@ if(NOT K2_WITH_CUDA)
   set(K2_ENABLE_NVTX OFF CACHE BOOL "" FORCE)
 endif()
 
+if(K2_WITH_CUDA)
+  find_package(CUDA QUIET)
+  message(STATUS "CUDA_INCLUDE_DIRS=${CUDA_INCLUDE_DIRS}")
+  message(STATUS "CUDA_LIBRARIES=${CUDA_LIBRARIES}")
+  message(STATUS "CUDA_nvToolsExt_LIBRARY=${CUDA_nvToolsExt_LIBRARY}")
+  message(STATUS "CUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}")
+endif()
+
 if(NOT K2_USE_PYTORCH)
   message(WARNING "\
     K2_USE_PYTORCH is OFF, only k2 core lib will be build.

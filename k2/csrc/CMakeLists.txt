@@ -38,6 +38,8 @@ add_library(k2_nvtx INTERFACE)
 target_include_directories(k2_nvtx INTERFACE ${CMAKE_SOURCE_DIR})
 if(K2_ENABLE_NVTX)
   target_compile_definitions(k2_nvtx INTERFACE K2_ENABLE_NVTX=1)
+  target_include_directories(k2_nvtx INTERFACE ${CUDA_INCLUDE_DIRS})
+  target_link_libraries(k2_nvtx INTERFACE ${CUDA_nvToolsExt_LIBRARY})
   if(WIN32)
     target_include_directories(k2_nvtx INTERFACE
       ${CUDA_TOOLKIT_ROOT_DIR}/include/nvtx3
