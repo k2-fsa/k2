@@ -18,6 +18,7 @@
  */
 
 #include <cstdlib>
+#include <cstring>
 #include <mutex>  // NOLINT
 
 #include "k2/csrc/context.h"

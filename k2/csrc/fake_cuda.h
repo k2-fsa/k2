@@ -92,6 +92,11 @@ enum FakedEnum {
 
 using cudaMemcpyKind = FakedEnum;
 
+inline cudaError_t cudaSetDevice(int device) {
+  K2_NIY;
+  return 0;
+}
+
 inline const char *cudaGetErrorString(cudaError_t error) {
   K2_NIY;
   return nullptr;
@@ -182,6 +187,16 @@ inline cudaError_t cudaGetDeviceCount(int *count) {
 }
 
 inline cudaError_t cudaMallocHost(void **ptr, size_t size) {
+  K2_NIY;
+  return 0;
+}
+
+inline cudaError_t cudaMalloc(void **devPtr, size_t size) {
+  K2_NIY;
+  return 0;
+}
+
+inline cudaError_t cudaFree(void *devPtr) {
   K2_NIY;
   return 0;
 }
