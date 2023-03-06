@@ -25,22 +25,33 @@ function(download_kaldifeat)
   include(FetchContent)
 
   set(kaldifeat_URL "https://github.com/csukuangfj/kaldifeat/archive/refs/tags/v1.20.tar.gz")
+  set(kaldifeat_URL2 "https://huggingface.co/csukuangfj/k2-cmake-deps/resolve/main/kaldifeat-1.20.tar.gz")
   set(kaldifeat_HASH "SHA256=509110abbb4bf510831a9abbf1f3e7a0768f9e505d7f25defeaf6545566e1aaf")
 
-  # If you don't have access to the Internet, please download the file to your
-  # local drive and use the line below (you need to change it accordingly.
-  # I am placing it in /star-fj/fangjun/download/github, but you can place it
-  # anywhere you like)
-  if(EXISTS "/star-fj/fangjun/download/github/kaldifeat-1.20.tar.gz")
-    set(kaldifeat_URL "file:///star-fj/fangjun/download/github/kaldifeat-1.20.tar.gz")
-  elseif(EXISTS "/tmp/kaldifeat-1.20.tar.gz")
-    set(kaldifeat_URL "file:///tmp/kaldifeat-1.20.tar.gz")
-  endif()
+  # If you don't have access to the Internet,
+  # please pre-download kaldifeat
+  set(possible_file_locations
+    $ENV{HOME}/Downloads/kaldifeat-1.20.tar.gz
+    ${PROJECT_SOURCE_DIR}/kaldifeat-1.20.tar.gz
+    ${PROJECT_BINARY_DIR}/kaldifeat-1.20.tar.gz
+    /tmp/kaldifeat-1.20.tar.gz
+    /star-fj/fangjun/download/github/kaldifeat-1.20.tar.gz
+  )
+
+  foreach(f IN LISTS possible_file_locations)
+    if(EXISTS ${f})
+      set(kaldifeat_URL  "file://${f}")
+      set(kaldifeat_URL2)
+      break()
+    endif()
+  endforeach()
 
   set(kaldifeat_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
   FetchContent_Declare(kaldifeat
-    URL               ${kaldifeat_URL}
+    URL
+      ${kaldifeat_URL}
+      ${kaldifeat_URL2}
     URL_HASH          ${kaldifeat_HASH}
   )
 
