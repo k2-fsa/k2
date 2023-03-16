@@ -544,3 +544,77 @@ The output should look like the following:
   Built on Wed_Jun__8_16:49:14_PDT_2022
   Cuda compilation tools, release 11.7, V11.7.99
   Build cuda_11.7.r11.7/compiler.31442593_0
+
+CUDA 11.8
+---------
+
+You can use the following commands to install CUDA 11.8. We install it
+into ``/star-fj/fangjun/software/cuda-11.8.0``. You can replace it
+if needed.
+
+.. code-block:: bash
+
+  wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
+
+  chmod +x cuda_11.8.0_520.61.05_linux.run
+
+  ./cuda_11.8.0_520.61.05_linux.run \
+    --silent \
+    --toolkit \
+    --installpath=/star-fj/fangjun/software/cuda-11.8.0 \
+    --no-opengl-libs \
+    --no-drm \
+    --no-man-page
+
+Install cuDNN for CUDA 11.8
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now, install ``cuDNN`` for CUDA 11.8.
+
+.. code-block:: bash
+
+  wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.3-linux-x64-v8.2.0.53.tgz
+
+  # Note: cudnn-11.3 works for CUDA 11.x
+  tar xvf cudnn-11.3-linux-x64-v8.2.0.53.tgz --strip-components=1 -C /star-fj/fangjun/software/cuda-11.8.0
+
+Set environment variables for CUDA 11.8
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Note that we have to set the following environment variables after installing
+CUDA 11.8. You can save the following code to ``activate-cuda-11.8.sh``
+and use ``source activate-cuda-11.8.sh`` if you want to activate CUDA 11.8.
+
+.. code-block:: bash
+
+  export CUDA_HOME=/star-fj/fangjun/software/cuda-11.8.0
+  export PATH=$CUDA_HOME/bin:$PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/lib:$LD_LIBRARY_PATH
+
+  export CUDA_TOOLKIT_ROOT_DIR=$CUDA_HOME
+  export CUDA_TOOLKIT_ROOT=$CUDA_HOME
+  export CUDA_BIN_PATH=$CUDA_HOME
+  export CUDA_PATH=$CUDA_HOME
+  export CUDA_INC_PATH=$CUDA_HOME/targets/x86_64-linux
+  export CFLAGS=-I$CUDA_HOME/targets/x86_64-linux/include:$CFLAGS
+
+To check that you have installed CUDA 11.8 successfully, please run:
+
+.. code-block:: bash
+
+  which nvcc
+
+  nvcc --version
+
+The output should look like the following:
+
+.. code-block:: bash
+
+  /star-fj/fangjun/software/cuda-11.8.0/bin/nvcc
+
+  nvcc: NVIDIA (R) Cuda compiler driver
+  Copyright (c) 2005-2022 NVIDIA Corporation
+  Built on Wed_Sep_21_10:33:58_PDT_2022
+  Cuda compilation tools, release 11.8, V11.8.89
+  Build cuda_11.8.r11.8/compiler.31833905_0
