@@ -3,6 +3,13 @@
 Install from source
 ===================
 
+.. caution::
+
+   Users who have issues about installing `k2`_ from source are mostly installing
+   PyTorch with ``conda install``.
+
+   We suggest that you install ``PyTorch`` using ``pip install``.
+
 .. hint::
 
     It supports Linux (CPU + CUDA), macOS (CPU), and Windows (CPU + CUDA).
