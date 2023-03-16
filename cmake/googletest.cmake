@@ -24,18 +24,27 @@ function(download_googltest)
 
   include(FetchContent)
 
-  set(googletest_URL  "https://github.com/google/googletest/archive/release-1.10.0.tar.gz")
-  set(googletest_HASH "SHA256=9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb")
+  set(googletest_URL  "https://github.com/google/googletest/archive/refs/tags/v1.13.0.tar.gz")
+  set(googletest_URL2 "https://huggingface.co/csukuangfj/k2-cmake-deps/resolve/main/googletest-1.13.0.tar.gz")
+  set(googletest_HASH "SHA256=ad7fdba11ea011c1d925b3289cf4af2c66a352e18d4c7264392fead75e919363")
 
-  # If you don't have access to the Internet, please download the file to your
-  # local drive and use the line below (you need to change it accordingly.
-  # I am placing it in /star-fj/fangjun/download/github, but you can place it
-  # anywhere you like)
-  if(EXISTS "/star-fj/fangjun/download/github/googletest-release-1.10.0.tar.gz")
-    set(googletest_URL  "file:///star-fj/fangjun/download/github/googletest-release-1.10.0.tar.gz")
-  elseif(EXISTS "/tmp/googletest-release-1.10.0.tar.gz")
-    set(googletest_URL  "file:///tmp/googletest-release-1.10.0.tar.gz")
-  endif()
+  # If you don't have access to the Internet,
+  # please pre-download googletest
+  set(possible_file_locations
+    $ENV{HOME}/Downloads/googletest-1.13.0.tar.gz
+    ${PROJECT_SOURCE_DIR}/googletest-1.13.0.tar.gz
+    ${PROJECT_BINARY_DIR}/googletest-1.13.0.tar.gz
+    /tmp/googletest-1.13.0.tar.gz
+    /star-fj/fangjun/download/github/googletest-1.13.0.tar.gz
+  )
+
+  foreach(f IN LISTS possible_file_locations)
+    if(EXISTS ${f})
+      set(googletest_URL  "file://${f}")
+      set(googletest_URL2)
+      break()
+    endif()
+  endforeach()
 
   set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
@@ -43,7 +52,9 @@ function(download_googltest)
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
   FetchContent_Declare(googletest
-    URL               ${googletest_URL}
+    URL
+      ${googletest_URL}
+      ${googletest_URL2}
     URL_HASH          ${googletest_HASH}
   )
 
