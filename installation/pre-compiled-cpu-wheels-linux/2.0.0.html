@@ -5,7 +5,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>torch 1.12.0 &mdash; k2 1.23.4 documentation</title>
+  <title>torch 2.0.0 &mdash; k2 1.23.4 documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
@@ -20,8 +20,8 @@
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="torch 1.11.0" href="1.11.0.html" />
-    <link rel="prev" title="torch 1.12.1" href="1.12.1.html" /> 
+    <link rel="next" title="torch 1.13.1" href="1.13.1.html" />
+    <link rel="prev" title="Pre-compiled CPU wheels (Linux)" href="index.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -46,17 +46,17 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Installation</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../cuda-cudnn.html">CUDA and cuDNN</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../pre-compiled-cpu-wheels-linux/index.html">Pre-compiled CPU wheels (Linux)</a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="index.html">Pre-compiled CUDA wheels (Linux)</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="2.0.0.html">torch 2.0.0</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Pre-compiled CPU wheels (Linux)</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">torch 2.0.0</a></li>
 <li class="toctree-l3"><a class="reference internal" href="1.13.1.html">torch 1.13.1</a></li>
 <li class="toctree-l3"><a class="reference internal" href="1.13.0.html">torch 1.13.0</a></li>
 <li class="toctree-l3"><a class="reference internal" href="1.12.1.html">torch 1.12.1</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">torch 1.12.0</a></li>
+<li class="toctree-l3"><a class="reference internal" href="1.12.0.html">torch 1.12.0</a></li>
 <li class="toctree-l3"><a class="reference internal" href="1.11.0.html">torch 1.11.0</a></li>
 <li class="toctree-l3"><a class="reference internal" href="1.10.2.html">torch 1.10.2</a></li>
 <li class="toctree-l3"><a class="reference internal" href="1.10.1.html">torch 1.10.1</a></li>
 <li class="toctree-l3"><a class="reference internal" href="1.10.0.html">torch 1.10.0</a></li>
+<li class="toctree-l3"><a class="reference internal" href="1.9.1.html">torch 1.9.1</a></li>
 <li class="toctree-l3"><a class="reference internal" href="1.9.0.html">torch 1.9.0</a></li>
 <li class="toctree-l3"><a class="reference internal" href="1.8.1.html">torch 1.8.1</a></li>
 <li class="toctree-l3"><a class="reference internal" href="1.8.0.html">torch 1.8.0</a></li>
@@ -65,6 +65,7 @@
 <li class="toctree-l3"><a class="reference internal" href="1.6.0.html">torch 1.6.0</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../pre-compiled-cuda-wheels-linux/index.html">Pre-compiled CUDA wheels (Linux)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../conda.html">Install using conda (Linux/macOS)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../pip.html">Install using pip (k2-fsa.org)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../pip_pypi.html">Install using pip (pypi.org)</a></li>
@@ -94,10 +95,10 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../index.html">Installation</a> &raquo;</li>
-          <li><a href="index.html">Pre-compiled CUDA wheels (Linux)</a> &raquo;</li>
-      <li>torch 1.12.0</li>
+          <li><a href="index.html">Pre-compiled CPU wheels (Linux)</a> &raquo;</li>
+      <li>torch 2.0.0</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/installation/pre-compiled-cuda-wheels-linux/1.12.0.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/installation/pre-compiled-cpu-wheels-linux/2.0.0.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
   </ul>
   <hr/>
@@ -105,21 +106,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="torch-1-12-0">
-<h1>torch 1.12.0<a class="headerlink" href="#torch-1-12-0" title="Permalink to this headline"></a></h1>
+  <section id="torch-2-0-0">
+<h1>torch 2.0.0<a class="headerlink" href="#torch-2-0-0" title="Permalink to this headline"></a></h1>
 <ul class="simple">
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda11.6.torch1.12.0-cp310-cp310-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda11.6.torch1.12.0-cp310-cp310-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda11.6.torch1.12.0-cp39-cp39-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda11.6.torch1.12.0-cp39-cp39-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda11.6.torch1.12.0-cp38-cp38-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda11.6.torch1.12.0-cp38-cp38-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda11.6.torch1.12.0-cp37-cp37m-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda11.6.torch1.12.0-cp37-cp37m-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda11.3.torch1.12.0-cp310-cp310-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda11.3.torch1.12.0-cp310-cp310-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda11.3.torch1.12.0-cp39-cp39-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda11.3.torch1.12.0-cp39-cp39-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda11.3.torch1.12.0-cp38-cp38-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda11.3.torch1.12.0-cp38-cp38-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda11.3.torch1.12.0-cp37-cp37m-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda11.3.torch1.12.0-cp37-cp37m-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.2.torch1.12.0-cp310-cp310-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda10.2.torch1.12.0-cp310-cp310-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.2.torch1.12.0-cp39-cp39-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda10.2.torch1.12.0-cp39-cp39-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.2.torch1.12.0-cp38-cp38-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda10.2.torch1.12.0-cp38-cp38-linux_x86_64.whl</a></p></li>
-<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.2.torch1.12.0-cp37-cp37m-linux_x86_64.whl">k2-1.23.4.dev20230224+cuda10.2.torch1.12.0-cp37-cp37m-linux_x86_64.whl</a></p></li>
+<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.23.4.dev20230318+cpu.torch2.0.0-cp311-cp311-linux_x86_64.whl">k2-1.23.4.dev20230318+cpu.torch2.0.0-cp311-cp311-linux_x86_64.whl</a></p></li>
+<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.23.4.dev20230318+cpu.torch2.0.0-cp310-cp310-linux_x86_64.whl">k2-1.23.4.dev20230318+cpu.torch2.0.0-cp310-cp310-linux_x86_64.whl</a></p></li>
+<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.23.4.dev20230318+cpu.torch2.0.0-cp39-cp39-linux_x86_64.whl">k2-1.23.4.dev20230318+cpu.torch2.0.0-cp39-cp39-linux_x86_64.whl</a></p></li>
+<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.23.4.dev20230318+cpu.torch2.0.0-cp38-cp38-linux_x86_64.whl">k2-1.23.4.dev20230318+cpu.torch2.0.0-cp38-cp38-linux_x86_64.whl</a></p></li>
 </ul>
 </section>
 
@@ -127,8 +120,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="1.12.1.html" class="btn btn-neutral float-left" title="torch 1.12.1" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="1.11.0.html" class="btn btn-neutral float-right" title="torch 1.11.0" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Pre-compiled CPU wheels (Linux)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="1.13.1.html" class="btn btn-neutral float-right" title="torch 1.13.1" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
