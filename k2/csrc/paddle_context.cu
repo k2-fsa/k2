@@ -67,7 +67,14 @@ class PaddleCpuContext : public Context {
     int64_t max_bytes = internal::MaxCpuMemAllocate();
     if (max_bytes != -1) K2_CHECK_LE(static_cast<int64_t>(bytes), max_bytes);
 
-    void *p = allocator_->raw_allocate(bytes);
+    // void *p = allocator_->raw_allocate(bytes);
+    phi::Allocator::AllocationPtr a = allocator_->Allocate(bytes);
+    if (deleter_ == nullptr){
+      deleter_ = a->get_deleter();
+    } else {
+      K2_CHECK_EQ(deleter_, a->get_deleter());
+    }
+    void *p = a->release().
     if (deleter_context != nullptr) *deleter_context = nullptr;
     return p;
   }
@@ -111,6 +118,8 @@ class PaddleCpuContext : public Context {
  private:
   // torch::Allocator *allocator_;  // NOT owned here
   phi::Allocator *allocator_; // NOT owned here
+
+  phi::Allocator::DeleterType deleter_{nullptr};
 };
 
 class PaddleCudaContext : public Context {

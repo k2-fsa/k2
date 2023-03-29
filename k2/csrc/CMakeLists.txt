@@ -88,8 +88,8 @@ set(context_srcs
 
 if(K2_USE_PYTORCH)
   list(APPEND context_srcs pytorch_context.cu torch_util.cu)
-elseif(K2_USE_PADDLE)
-  list(APPEND context_srcs paddle_context.cu paddle_util.cu)
+# elseif(K2_USE_PADDLE)
+#   list(APPEND context_srcs paddle_context.cu paddle_util.cu)
 else()
   list(APPEND context_srcs default_context.cu)
 endif()

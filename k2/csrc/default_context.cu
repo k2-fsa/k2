@@ -26,6 +26,10 @@
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/device_guard.h"
 
+#ifdef _WIN32
+#define posix_memalign(p, a, s) (((*(p)) = _aligned_malloc((s), (a))), *(p) ?0 :errno)
+#endif // _WIN32
+
 namespace k2 {
 
 static constexpr std::size_t kAlignment = 64;
