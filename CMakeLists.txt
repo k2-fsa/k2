@@ -80,11 +80,11 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
-option(K2_USE_PYTORCH "Whether to build with PyTorch" ON)
-option(K2_ENABLE_BENCHMARK "Whether to enable benchmark" ON)
+option(K2_USE_PYTORCH "Whether to build with PyTorch" OFF)
+option(K2_ENABLE_BENCHMARK "Whether to enable benchmark" OFF)
 option(K2_WITH_CUDA "Whether to build k2 with CUDA" ${_K2_WITH_CUDA})
-option(K2_ENABLE_NVTX "Whether to build k2 with the NVTX library" ON)
-option(K2_ENABLE_TESTS "Whether to build tests" ON)
+option(K2_ENABLE_NVTX "Whether to build k2 with the NVTX library" OFF)
+option(K2_ENABLE_TESTS "Whether to build tests" OFF)
 
 # You have to enable this option if you will run k2 on a machine different from
 # the one you used to build k2 and the two machines have different types of GPUs
