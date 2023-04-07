@@ -49,6 +49,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.linkcode',
     'sphinx.ext.napoleon',
+    'sphinx.ext.mathjax',
     'sphinx_autodoc_typehints',
     'sphinx_rtd_theme',
     'sphinxcontrib.bibtex',
@@ -189,3 +190,7 @@ def setup(app):
     app.add_css_file('custom.css')
     app.connect('autodoc-process-signature', replace_signature)
     app.connect('autodoc-process-docstring', replace_doc)
+
+rst_epilog = """
+.. _k2: https://github.com/k2-fsa/k2
+"""

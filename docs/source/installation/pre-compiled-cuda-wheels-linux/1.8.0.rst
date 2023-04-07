@@ -1,0 +1,11 @@
+torch 1.8.0
+===========
+
+
+- `k2-1.23.4.dev20230224+cuda10.2.torch1.8.0-cp39-cp39-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.2.torch1.8.0-cp39-cp39-linux_x86_64.whl>`_
+- `k2-1.23.4.dev20230224+cuda10.2.torch1.8.0-cp38-cp38-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.2.torch1.8.0-cp38-cp38-linux_x86_64.whl>`_
+- `k2-1.23.4.dev20230224+cuda10.2.torch1.8.0-cp37-cp37m-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.2.torch1.8.0-cp37-cp37m-linux_x86_64.whl>`_
+- `k2-1.23.4.dev20230224+cuda10.2.torch1.8.0-cp36-cp36m-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.2.torch1.8.0-cp36-cp36m-linux_x86_64.whl>`_
+- `k2-1.23.4.dev20230224+cuda10.1.torch1.8.0-cp39-cp39-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.1.torch1.8.0-cp39-cp39-linux_x86_64.whl>`_
+- `k2-1.23.4.dev20230224+cuda10.1.torch1.8.0-cp38-cp38-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.1.torch1.8.0-cp38-cp38-linux_x86_64.whl>`_
+- `k2-1.23.4.dev20230224+cuda10.1.torch1.8.0-cp36-cp36m-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.23.4.dev20230224+cuda10.1.torch1.8.0-cp36-cp36m-linux_x86_64.whl>`_
