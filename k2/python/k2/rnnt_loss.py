@@ -1397,12 +1397,10 @@ def get_rnnt_logprobs_smoothed(
 
     # px is the probs of the actual symbols (not yet normalized)..
     px_am = torch.gather(
-        am.unsqueeze(1).expand(B, S, T, C),
-        dim=3,
-        index=symbols.reshape(B, S, 1, 1).expand(B, S, T, 1),
-    ).squeeze(
-        -1
-    )  # [B][S][T]
+        am.transpose(1, 2),  # (B, C, T)
+        dim=1,
+        index=symbols.unsqueeze(2).expand(B, S, T),
+    ) #  (B, S, T)
 
     if rnnt_type == "regular":
         px_am = torch.cat(
