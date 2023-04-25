@@ -172,7 +172,7 @@ def get_rnnt_logprobs(
         am.transpose(1, 2),  # (B, C, T)
         dim=1,
         index=symbols.unsqueeze(2).expand(B, S, T),
-    ) #  (B, S, T)
+    )  #  (B, S, T)
 
     if rnnt_type == "regular":
         px_am = torch.cat(
