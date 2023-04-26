@@ -41,9 +41,10 @@ def SwooshLForwardAndDeriv(x: torch.Tensor):
     # x_deriv = -0.08 + exp(x-4) / (1 + exp(x-4))
     #         = -0.08 + (1 -  1 / (1 + exp(x-4)))
     #         = 0.92 - 1 / (1 + exp(x-4))
-    # note: 1 + exp(x_offset) might be infinity, but 1 / (1 + exp(x_offset)) will be
-    # 0 in that case.  This is partly why we rearranged the expression above, to avoid
-    # infinity / infinity = nan.
+    # note: 1 + exp(x_offset) might be infinity,
+    # but 1 / (1 + exp(x_offset)) will be 0 in that case.
+    # This is partly why we rearranged the expression above,
+    # to avoid infinity / infinity = nan.
     denom = 1 + x_offset.exp()
     inv_denom = (1.0 / denom).to(x.dtype)
     deriv = 0.92 - inv_denom
@@ -68,9 +69,10 @@ def SwooshRForwardAndDeriv(x: torch.Tensor):
     # x_deriv = -0.08 + exp(x-1) / (1 + exp(x-1))
     #         = -0.08 + (1 -  1 / (1 + exp(x-1)))
     #         = 0.92 - 1 / (1 + exp(x-1))
-    # note: 1 + exp(x_offset) might be infinity, but 1 / (1 + exp(x_offset)) will be
-    # 0 in that case.  This is partly why we rearranged the expression above, to avoid
-    # infinity / infinity = nan.
+    # note: 1 + exp(x_offset) might be infinity,
+    # but 1 / (1 + exp(x_offset)) will be 0 in that case.
+    # This is partly why we rearranged the expression above,
+    # to avoid infinity / infinity = nan.
     denom = 1 + x_offset.exp()
     inv_denom = (1.0 / denom).to(x.dtype)
     deriv = 0.92 - inv_denom
