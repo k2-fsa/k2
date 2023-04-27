@@ -266,27 +266,3 @@ To run a specific Python test, use:
       python3 -m k2.version
 
   You can find the build type in the above output.
-
-Run ``catch throw`` to so that it stops the process on exception:
-
-.. code-block:: bash
-
-   (gdb) catch throw
-   Catchpoint 1 (throw)
-
-Now let us ``run`` it:
-
-.. code-block:: bash
-(gdb) run
-Starting program: /star-fj/fangjun/py38/bin/python3 ./test.py
-[Thread debugging using libthread_db enabled]
-Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
-[New Thread 0x7fff90f66700 (LWP 1184088)]
-[New Thread 0x7fff90765700 (LWP 1184089)]
-... ...
-
-[F] /root/fangjun/open-source/k2/k2/csrc/array.h:179:k2::Array1<T> k2::Array1<T>::Arange(int32_t, int32_t) const [with T = int; int32_
-t = int] Check failed: end <= dim_ (32767 vs. 3)
-
-
-[ Stack-Trace: ]
