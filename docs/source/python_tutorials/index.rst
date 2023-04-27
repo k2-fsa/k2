@@ -8,3 +8,4 @@ Python tutorials
    ragged/index
    fsa/index
    fsa_algo/index
+   _k2/index

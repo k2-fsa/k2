@@ -193,4 +193,5 @@ def setup(app):
 
 rst_epilog = """
 .. _k2: https://github.com/k2-fsa/k2
+.. _pybind11: https://github.com/pybind/pybind11
 """
