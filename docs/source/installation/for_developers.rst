@@ -44,6 +44,9 @@ Second, let's clone the repository to some path ``/some/path``:
   # Normally, you would first fork the repo and use
   # git clone https://github.com/your_github_username/k2.git
 
+Build a release version
+-----------------------
+
 To build a release version, use:
 
 .. code-block:: bash
@@ -81,6 +84,11 @@ To build a release version, use:
   # k2, please run
   export K2_INSTALL_PREFIX=/some/path/k2/build_release
   # before you install sherpa
+
+.. _build_a_debug_version:
+
+Build a debug version
+---------------------
 
 To build a debug version, use:
 
