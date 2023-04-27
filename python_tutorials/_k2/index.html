@@ -5,7 +5,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ragged tensor tutorials &mdash; k2 1.24.0 documentation</title>
+  <title>_k2 &mdash; k2 1.24.0 documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
@@ -20,8 +20,8 @@
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Basics" href="basics.html" />
-    <link rel="prev" title="Python tutorials" href="../index.html" /> 
+    <link rel="next" title="How to debug _k2" href="how-to-debug.html" />
+    <link rel="prev" title="Fsa algorithms" href="../fsa_algo/fsa_algo.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -47,14 +47,13 @@
 <li class="toctree-l1"><a class="reference internal" href="../../installation/index.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../core_concepts/index.html">Core concepts in k2</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Python tutorials</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Ragged tensor tutorials</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="basics.html">Basics</a></li>
-<li class="toctree-l3"><a class="reference internal" href="operations.html">Operations</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../ragged/index.html">Ragged tensor tutorials</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../fsa/index.html">Fsa tutorials</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../fsa_algo/index.html">Fsa algorithms tutorials</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../_k2/index.html">_k2</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">_k2</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="how-to-debug.html">How to debug _k2</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../python_api/index.html">Python API reference</a></li>
@@ -75,9 +74,9 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../index.html">Python tutorials</a> &raquo;</li>
-      <li>Ragged tensor tutorials</li>
+      <li>_k2</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/python_tutorials/ragged/index.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/python_tutorials/_k2/index.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
   </ul>
   <hr/>
@@ -85,12 +84,38 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="ragged-tensor-tutorials">
-<h1>Ragged tensor tutorials<a class="headerlink" href="#ragged-tensor-tutorials" title="Permalink to this headline"></a></h1>
+  <section id="k2">
+<h1>_k2<a class="headerlink" href="#k2" title="Permalink to this headline"></a></h1>
+<p>If you have used PyTorch, you have probably seen <code class="docutils literal notranslate"><span class="pre">torch._C</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch._C</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">_C</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)</span>
+<span class="go">/star-fj/fangjun/py38/lib/python3.8/site-packages/torch/_C.cpython-38-x86_64-linux-gnu.so</span>
+</pre></div>
+</div>
+<p>Similarly, we have <code class="docutils literal notranslate"><span class="pre">_k2</span></code> in <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>&gt;&gt;&gt;<span class="w"> </span>import<span class="w"> </span>torch
+&gt;&gt;&gt;<span class="w"> </span>import<span class="w"> </span>_k2
+&gt;&gt;&gt;<span class="w"> </span>print<span class="o">(</span>_k2.__file__<span class="o">)</span>
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so
+</pre></div>
+</div>
+<p>You can see that both <code class="docutils literal notranslate"><span class="pre">_C</span></code> and <code class="docutils literal notranslate"><span class="pre">_k2</span></code> are contained in a shared library because
+they are implemented in C++.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>In case you are interested in how to wrap C++ code to Python, please have
+a look at <a class="reference external" href="https://github.com/pybind/pybind11">pybind11</a>.</p>
+</div>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="operations.html">Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="how-to-debug.html">How to debug _k2</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="how-to-debug.html#code-with-bugs">Code with bugs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to-debug.html#error-logs-of-the-buggy-code">Error logs of the buggy code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to-debug.html#ways-to-debug">Ways to debug</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to-debug.html#summary">Summary</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </section>
@@ -99,8 +124,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../index.html" class="btn btn-neutral float-left" title="Python tutorials" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="basics.html" class="btn btn-neutral float-right" title="Basics" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../fsa_algo/fsa_algo.html" class="btn btn-neutral float-left" title="Fsa algorithms" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="how-to-debug.html" class="btn btn-neutral float-right" title="How to debug _k2" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

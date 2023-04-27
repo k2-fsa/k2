@@ -1,0 +1,329 @@
+<!-- see https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to debug _k2 &mdash; k2 1.24.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Python API reference" href="../../python_api/index.html" />
+    <link rel="prev" title="_k2" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> k2
+          </a>
+              <div class="version">
+                1.24.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../installation/index.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Python tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../ragged/index.html">Ragged tensor tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fsa/index.html">Fsa tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fsa_algo/index.html">Fsa algorithms tutorials</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">_k2</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">How to debug _k2</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#code-with-bugs">Code with bugs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#error-logs-of-the-buggy-code">Error logs of the buggy code</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ways-to-debug">Ways to debug</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#summary">Summary</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../python_api/index.html">Python API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">k2</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Python tutorials</a> &raquo;</li>
+          <li><a href="index.html">_k2</a> &raquo;</li>
+      <li>How to debug _k2</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/python_tutorials/_k2/how-to-debug.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="how-to-debug-k2">
+<h1>How to debug _k2<a class="headerlink" href="#how-to-debug-k2" title="Permalink to this headline"></a></h1>
+<p>This section introduces how to debug <code class="docutils literal notranslate"><span class="pre">_k2</span></code>.</p>
+<section id="code-with-bugs">
+<h2>Code with bugs<a class="headerlink" href="#code-with-bugs" title="Permalink to this headline"></a></h2>
+<p>Suppose you have the following <code class="docutils literal notranslate"><span class="pre">buggy</span></code> code,</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-number">Listing 10 </span><span class="caption-text">Code with bugs</span><a class="headerlink" href="#id1" title="Permalink to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
+
+<span class="kn">import</span> <span class="nn">k2</span>
+
+<span class="n">tensor</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">]])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">tensor</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="error-logs-of-the-buggy-code">
+<h2>Error logs of the buggy code<a class="headerlink" href="#error-logs-of-the-buggy-code" title="Permalink to this headline"></a></h2>
+<p>After running it, you would get the following error logs:</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-number">Listing 11 </span><span class="caption-text">Error logs of the buggy code</span><a class="headerlink" href="#id2" title="Permalink to this code"></a></div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[F] /root/fangjun/open-source/k2/k2/csrc/array.h:178:k2::Array1&lt;T&gt; k2::Array1&lt;T&gt;::Arange(int32_t, int32_t) const [with T = int; int32_t = int] Check failed: end &gt;= start (0 vs. 3) 
+
+
+[ Stack-Trace: ]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/libk2_log.so(k2::internal::GetStackTrace()+0x5b) [0x7f716d321105]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0xb52e2) [0x7f716dc362e2]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1b8676) [0x7f716dd39676]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1eab1d) [0x7f716dd6bb1d]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1fbf7f) [0x7f716dd7cf7f]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1fa291) [0x7f716dd7b291]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1f4b2f) [0x7f716dd75b2f]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1f4ba3) [0x7f716dd75ba3]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x916e0) [0x7f716dc126e0]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyCFunction_Call+0xf5) [0x7f723baa2535]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(_PyObject_MakeTpCall+0x9e) [0x7f723ba9f80e]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(+0xa3c8b) [0x7f723baa3c8b]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(+0x11b93e) [0x7f723bb1b93e]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(+0x11baa7) [0x7f723bb1baa7]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyObject_GetItem+0x49) [0x7f723ba85de9]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(_PyEval_EvalFrameDefault+0x5025) [0x7f723ba72355]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(_PyEval_EvalCodeWithName+0xb67) [0x7f723bba0f47]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyEval_EvalCodeEx+0x3e) [0x7f723bba0ffe]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyEval_EvalCode+0x1b) [0x7f723bba102b]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyRun_FileExFlags+0x122) [0x7f723bbe6902]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyRun_SimpleFileExFlags+0xfd) [0x7f723bbe6add]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(Py_RunMain+0x7a0) [0x7f723bc0a750]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(Py_BytesMain+0x56) [0x7f723bc0ac26]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xe7) [0x7f723b630bf7]
+python3(_start+0x2a) [0x55f05c1e378a]
+
+Traceback (most recent call last):
+  File &quot;test.py&quot;, line 6, in &lt;module&gt;
+    print(tensor[2])
+RuntimeError: 
+    Some bad things happened. Please read the above error messages and stack
+    trace. If you are using Python, the following command may be helpful:
+
+      gdb --args python /path/to/your/code.py
+
+    (You can use `gdb` to debug the code. Please consider compiling
+    a debug version of k2.).
+
+    If you are unable to fix it, please open an issue at:
+
+      https://github.com/k2-fsa/k2/issues/new
+    
+</pre></div>
+</div>
+</div>
+</section>
+<section id="ways-to-debug">
+<h2>Ways to debug<a class="headerlink" href="#ways-to-debug" title="Permalink to this headline"></a></h2>
+<p>In order debug it, please first follow <a class="reference internal" href="../../installation/for_developers.html#build-a-debug-version"><span class="std std-ref">Build a debug version</span></a> to build
+a debug version of <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a> so that you can use <code class="docutils literal notranslate"><span class="pre">gdb</span></code> to debug the code.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since the underlying implementation is in C++ you can you use <code class="docutils literal notranslate"><span class="pre">gdb</span></code>
+to debug it, even if you are using Python.</p>
+</div>
+<p>First, let us use <code class="docutils literal notranslate"><span class="pre">gdb</span></code> to run our code:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>py38<span class="o">)</span><span class="w"> </span>kuangfangjun:build-cpu-debug$<span class="w"> </span>gdb<span class="w"> </span>--args<span class="w"> </span>python3<span class="w"> </span>./test.py
+</pre></div>
+</div>
+<p>You will see the following output:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>GNU gdb (Ubuntu 8.1-0ubuntu3.2) 8.1.0.20180409-git
+Copyright (C) 2018 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later &lt;http://gnu.org/licenses/gpl.html&gt;
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type &quot;show copying&quot;
+and &quot;show warranty&quot; for details.
+This GDB was configured as &quot;x86_64-linux-gnu&quot;.
+Type &quot;show configuration&quot; for configuration details.
+For bug reporting instructions, please see:
+&lt;http://www.gnu.org/software/gdb/bugs/&gt;.
+Find the GDB manual and other documentation resources online at:
+&lt;http://www.gnu.org/software/gdb/documentation/&gt;.
+For help, type &quot;help&quot;.
+Type &quot;apropos word&quot; to search for commands related to &quot;word&quot;...
+Reading symbols from python3...done.
+warning: File &quot;/star-fj/fangjun/open-source/pyenv/versions/3.8.0/bin/python3.8-gdb.py&quot; auto-loading has been declined by your `auto-load safe-path&#39; set to &quot;$debugdir:$datadir/auto-load&quot;.
+To enable execution of this file add
+        add-auto-load-safe-path /star-fj/fangjun/open-source/pyenv/versions/3.8.0/bin/python3.8-gdb.py
+line to your configuration file &quot;/root/fangjun/.gdbinit&quot;.
+To completely disable this security protection add
+        set auto-load safe-path /
+line to your configuration file &quot;/root/fangjun/.gdbinit&quot;.
+For more information about this security protection see the
+&quot;Auto-loading safe path&quot; section in the GDB manual.  E.g., run from the shell:
+        info &quot;(gdb)Auto-loading safe path&quot;
+(gdb)
+</pre></div>
+</div>
+<p>Next, enter <code class="docutils literal notranslate"><span class="pre">catch</span> <span class="pre">throw</span></code> so that it stops the process on exception:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>gdb<span class="o">)</span><span class="w"> </span>catch<span class="w"> </span>throw
+Catchpoint<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">(</span>throw<span class="o">)</span>
+</pre></div>
+</div>
+<p>Then we can run the program with <code class="docutils literal notranslate"><span class="pre">run</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>gdb<span class="o">)</span><span class="w"> </span>run
+Starting<span class="w"> </span>program:<span class="w"> </span>/star-fj/fangjun/py38/bin/python3<span class="w"> </span>./test.py
+<span class="o">[</span>Thread<span class="w"> </span>debugging<span class="w"> </span>using<span class="w"> </span>libthread_db<span class="w"> </span>enabled<span class="o">]</span>
+Using<span class="w"> </span>host<span class="w"> </span>libthread_db<span class="w"> </span>library<span class="w"> </span><span class="s2">&quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;</span>.
+<span class="o">[</span>New<span class="w"> </span>Thread<span class="w"> </span>0x7fff90f66700<span class="w"> </span><span class="o">(</span>LWP<span class="w"> </span><span class="m">1184088</span><span class="o">)]</span>
+<span class="o">[</span>New<span class="w"> </span>Thread<span class="w"> </span>0x7fff90765700<span class="w"> </span><span class="o">(</span>LWP<span class="w"> </span><span class="m">1184089</span><span class="o">)]</span>
+...<span class="w"> </span>...
+<span class="o">[</span>F<span class="o">]</span><span class="w"> </span>/root/fangjun/open-source/k2/k2/csrc/array.h:179:k2::Array1&lt;T&gt;<span class="w"> </span>k2::Array1&lt;T&gt;::Arange<span class="o">(</span>int32_t,<span class="w"> </span>int32_t<span class="o">)</span><span class="w"> </span>const<span class="w"> </span><span class="o">[</span>with<span class="w"> </span><span class="nv">T</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>int<span class="p">;</span><span class="w"> </span>int32_
+<span class="nv">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>int<span class="o">]</span><span class="w"> </span>Check<span class="w"> </span>failed:<span class="w"> </span>end<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>dim_<span class="w"> </span><span class="o">(</span><span class="m">32767</span><span class="w"> </span>vs.<span class="w"> </span><span class="m">3</span><span class="o">)</span>
+
+
+<span class="o">[</span><span class="w"> </span>Stack-Trace:<span class="w"> </span><span class="o">]</span>
+/root/fangjun/open-source/k2/build-cpu-debug/lib/libk2_log.so<span class="o">(</span>k2::internal::GetStackTrace<span class="o">()</span>+0x5b<span class="o">)</span><span class="w"> </span><span class="o">[</span>0x7fff2913c105<span class="o">]</span>
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so<span class="o">(</span>+0xb52e2<span class="o">)</span><span class="w"> </span><span class="o">[</span>0x7fff29a512e2<span class="o">]</span>
+...<span class="w"> </span>...
+/lib/x86_64-linux-gnu/libc.so.6<span class="o">(</span>__libc_start_main+0xe7<span class="o">)</span><span class="w"> </span><span class="o">[</span>0x7ffff7458bf7<span class="o">]</span>
+/star-fj/fangjun/py38/bin/python3<span class="o">(</span>_start+0x2a<span class="o">)</span><span class="w"> </span><span class="o">[</span>0x55555555478a<span class="o">]</span>
+
+
+Thread<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="s2">&quot;python3&quot;</span><span class="w"> </span>hit<span class="w"> </span>Catchpoint<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">(</span>exception<span class="w"> </span>thrown<span class="o">)</span>,<span class="w"> </span>0x00007ffff2553d1d<span class="w"> </span><span class="k">in</span><span class="w"> </span>__cxa_throw<span class="w"> </span><span class="o">()</span>
+<span class="w">   </span>from<span class="w"> </span>/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+<span class="o">(</span>gdb<span class="o">)</span>
+</pre></div>
+</div>
+<p>We can find the backtrace with <code class="docutils literal notranslate"><span class="pre">backtrace</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">(</span>gdb<span class="o">)</span><span class="w"> </span>backtrace
+<span class="c1">#0  0x00007ffff2553d1d in __cxa_throw () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6</span>
+<span class="c1">#1  0x00007fff29a51365 in k2::internal::Logger::~Logger (this=0x7fffffffd5e0, __in_chrg=&lt;optimized out&gt;)</span>
+<span class="w">    </span>at<span class="w"> </span>/root/fangjun/open-source/k2/k2/csrc/log.h:195
+<span class="c1">#2  0x00007fff29b54786 in k2::Array1&lt;int&gt;::Arange (this=0x555558db63f8, start=3, end=32767)</span>
+<span class="w">    </span>at<span class="w"> </span>/root/fangjun/open-source/k2/k2/csrc/array.h:179
+<span class="c1">#3  0x00007fff29b86b1d in k2::&lt;lambda(k2::RaggedAny&amp;, int32_t)&gt;::operator()(k2::RaggedAny &amp;, int32_t) const (</span>
+<span class="w">    </span><span class="nv">__closure</span><span class="o">=</span>0x555558d973e8,<span class="w"> </span><span class="nv">self</span><span class="o">=</span>...,<span class="w"> </span><span class="nv">i</span><span class="o">=</span><span class="m">2</span><span class="o">)</span><span class="w"> </span>at<span class="w"> </span>/root/fangjun/open-source/k2/build-cpu-debug/k2/python/csrc/torch/v2/any.cc:107
+<span class="c1">#4  0x00007fff29b97f7f in pybind11::detail::argument_loader&lt;k2::RaggedAny&amp;, int&gt;::call_impl&lt;pybind11::object, k2::PybindRaggedAny(pybind11::module&amp;)::&lt;lambda(k2::RaggedAny&amp;, int32_t)&gt;&amp;, 0, 1, pybind11::detail::void_type&gt;(k2::&lt;lambda(k2::RaggedAny&amp;, int32_t)&gt; &amp;, std::index_sequence, pybind11::detail::void_type &amp;&amp;) (this=0x7fffffffd820, f=...)</span>
+<span class="w">    </span>at<span class="w"> </span>/star-fj/fangjun/open-source/k2/build-cpu-debug/_deps/pybind11-src/include/pybind11/cast.h:1439
+<span class="c1">#5  0x00007fff29b96291 in pybind11::detail::argument_loader&lt;k2::RaggedAny&amp;, int&gt;::call&lt;pybind11::object, pybind11::detail::void_type,</span>
+k2::PybindRaggedAny<span class="o">(</span>pybind11::module<span class="p">&amp;</span><span class="o">)</span>::&lt;lambda<span class="o">(</span>k2::RaggedAny<span class="p">&amp;</span>,<span class="w"> </span>int32_t<span class="o">)</span>&gt;<span class="p">&amp;</span>&gt;<span class="o">(</span>k2::&lt;lambda<span class="o">(</span>k2::RaggedAny<span class="p">&amp;</span>,<span class="w"> </span>int32_t<span class="o">)</span>&gt;<span class="w"> </span><span class="p">&amp;</span><span class="o">)</span><span class="w"> </span><span class="o">(</span>
+<span class="w">    </span><span class="nv">this</span><span class="o">=</span>0x7fffffffd820,<span class="w"> </span><span class="nv">f</span><span class="o">=</span>...<span class="o">)</span><span class="w"> </span>at<span class="w"> </span>/star-fj/fangjun/open-source/k2/build-cpu-debug/_deps/pybind11-src/include/pybind11/cast.h:1408
+<span class="c1">#6  0x00007fff29b90b2f in pybind11::cpp_function::&lt;lambda(pybind11::detail::function_call&amp;)&gt;::operator()(pybind11::detail::function_call &amp;) const (__closure=0x0, call=...)</span>
+<span class="w">    </span>at<span class="w"> </span>/root/fangjun/open-source/k2/build-cpu-debug/_deps/pybind11-src/include/pybind11/pybind11.h:249
+<span class="c1">#7  0x00007fff29b90ba3 in pybind11::cpp_function::&lt;lambda(pybind11::detail::function_call&amp;)&gt;::_FUN(pybind11::detail::function_call &amp;)</span>
+<span class="w">    </span><span class="o">()</span><span class="w"> </span>at<span class="w"> </span>/root/fangjun/open-source/k2/build-cpu-debug/_deps/pybind11-src/include/pybind11/pybind11.h:224
+<span class="c1">#8  0x00007fff29a2d6e0 in pybind11::cpp_function::dispatcher (self=0x7fff29fd4a50, args_in=0x7ffff64adb40, kwargs_in=0x0)</span>
+<span class="w">    </span>at<span class="w"> </span>/root/fangjun/open-source/k2/build-cpu-debug/_deps/pybind11-src/include/pybind11/pybind11.h:929
+<span class="c1">#9  0x00007ffff78ca535 in cfunction_call_varargs (kwargs=&lt;optimized out&gt;, args=&lt;optimized out&gt;, func=0x7fff29fd6310)</span>
+<span class="w">    </span>at<span class="w"> </span>Objects/call.c:742
+</pre></div>
+</div>
+<p>The remaining steps are the same for debugging a C/C++ program with <code class="docutils literal notranslate"><span class="pre">gdb</span></code>.</p>
+</section>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline"></a></h2>
+<p>The most important parts of the debugging process are:</p>
+<blockquote>
+<div><ul class="simple">
+<li><ol class="arabic simple">
+<li><p>Build a debug version of <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a></p></li>
+</ol>
+</li>
+<li><ol class="arabic simple" start="2">
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">catch</span> <span class="pre">throw</span></code></p></li>
+</ol>
+</li>
+<li><ol class="arabic simple" start="3">
+<li><p>View the backtrace on exception</p></li>
+</ol>
+</li>
+</ul>
+</div></blockquote>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="_k2" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../python_api/index.html" class="btn btn-neutral float-right" title="Python API reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020-2022, k2 development team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+
+</body>
+</html>
