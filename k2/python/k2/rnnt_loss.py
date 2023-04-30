@@ -904,7 +904,6 @@ def do_rnnt_pruning(
     (B, S1, decoder_dim) = lm.shape
     encoder_dim = am.shape[-1]
     assert am.shape == (B, T, encoder_dim), (am.shape, B, T, encoder_dim)
-    S = S1 - 1
 
     # (B, T, s_range, encoder_dim)
     am_pruned = am.unsqueeze(2).expand((B, T, s_range, encoder_dim))
