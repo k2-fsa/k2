@@ -911,12 +911,12 @@ def do_rnnt_pruning(
 
     # (B, T, s_range, decoder_dim)
     lm_pruned = torch.gather(
-        lm.unsqueeze(1).expand((B, T, S + 1, decoder_dim)),
-        dim=2,
-        index=ranges.reshape((B, T, s_range, 1)).expand(
-            (B, T, s_range, decoder_dim)
+        lm,
+        dim=1,
+        index=ranges.reshape(B, T * s_range, 1).expand(
+            (B, T * s_range, decoder_dim)
         ),
-    )
+    ).reshape(B, T, s_range, decoder_dim)
     return am_pruned, lm_pruned
 
 
