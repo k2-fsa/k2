@@ -904,19 +904,18 @@ def do_rnnt_pruning(
     (B, S1, decoder_dim) = lm.shape
     encoder_dim = am.shape[-1]
     assert am.shape == (B, T, encoder_dim), (am.shape, B, T, encoder_dim)
-    S = S1 - 1
 
     # (B, T, s_range, encoder_dim)
     am_pruned = am.unsqueeze(2).expand((B, T, s_range, encoder_dim))
 
     # (B, T, s_range, decoder_dim)
     lm_pruned = torch.gather(
-        lm.unsqueeze(1).expand((B, T, S + 1, decoder_dim)),
-        dim=2,
-        index=ranges.reshape((B, T, s_range, 1)).expand(
-            (B, T, s_range, decoder_dim)
+        lm,
+        dim=1,
+        index=ranges.reshape(B, T * s_range, 1).expand(
+            (B, T * s_range, decoder_dim)
         ),
-    )
+    ).reshape(B, T, s_range, decoder_dim)
     return am_pruned, lm_pruned
 
 
