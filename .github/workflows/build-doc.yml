@@ -93,6 +93,7 @@ jobs:
       - name: Build doc
         shell: bash
         run: |
+          python3 -m pip install numpy
           export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
           echo "PYTHONPATH: $PYTHONPATH"
           cd docs

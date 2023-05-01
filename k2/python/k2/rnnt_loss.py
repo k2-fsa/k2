@@ -169,12 +169,10 @@ def get_rnnt_logprobs(
 
     # px is the probs of the actual symbols..
     px_am = torch.gather(
-        am.unsqueeze(1).expand(B, S, T, C),
-        dim=3,
-        index=symbols.reshape(B, S, 1, 1).expand(B, S, T, 1),
-    ).squeeze(
-        -1
-    )  # [B][S][T]
+        am.transpose(1, 2),  # (B, C, T)
+        dim=1,
+        index=symbols.unsqueeze(2).expand(B, S, T),
+    )  # (B, S, T)
 
     if rnnt_type == "regular":
         px_am = torch.cat(
@@ -906,19 +904,18 @@ def do_rnnt_pruning(
     (B, S1, decoder_dim) = lm.shape
     encoder_dim = am.shape[-1]
     assert am.shape == (B, T, encoder_dim), (am.shape, B, T, encoder_dim)
-    S = S1 - 1
 
     # (B, T, s_range, encoder_dim)
     am_pruned = am.unsqueeze(2).expand((B, T, s_range, encoder_dim))
 
     # (B, T, s_range, decoder_dim)
     lm_pruned = torch.gather(
-        lm.unsqueeze(1).expand((B, T, S + 1, decoder_dim)),
-        dim=2,
-        index=ranges.reshape((B, T, s_range, 1)).expand(
-            (B, T, s_range, decoder_dim)
+        lm,
+        dim=1,
+        index=ranges.reshape(B, T * s_range, 1).expand(
+            (B, T * s_range, decoder_dim)
         ),
-    )
+    ).reshape(B, T, s_range, decoder_dim)
     return am_pruned, lm_pruned
 
 
@@ -1399,12 +1396,10 @@ def get_rnnt_logprobs_smoothed(
 
     # px is the probs of the actual symbols (not yet normalized)..
     px_am = torch.gather(
-        am.unsqueeze(1).expand(B, S, T, C),
-        dim=3,
-        index=symbols.reshape(B, S, 1, 1).expand(B, S, T, 1),
-    ).squeeze(
-        -1
-    )  # [B][S][T]
+        am.transpose(1, 2),  # (B, C, T)
+        dim=1,
+        index=symbols.unsqueeze(2).expand(B, S, T),
+    )  # (B, S, T)
 
     if rnnt_type == "regular":
         px_am = torch.cat(
