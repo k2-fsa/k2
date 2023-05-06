@@ -18,11 +18,24 @@
  * limitations under the License.
  */
 
-#ifndef K2_PYTHON_CSRC_TORCH_SELF_ALIGNMENT_H_
-#define K2_PYTHON_CSRC_TORCH_SELF_ALIGNMENT_H_
+#ifndef K2_CSRC_PRUNE_RANGE_TO_LATTICE_H_
+#define K2_CSRC_PRUNE_RANGE_TO_LATTICE_H_
+
+#include <torch/extension.h>
+
+#include <vector>
 
 #include "k2/python/csrc/torch.h"
 
-void PybindSelfAlignment(py::module &m);
+namespace k2 {
 
-#endif  // K2_PYTHON_CSRC_TORCH_SELF_ALIGNMENT_H_
+FsaVec PrunedRangesToLattice(
+    torch::Tensor ranges,  // [B][S][T+1] if !modified, [B][S][T] if modified.
+    torch::Tensor x_lens,  // [B][S+1][T]
+    torch::Tensor y,
+    torch::Tensor logits,
+    Array1<int32_t> *arc_map);
+
+}  // namespace k2
+
+#endif  // K2_CSRC_PRUNE_RANGE_TO_LATTICE_H_

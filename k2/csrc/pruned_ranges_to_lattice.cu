@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 
-#ifndef K2_CSRC_SELF_ALIGNMENT_H_
-#define K2_CSRC_SELF_ALIGNMENT_H_
+#ifndef K2_CSRC_PRUNE_RANGE_TO_LATTICE_H_
+#define K2_CSRC_PRUNE_RANGE_TO_LATTICE_H_
 
 #include <torch/extension.h>
 
@@ -27,7 +27,7 @@
 
 namespace k2 {
 
-FsaVec SelfAlignment(
+FsaVec PrunedRangesToLattice(
     // Normally, ranges is with shape [B][S][T+1] if !modified, [B][S][T] if modified.
     // Currently, only [B][S][T] is supported.
     torch::Tensor ranges,
@@ -238,4 +238,4 @@ FsaVec SelfAlignment(
 
 }  // namespace k2
 
-#endif  // K2_CSRC_SELF_ALIGNMENT_H_
+#endif  // K2_CSRC_PRUNE_RANGE_TO_LATTICE_H_

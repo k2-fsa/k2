@@ -21,20 +21,20 @@
 #include "k2/csrc/device_guard.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/torch_util.h"
-#include "k2/csrc/self_alignment.h"
-#include "k2/python/csrc/torch/self_alignment.h"
+#include "k2/csrc/pruned_ranges_to_lattice.h"
+#include "k2/python/csrc/torch/pruned_ranges_to_lattice.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
 
 
-void PybindSelfAlignment(py::module &m) {
+void PybindPrunedRangesToLattice(py::module &m) {
   m.def(
-      "self_alignment",
+      "pruned_ranges_to_lattice",
       [](torch::Tensor ranges, torch::Tensor x_lens,
          torch::Tensor y,
          torch::Tensor logits) -> std::pair<k2::FsaVec, torch::Tensor> {
         k2::DeviceGuard guard(k2::GetContext(ranges));
         k2::Array1<int32_t> label_map;
-        k2::FsaVec ofsa = k2::SelfAlignment(ranges, x_lens, y, logits, &label_map);
+        k2::FsaVec ofsa = k2::PrunedRangesToLattice(ranges, x_lens, y, logits, &label_map);
         torch::Tensor tensor = ToTorch(label_map);
         return std::make_pair(ofsa, tensor);
       },

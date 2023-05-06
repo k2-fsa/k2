@@ -1,6 +1,6 @@
 # please keep the list sorted
 set(torch_srcs
-  self_alignment.cu
+  pruned_ranges_to_lattice.cu
   arc.cu
   fsa.cu
   fsa_algo.cu
