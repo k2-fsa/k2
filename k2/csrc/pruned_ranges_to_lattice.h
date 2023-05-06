@@ -18,8 +18,8 @@
  * limitations under the License.
  */
 
-#ifndef K2_CSRC_PRUNE_RANGE_TO_LATTICE_H_
-#define K2_CSRC_PRUNE_RANGE_TO_LATTICE_H_
+#ifndef K2_CSRC_PRUNED_RANGES_TO_LATTICE_H_
+#define K2_CSRC_PRUNED_RANGES_TO_LATTICE_H_
 
 #include <torch/extension.h>
 
@@ -30,12 +30,12 @@
 namespace k2 {
 
 FsaVec PrunedRangesToLattice(
-    torch::Tensor ranges,  // [B][S][T+1] if !modified, [B][S][T] if modified.
-    torch::Tensor x_lens,  // [B][S+1][T]
-    torch::Tensor y,
-    torch::Tensor logits,
+    torch::Tensor ranges,   // [B][T][s_range]
+    torch::Tensor frames,   // [B][T]
+    torch::Tensor symbols,  // [B][S]
+    torch::Tensor logits,   // [B][T][s_range][C]
     Array1<int32_t> *arc_map);
 
 }  // namespace k2
 
-#endif  // K2_CSRC_PRUNE_RANGE_TO_LATTICE_H_
+#endif  // K2_CSRC_PRUNED_RANGES_TO_LATTICE_H_
