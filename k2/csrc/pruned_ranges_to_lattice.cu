@@ -69,10 +69,9 @@ FsaVec PrunedRangesToLattice(
 
     // Typically, s_range is 5.
     const int32_t B = ranges.size(0), T = ranges.size(1), s_range = ranges.size(2);
-    const float *logits_data = logits.data_ptr<float>();
-    const int32_t *ranges_data = ranges.data_ptr<int32_t>();
-    const int32_t *frames_data = frames.data_ptr<int32_t>();
+    // const int32_t *frames_data = frames.data_ptr<int32_t>();
     const int32_t *symbols_data = symbols.data_ptr<int32_t>();
+    // Used to compute out_map.
     const int32_t lg_stride_0 = logits.stride(0),
                   lg_stride_1 = logits.stride(1),
                   lg_stride_2 = logits.stride(2),
@@ -82,9 +81,9 @@ FsaVec PrunedRangesToLattice(
     Array1<int32_t> f2s_row_splits(context, B + 1);
     int32_t * f2s_row_splits_data = f2s_row_splits.Data();
     K2_EVAL(context, B, lambda_set_f2s_row_splits, (int32_t fsa_idx0) {
-        int32_t t = frames_data[fsa_idx0];
+        int32_t t = frames_a[fsa_idx0];
         K2_CHECK_LE(t, T);
-        // + 1 in "t * U + 1" is for super-final state.
+        // + 1 in "t * s_range + 1" is for super-final state.
         f2s_row_splits_data[fsa_idx0] = t * s_range + 1;
     });
     ExclusiveSum(f2s_row_splits, &f2s_row_splits);
@@ -106,15 +105,15 @@ FsaVec PrunedRangesToLattice(
                   t = state_idx1 / s_range,
                   token_index = state_idx1 % s_range;
 
-          K2_CHECK_LE(t, frames_data[fsa_idx0]);
-          if (state_idx1 == frames_data[fsa_idx0] * s_range - 1) {
+          K2_CHECK_LE(t, frames_a[fsa_idx0]);
+          if (state_idx1 == frames_a[fsa_idx0] * s_range - 1) {
             // frames[fsa_idx0] * s_range is the state_idx1 of super final-state.
             // frames[fsa_idx0] * s_range - 1 is the state pointing to super final-state.
             // final arc to super final state.
             s2c_row_splits_data[state_idx01] = 1;
             return;
           }
-          if (state_idx1 == frames_data[fsa_idx0] * s_range) {
+          if (state_idx1 == frames_a[fsa_idx0] * s_range) {
             // frames[fsa_idx0] * U is the state_idx1 of super final-state.
             // final state has no leaving arcs.
             s2c_row_splits_data[state_idx01] = 0;
@@ -122,7 +121,7 @@ FsaVec PrunedRangesToLattice(
           }
 
           bool has_horizontal_blank_arc = false;
-          if (t < frames_data[fsa_idx0] - 1) {
+          if (t < frames_a[fsa_idx0] - 1) {
             has_horizontal_blank_arc = ranges_a[fsa_idx0][t][token_index] >= ranges_a[fsa_idx0][t + 1][0];
           }
           if (token_index < s_range - 1) {
@@ -167,7 +166,7 @@ FsaVec PrunedRangesToLattice(
                     t = state_idx1 / s_range,
                     token_index = state_idx1 % s_range;  // token_index is belong to [0, U)
             Arc arc;
-            if (state_idx1 == frames_data[fsa_idx0] * s_range - 1) {
+            if (state_idx1 == frames_a[fsa_idx0] * s_range - 1) {
               arc.src_state = state_idx1;
               arc.dest_state = state_idx1 + 1;
               arc.label = -1;
@@ -187,16 +186,18 @@ FsaVec PrunedRangesToLattice(
                 case 0:
                   arc.dest_state = state_idx1 + 1;
                   arc.label = arc_label;
+                  arc.score = logits_a[fsa_idx0][t][token_index][arc_label];
+
                   logits_offset = fsa_idx0 * lg_stride_0 + t * lg_stride_1 + token_index * lg_stride_2 + arc_label * lg_stride_3;
-                  arc.score = logits_data[logits_offset];
                   out_map_data[arc_idx012] = logits_offset;
                   break;
                 case 1:
                   next_state_idx1 = ranges_a[fsa_idx0][t][token_index] - ranges_a[fsa_idx0][t + 1][0];
                   arc.dest_state = next_state_idx1 + (t + 1) * s_range;
                   arc.label = 0;
+                  arc.score = logits_a[fsa_idx0][t][token_index][0];
+
                   logits_offset = fsa_idx0 * lg_stride_0 + t * lg_stride_1 + token_index * lg_stride_2;
-                  arc.score = logits_data[logits_offset];
                   out_map_data[arc_idx012] = logits_offset;
                   break;
                 default:
@@ -207,8 +208,9 @@ FsaVec PrunedRangesToLattice(
               next_state_idx1 = ranges_a[fsa_idx0][t][token_index] - ranges_a[fsa_idx0][t + 1][0];
               arc.dest_state = next_state_idx1 + (t + 1) * s_range;
               arc.label = 0;
+              arc.score = logits_a[fsa_idx0][t][token_index][0];
+
               logits_offset = fsa_idx0 * lg_stride_0 + t * lg_stride_1 + token_index * lg_stride_2;
-              arc.score = logits_data[logits_offset];
               out_map_data[arc_idx012] = logits_offset;
             }
             arcs_data[arc_idx012] = arc;
