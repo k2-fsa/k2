@@ -453,7 +453,8 @@ class Fsa(object):
                     "    fsa.labels = labels"
                 )
             return properties  # Return cached properties.
-
+        
+        self.labels_version = self.labels._version
         if self.arcs.num_axes() == 2:
             properties = _k2.get_fsa_basic_properties(self.arcs)
         else:
