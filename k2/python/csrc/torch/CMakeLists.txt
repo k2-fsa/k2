@@ -1,6 +1,5 @@
 # please keep the list sorted
 set(torch_srcs
-  pruned_ranges_to_lattice.cu
   arc.cu
   fsa.cu
   fsa_algo.cu
@@ -9,6 +8,7 @@ set(torch_srcs
   mutual_information.cu
   mutual_information_cpu.cu
   nbest.cu
+  pruned_ranges_to_lattice.cu
   ragged.cu
   ragged_ops.cu
   rnnt_decode.cu

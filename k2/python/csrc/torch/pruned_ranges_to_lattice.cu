@@ -18,6 +18,8 @@
  * limitations under the License.
  */
 
+#include <utility>
+
 #include "k2/csrc/device_guard.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/torch_util.h"
@@ -45,7 +47,7 @@ FsaVec PrunedRangesToLattice(
 
     TORCH_CHECK(torch::kInt == ranges.scalar_type());
     TORCH_CHECK(torch::kInt == frames.scalar_type());
-    TORCH_CHECK(torch::kInt == symbols.scalar_type());
+    TORCH_CHECK(torch::kLong == symbols.scalar_type());
 
     ContextPtr context;
     if (ranges.device().type() == torch::kCPU) {
@@ -60,7 +62,7 @@ FsaVec PrunedRangesToLattice(
     // "_a" is short for accessor.
     auto ranges_a = ranges.accessor<int32_t, 3>();
     auto frames_a = frames.accessor<int32_t, 1>();
-    auto symbols_a = symbols.accessor<int32_t, 2>();
+    auto symbols_a = symbols.accessor<int64_t, 2>();
 
     // Typically, s_range is 5.
     const int32_t B = ranges.size(0),
@@ -235,14 +237,16 @@ FsaVec PrunedRangesToLattice(
 void PybindPrunedRangesToLattice(py::module &m) {
   m.def(
       "pruned_ranges_to_lattice",
-      [](torch::Tensor ranges, torch::Tensor x_lens,
-         torch::Tensor y,
+      [](torch::Tensor ranges,
+         torch::Tensor frames,
+         torch::Tensor symbols,
          torch::Tensor logits) -> std::pair<k2::FsaVec, torch::Tensor> {
         k2::DeviceGuard guard(k2::GetContext(ranges));
-        k2::Array1<int32_t> label_map;
-        k2::FsaVec ofsa = k2::PrunedRangesToLattice(ranges, x_lens, y, logits, &label_map);
-        torch::Tensor tensor = ToTorch(label_map);
-        return std::make_pair(ofsa, tensor);
+        k2::Array1<int32_t> arc_to_logit_map;
+        k2::FsaVec ofsa = k2::PrunedRangesToLattice(
+            ranges, frames, symbols, logits, &arc_to_logit_map);
+        return std::make_pair(ofsa, ToTorch(arc_to_logit_map));
       },
-      py::arg("ranges"), py::arg("x_lens"), py::arg("y"), py::arg("logits"));
+      py::arg("ranges"), py::arg("frames"),
+      py::arg("symbols"), py::arg("logits"));
 }
