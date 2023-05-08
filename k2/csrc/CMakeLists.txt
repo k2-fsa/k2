@@ -74,7 +74,6 @@ set(context_srcs
   reverse.cu
   rm_epsilon.cu
   rnnt_decode.cu
-  pruned_ranges_to_lattice.cu
   tensor.cu
   tensor_ops.cu
   thread_pool.cu

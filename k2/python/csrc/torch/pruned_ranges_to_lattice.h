@@ -23,6 +23,17 @@
 
 #include "k2/python/csrc/torch.h"
 
+namespace k2 {
+
+FsaVec PrunedRangesToLattice(
+    torch::Tensor ranges,   // [B][T][s_range]
+    torch::Tensor frames,   // [B][T]
+    torch::Tensor symbols,  // [B][S]
+    torch::Tensor logits,   // [B][T][s_range][C]
+    Array1<int32_t> *arc_map);
+
+}  // namespace k2
+
 void PybindPrunedRangesToLattice(py::module &m);
 
 #endif  // K2_PYTHON_CSRC_TORCH_PRUNE_RANGE_TO_LATTICE_H_
