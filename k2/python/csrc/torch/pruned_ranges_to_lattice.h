@@ -47,7 +47,7 @@ namespace k2 {
    @param logits  The pruned joiner network (or am/lm)
        of shape (B, T, s_range, C).
        Its type can be float32, float64, float16. Though float32 is mainly
-       used. float64 and float16 are also supported for future use.
+       used, float64 and float16 are also supported for future use.
    @param [out] arc_map  A map from arcs in generated lattice to global index
        of logits, or -1 if the arc had no corresponding score in logits,
        e.g. arc pointing to super final state.
