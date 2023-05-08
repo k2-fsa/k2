@@ -97,7 +97,7 @@ class TestPrunedRangesToLattice(unittest.TestCase):
                     -1,
                 ],
                 dtype=torch.int32,
-            )
+            ),
         )
         lattice = k2.Fsa(ofsa)
 
@@ -198,7 +198,9 @@ class TestPrunedRangesToLattice(unittest.TestCase):
         logits = logits + torch.tensor(
             [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0]
         ).reshape(B, T, 1, 1)
-        logits = logits + torch.tensor([0.0, 1, 2, 3, 4]).reshape(1, 1, s_range, 1)
+        logits = logits + torch.tensor([0.0, 1, 2, 3, 4]).reshape(
+            1, 1, s_range, 1
+        )
         for dtype in self.float_dtypes:
             tmp_logits = logits.to(dtype)
             self._common_test_part(ranges, frames, symbols, tmp_logits)
