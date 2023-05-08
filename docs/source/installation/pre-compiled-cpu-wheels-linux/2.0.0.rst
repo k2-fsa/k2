@@ -1,0 +1,15 @@
+torch 2.0.0
+===========
+
+
+- `k2-1.24.1.dev20230430+cpu.torch2.0.0-cp311-cp311-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.1.dev20230430+cpu.torch2.0.0-cp311-cp311-linux_x86_64.whl>`_
+- `k2-1.24.1.dev20230430+cpu.torch2.0.0-cp310-cp310-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.1.dev20230430+cpu.torch2.0.0-cp310-cp310-linux_x86_64.whl>`_
+- `k2-1.24.1.dev20230430+cpu.torch2.0.0-cp39-cp39-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.1.dev20230430+cpu.torch2.0.0-cp39-cp39-linux_x86_64.whl>`_
+- `k2-1.24.1.dev20230430+cpu.torch2.0.0-cp38-cp38-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.1.dev20230430+cpu.torch2.0.0-cp38-cp38-linux_x86_64.whl>`_
+- `k2-1.24.0.dev20230427+cpu.torch2.0.0-cp311-cp311-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.0.dev20230427+cpu.torch2.0.0-cp311-cp311-linux_x86_64.whl>`_
+- `k2-1.24.0.dev20230427+cpu.torch2.0.0-cp310-cp310-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.0.dev20230427+cpu.torch2.0.0-cp310-cp310-linux_x86_64.whl>`_
+- `k2-1.24.0.dev20230427+cpu.torch2.0.0-cp39-cp39-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.0.dev20230427+cpu.torch2.0.0-cp39-cp39-linux_x86_64.whl>`_
+- `k2-1.23.4.dev20230318+cpu.torch2.0.0-cp311-cp311-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.23.4.dev20230318+cpu.torch2.0.0-cp311-cp311-linux_x86_64.whl>`_
+- `k2-1.23.4.dev20230318+cpu.torch2.0.0-cp310-cp310-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.23.4.dev20230318+cpu.torch2.0.0-cp310-cp310-linux_x86_64.whl>`_
+- `k2-1.23.4.dev20230318+cpu.torch2.0.0-cp39-cp39-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.23.4.dev20230318+cpu.torch2.0.0-cp39-cp39-linux_x86_64.whl>`_
+- `k2-1.23.4.dev20230318+cpu.torch2.0.0-cp38-cp38-linux_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.23.4.dev20230318+cpu.torch2.0.0-cp38-cp38-linux_x86_64.whl>`_

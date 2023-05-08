@@ -281,8 +281,7 @@ class TestRnntLoss(unittest.TestCase):
                 )
                 assert (
                     px.shape == (B, S, T)
-                    if rnnt_type != "regular"
-                    else (B, S, T + 1)
+                    if rnnt_type != "regular" else (B, S, T + 1)
                 )
                 assert py.shape == (B, S + 1, T)
                 assert symbols.shape == (B, S)
@@ -713,7 +712,9 @@ class TestRnntLoss(unittest.TestCase):
                     s_range=r,
                 )
                 am_pruned, lm_pruned = k2.do_rnnt_pruning(
-                    am=am, lm=lm, ranges=new_ranges,
+                    am=am,
+                    lm=lm,
+                    ranges=new_ranges,
                 )
 
                 logits = am_pruned + lm_pruned
@@ -737,7 +738,9 @@ class TestRnntLoss(unittest.TestCase):
                 )
 
                 am_pruned, lm_pruned = k2.do_rnnt_pruning(
-                    am=am, lm=lm, ranges=old_ranges,
+                    am=am,
+                    lm=lm,
+                    ranges=old_ranges,
                 )
                 logits = am_pruned + lm_pruned
 
@@ -751,6 +754,133 @@ class TestRnntLoss(unittest.TestCase):
                 )
 
                 print(f"Pruned with old ranges {r} : {loss}")
+
+    # Check that training with an empty reference does not cause a crash.
+    def test_rnnt_loss_empty_reference(self):
+        B = 1
+        S = 0
+        T = 4
+        # C = 3
+        for device in self.devices:
+            # lm: [B][S+1][C]
+            lm = torch.tensor(
+                [[[0, 0, 1]]],
+                dtype=torch.float,
+                device=device,
+            )
+            # am: [B][T][C]
+            am = torch.tensor(
+                [[[0, 1, 2], [0, 0, 0], [0, 2, 4], [0, 3, 3]]],
+                dtype=torch.float,
+                device=device,
+            )
+            termination_symbol = 2
+            symbols = torch.tensor([[]], dtype=torch.long, device=device)
+
+            px, py = k2.get_rnnt_logprobs(
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+            )
+            assert px.shape == (B, S, T + 1)
+            assert py.shape == (B, S + 1, T)
+            assert symbols.shape == (B, S)
+            m = k2.mutual_information_recursion(px=px, py=py, boundary=None)
+
+            if device == torch.device("cpu"):
+                expected = -m
+            assert torch.allclose(-m, expected.to(device))
+
+            # test rnnt_loss_simple
+            m = k2.rnnt_loss_simple(
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=None,
+                reduction="none",
+            )
+            assert torch.allclose(m, expected.to(device))
+
+            # test rnnt_loss_smoothed
+            m = k2.rnnt_loss_smoothed(
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                lm_only_scale=0.0,
+                am_only_scale=0.0,
+                boundary=None,
+                reduction="none",
+            )
+            assert torch.allclose(m, expected.to(device))
+
+            logits = am.unsqueeze(2) + lm.unsqueeze(1)
+
+            # test rnnt_loss
+            m = k2.rnnt_loss(
+                logits=logits,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=None,
+                reduction="none",
+            )
+            assert torch.allclose(m, expected.to(device))
+
+            # compare with torchaudio rnnt_loss
+            if self.has_torch_rnnt_loss:
+                import torchaudio.functional
+
+                m = torchaudio.functional.rnnt_loss(
+                    logits=logits,
+                    targets=symbols.int(),
+                    logit_lengths=torch.tensor(
+                        [T] * B, dtype=torch.int32, device=device
+                    ),
+                    target_lengths=torch.tensor(
+                        [S] * B, dtype=torch.int32, device=device
+                    ),
+                    blank=termination_symbol,
+                    reduction="none",
+                )
+                assert torch.allclose(m, expected.to(device))
+
+            # should be invariant to adding a constant for any frame.
+            lm += torch.randn(B, S + 1, 1, device=device)
+            am += torch.randn(B, T, 1, device=device)
+
+            m = k2.rnnt_loss_simple(
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=None,
+                reduction="none",
+            )
+            assert torch.allclose(m, expected.to(device))
+
+            m = k2.rnnt_loss_smoothed(
+                lm=lm,
+                am=am,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                lm_only_scale=0.0,
+                am_only_scale=0.0,
+                boundary=None,
+                reduction="none",
+            )
+            assert torch.allclose(m, expected.to(device))
+
+            logits = am.unsqueeze(2) + lm.unsqueeze(1)
+            m = k2.rnnt_loss(
+                logits=logits,
+                symbols=symbols,
+                termination_symbol=termination_symbol,
+                boundary=None,
+                reduction="none",
+            )
+            assert torch.allclose(m, expected.to(device))
 
 
 if __name__ == "__main__":

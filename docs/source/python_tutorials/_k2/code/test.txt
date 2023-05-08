@@ -1,0 +1,46 @@
+[F] /root/fangjun/open-source/k2/k2/csrc/array.h:178:k2::Array1<T> k2::Array1<T>::Arange(int32_t, int32_t) const [with T = int; int32_t = int] Check failed: end >= start (0 vs. 3) 
+
+
+[ Stack-Trace: ]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/libk2_log.so(k2::internal::GetStackTrace()+0x5b) [0x7f716d321105]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0xb52e2) [0x7f716dc362e2]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1b8676) [0x7f716dd39676]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1eab1d) [0x7f716dd6bb1d]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1fbf7f) [0x7f716dd7cf7f]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1fa291) [0x7f716dd7b291]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1f4b2f) [0x7f716dd75b2f]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x1f4ba3) [0x7f716dd75ba3]
+/root/fangjun/open-source/k2/build-cpu-debug/lib/_k2.cpython-38-x86_64-linux-gnu.so(+0x916e0) [0x7f716dc126e0]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyCFunction_Call+0xf5) [0x7f723baa2535]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(_PyObject_MakeTpCall+0x9e) [0x7f723ba9f80e]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(+0xa3c8b) [0x7f723baa3c8b]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(+0x11b93e) [0x7f723bb1b93e]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(+0x11baa7) [0x7f723bb1baa7]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyObject_GetItem+0x49) [0x7f723ba85de9]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(_PyEval_EvalFrameDefault+0x5025) [0x7f723ba72355]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(_PyEval_EvalCodeWithName+0xb67) [0x7f723bba0f47]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyEval_EvalCodeEx+0x3e) [0x7f723bba0ffe]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyEval_EvalCode+0x1b) [0x7f723bba102b]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyRun_FileExFlags+0x122) [0x7f723bbe6902]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(PyRun_SimpleFileExFlags+0xfd) [0x7f723bbe6add]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(Py_RunMain+0x7a0) [0x7f723bc0a750]
+/star-fj/fangjun/open-source/pyenv/versions/3.8.0/lib/libpython3.8.so.1.0(Py_BytesMain+0x56) [0x7f723bc0ac26]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xe7) [0x7f723b630bf7]
+python3(_start+0x2a) [0x55f05c1e378a]
+
+Traceback (most recent call last):
+  File "test.py", line 6, in <module>
+    print(tensor[2])
+RuntimeError: 
+    Some bad things happened. Please read the above error messages and stack
+    trace. If you are using Python, the following command may be helpful:
+
+      gdb --args python /path/to/your/code.py
+
+    (You can use `gdb` to debug the code. Please consider compiling
+    a debug version of k2.).
+
+    If you are unable to fix it, please open an issue at:
+
+      https://github.com/k2-fsa/k2/issues/new
+    

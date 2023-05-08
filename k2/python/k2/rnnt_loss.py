@@ -145,8 +145,10 @@ def get_rnnt_logprobs(
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
     assert symbols.shape == (B, S), (symbols.shape, B, S)
-    assert S >= 1, S
-    assert T >= S, (T, S)
+    assert S >= 0, S
+    assert (
+        rnnt_type != "modified" or T >= S
+    ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     # subtracting am_max and lm_max is to ensure the probs are in a good range
@@ -167,12 +169,10 @@ def get_rnnt_logprobs(
 
     # px is the probs of the actual symbols..
     px_am = torch.gather(
-        am.unsqueeze(1).expand(B, S, T, C),
-        dim=3,
-        index=symbols.reshape(B, S, 1, 1).expand(B, S, T, 1),
-    ).squeeze(
-        -1
-    )  # [B][S][T]
+        am.transpose(1, 2),  # (B, C, T)
+        dim=1,
+        index=symbols.unsqueeze(2).expand(B, S, T),
+    )  # (B, S, T)
 
     if rnnt_type == "regular":
         px_am = torch.cat(
@@ -394,8 +394,10 @@ def get_rnnt_logprobs_joint(
     (B, T, S1, C) = logits.shape
     S = S1 - 1
     assert symbols.shape == (B, S), (symbols.shape, B, S)
-    assert S >= 1, S
-    assert T >= S, (T, S)
+    assert S >= 0, S
+    assert (
+        rnnt_type != "modified" or T >= S
+    ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     normalizers = torch.logsumexp(logits, dim=3)
@@ -671,8 +673,7 @@ def get_rnnt_prune_ranges(
     S1 = S + 1
     assert py_grad.shape == (B, S1, T), (py_grad.shape, B, S1, T)
     assert boundary.shape == (B, 4), (boundary.shape, B)
-    assert S >= 1, S
-    assert T >= S, (T, S)
+    assert S >= 0, S
 
     # s_range > S means we won't prune out any symbols. To make indexing with
     # ranges run normally, s_range should be equal to or less than ``S + 1``.
@@ -799,8 +800,7 @@ def get_rnnt_prune_ranges_deprecated(
     assert T1 in [T, T + 1], (T1, T)
     assert py_grad.shape == (B, S + 1, T), (py_grad.shape, B, S, T)
     assert boundary.shape == (B, 4), (boundary.shape, B)
-    assert S >= 1, S
-    assert T >= S, (T, S)
+    assert S >= 0, S
 
     # s_range > S means we won't prune out any symbols. To make indexing with
     # ranges run normally, s_range should be equal to or less than ``S + 1``.
@@ -904,19 +904,18 @@ def do_rnnt_pruning(
     (B, S1, decoder_dim) = lm.shape
     encoder_dim = am.shape[-1]
     assert am.shape == (B, T, encoder_dim), (am.shape, B, T, encoder_dim)
-    S = S1 - 1
 
     # (B, T, s_range, encoder_dim)
     am_pruned = am.unsqueeze(2).expand((B, T, s_range, encoder_dim))
 
     # (B, T, s_range, decoder_dim)
     lm_pruned = torch.gather(
-        lm.unsqueeze(1).expand((B, T, S + 1, decoder_dim)),
-        dim=2,
-        index=ranges.reshape((B, T, s_range, 1)).expand(
-            (B, T, s_range, decoder_dim)
+        lm,
+        dim=1,
+        index=ranges.reshape(B, T * s_range, 1).expand(
+            (B, T * s_range, decoder_dim)
         ),
-    )
+    ).reshape(B, T, s_range, decoder_dim)
     return am_pruned, lm_pruned
 
 
@@ -1036,8 +1035,10 @@ def get_rnnt_logprobs_pruned(
     (B, T, s_range, C) = logits.shape
     assert ranges.shape == (B, T, s_range), (ranges.shape, B, T, s_range)
     (B, S) = symbols.shape
-    assert S >= 1, S
-    assert T >= S, (T, S)
+    assert S >= 0, S
+    assert (
+        rnnt_type != "modified" or T >= S
+    ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     normalizers = torch.logsumexp(logits, dim=3)
@@ -1346,8 +1347,10 @@ def get_rnnt_logprobs_smoothed(
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
     assert symbols.shape == (B, S), (symbols.shape, B, S)
-    assert S >= 1, S
-    assert T >= S, (T, S)
+    assert S >= 0, S
+    assert (
+        rnnt_type != "modified" or T >= S
+    ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
 
     # Caution: some parts of this code are a little less clear than they could
@@ -1393,12 +1396,10 @@ def get_rnnt_logprobs_smoothed(
 
     # px is the probs of the actual symbols (not yet normalized)..
     px_am = torch.gather(
-        am.unsqueeze(1).expand(B, S, T, C),
-        dim=3,
-        index=symbols.reshape(B, S, 1, 1).expand(B, S, T, 1),
-    ).squeeze(
-        -1
-    )  # [B][S][T]
+        am.transpose(1, 2),  # (B, C, T)
+        dim=1,
+        index=symbols.unsqueeze(2).expand(B, S, T),
+    )  # (B, S, T)
 
     if rnnt_type == "regular":
         px_am = torch.cat(

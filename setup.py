@@ -197,7 +197,7 @@ class BuildExtension(build_ext):
 
                 cat k2/csrc/version.h
 
-                make {make_args} _k2 k2_torch_api install
+                make {make_args} install
             """
             print(f"build command is:\n{build_cmd}")
 
