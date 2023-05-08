@@ -38,11 +38,16 @@ namespace k2 {
    @param ranges  A tensor containing the symbol indexes for each frame.
        Its shape is (B, T, s_range). See the docs in `get_rnnt_prune_ranges`
        in k2/python/k2/rnnt_loss.py for more details of this tensor.
+       Its type is int32, consistent with that in rnnt_loss.py.
    @param frames  The number of frames per sample with shape (B).
+       Its type is int32.
    @param symbols  The symbol sequence, a LongTensor of shape (B, S),
        and elements in {0..C-1}.
+       Its type is int64(Long), consistent with that in rnnt_loss.py.
    @param logits  The pruned joiner network (or am/lm)
-       of shape (B, T, s_range, C)
+       of shape (B, T, s_range, C).
+       Its type can be float32, float64, float16. Though float32 is mainly
+       used. float64 and float16 are also supported for future use.
    @param [out] arc_map  A map from arcs in generated lattice to global index
        of logits, or -1 if the arc had no corresponding score in logits,
        e.g. arc pointing to super final state.
