@@ -38,7 +38,7 @@ class TestPrunedRangesToLattice(unittest.TestCase):
         cls.float_dtypes = [torch.float32, torch.float64, torch.float16]
 
     def _common_test_part(self, ranges, frames, symbols, logits):
-        ofsa, arc_map = k2.pruned_ranges_to_lattice(ranges, frames, symbols, logits)
+        ofsa, arc_map = k2.pruned_ranges_to_lattice(ranges, frames, symbols, logits)  # noqa
         scores_tracked_by_autograd = k2.index_select(
             logits.reshape(-1).to(torch.float32), arc_map
         )
@@ -164,8 +164,8 @@ class TestPrunedRangesToLattice(unittest.TestCase):
     def test(self):
         ranges = torch.tensor(
             [
-                [[0, 1, 2, 3, 4], [1, 2, 3, 4, 5], [2, 3, 4, 5, 6], [3, 4, 5, 6, 7]],
-                [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4], [3, 4, 5, 6, 7], [3, 4, 5, 6, 7]],
+                [[0, 1, 2, 3, 4], [1, 2, 3, 4, 5], [2, 3, 4, 5, 6], [3, 4, 5, 6, 7]],  # noqa
+                [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4], [3, 4, 5, 6, 7], [3, 4, 5, 6, 7]],  # noqa
             ],
             dtype=torch.int32,
         )
@@ -182,10 +182,10 @@ class TestPrunedRangesToLattice(unittest.TestCase):
         logits = logits + torch.tensor(
             [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0]
         ).reshape(B, T, 1, 1)
-        logits = logits + torch.tensor([0.0, 1, 2, 3, 4]).reshape(1, 1, s_range, 1)
+        logits = logits + torch.tensor([0.0, 1, 2, 3, 4]).reshape(1, 1, s_range, 1)  # noqa
         for dtype in self.float_dtypes:
             tmp_logits = logits.to(dtype)
-            self._common_test_part(ranges, frames, symbols, logits)
+            self._common_test_part(ranges, frames, symbols, tmp_logits)
 
 
 if __name__ == "__main__":

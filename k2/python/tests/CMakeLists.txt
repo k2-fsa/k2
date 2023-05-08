@@ -60,6 +60,7 @@ set(py_test_files
   nbest_test.py
   numerical_gradient_check_test.py
   online_dense_intersecter_test.py
+  pruned_ranges_to_lattice_test.py
   ragged_ops_test.py
   ragged_shape_test.py
   ragged_tensor_test.py
