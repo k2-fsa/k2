@@ -1210,6 +1210,8 @@ class Fsa(object):
           A tuple containing the name and the value.
         '''
         for name, value in self._non_tensor_attr.items():
+            if name == "labels_version":
+                continue
             yield name, value
 
     @property
