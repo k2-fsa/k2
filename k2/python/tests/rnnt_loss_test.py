@@ -844,8 +844,10 @@ class TestRnntLoss(unittest.TestCase):
                     blank=termination_symbol,
                     reduction="none",
                 )
+                # Empty reference is expected to get zero there.
+                # But torchaudio.functional.rnnt_loss gets non-zero.
                 # https://github.com/k2-fsa/k2/issues/1191
-                assert torch.allclose(m, 0)
+                assert torch.allclose(0, expected.to(device))
 
             # should be invariant to adding a constant for any frame.
             lm += torch.randn(B, S + 1, 1, device=device)
