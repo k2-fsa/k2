@@ -247,7 +247,7 @@ want to treat them specially.
 
 .. NOTE::
 
-  - :func:`k2.intersect` works **ONLY** on CPU when ``treat_epsilons_specially=True``
+  - :func:`k2.compose` works **ONLY** on CPU when ``treat_epsilons_specially=True``
     When ``treat_epsilons_specially=False`` and both a_fsa and b_fsa are on GPU, then this function works on GPU;
     in this case, the two input FSAs do not need to be arc sorted.
   - autograd is also supported.
