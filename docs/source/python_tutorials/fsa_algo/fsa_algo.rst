@@ -262,7 +262,7 @@ The outputs are shown below
 .. figure:: images/c_fsa_compose2.svg
     :alt: c_fsa
     :align: center
-    :figwidth: 600px
+    :figwidth: 1000px
 
     Note that ``c_fsa`` contains a single path
     when ``treat_epsilons_specially`` is `False`.
