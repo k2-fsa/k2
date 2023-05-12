@@ -237,13 +237,65 @@ The outputs are shown below
     :align: center
     :figwidth: 600px
 
-:func:`k2.compose` also has an optional argument ``treat_epsilons_specially``.
+:func:`k2.compose` has an optional argument ``treat_epsilons_specially``.
 Its default value is `True`. If it is set to `False`, then the label `0`
-is treated as a normal label.
+is treated as a normal label. The following is an example setting
+``treat_epsilons_specially`` to `False`.
 
-:func:`k2.add_epsilon_self_loops` also can be used to add epsilon self loops
+.. literalinclude:: ./code/compose2.py
+  :caption: Example code for :func:`k2.compose` with ``treat_epsilons_specially=False``
+  :language: python
+  :lines: 2-
+
+The outputs are shown below
+
+.. figure:: images/a_fsa_compose2.svg
+    :alt: a_fsa
+    :align: center
+    :figwidth: 600px
+
+.. figure:: images/b_fsa_compose2.svg
+    :alt: b_fsa
+    :align: center
+    :figwidth: 600px
+
+.. figure:: images/c_fsa_compose2.svg
+    :alt: c_fsa
+    :align: center
+    :figwidth: 600px
+
+    Note that ``c_fsa`` contains a single path
+    when ``treat_epsilons_specially`` is `False`.
+
+:func:`k2.add_epsilon_self_loops` can be used to add epsilon self loops
 to an FSA when ``treat_epsilons_specially`` is `False` but you
-want to treat them specially.
+want to treat them specially. The following is an example
+using :func:`k2.add_epsilon_self_loops` with
+``treat_epsilons_specially == False``.
+
+.. literalinclude:: ./code/compose3.py
+  :caption: :func:`k2.intersect` with ``treat_epsilons_specially=False`` and :func:`k2.add_epsilon_self_loops`
+  :language: python
+  :lines: 2-
+
+.. figure:: images/a_fsa_compose3.svg
+    :alt: a_fsa
+    :align: center
+    :figwidth: 600px
+
+.. figure:: images/b_fsa_compose3.svg
+    :alt: b_fsa
+    :align: center
+    :figwidth: 600px
+
+.. figure:: images/c_fsa_compose3.svg
+    :alt: c_fsa
+    :align: center
+    :figwidth: 600px
+
+    Note that ``c_fsa`` contains two paths
+    even if ``treat_epsilons_specially`` is `False`
+    since we have added epsilon self loops to `b_fsa`.
 
 .. NOTE::
 
