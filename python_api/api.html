@@ -96,6 +96,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#one-best-decoding">one_best_decoding</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#properties-to-str">properties_to_str</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#prune-on-arc-post">prune_on_arc_post</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pruned-ranges-to-lattice">pruned_ranges_to_lattice</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#random-fsa">random_fsa</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#random-fsa-vec">random_fsa_vec</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#random-paths">random_paths</a></li>
@@ -2775,6 +2776,14 @@ single precision.</p></li>
 </dd>
 </dl>
 </dd></dl>
+
+</section>
+<section id="pruned-ranges-to-lattice">
+<h2>pruned_ranges_to_lattice<a class="headerlink" href="#pruned-ranges-to-lattice" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="k2.pruned_ranges_to_lattice">
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">pruned_ranges_to_lattice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ranges</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">_k2.RaggedArc</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#k2.pruned_ranges_to_lattice" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 </section>
 <section id="random-fsa">

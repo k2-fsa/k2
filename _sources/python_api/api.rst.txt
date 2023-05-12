@@ -233,6 +233,11 @@ prune_on_arc_post
 
 .. autofunction:: prune_on_arc_post
 
+pruned_ranges_to_lattice
+------------------------
+
+.. autofunction:: pruned_ranges_to_lattice
+
 random_fsa
 ----------
 
