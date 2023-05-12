@@ -202,7 +202,54 @@ using :func:`k2.add_epsilon_self_loops` with
 
 .. NOTE::
 
-  - :func:`k2.intersect` supports **ONLY** CPU
+  - :func:`k2.intersect` works **ONLY** on CPU when ``treat_epsilons_specially=True``
+    When ``treat_epsilons_specially=False`` and both a_fsa and b_fsa are on GPU, then this function works on GPU;
+    in this case, the two input FSAs do not need to be arc sorted.
+  - autograd is also supported.
+  - Its input can be either a single FSA or a FsaVec.
+  - The input FSAs have to be arc sorted.
+
+compose
+~~~~~~~~~
+
+The composition is a straightforward generalization of the intersection from acceptors to transducers.
+The following is an example of :func:`k2.compose`.
+
+.. literalinclude:: ./code/compose1.py
+  :caption: Example code for :func:`k2.compose`
+  :language: python
+  :lines: 2-
+
+The outputs are shown below
+
+.. figure:: images/a_fsa_compose.svg
+    :alt: a_fsa
+    :align: center
+    :figwidth: 600px
+
+.. figure:: images/b_fsa_compose.svg
+    :alt: b_fsa
+    :align: center
+    :figwidth: 600px
+
+.. figure:: images/c_fsa_compose.svg
+    :alt: c_fsa
+    :align: center
+    :figwidth: 600px
+
+:func:`k2.compose` also has an optional argument ``treat_epsilons_specially``.
+Its default value is `True`. If it is set to `False`, then the label `0`
+is treated as a normal label.
+
+:func:`k2.add_epsilon_self_loops` also can be used to add epsilon self loops
+to an FSA when ``treat_epsilons_specially`` is `False` but you
+want to treat them specially.
+
+.. NOTE::
+
+  - :func:`k2.intersect` works **ONLY** on CPU when ``treat_epsilons_specially=True``
+    When ``treat_epsilons_specially=False`` and both a_fsa and b_fsa are on GPU, then this function works on GPU;
+    in this case, the two input FSAs do not need to be arc sorted.
   - autograd is also supported.
   - Its input can be either a single FSA or a FsaVec.
   - The input FSAs have to be arc sorted.
