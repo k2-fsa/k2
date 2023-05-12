@@ -210,7 +210,7 @@ using :func:`k2.add_epsilon_self_loops` with
   - The input FSAs have to be arc sorted.
 
 compose
-~~~~~~~~~
+~~~~~~~
 
 The composition is a straightforward generalization of the intersection from acceptors to transducers.
 The following is an example of :func:`k2.compose`.
