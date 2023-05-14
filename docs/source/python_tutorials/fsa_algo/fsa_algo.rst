@@ -293,9 +293,9 @@ using :func:`k2.add_epsilon_self_loops` with
     :align: center
     :figwidth: 600px
 
-    Note that ``c_fsa`` contains two paths
+    Note that ``c_fsa`` contains more than one paths
     even if ``treat_epsilons_specially`` is `False`
-    since we have added epsilon self loops to `b_fsa`.
+    since we have added epsilon self loops to `a_fsa`.
 
 .. NOTE::
 
