@@ -55,6 +55,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#invert">invert</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#arc-sort">arc_sort</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#intersect">intersect</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#compose">compose</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#connect">connect</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#get-forward-scores">get_forward_scores</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#get-tot-scores">get_tot_scores</a></li>
@@ -339,10 +340,124 @@ since we have added epsilon self loops to <cite>b_fsa</cite>.</span><a class="he
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="../../python_api/api.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> supports <strong>ONLY</strong> CPU</p></li>
+<li><p><a class="reference internal" href="../../python_api/api.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> works <strong>ONLY</strong> on CPU when <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially=True</span></code>.
+When <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially=False</span></code> and both a_fsa and b_fsa are on GPU, then this function works on GPU;
+in this case, the two input FSAs do not need to be arc sorted.</p></li>
 <li><p>autograd is also supported.</p></li>
 <li><p>Its input can be either a single FSA or a FsaVec.</p></li>
-<li><p>The input FSAs have to be arc sorted.</p></li>
+<li><p>The input FSAs have to be arc sorted when <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially=True</span></code>.</p></li>
+</ul>
+</div>
+</section>
+<section id="compose">
+<h2>compose<a class="headerlink" href="#compose" title="Permalink to this headline"></a></h2>
+<p>The composition is a straightforward generalization of the intersection from acceptors to transducers.
+The following is an example of <a class="reference internal" href="../../python_api/api.html#k2.compose" title="k2.compose"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.compose()</span></code></a>.</p>
+<div class="literal-block-wrapper docutils container" id="id10">
+<div class="code-block-caption"><span class="caption-number">Listing 7 </span><span class="caption-text">Example code for <a class="reference internal" href="../../python_api/api.html#k2.compose" title="k2.compose"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.compose()</span></code></a></span><a class="headerlink" href="#id10" title="Permalink to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 1 1 0</span>
+<span class="s1">1 2 2 2 0</span>
+<span class="s1">2 3 -1 -1 0</span>
+<span class="s1">3</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">a_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">ctc_topo</span><span class="p">(</span><span class="n">max_token</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">modified</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> 
+<span class="n">b_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">acceptor</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">c_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">compose</span><span class="p">(</span><span class="n">a_fsa</span><span class="p">,</span> <span class="n">b_fsa</span><span class="p">)</span>
+
+<span class="n">a_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;a_fsa_compose.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;a_fsa&#39;</span><span class="p">)</span>
+<span class="n">b_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;b_fsa_compose.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;b_fsa&#39;</span><span class="p">)</span>
+<span class="n">c_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;c_fsa_compose.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;c_fsa&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The outputs are shown below</p>
+<figure class="align-center" style="width: 600px">
+<img alt="a_fsa" src="../../_images/a_fsa_compose.svg" /></figure>
+<figure class="align-center" style="width: 600px">
+<img alt="b_fsa" src="../../_images/b_fsa_compose.svg" /></figure>
+<figure class="align-center" style="width: 600px">
+<img alt="c_fsa" src="../../_images/c_fsa_compose.svg" /></figure>
+<p><a class="reference internal" href="../../python_api/api.html#k2.compose" title="k2.compose"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.compose()</span></code></a> has an optional argument <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span></code>.
+Its default value is <cite>True</cite>. If it is set to <cite>False</cite>, then the label <cite>0</cite>
+is treated as a normal label. The following is an example setting
+<code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span></code> to <cite>False</cite>.</p>
+<div class="literal-block-wrapper docutils container" id="id11">
+<div class="code-block-caption"><span class="caption-number">Listing 8 </span><span class="caption-text">Example code for <a class="reference internal" href="../../python_api/api.html#k2.compose" title="k2.compose"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.compose()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially=False</span></code></span><a class="headerlink" href="#id11" title="Permalink to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 1 1 0</span>
+<span class="s1">1 2 2 2 0</span>
+<span class="s1">2 3 -1 -1 0</span>
+<span class="s1">3</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">a_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">ctc_topo</span><span class="p">(</span><span class="n">max_token</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">modified</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> 
+<span class="n">b_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">acceptor</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">c_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">compose</span><span class="p">(</span><span class="n">a_fsa</span><span class="p">,</span> <span class="n">b_fsa</span><span class="p">,</span> <span class="n">treat_epsilons_specially</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">a_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;a_fsa_compose2.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;a_fsa&#39;</span><span class="p">)</span>
+<span class="n">b_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;b_fsa_compose2.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;b_fsa&#39;</span><span class="p">)</span>
+<span class="n">c_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;c_fsa_compose2.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;c_fsa&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The outputs are shown below</p>
+<figure class="align-center" style="width: 600px">
+<img alt="a_fsa" src="../../_images/a_fsa_compose2.svg" /></figure>
+<figure class="align-center" style="width: 600px">
+<img alt="b_fsa" src="../../_images/b_fsa_compose2.svg" /></figure>
+<figure class="align-center" id="id12" style="width: 600px">
+<img alt="c_fsa" src="../../_images/c_fsa_compose2.svg" /><figcaption>
+<p><span class="caption-number">Fig. 18 </span><span class="caption-text">Note that <code class="docutils literal notranslate"><span class="pre">c_fsa</span></code> contains a single path
+when <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span></code> is <cite>False</cite>.</span><a class="headerlink" href="#id12" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+<p><a class="reference internal" href="../../python_api/api.html#k2.add_epsilon_self_loops" title="k2.add_epsilon_self_loops"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.add_epsilon_self_loops()</span></code></a> can be used to add epsilon self loops
+to an FSA when <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span></code> is <cite>False</cite> but you
+want to treat them specially. The following is an example
+using <a class="reference internal" href="../../python_api/api.html#k2.add_epsilon_self_loops" title="k2.add_epsilon_self_loops"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.add_epsilon_self_loops()</span></code></a> with
+<code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span> <span class="pre">==</span> <span class="pre">False</span></code>.</p>
+<div class="literal-block-wrapper docutils container" id="id13">
+<div class="code-block-caption"><span class="caption-number">Listing 9 </span><span class="caption-text"><a class="reference internal" href="../../python_api/api.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially=False</span></code> and <a class="reference internal" href="../../python_api/api.html#k2.add_epsilon_self_loops" title="k2.add_epsilon_self_loops"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.add_epsilon_self_loops()</span></code></a></span><a class="headerlink" href="#id13" title="Permalink to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">0 1 1 1 0</span>
+<span class="s1">1 2 2 2 0</span>
+<span class="s1">2 3 -1 -1 0</span>
+<span class="s1">3</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">a_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">ctc_topo</span><span class="p">(</span><span class="n">max_token</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">modified</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">b_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">acceptor</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">b_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">add_epsilon_self_loops</span><span class="p">(</span><span class="n">b_fsa</span><span class="p">)</span>
+<span class="n">c_fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">compose</span><span class="p">(</span><span class="n">a_fsa</span><span class="p">,</span> <span class="n">b_fsa</span><span class="p">,</span> <span class="n">treat_epsilons_specially</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">a_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;a_fsa_compose3.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;a_fsa&#39;</span><span class="p">)</span>
+<span class="n">b_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;b_fsa_compose3.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;b_fsa&#39;</span><span class="p">)</span>
+<span class="n">c_fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;c_fsa_compose3.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;c_fsa&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<figure class="align-center" style="width: 600px">
+<img alt="a_fsa" src="../../_images/a_fsa_compose3.svg" /></figure>
+<figure class="align-center" style="width: 600px">
+<img alt="b_fsa" src="../../_images/b_fsa_compose3.svg" /></figure>
+<figure class="align-center" id="id14" style="width: 600px">
+<img alt="c_fsa" src="../../_images/c_fsa_compose3.svg" /><figcaption>
+<p><span class="caption-number">Fig. 19 </span><span class="caption-text">Note that <code class="docutils literal notranslate"><span class="pre">c_fsa</span></code> contains more than one paths
+even if <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially</span></code> is <cite>False</cite>
+since we have added epsilon self loops to <cite>b_fsa</cite>.</span><a class="headerlink" href="#id14" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../../python_api/api.html#k2.compose" title="k2.compose"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.compose()</span></code></a> works <strong>ONLY</strong> on CPU when <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially=True</span></code>.
+When <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially=False</span></code> and both a_fsa and b_fsa are on GPU, then this function works on GPU;
+in this case, the two input FSAs do not need to be arc sorted.</p></li>
+<li><p>autograd is also supported.</p></li>
+<li><p>Its input can be either a single FSA or a FsaVec.</p></li>
+<li><p>The input FSAs have to be arc sorted when <code class="docutils literal notranslate"><span class="pre">treat_epsilons_specially=True</span></code>.</p></li>
 </ul>
 </div>
 </section>
@@ -352,8 +467,8 @@ since we have added epsilon self loops to <cite>b_fsa</cite>.</span><a class="he
 accessible nor co-accessible.
 It is often used after <a class="reference internal" href="../../python_api/api.html#k2.intersect" title="k2.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.intersect()</span></code></a> or <a class="reference internal" href="../../python_api/api.html#k2.compose" title="k2.compose"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.compose()</span></code></a>.</p>
 <p>The following is an example.</p>
-<div class="literal-block-wrapper docutils container" id="id10">
-<div class="code-block-caption"><span class="caption-number">Listing 7 </span><span class="caption-text"><a class="reference internal" href="../../python_api/api.html#k2.connect" title="k2.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.connect()</span></code></a> example</span><a class="headerlink" href="#id10" title="Permalink to this code"></a></div>
+<div class="literal-block-wrapper docutils container" id="id15">
+<div class="code-block-caption"><span class="caption-number">Listing 10 </span><span class="caption-text"><a class="reference internal" href="../../python_api/api.html#k2.connect" title="k2.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.connect()</span></code></a> example</span><a class="headerlink" href="#id15" title="Permalink to this code"></a></div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s1</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
 <span class="s1">0 0 1 0.1</span>
 <span class="s1">0 1 2 0.2</span>
@@ -405,8 +520,8 @@ or forward best-path scores if <code class="docutils literal notranslate"><span 
 </div>
 <p>We will use the following code as an example to demonstrate how <a class="reference internal" href="../../python_api/api.html#k2.Fsa.get_forward_scores" title="k2.Fsa.get_forward_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_forward_scores()</span></code></a>
 works in k2.</p>
-<div class="literal-block-wrapper docutils container" id="id11">
-<div class="code-block-caption"><span class="caption-number">Listing 8 </span><span class="caption-text"><a class="reference internal" href="../../python_api/api.html#k2.Fsa.get_forward_scores" title="k2.Fsa.get_forward_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_forward_scores()</span></code></a> example</span><a class="headerlink" href="#id11" title="Permalink to this code"></a></div>
+<div class="literal-block-wrapper docutils container" id="id16">
+<div class="code-block-caption"><span class="caption-number">Listing 11 </span><span class="caption-text"><a class="reference internal" href="../../python_api/api.html#k2.Fsa.get_forward_scores" title="k2.Fsa.get_forward_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_forward_scores()</span></code></a> example</span><a class="headerlink" href="#id16" title="Permalink to this code"></a></div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
 <span class="s1">0 1 1 1.2</span>
 <span class="s1">0 1 3 0.8</span>
@@ -499,8 +614,8 @@ the other arc from state 0 to state 1.</p>
 <p><a class="reference internal" href="../../python_api/api.html#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code></a> computes and returns forward scores of the final state of each FSA.
 Refer to <a class="reference internal" href="#get-forward-scores-example"><span class="std std-ref">get_forward_scores</span></a> for how to compute forward scores.</p>
 <p>The following is an example of <a class="reference internal" href="../../python_api/api.html#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code></a>.</p>
-<div class="literal-block-wrapper docutils container" id="id12">
-<div class="code-block-caption"><span class="caption-number">Listing 9 </span><span class="caption-text"><a class="reference internal" href="../../python_api/api.html#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code></a> example</span><a class="headerlink" href="#id12" title="Permalink to this code"></a></div>
+<div class="literal-block-wrapper docutils container" id="id17">
+<div class="code-block-caption"><span class="caption-number">Listing 12 </span><span class="caption-text"><a class="reference internal" href="../../python_api/api.html#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code></a> example</span><a class="headerlink" href="#id17" title="Permalink to this code"></a></div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
 <span class="s1">0 1 1 1.2</span>
 <span class="s1">0 1 3 0.8</span>
