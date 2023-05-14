@@ -1,14 +1,14 @@
 import k2
-s1 = '''
+s = '''
 0 1 1 1 0
 1 2 2 2 0
 2 3 -1 -1 0
 3
 '''
 
-a_fsa = k2.Fsa.from_str(s1, acceptor=False)
-a_fsa = k2.add_epsilon_self_loops(a_fsa)
-b_fsa = k2.ctc_topo(max_token=2, modified=False)
+a_fsa = k2.ctc_topo(max_token=2, modified=False)
+b_fsa = k2.Fsa.from_str(s, acceptor=False)
+b_fsa = k2.add_epsilon_self_loops(b_fsa)
 c_fsa = k2.compose(a_fsa, b_fsa, treat_epsilons_specially=False)
 
 a_fsa.draw('a_fsa_compose3.svg', title='a_fsa')

@@ -295,7 +295,7 @@ using :func:`k2.add_epsilon_self_loops` with
 
     Note that ``c_fsa`` contains more than one paths
     even if ``treat_epsilons_specially`` is `False`
-    since we have added epsilon self loops to `a_fsa`.
+    since we have added epsilon self loops to `b_fsa`.
 
 .. NOTE::
 
