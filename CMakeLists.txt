@@ -240,6 +240,19 @@ if(K2_WITH_CUDA)
 
       string(APPEND CMAKE_CUDA_FLAGS " -Wno-deprecated-gpu-targets ")
   endif()
+
+  if(CUDA_VERSION VERSION_GREATER_EQUAL "11.6")
+    # https://docs.nvidia.com/cuda/archive/11.8.0/pdf/CUDA_Toolkit_Release_Notes.pdf
+    # added support for Hopper (90)
+    list(APPEND K2_COMPUTE_ARCH_CANDIDATES 90)
+  endif()
+
+  if(CUDA_VERSION VERSION_GREATER_EQUAL "12.0")
+    # https://docs.nvidia.com/cuda/archive/12.0.0/pdf/CUDA_Toolkit_Release_Notes.pdf
+    # support for 35, 37 compute capabilities removed in CUDA 12.0
+    list(REMOVE_ITEM K2_COMPUTE_ARCH_CANDIDATES 35 37)
+  endif()
+
   message(STATUS "K2_COMPUTE_ARCH_CANDIDATES ${K2_COMPUTE_ARCH_CANDIDATES}")
 
   if(NOT K2_BUILD_FOR_ALL_ARCHS)
