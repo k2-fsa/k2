@@ -425,7 +425,7 @@ of the <cite>best score</cite> <code class="docutils literal notranslate"><span 
 <span class="n">fsa</span><span class="o">.</span><span class="n">scores</span> <span class="o">=</span> <span class="n">nnet_output</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;autograd_log.svg&#39;</span><span class="p">)</span>
 <span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
-<span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa_vec</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <span class="n">total_scores</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">nnet_output</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
