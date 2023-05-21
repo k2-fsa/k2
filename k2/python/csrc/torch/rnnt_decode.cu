@@ -152,6 +152,22 @@ static void PybindRnntDecodingStreams(py::module &m) {
                 torch::Tensor out_map_tensor = ToTorch<int32_t>(out_map);
                 return std::make_pair(ofsa, out_map_tensor);
               });
+
+  streams.def("format_output",
+              [](PyClass &self, std::vector<int32_t> &num_frames,
+                 bool allow_partial, bool is_final)
+              -> std::pair<FsaVec, torch::Tensor> {
+                DeviceGuard guard(self.Context());
+                FsaVec ofsa;
+                Array1<int32_t> out_map;
+                self.FormatOutput(num_frames,
+                                  allow_partial,
+                                  is_final,
+                                  &ofsa,
+                                  &out_map);
+                torch::Tensor out_map_tensor = ToTorch<int32_t>(out_map);
+                return std::make_pair(ofsa, out_map_tensor);
+              });
 }
 
 }  // namespace k2
