@@ -679,6 +679,7 @@ class MultiGraphDenseIntersectPruned {
     NVTX_RANGE(K2_FUNC);
     Ragged<StateInfo> &states = cur_frame->states;
     const StateInfo *state_values = states.values.Data();
+    float minus_inf = -std::numeric_limits<float>::infinity();
 
     // in a_fsas_ (the decoding graphs), maps from state_idx01 to arc_idx01x.
     const int32_t *fsa_arc_splits = a_fsas_.shape.RowSplits(2).Data();
@@ -742,9 +743,14 @@ class MultiGraphDenseIntersectPruned {
                   scores_idx01 = scores_idx0x + t,  // t == idx1 into 'scores'
               scores_idx2 =
                   arc.label + 1;  // the +1 is so that -1 can be handled
-          K2_DCHECK_LT(static_cast<uint32_t>(scores_idx2),
-                       static_cast<uint32_t>(scores_num_cols));
-          float acoustic_score = scores_acc(scores_idx01, scores_idx2);
+
+          // Assign negative infinity score to arc which label is out-of-range.
+          float acoustic_score;
+          if (scores_idx2 <= scores_num_cols) {
+                acoustic_score = scores_acc(scores_idx01, scores_idx2);
+          } else {
+                acoustic_score = minus_inf;
+          }
           ArcInfo ai;
           ai.a_fsas_arc_idx012 = a_fsas_arc_idx012;
           ai.arc_loglike = acoustic_score + arc.score;
