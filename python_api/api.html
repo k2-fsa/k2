@@ -8062,7 +8062,7 @@ expected to be called when a new sequence comes. We support different
 decoding graphs for different streams.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>graph</strong> – The decoding graph used in this stream.</p>
+<dd class="field-odd"><p><strong>fsa</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>) – The decoding graph used in this stream.</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>A rnnt decoding stream object, which will be combined into
@@ -8154,7 +8154,7 @@ by <cite>get_contexts()</cite>.</p>
 <h3>format_output<a class="headerlink" href="#format-output" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.RnntDecodingStreams.format_output">
-<span class="sig-prename descclassname"><span class="pre">RnntDecodingStreams.</span></span><span class="sig-name descname"><span class="pre">format_output</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_frames</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_partial</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_decode.py#L149-L267"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.RnntDecodingStreams.format_output" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">RnntDecodingStreams.</span></span><span class="sig-name descname"><span class="pre">format_output</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_frames</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_partial</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_probs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2s2c_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/rnnt_decode.py#L149-L297"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.RnntDecodingStreams.format_output" title="Permalink to this definition"></a></dt>
 <dd><p>Generate the lattice Fsa currently got.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -8176,6 +8176,13 @@ states on the last frame to be final state.
 If false, we only care about the real final state in the
 decoding graph on the last frame when generating lattice.
 Default False.</p></li>
+<li><p><strong>log_probs</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code>]) – A tensor of shape [t2s2c_shape.tot_size(2)][num_symbols].
+It’s a stacked tensor of logprobs passed to function <cite>advance</cite>
+during decoding.</p></li>
+<li><p><strong>t2s2c_shape</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">RaggedShape</span></code>]) – It is short for time2stream2context_shape,
+which describes shape of log_probs used to generate lattice.
+Used to generate arc_map_token
+and make the whole decoding process differentiable.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>
