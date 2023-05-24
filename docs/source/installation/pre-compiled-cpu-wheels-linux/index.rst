@@ -6,6 +6,7 @@ This page describes pre-compiled ``CPU`` wheels for `k2`_ on Linux.
 .. toctree::
    :maxdepth: 2
 
+   ./2.0.1.rst
    ./2.0.0.rst
    ./1.13.1.rst
    ./1.13.0.rst
