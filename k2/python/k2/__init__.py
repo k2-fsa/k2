@@ -119,6 +119,7 @@ from .utils import to_tensor
 from .utils import random_fsa
 from .utils import random_fsa_vec
 from _k2.version import with_cuda
+from _k2 import pruned_ranges_to_lattice
 
 from .decode import get_aux_labels
 from .decode import get_lattice

@@ -31,6 +31,7 @@
 #include "k2/python/csrc/torch/index_select.h"
 #include "k2/python/csrc/torch/mutual_information.h"
 #include "k2/python/csrc/torch/nbest.h"
+#include "k2/python/csrc/torch/pruned_ranges_to_lattice.h"
 #include "k2/python/csrc/torch/ragged.h"
 #include "k2/python/csrc/torch/ragged_ops.h"
 #include "k2/python/csrc/torch/rnnt_decode.h"
@@ -47,6 +48,7 @@ void PybindTorch(py::module &m) {
   PybindRagged(m);
   PybindRaggedOps(m);
   PybindRnntDecode(m);
+  PybindPrunedRangesToLattice(m);
 
   k2::PybindV2(m);
 }

@@ -454,6 +454,7 @@ class Fsa(object):
                 )
             return properties  # Return cached properties.
 
+        self.labels_version = self.labels._version
         if self.arcs.num_axes() == 2:
             properties = _k2.get_fsa_basic_properties(self.arcs)
         else:
@@ -1209,6 +1210,8 @@ class Fsa(object):
           A tuple containing the name and the value.
         '''
         for name, value in self._non_tensor_attr.items():
+            if name == "labels_version":
+                continue
             yield name, value
 
     @property
