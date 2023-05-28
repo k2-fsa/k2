@@ -80,7 +80,7 @@ jobs:
 
   nightly_cpu_ubuntu:
     needs: generate_build_matrix
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
@@ -134,7 +134,7 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-18.04
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-20.04
           path: dist/*.whl
 
       - name: Copy wheels to k2-fsa.org
