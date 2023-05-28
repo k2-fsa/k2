@@ -46,7 +46,7 @@ jobs:
   nightly:
     needs: enable_nightly_build
     if: needs.enable_nightly_build.outputs.enabled == 'true' || github.event_name == 'push'
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
