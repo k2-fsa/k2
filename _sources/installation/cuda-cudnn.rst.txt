@@ -425,10 +425,9 @@ Now, install ``cuDNN`` for CUDA 11.6.
 
 .. code-block:: bash
 
-  wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.3-linux-x64-v8.2.0.53.tgz
+  wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz
 
-  # Note: cudnn-11.3 works for CUDA 11.x
-  tar xvf cudnn-11.3-linux-x64-v8.2.0.53.tgz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.6.1
+  tar xvf cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.6.1
 
 Set environment variables for CUDA 11.6
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -499,10 +498,9 @@ Now, install ``cuDNN`` for CUDA 11.7.
 
 .. code-block:: bash
 
-  wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.3-linux-x64-v8.2.0.53.tgz
+  wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz
 
-  # Note: cudnn-11.3 works for CUDA 11.x
-  tar xvf cudnn-11.3-linux-x64-v8.2.0.53.tgz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.7.1
+  tar xvf cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz --strip-components=1 -C /ceph-sh1/fangjun/software/cuda-11.7.1
 
 Set environment variables for CUDA 11.7
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -573,10 +571,9 @@ Now, install ``cuDNN`` for CUDA 11.8.
 
 .. code-block:: bash
 
-  wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-11.3-linux-x64-v8.2.0.53.tgz
+  wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz
 
-  # Note: cudnn-11.3 works for CUDA 11.x
-  tar xvf cudnn-11.3-linux-x64-v8.2.0.53.tgz --strip-components=1 -C /star-fj/fangjun/software/cuda-11.8.0
+  tar xvf cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz --strip-components=1 -C /star-fj/fangjun/software/cuda-11.8.0
 
 Set environment variables for CUDA 11.8
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
