@@ -23,6 +23,8 @@ if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
 
+set(CMAKE_DISABLE_FIND_PACKAGE_MKL TRUE)
+
 set(languages CXX)
 set(_K2_WITH_CUDA ON)
 
