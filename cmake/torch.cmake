@@ -52,7 +52,7 @@ if(K2_WITH_CUDA)
   message(STATUS "PyTorch cuda version: ${TORCH_CUDA_VERSION}")
 
   if(NOT CUDA_VERSION VERSION_EQUAL TORCH_CUDA_VERSION)
-    message(FATAL_ERROR
+    message(WARNING
       "PyTorch ${TORCH_VERSION} is compiled with CUDA ${TORCH_CUDA_VERSION}.\n"
       "But you are using CUDA ${CUDA_VERSION} to compile k2.\n"
       "Please try to use the same CUDA version for PyTorch and k2.\n"
