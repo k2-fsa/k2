@@ -397,6 +397,7 @@ class MultiGraphDenseIntersectPruned {
     NVTX_RANGE("FormatOutput");
 
     bool online_decoding = online_decoding_;
+    bool allow_partial = allow_partial_;
     if (online_decoding) {
       K2_CHECK(arc_map_a);
       K2_CHECK_EQ(arc_map_b, nullptr);
@@ -548,7 +549,7 @@ class MultiGraphDenseIntersectPruned {
           arc.label = arc_label;
           int32_t final_t = b_fsas_row_splits1[oarc_idx0+1] - b_fsas_row_splits1[oarc_idx0];
           if (t == final_t - 1 && arc_label != -1) {
-            if (allow_partial_) {
+            if (allow_partial) {
               arc.label = -1;
             } else {
               // Unreachable code.
@@ -757,6 +758,7 @@ class MultiGraphDenseIntersectPruned {
     // A valid final arc means its label == -1.
     auto has_valid_final_arc = Array1<bool>(c_, NumFsas(), false);
     bool *has_valid_final_arc_data = has_valid_final_arc.Data();
+    bool allow_partial = allow_partial_;
 
     if (allow_partial_) {
       K2_EVAL(
@@ -799,7 +801,7 @@ class MultiGraphDenseIntersectPruned {
           auto dest_state = arc.dest_state;
           auto final_t = b_fsas_row_splits1[ai_fsa_idx0+1] - b_fsas_row_splits1[ai_fsa_idx0];
           if (final_t - 1 == t && !has_valid_final_arc_data[ai_fsa_idx0] &&
-              allow_partial_) {
+              allow_partial) {
               int32_t a_fsas_idx0 = a_fsas_row_ids1[sinfo.a_fsas_state_idx01];
               // state_idx1 is 0-based.
               // So "-1" is used when calculating a_fsas_final_state_idx1.

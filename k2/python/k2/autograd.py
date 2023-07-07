@@ -473,7 +473,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, out_fsa_grad: torch.Tensor) \
-            -> Tuple[None, None, None, None, None, None, None, torch.Tensor, torch.Tensor]: # noqa
+            -> Tuple[None, None, None, None, None, None, None, None, torch.Tensor, torch.Tensor, None, None]: # noqa
         a_scores, b_scores = ctx.saved_tensors
         arc_map_a = ctx.arc_map_a
         arc_map_b = ctx.arc_map_b
@@ -500,6 +500,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             None,  # output_beam
             None,  # min_active_states
             None,  # max_active_states
+            None,  # allow_partial
             grad_a,  # unused_scores_a
             grad_b,  # unused_scores_b
             None,  # seqframe_idx_name
