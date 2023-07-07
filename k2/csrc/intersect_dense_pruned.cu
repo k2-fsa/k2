@@ -1,5 +1,6 @@
 /**
- * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright      2020  Xiaomi Corporation (authors: Daniel Povey,
+ *                                                   Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -25,78 +26,11 @@
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/hash.h"
+#include "k2/csrc/intersect_dense_pruned.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/thread_pool.h"
 
 namespace k2 {
-
-namespace intersect_pruned_internal {
-
-/* Information associated with a state active on a particular frame..  */
-struct StateInfo {
-  /* abs_state_id is the state-index in a_fsas_.  Note: the idx0 in here
-     won't necessarily match the idx0 within FrameInfo::state if
-     a_fsas_stride_ == 0. */
-  int32_t a_fsas_state_idx01;
-
-  /* Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
-     FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
-     represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
-     use max not log-sum).  You can take the pruned lattice and rescore it if
-     you want log-sum.  */
-  int32_t forward_loglike;
-
-  /* Note: this `backward_loglike` is the best score of any path from here to
-     the end, minus the best path in the overall FSA, i.e. it's the backward
-     score you get if, at the final-state, you set backward_loglike ==
-     -forward_loglike. So backward_loglike + OrderedIntToFloat(forward_loglike)
-     <= 0, and you can treat it somewhat like a posterior (except they don't sum
-     to one as we're using max, not log-add).
-  */
-  float backward_loglike;
-};
-
-struct ArcInfo {              // for an arc that wasn't pruned away...
-  int32_t a_fsas_arc_idx012;  // the arc-index in a_fsas_.
-  float arc_loglike;          // loglike on this arc: equals loglike from data
-  // (nnet output, == b_fsas), plus loglike from
-  // the arc in a_fsas.
-
-  union {
-    // these 2 different ways of storing the index of the destination state
-    // are used at different stages of the algorithm; we give them different
-    // names for clarity.
-    int32_t dest_a_fsas_state_idx01;  // The destination-state as an index
-    // into a_fsas_.
-    int32_t dest_info_state_idx1;  // The destination-state as an idx1 into the
-                                   // next FrameInfo's `arcs` or `states`,
-                                   // omitting the FSA-index which can be worked
-                                   // out from the structure of this frame's
-                                   // ArcInfo.
-  } u;
-  float end_loglike;  // loglike at the end of the arc just before
-  // (conceptually) it joins the destination state.
-};
-
-/*
-static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
-  os << "StateInfo{" << s.a_fsas_state_idx01 << ","
-     << OrderedIntToFloat(s.forward_loglike) << "," << s.backward_loglike
-     << "}";
-  return os;
-}
-
-static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
-  os << "ArcInfo{" << a.a_fsas_arc_idx012 << "," << a.arc_loglike << ","
-     << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike
-     << "[i=" << FloatToOrderedInt(a.end_loglike) << "]"
-     << "}";
-  return os;
-}
-*/
-
-}  // namespace intersect_pruned_internal
-
 using namespace intersect_pruned_internal;  // NOLINT
 
 /*
@@ -115,14 +49,15 @@ class MultiGraphDenseIntersectPruned {
                            something more complicated.  Must have either the
                            same Dim0() as b_fsas, or Dim0()==1 in which
                            case the graph is shared.
-       @param [in] b_fsas  The neural-net output, with each frame containing the
-                           log-likes of each phone.  A series of sequences of
-                           (in general) different length.
-       @param [in] search_beam    "Default" search/decoding beam.  The actual
+       @param [in] num_seqs  The number of sequences to do intersection at a
+                             time, i.e. batch size. The input DenseFsaVec in
+                             `Intersect` function MUST have `Dim0()` equals to
+                             this.
+       @param [in] search_beam  "Default" search/decoding beam.  The actual
                            beam is dynamic and also depends on max_active and
                            min_active.
-       @param [in] output_beam    Beam for pruning the output FSA, will
-                                  typically be smaller than search_beam.
+       @param [in] output_beam  Beam for pruning the output FSA, will
+                                typically be smaller than search_beam.
        @param [in] min_active  Minimum number of FSA states that are allowed to
                            be active on any given frame for any given
                            intersection/composition task. This is advisory,
@@ -139,31 +74,34 @@ class MultiGraphDenseIntersectPruned {
                            care about the real final state in the decoding
                            graph on the last frame when generating lattice.
 
+       @param [in] online_decoding  True for online decoding (i.e. chunk by
+                                    chunk decoding), false for running in batch
+                                    mode.
    */
-  MultiGraphDenseIntersectPruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
+  MultiGraphDenseIntersectPruned(FsaVec &a_fsas, int32_t num_seqs,
                                  float search_beam, float output_beam,
                                  int32_t min_active, int32_t max_active,
-                                 bool allow_partial)
+                                 bool allow_partial,
+                                 bool online_decoding)
       : a_fsas_(a_fsas),
-        b_fsas_(b_fsas),
+        num_seqs_(num_seqs),
         search_beam_(search_beam),
         output_beam_(output_beam),
         min_active_(min_active),
         max_active_(max_active),
         allow_partial_(allow_partial),
-        dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), search_beam),
-        forward_semaphore_(1) {
+        online_decoding_(online_decoding),
+        dynamic_beams_(a_fsas.Context(), num_seqs, search_beam),
+        forward_semaphore_(1),
+        final_t_(a_fsas.Context(), num_seqs, 0) {
     NVTX_RANGE(K2_FUNC);
-    c_ = GetContext(a_fsas.shape, b_fsas.shape);
-    T_ = b_fsas_.shape.MaxSize(1);
+    c_ = GetContext(a_fsas.shape);
     K2_CHECK_GT(search_beam, 0);
     K2_CHECK_GT(output_beam, 0);
     K2_CHECK_GE(min_active, 0);
     K2_CHECK_GT(max_active, min_active);
-    K2_CHECK(a_fsas.shape.Dim0() == b_fsas.shape.Dim0() ||
-             a_fsas.shape.Dim0() == 1);
-    K2_CHECK_GE(b_fsas.shape.Dim0(), 1);
-    int32_t num_seqs = b_fsas.shape.Dim0();
+    K2_CHECK(a_fsas.shape.Dim0() == num_seqs || a_fsas.shape.Dim0() == 1);
+    K2_CHECK_GE(num_seqs, 1);
 
     int32_t num_buckets = RoundUpToNearestPowerOfTwo(num_seqs * 4 *
                                                      max_active);
@@ -173,9 +111,9 @@ class MultiGraphDenseIntersectPruned {
     if (a_fsas.shape.Dim0() == 1) {
       a_fsas_stride_ = 0;
       state_map_fsa_stride_ = a_fsas.TotSize(1);
-      num_a_copies = b_fsas.shape.Dim0();
+      num_a_copies = num_seqs;
     } else {
-      K2_CHECK_EQ(a_fsas.shape.Dim0(), b_fsas.shape.Dim0());
+      K2_CHECK_EQ(a_fsas.shape.Dim0(), num_seqs);
       a_fsas_stride_ = 1;
       state_map_fsa_stride_ = 0;
       num_a_copies = 1;
@@ -200,7 +138,32 @@ class MultiGraphDenseIntersectPruned {
       }
     }
     state_map_ = Hash(c_, num_buckets, num_key_bits);
+  }
 
+  /* Does the main work of intersection/composition, but doesn't produce any
+     output; the output is provided when you call FormatOutput().
+
+       @param [in] b_fsas  The neural-net output, with each frame containing the
+                           log-likes of each phone.  A series of sequences of
+                           (in general) different length.
+   */
+  void Intersect(std::shared_ptr<DenseFsaVec> &b_fsas) {
+    /*
+      T is the largest number of (frames+1) of neural net output, or the largest
+      number of frames of log-likelihoods we count the final frame with (0,
+      -inf, -inf..) that is used for the final-arc.  The largest number of
+      states in the fsas represented by b_fsas equals T+1 (e.g. 1 frame would
+      require 2 states, because that 1 frame is the arc from state 0 to state
+      1).  So the #states is 2 greater than the actual number of frames in the
+      neural-net output.
+    */
+
+    K2_CHECK(!online_decoding_);
+    K2_CHECK(c_->IsCompatible(*b_fsas->Context()));
+
+    b_fsas_ = b_fsas;
+    K2_CHECK_EQ(num_seqs_, b_fsas_->shape.Dim0());
+    T_ = T_ + b_fsas_->shape.MaxSize(1);
 
     { // set up do_pruning_after_ and prune_t_begin_end_.
 
@@ -233,46 +196,12 @@ class MultiGraphDenseIntersectPruned {
           break;
       }
     }
-  }
 
-  // The information we have for each frame of the pruned-intersection (really:
-  // decoding) algorithm.  We keep an array of these, one for each frame, up to
-  // the length of the longest sequence we're decoding plus one.
-  struct FrameInfo {
-    // States that are active at the beginning of this frame.  Indexed
-    // [fsa_idx][state_idx], where fsa_idx indexes b_fsas_ (and a_fsas_, if
-    // a_fsas_stride_ != 0); and state_idx just enumerates the active states
-    // on this frame (as state_idx01's in a_fsas_).
-    Ragged<StateInfo> states;  // 2 axes: fsa, state
-
-    // Indexed [fsa_idx][state_idx][arc_idx].. the first 2 indexes are
-    // the same as those into 'states' (the first 2 levels of the structure
-    // are shared), and the last one enumerates the arcs leaving each of those
-    // states.
-    //
-    // Note: there may be indexes [fsa_idx] that have no states (because that
-    // FSA had fewer frames than the max), and indexes [fsa_idx][state_idx] that
-    // have no arcs due to pruning.
-    Ragged<ArcInfo> arcs;  // 3 axes: fsa, state, arc
-  };
-
-  /* Does the main work of intersection/composition, but doesn't produce any
-     output; the output is provided when you call FormatOutput(). */
-  void Intersect() {
-    /*
-      T is the largest number of (frames+1) of neural net output, or the largest
-      number of frames of log-likelihoods we count the final frame with (0,
-      -inf, -inf..) that is used for the final-arc.  The largest number of
-      states in the fsas represented by b_fsas equals T+1 (e.g. 1 frame would
-      require 2 states, because that 1 frame is the arc from state 0 to state
-      1).  So the #states is 2 greater than the actual number of frames in the
-      neural-net output.
-    */
-    int32_t num_fsas = b_fsas_.shape.Dim0(), T = T_;
+    int32_t T = T_;
 
     std::ostringstream os;
-    os << "Intersect:T=" << T << ",num_fsas=" << num_fsas
-       << ",TotSize(1)=" << b_fsas_.shape.TotSize(1);
+    os << "Intersect:T=" << T << ",num_fsas=" << num_seqs_
+       << ",TotSize(1)=" << b_fsas_->shape.TotSize(1);
     NVTX_RANGE(os.str().c_str());
 
     ThreadPool* pool = GetThreadPool();
@@ -310,8 +239,94 @@ class MultiGraphDenseIntersectPruned {
     pool->WaitAllTasksFinished();
   }
 
+  /* Does the main work of intersection/composition, but doesn't produce any
+     output; the output is provided when you call FormatOutput().
+     Does almost the same work as `Intersect`, except that this would be call
+     serveral times for chunk by chunk decoding.
+
+       @param [in] b_fsas  The neural-net output, with each frame containing the
+                           log-likes of each phone.  A series of sequences of
+                           (in general) different length.
+       @param [in] frames  The frames generated for previously decoded chunks.
+       @param [in] beams  Current search beams for each of the sequences, it has
+                     `beams.Dim() == num_seqs_`.
+       @return  A pointer to current `frames_`, which would be usefull to
+                generate `DecodeStateInfo` for each sequences.
+  */
+  const std::vector<std::unique_ptr<FrameInfo>>* OnlineIntersect(
+      std::shared_ptr<DenseFsaVec> &b_fsas,
+      std::vector<std::unique_ptr<FrameInfo>> &frames,
+      Array1<float> &beams) {
+    /*
+      T is the largest number of (frames+1) of neural net output currently
+      received, or the largest number of frames of log-likelihoods we count the
+      final frame with (0, -inf, -inf..) that is used for the final-arc.
+      The largest number of states in the fsas represented by b_fsas equals
+      T+1 (e.g. 1 frame would require 2 states, because that 1 frame is the arc
+      from state 0 to state 1). So the #states is 2 greater than the actual
+      number of frames in the neural-net output.
+    */
+    K2_CHECK(online_decoding_);
+    K2_CHECK(c_->IsCompatible(*b_fsas->Context()));
+    K2_CHECK_EQ(a_fsas_.shape.Dim0(), 1);
+    K2_CHECK_EQ(num_seqs_, b_fsas->shape.Dim0());
+
+    // update data members
+    b_fsas_ = b_fsas;
+    frames_.swap(frames);
+    dynamic_beams_ = beams.To(c_);
+    T_ = frames_.size();
+
+    // -1 here because we already put the initial frame info to frames_
+    int32_t T = T_ + b_fsas_->shape.MaxSize(1) - 1;
+
+    // we'll initially populate frames_[0.. T+1], but discard the one at T+1,
+    // which has no arcs or states, the ones we use are from 0 to T.
+    frames_.reserve(T + 2);
+
+    if (T_ == 0) frames_.push_back(InitialFrameInfo());
+
+    for (int32_t t = 0; t <= b_fsas_->shape.MaxSize(1); t++) {
+      if (state_map_.NumKeyBits() == 32) {
+        frames_.push_back(PropagateForward<32>(t, frames_.back().get()));
+      } else if (state_map_.NumKeyBits() == 36) {
+        frames_.push_back(PropagateForward<36>(t, frames_.back().get()));
+      } else {
+        K2_CHECK_EQ(state_map_.NumKeyBits(), 40);
+        frames_.push_back(PropagateForward<40>(t, frames_.back().get()));
+      }
+      if (t == b_fsas_->shape.MaxSize(1)) {
+        PruneTimeRange(T_ - 1, T_ + t);
+      }
+    }
+    // The FrameInfo for time T+1 will have no states.  We did that
+    // last PropagateForward so that the 'arcs' member of frames_[T]
+    // is set up (it has no arcs but we need the shape).
+    frames_.pop_back();
+
+    int32_t history_t = T_ - 1;
+
+    T_ = T - 1;
+    // partial_final_frame_ is the last frame to generate partial result,
+    // but it should not be the start frame of next chunk decoding.
+    partial_final_frame_ = std::move(frames_.back());
+    frames_.pop_back();
+
+    const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
+    int32_t *final_t_data = final_t_.Data();
+
+    // Get final frame of each sequences.
+    K2_EVAL(
+        c_, num_seqs_, lambda_set_final_and_final_t, (int32_t i)->void {
+          int32_t b_chunk_size =
+              b_fsas_row_splits1[i + 1] - b_fsas_row_splits1[i];
+          final_t_data[i] = history_t + b_chunk_size - 1;
+        });
+    return &frames_;
+  }
+
   void BackwardPass() {
-    int32_t num_fsas = b_fsas_.shape.Dim0(),
+    int32_t num_fsas = b_fsas_->shape.Dim0(),
       num_work_items = max_active_ * num_fsas * T_;
     ParallelRunner pr(c_);
     // if num_work_items is big enough, it will actually create a new stream.
@@ -340,7 +355,7 @@ class MultiGraphDenseIntersectPruned {
   // Return FrameInfo for 1st frame, with `states` set but `arcs` not set.
   std::unique_ptr<FrameInfo> InitialFrameInfo() {
     NVTX_RANGE("InitialFrameInfo");
-    int32_t num_fsas = b_fsas_.shape.Dim0();
+    int32_t num_fsas = b_fsas_->shape.Dim0();
     std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
 
     if (a_fsas_.Dim0() == 1) {
@@ -378,29 +393,44 @@ class MultiGraphDenseIntersectPruned {
   }
 
   void FormatOutput(FsaVec *ofsa, Array1<int32_t> *arc_map_a,
-                    Array1<int32_t> *arc_map_b) {
+                    Array1<int32_t> *arc_map_b, bool is_final) {
     NVTX_RANGE("FormatOutput");
 
-    int32_t T = T_;
+    bool online_decoding = online_decoding_;
+    if (online_decoding) {
+      K2_CHECK(arc_map_a);
+      K2_CHECK_EQ(arc_map_b, nullptr);
+    } else {
+      K2_CHECK(is_final);
+      K2_CHECK(arc_map_a && arc_map_b);
+    }
 
-
+    int32_t T = is_final ? T_ : T_ + 1;
     ContextPtr c_cpu = GetCpuContext();
     Array1<ArcInfo *> arcs_data_ptrs(c_cpu, T + 1);
     Array1<int32_t *> arcs_row_splits1_ptrs(c_cpu, T + 1);
-    for (int32_t t = 0; t <= T; t++) {
+    for (int32_t t = 0; t < T; t++) {
       arcs_data_ptrs.Data()[t] = frames_[t]->arcs.values.Data();
       arcs_row_splits1_ptrs.Data()[t] = frames_[t]->arcs.RowSplits(1).Data();
     }
+    arcs_data_ptrs.Data()[T] = is_final
+                                   ? frames_[T]->arcs.values.Data()
+                                   : partial_final_frame_->arcs.values.Data();
+    arcs_row_splits1_ptrs.Data()[T] =
+        is_final ? frames_[T]->arcs.RowSplits(1).Data()
+                 : partial_final_frame_->arcs.RowSplits(1).Data();
+
     // transfer to GPU if we're using a GPU
     arcs_data_ptrs = arcs_data_ptrs.To(c_);
     ArcInfo **arcs_data_ptrs_data = arcs_data_ptrs.Data();
     arcs_row_splits1_ptrs = arcs_row_splits1_ptrs.To(c_);
     int32_t **arcs_row_splits1_ptrs_data = arcs_row_splits1_ptrs.Data();
-    const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
+    const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
     const int32_t *a_fsas_row_splits1 = a_fsas_.RowSplits(1).Data();
     int32_t a_fsas_stride = a_fsas_stride_;  // 0 or 1 depending if the decoding
                                              // graph is shared.
-    int32_t num_fsas = b_fsas_.shape.Dim0();
+    int32_t *final_t_data = final_t_.Data();
+    int32_t num_fsas = b_fsas_->shape.Dim0();
 
     RaggedShape final_arcs_shape;
     { /*  This block populates `final_arcs_shape`.  It is the shape of a ragged
@@ -415,7 +445,12 @@ class MultiGraphDenseIntersectPruned {
       Array1<int32_t> num_extra_states(c_, num_fsas + 1);
       int32_t *num_extra_states_data = num_extra_states.Data();
       K2_EVAL(c_, num_fsas, lambda_set_num_extra_states, (int32_t i) -> void {
-          int32_t final_t = b_fsas_row_splits1[i+1] - b_fsas_row_splits1[i];
+          int32_t final_t;
+          if (online_decoding)
+            final_t = is_final ? final_t_data[i] : final_t_data[i] + 1;
+          else
+            final_t = b_fsas_row_splits1[i+1] - b_fsas_row_splits1[i];
+
           int32_t *arcs_row_splits1_data = arcs_row_splits1_ptrs_data[final_t];
           int32_t num_states_final_t = arcs_row_splits1_data[i + 1] -
                                        arcs_row_splits1_data[i];
@@ -446,8 +481,12 @@ class MultiGraphDenseIntersectPruned {
       NVTX_RANGE("InitOshape");
       // each of these have 3 axes.
       std::vector<RaggedShape *> arcs_shapes(T + 2);
-      for (int32_t t = 0; t <= T; t++)
+      for (int32_t t = 0; t < T; t++)
         arcs_shapes[t] = &(frames_[t]->arcs.shape);
+
+      arcs_shapes[T] = is_final ? &(frames_[T]->arcs.shape)
+                                : &(partial_final_frame_->arcs.shape);
+
       arcs_shapes[T + 1] = &final_arcs_shape;
 
       // oshape is a 4-axis ragged tensor which is indexed:
@@ -456,7 +495,6 @@ class MultiGraphDenseIntersectPruned {
       oshape = Stack(axis, T + 2, arcs_shapes.data(), &oshape_merge_map);
     }
 
-
     int32_t *oshape_row_ids3 = oshape.RowIds(3).Data(),
             *oshape_row_ids2 = oshape.RowIds(2).Data(),
             *oshape_row_ids1 = oshape.RowIds(1).Data(),
@@ -464,17 +502,17 @@ class MultiGraphDenseIntersectPruned {
             *oshape_row_splits2 = oshape.RowSplits(2).Data(),
             *oshape_row_splits1 = oshape.RowSplits(1).Data();
 
-
     int32_t num_arcs = oshape.NumElements();
     *arc_map_a = Array1<int32_t>(c_, num_arcs);
-    *arc_map_b = Array1<int32_t>(c_, num_arcs);
+    if (!online_decoding)
+      *arc_map_b = Array1<int32_t>(c_, num_arcs);
     int32_t *arc_map_a_data = arc_map_a->Data(),
-            *arc_map_b_data = arc_map_b->Data();
+            *arc_map_b_data = online_decoding ? nullptr : arc_map_b->Data();
     Array1<Arc> arcs_out(c_, num_arcs);
     Arc *arcs_out_data = arcs_out.Data();
     const Arc *a_fsas_arcs = a_fsas_.values.Data();
-    int32_t b_fsas_num_cols = b_fsas_.scores.Dim1();
-    const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1).Data();
+    int32_t b_fsas_num_cols = b_fsas_->scores.Dim1();
+    const int32_t *b_fsas_row_ids1 = b_fsas_->shape.RowIds(1).Data();
 
     const uint32_t *oshape_merge_map_data = oshape_merge_map.Data();
 
@@ -527,12 +565,22 @@ class MultiGraphDenseIntersectPruned {
             // Then arc_map_b storages the "correct" arc index instead of
             // the non-exist manually added arc pointing to super-final state.
             b_fsas_idx2 = (arc_label + 1),
-       b_fsas_arc_idx012 = b_fsas_idx01 * b_fsas_num_cols + b_fsas_idx2;
+            b_fsas_arc_idx012 = b_fsas_idx01 * b_fsas_num_cols + b_fsas_idx2;
 
           arc.score = arc_info.arc_loglike;
-          arc_map_a_data[oarc_idx0123] = arc_info.a_fsas_arc_idx012;
-          arc_map_b_data[oarc_idx0123] = b_fsas_arc_idx012;
           arcs_out_data[oarc_idx0123] = arc;
+
+          // We won't preduce arc_map_b (for nnet_output) for online_decoding,
+          // in this case, b_fsas_ is only a part of the whole sequence.
+          if (!online_decoding) {
+            int32_t fsa_id = oarc_idx0,
+              b_fsas_idx0x = b_fsas_row_splits1[fsa_id],
+              b_fsas_idx01 = b_fsas_idx0x + t,
+              b_fsas_idx2 = (arc.label + 1),
+              b_fsas_arc_idx012 = b_fsas_idx01 * b_fsas_num_cols + b_fsas_idx2;
+              arc_map_b_data[oarc_idx0123] = b_fsas_arc_idx012;
+          }
+          arc_map_a_data[oarc_idx0123] = arc_info.a_fsas_arc_idx012;
         });
 
     // Remove axis 1, which corresponds to time.
@@ -586,7 +634,7 @@ class MultiGraphDenseIntersectPruned {
           min_active = min_active_;
     K2_CHECK_LT(min_active, max_active);
 
-    const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
+    const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
 
     Array1<float> cutoffs(c_, num_fsas);
     float *cutoffs_data = cutoffs.Data();
@@ -655,6 +703,7 @@ class MultiGraphDenseIntersectPruned {
     NVTX_RANGE(K2_FUNC);
     Ragged<StateInfo> &states = cur_frame->states;
     const StateInfo *state_values = states.values.Data();
+    float minus_inf = -std::numeric_limits<float>::infinity();
 
     // in a_fsas_ (the decoding graphs), maps from state_idx01 to arc_idx01x.
     const int32_t *fsa_arc_splits = a_fsas_.shape.RowSplits(2).Data();
@@ -696,11 +745,11 @@ class MultiGraphDenseIntersectPruned {
     const Arc *arcs = a_fsas_.values.Data();
     // fsa_idx0 to idx0x (into b_fsas_), which gives the 1st row for this
     // sequence.
-    const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1).Data();
-    const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
-    const float *score_data = b_fsas_.scores.Data();
-    int32_t scores_num_cols = b_fsas_.scores.Dim1();
-    auto scores_acc = b_fsas_.scores.Accessor();
+    const int32_t *b_fsas_row_ids1 = b_fsas_->shape.RowIds(1).Data();
+    const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
+    const float *score_data = b_fsas_->scores.Data();
+    int32_t scores_num_cols = b_fsas_->scores.Dim1();
+    auto scores_acc = b_fsas_->scores.Accessor();
 
     Ragged<ArcInfo> ai(ai_shape);
     ArcInfo *ai_data = ai.values.Data();  // uninitialized
@@ -754,7 +803,8 @@ class MultiGraphDenseIntersectPruned {
               int32_t a_fsas_idx0 = a_fsas_row_ids1[sinfo.a_fsas_state_idx01];
               // state_idx1 is 0-based.
               // So "-1" is used when calculating a_fsas_final_state_idx1.
-              int32_t a_fsas_final_state_idx1 = a_fsas_row_splits1[a_fsas_idx0 + 1] - 1 - a_fsas_row_splits1[a_fsas_idx0];
+              int32_t a_fsas_final_state_idx1
+                = a_fsas_row_splits1[a_fsas_idx0 + 1] - 1 - a_fsas_row_splits1[a_fsas_idx0];
               dest_state = a_fsas_final_state_idx1;
               acoustic_score = 0.0;
           }
@@ -775,9 +825,9 @@ class MultiGraphDenseIntersectPruned {
     return ai;
   }
 
-  // Later we may choose to support b_fsas_.Dim0() == 1 and a_fsas_.Dim0() > 1,
+  // Later we may choose to support b_fsas_->Dim0() == 1 and a_fsas_.Dim0() > 1,
   // and we'll have to change various bits of code for that to work.
-  inline int32_t NumFsas() const { return b_fsas_.shape.Dim0(); }
+  inline int32_t NumFsas() const { return b_fsas_->shape.Dim0(); }
 
   /*
     Does the forward-propagation (basically: the decoding step) and
@@ -1249,7 +1299,7 @@ class MultiGraphDenseIntersectPruned {
     NVTX_RANGE(K2_FUNC);
     SetBackwardProbsFinal(frames_[end_t].get());
     ContextPtr cpu = GetCpuContext();
-    int32_t num_fsas = b_fsas_.shape.Dim0(),
+    int32_t num_fsas = b_fsas_->shape.Dim0(),
                num_t = end_t - begin_t;
     Array1<int32_t> old_states_offsets(cpu, num_t + 1),
         old_arcs_offsets(cpu, num_t + 1);
@@ -1270,7 +1320,7 @@ class MultiGraphDenseIntersectPruned {
 
 
     // contains respectively: row_splits1_ptrs, row_ids1_ptrs,
-    // row_splits1_ptrs, row_splits2_ptrs,
+    // row_splits2_ptrs, row_ids2_ptrs,
     // old_arcs_ptrs (really type ArcInfo*),
     // old_states_ptrs (really type StateInfo*).
     Array1<void*> old_all_ptrs(cpu, num_t * 6);
@@ -1507,14 +1557,21 @@ class MultiGraphDenseIntersectPruned {
     }
   }
 
+  const Array1<float>& GetBeams() {
+    return dynamic_beams_;
+  }
 
   ContextPtr c_;
   FsaVec &a_fsas_;         // Note: a_fsas_ has 3 axes.
   int32_t a_fsas_stride_;  // 1 if we use a different FSA per sequence
                            // (a_fsas_.Dim0() > 1), 0 if the decoding graph is
                            // shared (a_fsas_.Dim0() == 1).
-  DenseFsaVec &b_fsas_;
-  int32_t T_;  // == b_fsas_.shape.MaxSize(1).
+  std::shared_ptr<DenseFsaVec> b_fsas_;  // nnet_output to be decoded.
+  int32_t num_seqs_;       // the number of sequences to decode at a time,
+                           // i.e. batch size for decoding.
+  int32_t T_;              // equals to b_fsas_->shape.MaxSize(1), for
+                           // batch intersection.
+                           // means the number of frames decoded currently.
   float search_beam_;
   float output_beam_;
   int32_t min_active_;
@@ -1523,6 +1580,12 @@ class MultiGraphDenseIntersectPruned {
   Array1<float> dynamic_beams_;  // dynamic beams (initially just search_beam_
                                  // but change due to max_active/min_active
                                  // constraints).
+
+  bool online_decoding_;         // true for online decoding.
+  Array1<int32_t> final_t_;      // record the final frame id of each DenseFsa.
+
+  std::unique_ptr<FrameInfo> partial_final_frame_;  // store the final frame for
+                                                    // partial results
 
   int32_t state_map_fsa_stride_;  // state_map_fsa_stride_ is a_fsas_.TotSize(1)
                                   // if a_fsas_.Dim0() == 1, else 0.
@@ -1587,11 +1650,136 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                           Array1<int32_t> *arc_map_b) {
   NVTX_RANGE("IntersectDensePruned");
   FsaVec a_vec = FsaToFsaVec(a_fsas);
-  MultiGraphDenseIntersectPruned intersector(a_vec, b_fsas, search_beam,
-                                             output_beam, min_active_states,
-                                             max_active_states, allow_partial);
+  bool online_decoding = false;
+  MultiGraphDenseIntersectPruned intersector(a_vec, b_fsas.shape.Dim0(),
+                                             search_beam, output_beam,
+                                             min_active_states,
+                                             max_active_states,
+                                             allow_partial,
+                                             online_decoding);
 
-  intersector.Intersect();
-  intersector.FormatOutput(out, arc_map_a, arc_map_b);
+  auto b_fsas_p = std::make_shared<DenseFsaVec>(b_fsas);
+  intersector.Intersect(b_fsas_p);
+  intersector.FormatOutput(out, arc_map_a, arc_map_b, true);
 }
+
+OnlineDenseIntersecter::OnlineDenseIntersecter(FsaVec &a_fsas,
+    int32_t num_seqs, float search_beam, float output_beam,
+    int32_t min_active_states, int32_t max_active_states) {
+  bool online_decoding = true;
+  bool allow_partial = true;
+  K2_CHECK_EQ(a_fsas.NumAxes(), 3);
+  c_ = a_fsas.Context();
+  search_beam_ = search_beam;
+  impl_ = new MultiGraphDenseIntersectPruned(a_fsas, num_seqs, search_beam,
+      output_beam, min_active_states, max_active_states, allow_partial,
+      online_decoding);
+}
+
+OnlineDenseIntersecter::~OnlineDenseIntersecter(){
+  // WARNING(Wei Kang): Python garbage collector runs in a separate thread,
+  // so we have to reset its default device. Otherwise, it will throw later
+  // if the main thread is using a different device.
+  // Actually, it is the `CheckEmpty` function invoked in Hash's destructor
+  // would throw, but I think it is properly to put the DeviceGuard here, as the
+  // hanging occurs when destructing this object.
+  // Note: The hanging only occurs on the versions built with debug mode, as the
+  // release mode won't invoked `CheckEmpty` when destructing Hash objects.
+#ifndef NDEBUG
+  DeviceGuard guard(c_);
+#endif
+  delete impl_;
+}
+
+void OnlineDenseIntersecter::Decode(DenseFsaVec &b_fsas,
+    std::vector<std::shared_ptr<DecodeStateInfo>> *decode_states,
+    FsaVec *ofsa, Array1<int32_t> *arc_map_a) {
+  auto b_fsas_p = std::make_shared<DenseFsaVec>(b_fsas);
+  int32_t num_seqs = b_fsas_p->shape.Dim0();
+
+  K2_CHECK_EQ(num_seqs, static_cast<int32_t>(decode_states->size()));
+
+  std::vector<Ragged<StateInfo> *> seq_states_ptr_vec(num_seqs);
+  std::vector<Ragged<ArcInfo> *> seq_arcs_ptr_vec(num_seqs);
+
+  Array1<float> beams(GetCpuContext(), num_seqs);
+  float *beams_data = beams.Data();
+  for (int32_t i = 0; i < num_seqs; ++i) {
+    // initialization
+    if (!decode_states->at(i)) {
+      DecodeStateInfo info;
+      StateInfo sinfo;
+      // start state of decoding graph
+      sinfo.a_fsas_state_idx01 = 0;
+      sinfo.forward_loglike = FloatToOrderedInt(0.0);
+      info.states = Ragged<StateInfo>(
+          RegularRaggedShape(c_, 1, 1),
+          Array1<StateInfo>(c_, std::vector<StateInfo>{sinfo}));
+
+      info.arcs = Ragged<ArcInfo>(RaggedShape(c_, "[ [ [ x ] ] ]"),
+          Array1<ArcInfo>(c_, std::vector<ArcInfo>{ArcInfo()}));
+
+      info.beam = search_beam_;
+      decode_states->at(i) = std::make_shared<DecodeStateInfo>(info);
+    }
+    seq_states_ptr_vec[i] = &(decode_states->at(i)->states);
+    seq_arcs_ptr_vec[i] = &(decode_states->at(i)->arcs);
+    beams_data[i] = decode_states->at(i)->beam;
+  }
+
+  auto stack_states = Stack(0, num_seqs, seq_states_ptr_vec.data());
+  auto stack_arcs = Stack(0, num_seqs, seq_arcs_ptr_vec.data());
+
+  // Remove empty lists on frame axis, these empty lists come from the
+  // Unstack of the previous chunk
+  stack_states = Ragged<StateInfo>(RemoveEmptyLists(stack_states.shape, 1),
+                                   stack_states.values);
+  stack_arcs = Ragged<ArcInfo>(RemoveEmptyLists(stack_arcs.shape, 1),
+                               stack_arcs.values);
+
+  std::vector<Ragged<StateInfo>> frame_states_vec;
+  std::vector<Ragged<ArcInfo>> frame_arcs_vec;
+  // Put empty list left, we want the latest frames at the tail positions
+  Unstack(stack_states, 1, false /*pad_right*/, &frame_states_vec);
+  Unstack(stack_arcs, 1, false /*pad_right*/, &frame_arcs_vec);
+
+  std::vector<std::unique_ptr<FrameInfo>> frames(frame_states_vec.size());
+
+  for (size_t i = 0; i < frames.size(); ++i) {
+    FrameInfo info;
+    info.states = frame_states_vec[i];
+    info.arcs = frame_arcs_vec[i];
+    frames[i] = std::make_unique<FrameInfo>(info);
+  }
+
+  const auto new_frames = impl_->OnlineIntersect(b_fsas_p, frames, beams);
+  impl_->FormatOutput(ofsa, arc_map_a, nullptr/*arc_map_b*/, false);
+
+  int32_t frames_num = new_frames->size();
+  std::vector<Ragged<StateInfo> *> frame_states_ptr_vec(frames_num);
+  std::vector<Ragged<ArcInfo> *> frame_arcs_ptr_vec(frames_num);
+  for (int32_t i = 0; i < frames_num; ++i) {
+    frame_states_ptr_vec[i] = &(new_frames->at(i)->states);
+    frame_arcs_ptr_vec[i] = &(new_frames->at(i)->arcs);
+  }
+
+  stack_states = Stack(0, frames_num, frame_states_ptr_vec.data());
+  stack_arcs = Stack(0, frames_num, frame_arcs_ptr_vec.data());
+
+  std::vector<Ragged<StateInfo>> seq_states_vec;
+  std::vector<Ragged<ArcInfo>> seq_arcs_vec;
+  Unstack(stack_states, 1, &seq_states_vec);
+  Unstack(stack_arcs, 1, &seq_arcs_vec);
+
+  beams = impl_->GetBeams().To(GetCpuContext());
+  beams_data = beams.Data();
+  for (int32_t i = 0; i < num_seqs; ++i) {
+    DecodeStateInfo info;
+    info.states = seq_states_vec[i];
+    info.arcs = seq_arcs_vec[i];
+    info.beam = beams_data[i];
+    decode_states->at(i) = std::make_shared<DecodeStateInfo>(info);
+  }
+}
+
 }  // namespace k2

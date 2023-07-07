@@ -380,6 +380,90 @@ TEST(Intersect, RandomFsaVec) {
   }
 }
 
+TEST(Intersect, RandomFsaVecNoArcMap) {
+  // Main parts are copied from TEST(Intersect, RandomFsaVec).
+  // The only difference is setting arc_map_a and arc_map_b to nullptr.
+  for (int32_t i = 0; i < 10; i++) {
+    K2_LOG(INFO) << "Iteration of testing: i = " << i;
+    ContextPtr c = (i % 2 == 0 ? GetCpuContext() : GetCudaContext());
+    ContextPtr cpu = GetCpuContext();
+
+    int32_t max_symbol = 10, min_num_arcs = 0, max_num_arcs = 200;
+    bool acyclic = false;
+
+    int32_t num_b_fsas = RandInt(1, 5), num_a_fsas = num_b_fsas;
+
+    Fsa fsavec = RandomFsaVec(num_a_fsas, num_a_fsas, acyclic, max_symbol,
+                              min_num_arcs, max_num_arcs)
+                     .To(c);
+    ArcSort(&fsavec);
+
+    int32_t min_frames = 0, max_frames = 10, min_nsymbols = max_symbol + 1,
+            max_nsymbols = max_symbol + 4;
+    float scores_scale = 1.0;
+    DenseFsaVec dfsavec =
+        RandomDenseFsaVec(num_b_fsas, num_b_fsas, min_frames, max_frames,
+                          min_nsymbols, max_nsymbols, scores_scale);
+
+    Array1<int32_t> dfsa_reorder = GetDecreasingSizeOrder(dfsavec.shape);
+    dfsavec = dfsavec[dfsa_reorder];
+    K2_LOG(INFO) << "Dfsa-vec after reordering is " << dfsavec;
+
+    if (true) {
+      // trying to find bugs where the cutoffs might get mixed up between
+      // FSAs
+      auto dfsa_acc = dfsavec.scores.Accessor();
+      for (int32_t n = 0; n < 10; n++) {
+        int32_t i = RandInt(0, dfsavec.scores.Dim0() - 1);
+        for (int32_t j = 0; j < dfsavec.scores.Dim1(); j++) {
+          dfsa_acc(i, j) += -100.0;
+        }
+      }
+    }
+    dfsavec = dfsavec.To(c);
+
+    K2_LOG(INFO) << "fsavec = " << fsavec;
+    K2_LOG(INFO) << "dfsavec= " << dfsavec;
+
+    FsaVec out_fsas;
+    float output_beam = 100000.0;
+    int32_t max_states = 15000000,
+            max_arcs = 1 << 30;
+    IntersectDense(fsavec, dfsavec, nullptr, output_beam, max_states, max_arcs,
+                   &out_fsas, nullptr, nullptr);
+    K2_LOG(INFO) << "out_fsas = " << out_fsas;
+
+    fsavec = fsavec.To(cpu);
+    out_fsas = out_fsas.To(cpu);
+
+    FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
+    fsas_b = fsas_b.To(cpu);
+    K2_LOG(INFO) << "fsas_b = " << fsas_b;
+    FsaVec out_fsas2;
+    Array1<int32_t> arc_map_a2, arc_map_b2;
+    // IntersectDensePruned() treats epsilons as normal symbols, so we need to
+    // as well.
+
+    ArcSort(&fsavec);  // CAUTION if you later test the arc_maps: we arc-sort
+                       // here, so the input `fsa` is not the same as before.
+    bool treat_epsilons_specially = false;
+
+    {
+      Array1<int32_t> arc_map_a2_temp,
+          arc_map_b2_temp;
+      FsaVec out_fsas2_temp;
+      Intersect(fsavec, -1, fsas_b, -1, treat_epsilons_specially,
+                &out_fsas2_temp, nullptr, nullptr);
+      Array1<int32_t> connect_arc_map;
+      Connect(out_fsas2_temp, &out_fsas2, &connect_arc_map);
+    }
+
+    K2_LOG(INFO) << "out_fsas2 = " << out_fsas2;
+    K2_CHECK(
+        IsRandEquivalentWrapper(out_fsas, out_fsas2, treat_epsilons_specially));
+  }
+}
+
 TEST(IntersectPruned, Simple) {
   for (int i = 0; i < 2; i++) {
     K2_LOG(INFO) << "Intersection for " << (i == 0 ? "CPU" : "GPU");

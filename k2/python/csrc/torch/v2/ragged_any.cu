@@ -29,6 +29,7 @@
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/v2/autograd/index_and_sum.h"
+#include "k2/python/csrc/torch/v2/autograd/logsumexp.h"
 #include "k2/python/csrc/torch/v2/autograd/normalize.h"
 #include "k2/python/csrc/torch/v2/autograd/sum.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
@@ -438,6 +439,12 @@ torch::Tensor RaggedAny::Sum(float initial_value /*=0*/) const {
   return SumFunction::apply(*this, Data(), initial_value);
 }
 
+torch::Tensor RaggedAny::LogSumExp(
+    float initial_value /*=negative_infinity*/) const {
+  DeviceGuard guard(any.Context());
+  return LogSumExpFunction::apply(*this, Data(), initial_value);
+}
+
 RaggedAny RaggedAny::Index(int32_t axis, int32_t i) const {
   K2_CHECK_EQ(axis, 0) << "Support only axis == 0 right now";
 
@@ -598,6 +605,22 @@ RaggedAny RaggedAny::Normalize(bool use_log) /*const*/ {
   RaggedAny out;
   NormalizeFunction::apply(*this, use_log, Data(), &out);
   return out;
+}
+
+RaggedAny RaggedAny::Add(torch::Tensor value, py::object alpha) /*const*/ {
+  K2_CHECK((bool)alpha);
+  K2_CHECK(!alpha.is_none());
+
+  DeviceGuard guard(any.Context());
+  Dtype t = any.GetDtype();
+  FOR_REAL_AND_INT32_TYPES(t, T, {
+    Array1<T> value_array = FromTorch<T>(value);
+    Ragged<T> ans =
+        AddPerSublist<T>(any.Specialize<T>(), value_array, alpha.cast<T>());
+    return RaggedAny(ans.Generic());
+  });
+  // Unreachable code
+  return {};
 }
 
 torch::Tensor RaggedAny::Pad(const std::string &mode,

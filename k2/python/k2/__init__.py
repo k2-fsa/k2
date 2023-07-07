@@ -20,18 +20,15 @@ if (
         f"But you are using CUDA {torch.version.cuda} to run it."
     )
 
-try:
-    from _k2 import DeterminizeWeightPushingType
-    from _k2 import simple_ragged_index_select
-except ImportError as e:
-    import sys
+from _k2 import DeterminizeWeightPushingType
+from _k2 import simple_ragged_index_select
+from _k2 import swoosh_l
+from _k2 import swoosh_l_forward
+from _k2 import swoosh_l_forward_and_deriv
+from _k2 import swoosh_r
+from _k2 import swoosh_r_forward
+from _k2 import swoosh_r_forward_and_deriv
 
-    major_v, minor_v = sys.version_info[:2]
-    raise ImportError(
-        str(e) + "\nNote: If you're using anaconda and importing k2 on MacOS,"
-        "\n      you can probably fix this by setting the environment variable:"
-        f"\n  export DYLD_LIBRARY_PATH=$CONDA_PREFIX/lib/python{major_v}.{minor_v}/site-packages:$DYLD_LIBRARY_PATH"  # noqa
-    )
 from .ragged import RaggedShape
 from .ragged import RaggedTensor
 
@@ -81,7 +78,13 @@ from .fsa_algo import union
 from .fsa_properties import to_str as properties_to_str
 from .mutual_information import joint_mutual_information_recursion
 from .mutual_information import mutual_information_recursion
+from .mwer_loss import MWERLoss
+from .mwer_loss import mwer_loss
 from .nbest import Nbest
+
+from .online_dense_intersecter import DecodeStateInfo
+from .online_dense_intersecter import OnlineDenseIntersecter
+
 from .ops import cat
 from .ops import compose_arc_maps
 from .ops import index_add
@@ -116,6 +119,11 @@ from .utils import to_tensor
 from .utils import random_fsa
 from .utils import random_fsa_vec
 from _k2.version import with_cuda
+from _k2 import pruned_ranges_to_lattice
+
+from .decode import get_aux_labels
+from .decode import get_lattice
+from .decode import one_best_decoding
 
 cmake_prefix_path = _Path(__file__).parent / "share" / "cmake"
 del _Path

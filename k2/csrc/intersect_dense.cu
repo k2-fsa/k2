@@ -525,10 +525,14 @@ class MultiGraphDenseIntersect {
           CompressedArc carc = carcs_data[a_fsas_arc_idx012];
           K2_CHECK_EQ(a_fsas_state_idx1, (int32_t)carc.src_state);
           int32_t a_fsas_dest_state_idx1 = carc.dest_state;
-          arc_map_a_data[arc_idx_out] = a_fsas_arc_idx012;
+          if (arc_map_a_data) {
+            arc_map_a_data[arc_idx_out] = a_fsas_arc_idx012;
+          }
           int32_t scores_index = fsa_info.scores_offset +
                                  (scores_stride * t_idx1) + carc.label_plus_one;
-          arc_map_b_data[arc_idx_out] = scores_index;
+          if (arc_map_b_data) {
+            arc_map_b_data[arc_idx_out] = scores_index;
+          }
 
           float arc_score = carc.score + scores_data[scores_index];
 
@@ -774,6 +778,8 @@ class MultiGraphDenseIntersect {
   void DoStep(int32_t t) {
     NVTX_RANGE(K2_FUNC);
     Step &step = steps_[t], &prev_step = steps_[t - 1];
+    int32_t scores_num_cols = b_fsas_.scores.Dim1(); 
+    const float minus_inf = -std::numeric_limits<float>::infinity();
 
     // Divide by two because each arc is repeated twice in arc_scores (once for
     // forward, once for backward).  The same kernel instance does both the
@@ -808,13 +814,22 @@ class MultiGraphDenseIntersect {
                 backward_dest_prob =
                     prev_state_scores_data[dest_state_scores_index_backward];
 
-          float b_score_forward = scores_data[fsa_info.scores_offset +
-                                              (scores_stride * (t - 1)) +
-                                              carc.label_plus_one],
-                b_score_backward =
-                    scores_data[fsa_info.scores_offset +
-                                (scores_stride * (fsa_info.T - t)) +
-                                carc.label_plus_one];
+          // Assign negative infinity (-inf) to both the forward and backward scores,
+          // if the label on the carc is out-of-range, i.e., the label in the decoding 
+          // graph (a_fsas) does not exist in the neural-net output (b_fsas).
+          float b_score_forward;
+          float b_score_backward;
+          if (carc.label_plus_one <= scores_num_cols) {
+            b_score_forward = scores_data[fsa_info.scores_offset +
+                                          (scores_stride * (t - 1)) +
+                                          carc.label_plus_one];
+            b_score_backward = scores_data[fsa_info.scores_offset +
+                                           (scores_stride * (fsa_info.T - t)) +
+                                           carc.label_plus_one];
+          } else {
+            b_score_forward = minus_inf;
+            b_score_backward = minus_inf;
+          }
           float forward_arc_end_prob =
                     forward_src_prob + carc.score + b_score_forward,
                 backward_arc_begin_prob =

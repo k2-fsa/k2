@@ -80,6 +80,9 @@ class SumFunction : public torch::autograd::Function<SumFunction> {
     torch::Tensor row_ids = saved[0];
 
     auto grad_output = grad_outputs[0];
+    // note: stride may be zero
+    // see https://github.com/k2-fsa/k2/pull/1101
+    int32_t stride = grad_output.stride(0);
 
     auto opts = torch::TensorOptions()
                     .dtype(grad_output.dtype())
@@ -98,7 +101,7 @@ class SumFunction : public torch::autograd::Function<SumFunction> {
       K2_EVAL(
           c, n, set_grad, (int32_t idx01)->void {
             int32_t idx0 = row_ids_data[idx01];
-            ans_data[idx01] = grad_output_data[idx0];
+            ans_data[idx01] = grad_output_data[idx0 * stride];
           });
     });
 

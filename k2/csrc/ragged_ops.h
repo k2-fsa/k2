@@ -67,13 +67,15 @@ void SegmentedReduce(const Ragged<T> &src, T initial_value, Array1<T> *dst);
                                 - 2).  i.e. num-rows of last axis of `src`.
  */
 template <typename T>
-void MaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *max_values) {
+void MaxPerSublist(const Ragged<T> &src, T initial_value,
+                   Array1<T> *max_values) {
   SegmentedReduce<T, MaxOp<T>>(src, initial_value, max_values);
 }
 
 // Same with `MaxPerSubList`, but output the `min_value` in each sub-list.
 template <typename T>
-void MinPerSublist(Ragged<T> &src, T initial_value, Array1<T> *min_values) {
+void MinPerSublist(const Ragged<T> &src, T initial_value,
+                   Array1<T> *min_values) {
   SegmentedReduce<T, MinOp<T>>(src, initial_value, min_values);
 }
 
@@ -86,27 +88,31 @@ void SumPerSublist(const Ragged<T> &src, T initial_value,
 
 // Same with `MaxPerSubList`, but with Op as `LogAdd`.
 template <typename T>
-void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
+void LogSumPerSublist(const Ragged<T> &src, T initial_value,
+                      Array1<T> *dst_values) {
   K2_STATIC_ASSERT(
       (std::is_same<float, T>::value || std::is_same<double, T>::value));
   SegmentedReduce<T, LogAdd<T>>(src, initial_value, dst_values);
 }
 
 /*
-  Output to an array `max_values` the arg-max within each sub-list along the
-  last axis of `src` i.e. the max taken over the last axis), i.e. the index
+  Output to an array `argmax` the arg-max within each sub-list along the
+  last axis of `src` i.e. the index
   within `src.values` of the maximum element of that sub-list, or -1
   if the sub-list was empty or all values in the sub-list are less than
   `initial_value`.
 
      @param [in] src        Input ragged array; must have src.NumAxes() >= 2.
                             src.values is allowed to be empty.
+     @param [in] initial_value  Returned index is -1 for a sub-list if its maximum
+                                is less than `initial_value`.
      @param [out] argmax    Array to which the argmax indexes will be written.
                             argmax->Dim() == src.TotSize(src.NumAxes() - 2),
                             i.e. num-rows of last axis of `src`.
  */
 template <typename T>
-void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *argmax);
+void ArgMaxPerSublist(const Ragged<T> &src, T initial_value,
+                      Array1<int32_t> *argmax);
 
 /* Normalize per sublist.
 
@@ -130,7 +136,22 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *argmax);
    @return The normalized ragged tensor.
  */
 template <typename T>
-Ragged<T> NormalizePerSublist(Ragged<T> &src, bool use_log);
+Ragged<T> NormalizePerSublist(const Ragged<T> &src, bool use_log);
+
+/* Adds value, scaled by alpha, to src per sublist.
+
+   It implements:
+     src[...][i][j] = src[...][i][j] + alpha * value[i]
+
+   @param [in] src  The source ragged tensor. The add is done on the last axis.
+   @param [in] value  The value to be added to the src, whose dimension MUST
+                      equal the number of sublists along src's last dimension.
+   @param [in] alpha  The number used to scaled value before adding to src.
+
+   @return The added ragged tensor.
+ */
+template <typename T>
+Ragged<T> AddPerSublist(Ragged<T> &src, Array1<T> &value, T alpha);
 
 /*
   Output to an array `and_values` the result of reducing each sub-list along
@@ -146,26 +167,27 @@ Ragged<T> NormalizePerSublist(Ragged<T> &src, bool use_log);
                                 2), i.e. num-rows of the last axis of `src`.
 */
 template <typename T>
-void AndPerSublist(Ragged<T> &src, T initial_value, Array1<T> *and_values) {
+void AndPerSublist(const Ragged<T> &src, T initial_value,
+                   Array1<T> *and_values) {
   SegmentedReduce<T, BitAndOp<T>>(src, initial_value, and_values);
 }
 
 // bitwise or
 template <typename T>
-void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
+void OrPerSublist(const Ragged<T> &src, T initial_value, Array1<T> *or_values) {
   SegmentedReduce<T, BitOrOp<T>>(src, initial_value, or_values);
 }
 
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
-  Similar to TF/PyTorch's Stack. The result will have Dim0 == src_size.
+  Similar to TF/PyTorch's Stack. The dimension of the new axis equals src_size.
   All the source RaggedShapes must have the same NumAxes().
 
-     @param [in] src_size  The number of `RaggedShape`s in `src`
-     @param [in] src    The shapes to be stacked
      @param [in] axis   The new axis whose dimension will equal src_size.
                         Dimensions/shapes of all previous axes must be
                         identical.
+     @param [in] src_size  The number of `RaggedShape`s in `src`
+     @param [in] src    The shapes to be stacked
      @param [out] merge_map  If not nullptr, will be set to the merge-map
                         that tells us for each 0 <= i < ans.NumElements(),
                         which element of `src` it came from (available
@@ -180,7 +202,7 @@ void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
         and if axis==1 we will have:
             result[i,j,k,l] = (*src[j])[i,k,l]
         (although of course no such operator actually exists at the C++ level,
-        and these are just the shapes of arrays..).
+        and these are just the shapes of arrays).
         See also the version of Stack for class Ragged.
  */
 RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
@@ -198,14 +220,14 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
     @param [in] src  The shape to unstack.
     @param [in] axis  The axis to be removed, all the elements of this axis will
                       be rearranged into output RaggedShapes.
-    @param [out] out  The container where the output RaggedShapes would write
-                      to. MUST NOT be a nullptr, will be reallocated.
     @param [in] pad_right  Before unstack, we will (conceptually) pad the
                   sublists along axis `axis` to the same size with empty lists
                   `pad_right` tells where to put the padding empty lists, see
                   the example for more details.
                   Note, `pad_right` makes no difference when `axis == 0` or
                   `axis == src.NumAxes() - 1`.
+    @param [out] out  The container where the output RaggedShapes would write
+                      to. MUST NOT be a nullptr, will be reallocated.
     @param [out] split_map  If not nullptr will store the element-index within
                    `src` telling where the elements of each split RaggedShapes
                    come from. It has the same size of `out`, see notes below
@@ -493,7 +515,7 @@ Ragged<T> Arange(Ragged<T> &src, int32_t axis, int32_t begin, int32_t end) {
                      and NumElements() equal to src.NumElements() +
                      suffix.Dim()
  */
-Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
+Ragged<int32_t> AddSuffixToRagged(const Ragged<int32_t> &src,
                                   const Array1<int32_t> &suffix);
 
 /*
@@ -508,7 +530,7 @@ Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
                      and NumElements() equal to src.NumElements() +
                      prefix.Dim()
  */
-Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
+Ragged<int32_t> AddPrefixToRagged(const Ragged<int32_t> &src,
                                   const Array1<int32_t> &prefix);
 /*
   Insert a new axis at position `axis`, with 0 <= axis <= src.NumAxes(), for
@@ -1202,7 +1224,7 @@ RaggedShape ComposeRaggedShapes3(const RaggedShape &a, const RaggedShape &b,
   If cached_tot_sizeN is not -1, it must equal the total size on
   that axis which will equal the last element of row_splitsN (if
   provided) and must equal the row_idsN.Dim(), if provided. See
-  documentation above for RagggedShape2 for details.
+  documentation above for RaggedShape2 for details.
 
   We also require that (supposing both row_splitsN and row_idsN are non-NULL):
   row_splits1[row_splits1.Dim() - 1] == row_ids1.Dim()

@@ -114,9 +114,13 @@ static Fsa K2FsaFromStream(std::istringstream &is,
                     << ": src-state < 0 or dest-state < 0.";
     }
     for (int32_t i = 0; i < num_aux_labels; i++) {
-      int32_t aux;
+      float aux;
       line_is >> aux;
-      aux_labels.push_back(aux);
+      if ((int32_t)aux != aux) {
+        K2_LOG(FATAL) << "Invalid line " << line
+                      << ": Expected an integer for aux_labels";
+      }
+      aux_labels.push_back((int32_t)aux);
     }
     for (int32_t i = 0; i < num_ragged_labels; i++) {
       line_is >> std::ws;
@@ -616,7 +620,7 @@ std::string FsaToString(const Fsa &fsa, bool openfst, /*= false*/
   char line_sep = '\n';
   for (int32_t a = 0; a != num_arcs; ++a) {
     const auto &arc = arcs[a];
-    if (openfst & arc.label == -1) {
+    if (openfst && arc.label == -1) {
       os << arc.src_state << sep;
     } else {
       os << arc.src_state << sep << arc.dest_state << sep << arc.label << sep;
@@ -633,7 +637,7 @@ std::string FsaToString(const Fsa &fsa, bool openfst, /*= false*/
     os << (scale * arc.score) << line_sep;
   }
 
-  if (num_arcs > 0 & !openfst) {
+  if (num_arcs > 0 && !openfst) {
     int32_t final_state = fsa.shape.Dim0() - 1;
     os << final_state << line_sep;
   } else {

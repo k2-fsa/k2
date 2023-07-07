@@ -23,6 +23,17 @@ First, you have to install CMake, CUDA toolkit (with cuDNN), and PyTorch:
 
   - Your Python version has to be at least 3.6.
 
+.. hint::
+
+  You can use ``pip install cmake`` to install the latest version of CMake.
+
+.. caution::
+
+  cudatoolkit installed by ``conda install`` cannot be used to compile ``k2``.
+
+  Please follow :ref:`cuda_and_cudnn` to install cudatoolkit and cuDNN.
+
+
 Second, let's clone the repository to some path ``/some/path``:
 
 .. code-block:: bash
@@ -33,11 +44,19 @@ Second, let's clone the repository to some path ``/some/path``:
   # Normally, you would first fork the repo and use
   # git clone https://github.com/your_github_username/k2.git
 
+Build a release version
+-----------------------
+
 To build a release version, use:
 
 .. code-block:: bash
 
   cd /some/path/k2
+
+  # If you are using torch 1.12.x, please run the following fix.
+  # See https://github.com/pytorch/pytorch/issues/88290
+  python3 ./scripts/github_actions/fix_torch.py
+
   mkdir build_release
   cd build_release
   cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -66,11 +85,21 @@ To build a release version, use:
   export K2_INSTALL_PREFIX=/some/path/k2/build_release
   # before you install sherpa
 
+.. _build_a_debug_version:
+
+Build a debug version
+---------------------
+
 To build a debug version, use:
 
 .. code-block:: bash
 
   cd /some/path/k2
+
+  # If you are using torch 1.12.x, please run the following fix.
+  # See https://github.com/pytorch/pytorch/issues/88290
+  python3 ./scripts/github_actions/fix_torch.py
+
   mkdir build_debug
   cd build_debug
   cmake -DCMAKE_BUILD_TYPE=Debug ..

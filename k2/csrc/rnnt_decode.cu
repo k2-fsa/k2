@@ -91,6 +91,7 @@ void RnntDecodingStreams::TerminateAndFlushToStreams() {
   // detach prev_frames_
   std::vector<Ragged<ArcInfo> *> frames_ptr;
   for (size_t i = 0; i < prev_frames_.size(); ++i) {
+    // i is time index.
     frames_ptr.emplace_back(prev_frames_[i].get());
   }
   // stack_frames has a shape of [t][stream][state][arc]
@@ -669,8 +670,9 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
         pruned_arcs_data[pruned_arc_idx0123] = info;
       });
 
+  // pruned_arcs is indexed [stream][context][state][arc].
   prev_frames_.emplace_back(
-      std::make_shared<Ragged<ArcInfo>>(pruned_arcs.RemoveAxis(1)));
+      std::make_shared<Ragged<ArcInfo>>(pruned_arcs));
 }
 
 void RnntDecodingStreams::GatherPrevFrames(
@@ -682,15 +684,17 @@ void RnntDecodingStreams::GatherPrevFrames(
   Array1<int32_t> stream2t_row_splits(GetCpuContext(), num_frames.size() + 1);
 
   for (size_t i = 0; i < num_frames.size(); ++i) {
+    // i is stream index.
     stream2t_row_splits.Data()[i] = num_frames[i];
     K2_CHECK_LE(num_frames[i],
                 static_cast<int32_t>(srcs_[i]->prev_frames.size()));
     for (int32_t j = 0; j < num_frames[i]; ++j) {
+      // j is time index.
       frames_ptr.push_back(srcs_[i]->prev_frames[j].get());
     }
   }
 
-  // frames has a shape of [t][state][arc],
+  // frames has a shape of [t][context][state][arc],
   // its Dim0() equals std::sum(num_frames)
   auto frames = Stack(0, frames_ptr.size(), frames_ptr.data());
 
@@ -714,6 +718,15 @@ void RnntDecodingStreams::GatherPrevFrames(
 void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
                                        bool allow_partial, FsaVec *ofsa,
                                        Array1<int32_t> *out_map) {
+  FormatOutput(num_frames, allow_partial, ofsa, out_map,
+               nullptr /* arc_map_token */, RaggedShape());
+}
+
+void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
+                                       bool allow_partial, FsaVec *ofsa,
+                                       Array1<int32_t> *out_map,
+                                       Array1<int32_t> *arc_map_b,
+                                       const RaggedShape &t2s2c_shape) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(!attached_)
       << "You can only get outputs after calling TerminateAndFlushToStreams()";
@@ -728,15 +741,17 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
 
   auto has_final = Array1<bool>(c_, num_streams_, false);
   const ArcInfo *last_frame_arc_data = prev_frames_[frames - 1]->values.Data();
-  const int32_t *lfs_row_ids2_data = last_frame_shape.RowIds(2).Data(),
+  const int32_t *lfs_row_ids3_data = last_frame_shape.RowIds(3).Data(),
+                *lfs_row_ids2_data = last_frame_shape.RowIds(2).Data(),
                 *lfs_row_ids1_data = last_frame_shape.RowIds(1).Data();
   bool *has_final_data = has_final.Data();
 
   K2_EVAL(
       c_, last_frame_shape.NumElements(), lambda_set_has_final,
-      (int32_t idx012) {
-        ArcInfo ai = last_frame_arc_data[idx012];
-        int32_t idx01 = lfs_row_ids2_data[idx012],
+      (int32_t idx0123) {
+        ArcInfo ai = last_frame_arc_data[idx0123];
+        int32_t idx012 = lfs_row_ids3_data[idx0123],
+                idx01 = lfs_row_ids2_data[idx012],
                 idx0 = lfs_row_ids1_data[idx01];
         if (ai.label == -1) has_final_data[idx0] = true;
       });
@@ -746,17 +761,18 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
 
   K2_EVAL(
       c_, last_frame_shape.NumElements(), lambda_set_final_arcs,
-      (int32_t idx012) {
-        ArcInfo ai = last_frame_arc_data[idx012];
-        int32_t idx01 = lfs_row_ids2_data[idx012],
+      (int32_t idx0123) {
+        ArcInfo ai = last_frame_arc_data[idx0123];
+        int32_t idx012 = lfs_row_ids3_data[idx0123],
+                idx01 = lfs_row_ids2_data[idx012],
                 idx0 = lfs_row_ids1_data[idx01];
         if (ai.label == -1) {
-          num_final_arcs_data[idx012] = 1;
+          num_final_arcs_data[idx0123] = 1;
         } else {
           if (allow_partial && !has_final_data[idx0]) {
-            num_final_arcs_data[idx012] = 1;
+            num_final_arcs_data[idx0123] = 1;
           } else {
-            num_final_arcs_data[idx012] = 0;
+            num_final_arcs_data[idx0123] = 0;
           }
         }
       });
@@ -776,15 +792,26 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
         final_arcs_data[idx01] = ai;
       });
 
+  // last_frame_shape has a shape of [stream][context][state][arc]
   final_arcs_shape = ComposeRaggedShapes(last_frame_shape, final_arcs_shape);
-  final_arcs_shape = RemoveAxis(final_arcs_shape, 2);
+  // change final_arcs_shape from [stream][context][state][arc][arc]
+  // to [stream][context][state][arc]
+  // Note: the duplication [arc][arc] is not a typo.
+  // The first [arc] is for all arcs in last_frame_shape.
+  // The second [arc] is only for arcs could point to super-final state.
+  // That is to say, to get final_arcs_shape from last_frame_shape,
+  // we only need to remove place of arcs that not pointing super-final state
+  final_arcs_shape = RemoveAxis(final_arcs_shape, 3);
 
   // We will append final states behind the last frame, the last_frame_shape
   // is
   /// the shape of the appended states, final states don't have arcs.
-  auto stream_state_shape = RegularRaggedShape(c_, num_streams_, 1);
+  auto stream_context_shape = RegularRaggedShape(c_, num_streams_, 1);
+  auto context_state_shape = RegularRaggedShape(c_, num_streams_, 1);
   auto state_arc_shape =
-      RegularRaggedShape(c_, stream_state_shape.NumElements(), 0);
+      RegularRaggedShape(c_, stream_context_shape.NumElements(), 0);
+  auto stream_state_shape =
+      ComposeRaggedShapes(stream_context_shape, context_state_shape);
   auto last_arcs_shape =
       ComposeRaggedShapes(stream_state_shape, state_arc_shape);
 
@@ -796,7 +823,7 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
   ArcInfo **arcs_data_ptrs_data = arcs_data_ptrs.Data();
 
   {
-    // each of these have 3 axes.
+    // each of these have 4 axes.
     std::vector<RaggedShape *> arcs_shapes(frames + 1);
     for (int32_t t = 0; t < frames - 1; ++t) {
       arcs_shapes[t] = &(prev_frames_[t]->shape);
@@ -807,8 +834,8 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
     arcs_shapes[frames - 1] = &final_arcs_shape;
     arcs_shapes[frames] = &last_arcs_shape;
 
-    // oshape is a 4-axis ragged tensor which is indexed:
-    //   oshape[stream][t][state_idx][arc_idx]
+    // oshape is a 5-axis ragged tensor which is indexed:
+    //   oshape[stream][t][context][state_idx][arc_idx]
     int32_t axis = 1;
     oshape = Stack(axis, frames + 1, arcs_shapes.data(), &oshape_merge_map);
   }
@@ -823,11 +850,50 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
   *out_map = Array1<int32_t>(c_, num_arcs);
   int32_t *out_map_data = out_map->Data();
 
-  int32_t *oshape_row_ids3 = oshape.RowIds(3).Data(),
+
+  int32_t *oshape_row_ids4 = oshape.RowIds(4).Data(),
+          *oshape_row_ids3 = oshape.RowIds(3).Data(),
           *oshape_row_ids2 = oshape.RowIds(2).Data(),
           *oshape_row_ids1 = oshape.RowIds(1).Data(),
+          *oshape_row_splits3 = oshape.RowSplits(3).Data(),
           *oshape_row_splits2 = oshape.RowSplits(2).Data(),
           *oshape_row_splits1 = oshape.RowSplits(1).Data();
+
+  int32_t vocab_size = config_.vocab_size,
+          arc_map_b_num_elements = 0;
+  // t2s2c_shape is short for time2stream2context_shape
+  const int32_t *t2s2c_shape_row_splits2 = nullptr,
+                *t2s2c_shape_row_splits1 = nullptr;
+
+  // In `GatherPrevFrames`, we use
+  // Unstack(frames, 1, false /*pad_right*/, &prev_frames);
+  // to generated prev_frames.
+  // Since pad_right=false, shorter utterances are padded to the left side,
+  // i.e. padded beginning frames.
+  // We need to subtract number of padded frames when calculating
+  // the real time index.
+  // num_padded_frames is computed with 2 steps:
+  // Step 1: Initialized with num_frames(real number of time steps).
+  // Step 2: num_padded_frames = number of padded frames - num_frames.
+
+  // Step 1 of computing num_padded_frames.
+  auto num_padded_frames = Array1<int32_t>(c_, num_frames);
+  int32_t *num_padded_frames_data = num_padded_frames.Data();
+  if (arc_map_b != nullptr) {
+    arc_map_b_num_elements = num_arcs;
+    t2s2c_shape_row_splits2 = t2s2c_shape.RowSplits(2).Data(),
+    t2s2c_shape_row_splits1 = t2s2c_shape.RowSplits(1).Data();
+
+    // Step 2 of computing num_padded_frames.
+    K2_EVAL(
+        c_, num_streams_, lambda_set_start_offset, (int32_t stream_idx) {
+        num_padded_frames_data[stream_idx] =
+          frames - num_padded_frames_data[stream_idx];
+        K2_CHECK_LE(0, num_padded_frames_data[stream_idx]);
+    });
+  }
+  Array1<int32_t> arc_map_token = Array1<int32_t>(c_, arc_map_b_num_elements);
+  int32_t *arc_map_token_data = arc_map_token.Data();
 
   Array1<Arc> arcs_out(c_, num_arcs);
   Arc *arcs_out_data = arcs_out.Data();
@@ -835,43 +901,50 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
   const Arc *const *graphs_arcs_data = graphs_.values.Data();
 
   K2_EVAL(
-      c_, num_arcs, lambda_set_arcs, (int32_t oarc_idx0123) {
-        int32_t oarc_idx012 = oshape_row_ids3[oarc_idx0123],  // state
-            oarc_idx01 = oshape_row_ids2[oarc_idx012],        // frame
-            oarc_idx0 = oshape_row_ids1[oarc_idx01],          // stream
-            oarc_idx0x = oshape_row_splits1[oarc_idx0],
-                oarc_idx0xx = oshape_row_splits2[oarc_idx0x],
-                oarc_idx1 = oarc_idx01 - oarc_idx0x,
-                oarc_idx01x_next = oshape_row_splits2[oarc_idx01 + 1];
+      c_, num_arcs, lambda_set_arcs, (int32_t oarc_idx01234) {
+        int32_t oarc_idx0123 = oshape_row_ids4[oarc_idx01234],   // state
+                oarc_idx012 = oshape_row_ids3[oarc_idx0123],     // context
+                oarc_idx01 = oshape_row_ids2[oarc_idx012],       // frame(time)
+                oarc_idx0 = oshape_row_ids1[oarc_idx01];         // stream
 
-        int32_t m = oshape_merge_map_data[oarc_idx0123],
+        int32_t oarc_idx0x = oshape_row_splits1[oarc_idx0],      // frame(time)
+                oarc_idx0xx = oshape_row_splits2[oarc_idx0x],    // context
+                oarc_idx0xxx = oshape_row_splits3[oarc_idx0xx];  // state
+
+        int32_t oarc_idx01x = oshape_row_splits2[oarc_idx01],
+                oarc_idx01x_next = oshape_row_splits2[oarc_idx01 + 1],
+                oarc_idx01xx_next = oshape_row_splits3[oarc_idx01x_next],
+                oarc_idx1 = oarc_idx01 - oarc_idx0x;
+
+        int32_t m = oshape_merge_map_data[oarc_idx01234],
                 // actually we won't get t == frames
                 // here since those frames have no arcs.
             t = m % (frames + 1),
-                // arc_idx012 into prev_frames_ arcs on time t, index of the
+                // arc_idx0123 into prev_frames_ arcs on time t, index of the
                 // arc on that frame.
-            arcs_idx012 = m / (frames + 1);
+            arcs_idx0123 = m / (frames + 1);
 
         K2_CHECK_EQ(t, oarc_idx1);
 
         const ArcInfo *arcs_data = arcs_data_ptrs_data[t];
-        ArcInfo arc_info = arcs_data[arcs_idx012];
+        ArcInfo arc_info = arcs_data[arcs_idx0123];
         Arc arc;
 
         // all arcs in t == frames - 1 point to final state
         if (t == frames - 1) {
-          arc.src_state = oarc_idx012 - oarc_idx0xx;
-          arc.dest_state = oarc_idx01x_next - oarc_idx0xx;
+          arc.src_state = oarc_idx0123 - oarc_idx0xxx;
+          arc.dest_state = oarc_idx01xx_next - oarc_idx0xxx;
           arc.label = -1;
           arc.score = 0;
+          out_map_data[oarc_idx01234] = -1;
         } else {
           const Arc *graph_arcs_data = graphs_arcs_data[oarc_idx0];
-          arc.src_state = oarc_idx012 - oarc_idx0xx;
+          arc.src_state = oarc_idx0123 - oarc_idx0xxx;
 
           // Note: the idx1 w.r.t. the frame's `arcs` is an idx2 w.r.t.
           // `oshape`.
-          int32_t dest_state_idx012 = oarc_idx01x_next + arc_info.dest_state;
-          arc.dest_state = dest_state_idx012 - oarc_idx0xx;
+          int32_t dest_state_idx012 = oarc_idx01xx_next + arc_info.dest_state;
+          arc.dest_state = dest_state_idx012 - oarc_idx0xxx;
 
           // graph_arc_idx01 == -1 means this is a implicit epsilon self-loop
           // arc_info.label == -1 means this is the final arc before last
@@ -879,18 +952,38 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
           // make the generated lattice a valid k2 fsa.
           if (arc_info.graph_arc_idx01 == -1 || arc_info.label == -1) {
             arc.label = 0;
-            arc_info.graph_arc_idx01 = -1;
           } else {
             arc.label = graph_arcs_data[arc_info.graph_arc_idx01].label;
           }
           arc.score = arc_info.score;
+          out_map_data[oarc_idx01234] = arc_info.graph_arc_idx01;
         }
-        out_map_data[oarc_idx0123] = arc_info.graph_arc_idx01;
-        arcs_out_data[oarc_idx0123] = arc;
+        arcs_out_data[oarc_idx01234] = arc;
+        if (arc_map_b != nullptr) {
+          t = t - num_padded_frames_data[oarc_idx0];
+          int32_t t2s2c_stream_idx0x = t2s2c_shape_row_splits1[t];
+          // oarc_idx0 is for stream.
+          int32_t t2s2c_stream_idx01 = t2s2c_stream_idx0x + oarc_idx0;
+          int32_t t2s2c_context_idx01x =
+                    t2s2c_shape_row_splits2[t2s2c_stream_idx01];
+          // oarc_idx2 is for context.
+          int32_t oarc_idx2 = oarc_idx012 - oarc_idx01x;
+          int32_t t2s2c_context_idx012 = t2s2c_context_idx01x + oarc_idx2;
+          arc_map_token_data[oarc_idx01234] = -1;
+          if (arc.label != -1) {
+            arc_map_token_data[oarc_idx01234] =
+             t2s2c_context_idx012 * vocab_size + arc.label;
+          }
+        }
       });
 
-  // Remove axis 1, which corresponds to time.
-  *ofsa = FsaVec(RemoveAxis(oshape, 1), arcs_out);
+  if (arc_map_b != nullptr) {
+    *arc_map_b = std::move(arc_map_token);
+  }
+  // oshape [stream][t][context][state][arc]
+  // Remove axis 1 and 2, which corresponds to time and context.
+  auto oshape1 = RemoveAxis(oshape, 1);
+  *ofsa = FsaVec(RemoveAxis(oshape1, 1), arcs_out);
 }
 
 }  // namespace rnnt_decoding

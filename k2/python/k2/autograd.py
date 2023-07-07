@@ -599,7 +599,12 @@ class _IntersectDenseFunction(torch.autograd.Function):
         seqframe_idx = None
         if frame_idx_name is not None:
             num_cols = b_fsas.dense_fsa_vec.scores_dim1()
-            seqframe_idx = arc_map_b // num_cols
+            if tuple(map(int, torch.__version__.split(".")[:2])) < (1, 8):
+                seqframe_idx = arc_map_b // num_cols
+            else:
+                seqframe_idx = torch.div(
+                    arc_map_b, num_cols, rounding_mode="floor"
+                )
             shape = b_fsas.dense_fsa_vec.shape()
             fsa_idx0 = _k2.index_select(shape.row_ids(1), seqframe_idx)
             frame_idx = seqframe_idx - _k2.index_select(
@@ -610,7 +615,12 @@ class _IntersectDenseFunction(torch.autograd.Function):
         if seqframe_idx_name is not None:
             if seqframe_idx is None:
                 num_cols = b_fsas.dense_fsa_vec.scores_dim1()
-                seqframe_idx = arc_map_b // num_cols
+                if tuple(map(int, torch.__version__.split(".")[:2])) < (1, 8):
+                    seqframe_idx = arc_map_b // num_cols
+                else:
+                    seqframe_idx = torch.div(
+                        arc_map_b, num_cols, rounding_mode="floor"
+                    )
 
             assert not hasattr(out_fsa[0], seqframe_idx_name)
             setattr(out_fsa[0], seqframe_idx_name, seqframe_idx)

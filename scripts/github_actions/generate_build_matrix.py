@@ -18,7 +18,7 @@ def get_args():
         "--test-only-latest-torch",
         action="store_true",
         default=False,
-        help="""If True, we test only the latest PyTroch
+        help="""If True, we test only the latest PyTorch
         to reduce CI running time.""",
     )
     return parser.parse_args()
@@ -91,9 +91,13 @@ def generate_build_matrix(enable_cuda, test_only_latest_torch):
             "python-version": ["3.7", "3.8", "3.9", "3.10", "3.11"],
             "cuda": ["11.6", "11.7"],  # default 11.7
         },
+        "1.13.1": {
+            "python-version": ["3.7", "3.8", "3.9", "3.10", "3.11"],
+            "cuda": ["11.6", "11.7"],  # default 11.7
+        },
     }
     if test_only_latest_torch:
-        latest = "1.13.0"
+        latest = "1.13.1"
         matrix = {latest: matrix[latest]}
 
     # We only have limited spaces in anaconda, so we exclude some
@@ -101,6 +105,7 @@ def generate_build_matrix(enable_cuda, test_only_latest_torch):
     # installing k2 from source
     # Only CUDA build are excluded since it occupies more disk space
     excluded_torch_versions = ["1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"]
+    excluded_torch_versions += ["1.9.0", "1.9.1"]
 
     ans = []
     for torch, python_cuda in matrix.items():

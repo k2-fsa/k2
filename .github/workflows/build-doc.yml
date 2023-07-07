@@ -44,20 +44,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04]
-        torch: ["1.7.1"]
-        python-version: [3.8]
+        os: [ubuntu-latest]
+        torch: ["1.13.1"]
+        python-version: ["3.8"]
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
-      - name: Install GCC 7
-        run: |
-          sudo apt-get install -y gcc-7 g++-7
-          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -70,9 +64,11 @@ jobs:
       - name: Install PyTorch ${{ matrix.torch }}
         shell: bash
         run: |
+          sudo apt-get -qq install graphviz
           python3 -m pip install -qq --upgrade pip
           python3 -m pip install -qq wheel twine typing_extensions
           python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          python3 -m pip install -qq graphviz
 
           python3 -c "import torch; print('torch version:', torch.__version__)"
 
@@ -97,6 +93,7 @@ jobs:
       - name: Build doc
         shell: bash
         run: |
+          python3 -m pip install numpy
           export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
           echo "PYTHONPATH: $PYTHONPATH"
           cd docs

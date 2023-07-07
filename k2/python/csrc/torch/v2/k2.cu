@@ -21,6 +21,7 @@
  */
 
 #include "k2/python/csrc/torch/v2/any.h"
+#include "k2/python/csrc/torch/v2/autograd/swoosh.h"
 #include "k2/python/csrc/torch/v2/k2.h"
 #include "k2/python/csrc/torch/v2/ragged_shape.h"
 
@@ -32,9 +33,11 @@ void PybindV2(py::module &m) {
 
   PybindRaggedShape(ragged);
 
-  m.attr("RaggedShape") = ragged.attr("RaggedShape");  // TODO: remove it
+  m.attr("RaggedShape") = ragged.attr("RaggedShape");
 
   PybindRaggedAny(ragged);
+
+  PybindSwoosh(m);
 }
 
 }  // namespace k2

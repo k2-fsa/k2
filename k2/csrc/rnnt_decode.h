@@ -26,6 +26,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/array_of_ragged.h"
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/macros.h"
 
@@ -182,8 +183,9 @@ class RnntDecodingStreams {
                     ever received).
                     It MUST satisfy `num_frames.size() == num_streams_`, and
                     `num_frames[i] <= srcs_[i].prev_frames.size()`.
-      @param [in] allow_partial If true, we will treat all the states on the
-                                last frame to be final state. If false, we only
+      @param [in] allow_partial If true and there is no final state active,
+                                we will treat all the states on the last frame
+                                to be final state. If false, we only
                                 care about the real final state in the decoding
                                 graph on the last frame when generating lattice.
       @param [out] ofsa  The output lattice will write to here, its num_axes
@@ -193,6 +195,27 @@ class RnntDecodingStreams {
                      each individual streams, mapping current arc in ofsa to
                      original decoding graphs. It may contain -1 which means
                      this arc is a "termination symbol".
+      @param [out] arc_map_b  If non-NULL, it is an Array1 with Dim() equals to
+                     ofsa.NumElements() containing the idx0123 into log_probs
+                     generated during decoding.
+                     If NULL, this part will not be calculated.
+                     Name arc_map_b is borrowed from "intersect*" functions.
+                     In these functions,
+                     arc_map_a usually refers to indexes to fst based graphs,
+                     and arc_map_b usually refers to indexes to dense_fsa,
+                     i.e. log_probs from neural nets.
+      @param [in] t2s2c_shape  The shape of log_probs generated during decoding.
+                     It's short for time2stream2context,
+                     needed to generated arc_map_b.
+   */
+  void FormatOutput(const std::vector<int32_t> &num_frames, bool allow_partial,
+                    FsaVec *ofsa, Array1<int32_t> *out_map,
+                    Array1<int32_t> *arc_map_b,
+                    const RaggedShape &t2s2c_shape);
+
+
+  /*
+   * The same as above, except arc_map_b is not generated.
    */
   void FormatOutput(const std::vector<int32_t> &num_frames, bool allow_partial,
                     FsaVec *ofsa, Array1<int32_t> *out_map);

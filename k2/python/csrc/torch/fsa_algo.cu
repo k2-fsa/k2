@@ -18,6 +18,7 @@
  */
 
 #include <algorithm>
+#include <memory>
 #include <numeric>
 #include <string>
 #include <tuple>
@@ -29,6 +30,7 @@
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host_shim.h"
+#include "k2/csrc/intersect_dense_pruned.h"
 #include "k2/csrc/rm_epsilon.h"
 #include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
@@ -749,6 +751,46 @@ static void PybindLevenshteinGraph(py::module &m) {
       py::arg("need_score_offset") = true);
 }
 
+static void PybindDecodeStateInfo(py::module &m) {
+  using PyClass = DecodeStateInfo;
+  py::class_<PyClass, std::shared_ptr<PyClass>> state_info(m,
+                                                           "DecodeStateInfo");
+}
+
+static void PybindOnlineDenseIntersecter(py::module &m) {
+  using PyClass = OnlineDenseIntersecter;
+  py::class_<PyClass> intersecter(m, "OnlineDenseIntersecter");
+
+  intersecter.def(
+      py::init([](FsaVec &decoding_graph, int32_t num_streams,
+                  float search_beam, float output_beam,
+                  int32_t min_active_states,
+                  int32_t max_active_states) -> std::unique_ptr<PyClass> {
+        DeviceGuard guard(decoding_graph.Context());
+        return std::make_unique<PyClass>(decoding_graph, num_streams,
+                                         search_beam, output_beam,
+                                         min_active_states, max_active_states);
+      }),
+      py::arg("decoding_graph"), py::arg("num_streams"), py::arg("search_beam"),
+      py::arg("output_beam"), py::arg("min_active_states"),
+      py::arg("max_active_states"));
+
+  intersecter.def(
+      "decode",
+      [](PyClass &self, DenseFsaVec &dense_fsa_vec,
+         std::vector<std::shared_ptr<DecodeStateInfo>> &decode_states)
+          -> std::tuple<FsaVec, torch::Tensor,
+                        std::vector<std::shared_ptr<DecodeStateInfo>>> {
+        DeviceGuard guard(self.Context());
+        FsaVec ofsa;
+        Array1<int32_t> arc_map;
+        self.Decode(dense_fsa_vec, &decode_states, &ofsa, &arc_map);
+        torch::Tensor arc_map_tensor = ToTorch(arc_map);
+        return std::make_tuple(ofsa, arc_map_tensor, decode_states);
+      },
+      py::arg("dense_fsa_vec"), py::arg("decode_states"));
+}
+
 static void PybindReverse(py::module &m) {
   // if need arc_map is true, it returns (reversed_fsa_vec, arc_map);
   // otherwise, it returns (reversed_fsa_vec, None).
@@ -776,6 +818,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindConnect(m);
   k2::PybindCtcGraph(m);
   k2::PybindCtcTopo(m);
+  k2::PybindDecodeStateInfo(m);
   k2::PybindDeterminize(m);
   k2::PybindExpandArcs(m);
   k2::PybindFixFinalLabels(m);
@@ -786,6 +829,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindInvert(m);
   k2::PybindLevenshteinGraph(m);
   k2::PybindLinearFsa(m);
+  k2::PybindOnlineDenseIntersecter(m);
   k2::PybindRemoveEpsilon(m);
   k2::PybindRemoveEpsilonSelfLoops(m);
   k2::PybindReplaceFsa(m);

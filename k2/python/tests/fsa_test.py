@@ -1092,7 +1092,7 @@ class TestFsa(unittest.TestCase):
 
             fsa.non_tensor_attr1[0] = 0
             fsa.tensor_attr1[0] = 0
-            fsa.ragged_attr1 = k2.RaggedTensor('[[] [] [-1]]')
+            fsa.ragged_attr1 = k2.RaggedTensor('[[] [] [-1]]').to(device)
             fsa._cache['abc'][0] = 1
 
             # we assume that non-tensor attributes are readonly
@@ -1176,6 +1176,18 @@ class TestFsa(unittest.TestCase):
 
         assert 'forward_scores_double_log' not in fsa._cache
         assert 'state_batches' in fsa._cache
+
+    def test_modify_fsa_label(self):
+        s = """
+            0 1 1 0.1
+            1 2 2 0.2
+            2 3 -1 0.3
+            3
+        """
+        fsa = k2.Fsa.from_str(s)
+        fsa.labels[0] = 4
+        with self.assertRaises(RuntimeError):
+            k2.arc_sort(fsa)
 
 
 if __name__ == '__main__':

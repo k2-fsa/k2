@@ -15,11 +15,21 @@ All you need is the following line
 
 .. code-block:: bash
 
-  $ conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=11.6 pytorch=1.12.1
+  $ conda install -c k2-fsa -c pytorch -c nvidia k2 pytorch=1.13.0 pytorch-cuda=11.7 python=3.8
 
-to install the **latest** k2 with Python 3.8, CUDA 11.6, and PyTorch 1.12.1.
+to install the **latest** k2 with Python 3.8, CUDA 11.7, and PyTorch 1.13.0.
 
-.. HINT::
+.. hint::
+
+  If you want to install PyTorch < 1.13, e.g., PyTorch 1.12.1, please use
+
+  .. code-block:: bash
+
+    $ conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=11.6 pytorch=1.12.1
+
+  to install the **latest** k2 with Python 3.8, CUDA 11.6, and PyTorch 1.12.1.
+
+.. hint::
 
    The above command is just an example. You can choose other versions of Python,
    cudatoolkit, and PyTorch as you want. For instance,
@@ -34,7 +44,7 @@ To Install a CPU version, use:
 
 .. code-block:: bash
 
-  conda install -c k2-fsa -c pytorch cpuonly k2 python=3.8 pytorch=1.12.1
+  conda install -c k2-fsa -c pytorch cpuonly k2 python=3.8 pytorch=1.13.0
 
 We provide the following YouTube video showing how to install k2 via conda.
 
@@ -46,24 +56,6 @@ We provide the following YouTube video showing how to install k2 via conda.
       `<https://www.youtube.com/channel/UC_VaumpkmINz1pNkFXAN9mw>`_
 
 ..  youtube:: HerxbUHs-V4
-
-.. HINT::
-
-  If you are using macOS and encounter the following error while
-  running ``python3 -m k2.version`` after installation:
-
-  .. code-block:: bash
-
-    ImportError: dlopen(/Users/fangjun/software/miniconda3/envs/foo/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, 2): Library not loaded: @rpath/libk2context.dylib
-      Referenced from: /Users/fangjun/software/miniconda3/envs/foo/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
-      Reason: image not found
-
-  You can use:
-
-    .. code-block:: bash
-
-      export DYLD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.8/site-packages:$DYLD_LIBRARY_PATH
-      python3 -m k2.version  # now it should work
 
 .. HINT::
 

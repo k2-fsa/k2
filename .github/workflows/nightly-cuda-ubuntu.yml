@@ -46,13 +46,13 @@ jobs:
   nightly:
     needs: enable_nightly_build
     if: needs.enable_nightly_build.outputs.enabled == 'true' || github.event_name == 'push'
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
         cuda: ["11.6", "11.7"]
         gcc: ["7"]
-        torch: ["1.13.0"]
+        torch: ["1.13.1"]
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
 
     steps:
