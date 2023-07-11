@@ -413,11 +413,11 @@ class MultiGraphDenseIntersectPruned {
       arcs_row_splits1_ptrs.Data()[t] = frames_[t]->arcs.RowSplits(1).Data();
     }
     arcs_data_ptrs.Data()[T] = online_decoding
-                                   ? partial_final_frame_->arcs.values.Data();
-                                   : frames_[T]->arcs.values.Data()
+                                   ? partial_final_frame_->arcs.values.Data()
+                                   : frames_[T]->arcs.values.Data();
     arcs_row_splits1_ptrs.Data()[T] =
-        online_decoding ? partial_final_frame_->arcs.RowSplits(1).Data();
-                        : frames_[T]->arcs.RowSplits(1).Data()
+        online_decoding ? partial_final_frame_->arcs.RowSplits(1).Data()
+                        : frames_[T]->arcs.RowSplits(1).Data();
 
     // transfer to GPU if we're using a GPU
     arcs_data_ptrs = arcs_data_ptrs.To(c_);
@@ -444,12 +444,8 @@ class MultiGraphDenseIntersectPruned {
       Array1<int32_t> num_extra_states(c_, num_fsas + 1);
       int32_t *num_extra_states_data = num_extra_states.Data();
       K2_EVAL(c_, num_fsas, lambda_set_num_extra_states, (int32_t i) -> void {
-          int32_t final_t;
-          if (online_decoding) {
-            final_t = final_t_data[i];
-          } else {
-            final_t = b_fsas_row_splits1[i+1] - b_fsas_row_splits1[i];
-          }
+          int32_t final_t = online_decoding ? final_t_data[i]
+                          : b_fsas_row_splits1[i+1] - b_fsas_row_splits1[i];
 
           int32_t *arcs_row_splits1_data = arcs_row_splits1_ptrs_data[final_t];
           int32_t num_states_final_t = arcs_row_splits1_data[i + 1] -
@@ -559,16 +555,6 @@ class MultiGraphDenseIntersectPruned {
             }
           }
 
-          int32_t fsa_id = oarc_idx0,
-            b_fsas_idx0x = b_fsas_row_splits1[fsa_id],
-            b_fsas_idx01 = b_fsas_idx0x + t,
-            // Use arc_label instead of arc.label to keep track of
-            // the origial arc index in b_fsas when allow_partial == true.
-            // Then arc_map_b storages the "correct" arc index instead of
-            // the non-exist manually added arc pointing to super-final state.
-            b_fsas_idx2 = (arc_label + 1),
-            b_fsas_arc_idx012 = b_fsas_idx01 * b_fsas_num_cols + b_fsas_idx2;
-
           arc.score = arc_info.arc_loglike;
           arcs_out_data[oarc_idx0123] = arc;
 
@@ -578,7 +564,11 @@ class MultiGraphDenseIntersectPruned {
             int32_t fsa_id = oarc_idx0,
               b_fsas_idx0x = b_fsas_row_splits1[fsa_id],
               b_fsas_idx01 = b_fsas_idx0x + t,
-              b_fsas_idx2 = (arc.label + 1),
+              // Use arc_label instead of arc.label to keep track of
+              // the origial arc index in b_fsas when allow_partial == true.
+              // Then arc_map_b storages the "correct" arc index instead of
+              // the non-exist manually added arc pointing to super-final state.
+              b_fsas_idx2 = (arc_label + 1),
               b_fsas_arc_idx012 = b_fsas_idx01 * b_fsas_num_cols + b_fsas_idx2;
               arc_map_b_data[oarc_idx0123] = b_fsas_arc_idx012;
           }
@@ -705,7 +695,6 @@ class MultiGraphDenseIntersectPruned {
     NVTX_RANGE(K2_FUNC);
     Ragged<StateInfo> &states = cur_frame->states;
     const StateInfo *state_values = states.values.Data();
-    float minus_inf = -std::numeric_limits<float>::infinity();
 
     // in a_fsas_ (the decoding graphs), maps from state_idx01 to arc_idx01x.
     const int32_t *fsa_arc_splits = a_fsas_.shape.RowSplits(2).Data();
@@ -1663,7 +1652,7 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
 
   auto b_fsas_p = std::make_shared<DenseFsaVec>(b_fsas);
   intersector.Intersect(b_fsas_p);
-  intersector.FormatOutput(out, arc_map_a, arc_map_b, true);
+  intersector.FormatOutput(out, arc_map_a, arc_map_b);
 }
 
 OnlineDenseIntersecter::OnlineDenseIntersecter(FsaVec &a_fsas,
@@ -1756,7 +1745,7 @@ void OnlineDenseIntersecter::Decode(DenseFsaVec &b_fsas,
   }
 
   const auto new_frames = impl_->OnlineIntersect(b_fsas_p, frames, beams);
-  impl_->FormatOutput(ofsa, arc_map_a, nullptr/*arc_map_b*/, false);
+  impl_->FormatOutput(ofsa, arc_map_a, nullptr/*arc_map_b*/);
 
   int32_t frames_num = new_frames->size();
   std::vector<Ragged<StateInfo> *> frame_states_ptr_vec(frames_num);
