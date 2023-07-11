@@ -250,7 +250,7 @@ class MultiGraphDenseIntersectPruned {
        @param [in] frames  The frames generated for previously decoded chunks.
        @param [in] beams  Current search beams for each of the sequences, it has
                      `beams.Dim() == num_seqs_`.
-       @return  A pointer to current `frames_`, which would be usefull to
+       @return  A pointer to current `frames_`, which would be useful to
                 generate `DecodeStateInfo` for each sequences.
   */
   const std::vector<std::unique_ptr<FrameInfo>>* OnlineIntersect(
@@ -258,7 +258,7 @@ class MultiGraphDenseIntersectPruned {
       std::vector<std::unique_ptr<FrameInfo>> &frames,
       Array1<float> &beams) {
     /*
-      T is the largest number of (frames+1) of neural net output currently
+      T is the largest number (frames+1) of neural net output currently
       received, or the largest number of frames of log-likelihoods we count the
       final frame with (0, -inf, -inf..) that is used for the final-arc.
       The largest number of states in the fsas represented by b_fsas equals
@@ -275,16 +275,14 @@ class MultiGraphDenseIntersectPruned {
     b_fsas_ = b_fsas;
     frames_.swap(frames);
     dynamic_beams_ = beams.To(c_);
-    T_ = frames_.size();
+    T_ = frames_.size() - 1;
 
     // -1 here because we already put the initial frame info to frames_
-    int32_t T = T_ + b_fsas_->shape.MaxSize(1) - 1;
+    int32_t T = T_ + b_fsas_->shape.MaxSize(1);
 
     // we'll initially populate frames_[0.. T+1], but discard the one at T+1,
     // which has no arcs or states, the ones we use are from 0 to T.
     frames_.reserve(T + 2);
-
-    if (T_ == 0) frames_.push_back(InitialFrameInfo());
 
     for (int32_t t = 0; t <= b_fsas_->shape.MaxSize(1); t++) {
       if (state_map_.NumKeyBits() == 32) {
@@ -296,7 +294,8 @@ class MultiGraphDenseIntersectPruned {
         frames_.push_back(PropagateForward<40>(t, frames_.back().get()));
       }
       if (t == b_fsas_->shape.MaxSize(1)) {
-        PruneTimeRange(T_ - 1, T_ + t);
+        int32_t start = std::max<int32_t>(0, T_ - 5);
+        PruneTimeRange(start, T_ + t);
       }
     }
     // The FrameInfo for time T+1 will have no states.  We did that
@@ -304,9 +303,9 @@ class MultiGraphDenseIntersectPruned {
     // is set up (it has no arcs but we need the shape).
     frames_.pop_back();
 
-    int32_t history_t = T_ - 1;
+    int32_t history_t = T_;
 
-    T_ = T - 1;
+    T_ = T;
     // partial_final_frame_ is the last frame to generate partial result,
     // but it should not be the start frame of next chunk decoding.
     partial_final_frame_ = std::move(frames_.back());
@@ -320,7 +319,7 @@ class MultiGraphDenseIntersectPruned {
         c_, num_seqs_, lambda_set_final_and_final_t, (int32_t i)->void {
           int32_t b_chunk_size =
               b_fsas_row_splits1[i + 1] - b_fsas_row_splits1[i];
-          final_t_data[i] = history_t + b_chunk_size - 1;
+          final_t_data[i] = history_t + b_chunk_size;
         });
     return &frames_;
   }
@@ -393,7 +392,7 @@ class MultiGraphDenseIntersectPruned {
   }
 
   void FormatOutput(FsaVec *ofsa, Array1<int32_t> *arc_map_a,
-                    Array1<int32_t> *arc_map_b, bool is_final) {
+                    Array1<int32_t> *arc_map_b) {
     NVTX_RANGE("FormatOutput");
 
     bool online_decoding = online_decoding_;
@@ -402,11 +401,10 @@ class MultiGraphDenseIntersectPruned {
       K2_CHECK(arc_map_a);
       K2_CHECK_EQ(arc_map_b, nullptr);
     } else {
-      K2_CHECK(is_final);
       K2_CHECK(arc_map_a && arc_map_b);
     }
 
-    int32_t T = is_final ? T_ : T_ + 1;
+    int32_t T = T_;
     ContextPtr c_cpu = GetCpuContext();
     Array1<ArcInfo *> arcs_data_ptrs(c_cpu, T + 1);
     Array1<int32_t *> arcs_row_splits1_ptrs(c_cpu, T + 1);
@@ -414,12 +412,12 @@ class MultiGraphDenseIntersectPruned {
       arcs_data_ptrs.Data()[t] = frames_[t]->arcs.values.Data();
       arcs_row_splits1_ptrs.Data()[t] = frames_[t]->arcs.RowSplits(1).Data();
     }
-    arcs_data_ptrs.Data()[T] = is_final
-                                   ? frames_[T]->arcs.values.Data()
-                                   : partial_final_frame_->arcs.values.Data();
+    arcs_data_ptrs.Data()[T] = online_decoding
+                                   ? partial_final_frame_->arcs.values.Data();
+                                   : frames_[T]->arcs.values.Data()
     arcs_row_splits1_ptrs.Data()[T] =
-        is_final ? frames_[T]->arcs.RowSplits(1).Data()
-                 : partial_final_frame_->arcs.RowSplits(1).Data();
+        online_decoding ? partial_final_frame_->arcs.RowSplits(1).Data();
+                        : frames_[T]->arcs.RowSplits(1).Data()
 
     // transfer to GPU if we're using a GPU
     arcs_data_ptrs = arcs_data_ptrs.To(c_);
@@ -447,10 +445,11 @@ class MultiGraphDenseIntersectPruned {
       int32_t *num_extra_states_data = num_extra_states.Data();
       K2_EVAL(c_, num_fsas, lambda_set_num_extra_states, (int32_t i) -> void {
           int32_t final_t;
-          if (online_decoding)
-            final_t = is_final ? final_t_data[i] : final_t_data[i] + 1;
-          else
+          if (online_decoding) {
+            final_t = final_t_data[i];
+          } else {
             final_t = b_fsas_row_splits1[i+1] - b_fsas_row_splits1[i];
+          }
 
           int32_t *arcs_row_splits1_data = arcs_row_splits1_ptrs_data[final_t];
           int32_t num_states_final_t = arcs_row_splits1_data[i + 1] -
@@ -485,8 +484,8 @@ class MultiGraphDenseIntersectPruned {
       for (int32_t t = 0; t < T; t++)
         arcs_shapes[t] = &(frames_[t]->arcs.shape);
 
-      arcs_shapes[T] = is_final ? &(frames_[T]->arcs.shape)
-                                : &(partial_final_frame_->arcs.shape);
+      arcs_shapes[T] = online_decoding ? &(partial_final_frame_->arcs.shape)
+                                       : &(frames_[T]->arcs.shape);
 
       arcs_shapes[T + 1] = &final_arcs_shape;
 
@@ -547,7 +546,9 @@ class MultiGraphDenseIntersectPruned {
           arc.dest_state = dest_state_idx012 - oarc_idx0xx;
           int32_t arc_label = a_fsas_arcs[arc_info.a_fsas_arc_idx012].label;
           arc.label = arc_label;
-          int32_t final_t = b_fsas_row_splits1[oarc_idx0+1] - b_fsas_row_splits1[oarc_idx0];
+
+          int32_t final_t = online_decoding ? final_t_data[oarc_idx0]
+              :b_fsas_row_splits1[oarc_idx0+1] - b_fsas_row_splits1[oarc_idx0];
           if (t == final_t - 1 && arc_label != -1) {
             if (allow_partial) {
               arc.label = -1;
