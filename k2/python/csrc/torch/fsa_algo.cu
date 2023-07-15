@@ -753,8 +753,10 @@ static void PybindLevenshteinGraph(py::module &m) {
 
 static void PybindDecodeStateInfo(py::module &m) {
   using PyClass = DecodeStateInfo;
-  py::class_<PyClass, std::shared_ptr<PyClass>> state_info(m,
-                                                           "DecodeStateInfo");
+  py::class_<PyClass, std::shared_ptr<DecodeStateInfo>> state_info(
+      m, "DecodeStateInfo");
+  state_info.def(py::init<>());
+  state_info.def_readwrite("is_final", &PyClass::is_final);
 }
 
 static void PybindOnlineDenseIntersecter(py::module &m) {
@@ -765,15 +767,17 @@ static void PybindOnlineDenseIntersecter(py::module &m) {
       py::init([](FsaVec &decoding_graph, int32_t num_streams,
                   float search_beam, float output_beam,
                   int32_t min_active_states,
-                  int32_t max_active_states) -> std::unique_ptr<PyClass> {
+                  int32_t max_active_states,
+                  bool allow_partial) -> std::unique_ptr<PyClass> {
         DeviceGuard guard(decoding_graph.Context());
         return std::make_unique<PyClass>(decoding_graph, num_streams,
                                          search_beam, output_beam,
-                                         min_active_states, max_active_states);
+                                         min_active_states, max_active_states,
+                                         allow_partial);
       }),
       py::arg("decoding_graph"), py::arg("num_streams"), py::arg("search_beam"),
       py::arg("output_beam"), py::arg("min_active_states"),
-      py::arg("max_active_states"));
+      py::arg("max_active_states"), py::arg("allow_partial") = true);
 
   intersecter.def(
       "decode",
@@ -784,7 +788,11 @@ static void PybindOnlineDenseIntersecter(py::module &m) {
         DeviceGuard guard(self.Context());
         FsaVec ofsa;
         Array1<int32_t> arc_map;
-        self.Decode(dense_fsa_vec, &decode_states, &ofsa, &arc_map);
+        std::vector<DecodeStateInfo*> decode_states_ptr(decode_states.size());
+        for (size_t i = 0; i < decode_states.size(); ++i) {
+            decode_states_ptr[i] = decode_states[i].get();
+        }
+        self.Decode(dense_fsa_vec, &decode_states_ptr, &ofsa, &arc_map);
         torch::Tensor arc_map_tensor = ToTorch(arc_map);
         return std::make_tuple(ofsa, arc_map_tensor, decode_states);
       },

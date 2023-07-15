@@ -185,7 +185,7 @@ def main():
         max_active_states=10000,
     )
 
-    state_infos = [None] * len(waves)
+    state_infos = [DecodeStateInfo()] * len(waves)
     positions = [0] * len(waves)
     results = [""] * len(waves)
 
@@ -197,19 +197,21 @@ def main():
         for i in range(len(waves)):
             if positions[i] == num_frames[i]:
                 continue
-            current_state_infos.append(state_infos[i])
-            current_wave_ids.append(i)
             start = positions[i]
-            if (num_frames[i] - positions[i]) < args.chunk_size:
+            if (num_frames[i] - positions[i]) <= args.chunk_size:
                 current_num_frames.append(num_frames[i] - positions[i])
                 end = num_frames[i]
                 positions[i] = num_frames[i]
+                state_infos[i].is_final = True
             else:
                 current_num_frames.append(args.chunk_size)
                 end = positions[i] + args.chunk_size
                 positions[i] += args.chunk_size
 
+            current_state_infos.append(state_infos[i])
+            current_wave_ids.append(i)
             current_nnet_outputs.append(nnet_output[i, start:end, :])
+
             if len(current_wave_ids) == args.num_streams:
                 break
         if len(current_wave_ids) == 0:
@@ -222,7 +224,7 @@ def main():
                     device=nnet_output.device,
                 )
             )
-            current_state_infos.append(None)
+            current_state_infos.append(DecodeStateInfo())
 
         current_nnet_outputs = pad_sequence(current_nnet_outputs, batch_first=True)
         supervision_segments = torch.tensor(
@@ -244,6 +246,7 @@ def main():
         else:
             assert args.method == "1best", args.method
             hyps = [" ".join([word_sym_table[i] for i in ids]) for ids in symbol_ids]
+        logging.info(f"hyps : {hyps}")
 
         s = "\n"
         for i in range(len(current_wave_ids)):
@@ -252,8 +255,6 @@ def main():
             s += f"{args.sound_files[current_wave_ids[i]]}:\n"
             s += f"{results[current_wave_ids[i]]}\n\n"
         logging.info(s)
-
-    torch.save(lattice.as_dict(), "online.pt")
 
     s = "\n"
     for filename, hyp in zip(args.sound_files, results):

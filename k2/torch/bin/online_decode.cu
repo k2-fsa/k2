@@ -219,7 +219,7 @@ int main(int argc, char *argv[]) {
       FLAGS_min_activate_states, FLAGS_max_activate_states);
 
   // store decode states for each waves
-  std::vector<std::shared_ptr<k2::DecodeStateInfo>> states_info(num_waves);
+  std::vector<k2::DecodeStateInfo> states_info(num_waves);
 
   // decocding results for each waves
   std::vector<std::string> texts(num_waves, "");
@@ -231,8 +231,8 @@ int main(int argc, char *argv[]) {
 
   // simulate asynchronous decoding
   while (true) {
-    std::vector<std::shared_ptr<k2::DecodeStateInfo>> current_states_info(
-        FLAGS_num_streams);
+    k2::DecodeStateInfo dummy_state_info;
+    std::vector<k2::DecodeStateInfo*> current_states_info;
     std::vector<int64_t> num_frame;
     std::vector<torch::Tensor> current_nnet_output;
     // which waves we are decoding now
@@ -242,12 +242,13 @@ int main(int argc, char *argv[]) {
       // this wave is done
       if (num_frames[i] == 0) continue;
 
-      current_states_info[current_wave_ids.size()] = states_info[i];
+      current_states_info.push_back(&states_info[i]);
       current_wave_ids.push_back(i);
 
-      if (num_frames[i] < chunk_size * subsampling_factor) {
+      if (num_frames[i] <= chunk_size * subsampling_factor) {
         num_frame.push_back(num_frames[i]);
         num_frames[i] = 0;
+        states_info[i].is_final = true;
       } else {
         num_frame.push_back(chunk_size * subsampling_factor);
         num_frames[i] -= chunk_size * subsampling_factor;
@@ -280,6 +281,7 @@ int main(int argc, char *argv[]) {
         .device(nnet_output.device());
       current_nnet_output.push_back(
           torch::zeros({chunk_size, nnet_output.size(2)}, opts));
+      current_states_info.push_back(&dummy_state_info);
     }
 
     auto sub_nnet_output = torch::stack(current_nnet_output);
@@ -302,11 +304,6 @@ int main(int argc, char *argv[]) {
     k2::Array1<int32_t> graph_arc_map;
 
     decoder.Decode(dense_fsa_vec, &current_states_info, &fsa, &graph_arc_map);
-
-    // update decoding states
-    for (size_t i = 0; i < current_wave_ids.size(); ++i) {
-      states_info[current_wave_ids[i]] = current_states_info[i];
-    }
 
     k2::FsaClass lattice(fsa);
     lattice.CopyAttrs(decoding_graph,
