@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04]
+        os: [ubuntu-20.04]
         cuda: ["11.7"]
         gcc: ["7"]
         torch: ["1.13.1"]
