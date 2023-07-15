@@ -59,6 +59,9 @@
 <li class="toctree-l3"><a class="reference internal" href="#mkl-related-issues-on-macos">MKL related issues on macOS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#error-invalid-device-function">Error: invalid device function</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#error-c-14-or-later-compatible-compiler-is-required-to-use-aten">#error C++14 or later compatible compiler is required to use ATen</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#relocation-r-x86-64-pc32-against-symbol-pyruntime-can-not-be-used-when-making-a-shared-object-recompile-with-fpic">relocation R_X86_64_PC32 against symbol `_PyRuntime’ can not be used when making a shared object; recompile with -fPIC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#importerror-libpython3-8-so-1-0-cannot-open-shared-object-file-no-such-file-or-directory">ImportError: libpython3.8.so.1.0: cannot open shared object file: No such file or directory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#usr-bin-ld-cannot-find-lpython-library-notfound">/usr/bin/ld: cannot find -lPYTHON_LIBRARY-NOTFOUND</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#reporting-issues">Reporting issues</a></li>
@@ -233,6 +236,21 @@ after updating GCC:</p>
 </div></blockquote>
 <p>before you start to re-build <code class="docutils literal notranslate"><span class="pre">k2</span></code>.</p>
 </div>
+</section>
+<section id="relocation-r-x86-64-pc32-against-symbol-pyruntime-can-not-be-used-when-making-a-shared-object-recompile-with-fpic">
+<h2>relocation R_X86_64_PC32 against symbol <a href="#id1"><span class="problematic" id="id2">`</span></a>_PyRuntime’ can not be used when making a shared object; recompile with -fPIC<a class="headerlink" href="#relocation-r-x86-64-pc32-against-symbol-pyruntime-can-not-be-used-when-making-a-shared-object-recompile-with-fpic" title="Permalink to this headline"></a></h2>
+<p>The error indicates that your Python is statically linked. Please pass <code class="docutils literal notranslate"><span class="pre">--enable-shared</span></code>
+to <code class="docutils literal notranslate"><span class="pre">./configure</span></code> when you compile Python from source.</p>
+<p>See also <a class="reference external" href="https://github.com/k2-fsa/k2/issues/1225">https://github.com/k2-fsa/k2/issues/1225</a></p>
+</section>
+<section id="importerror-libpython3-8-so-1-0-cannot-open-shared-object-file-no-such-file-or-directory">
+<h2>ImportError: libpython3.8.so.1.0: cannot open shared object file: No such file or directory<a class="headerlink" href="#importerror-libpython3-8-so-1-0-cannot-open-shared-object-file-no-such-file-or-directory" title="Permalink to this headline"></a></h2>
+<p>Please see <a class="reference external" href="https://github.com/k2-fsa/k2/issues/1011">https://github.com/k2-fsa/k2/issues/1011</a>. You need to set the
+environment variable <code class="docutils literal notranslate"><span class="pre">LD_LIBRARY_PATH</span></code>.</p>
+</section>
+<section id="usr-bin-ld-cannot-find-lpython-library-notfound">
+<h2>/usr/bin/ld: cannot find -lPYTHON_LIBRARY-NOTFOUND<a class="headerlink" href="#usr-bin-ld-cannot-find-lpython-library-notfound" title="Permalink to this headline"></a></h2>
+<p>Please see <cite>&lt;https://github.com/k2-fsa/k2/issues/1038&gt;</cite>.</p>
 </section>
 </section>
 
