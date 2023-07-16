@@ -677,7 +677,7 @@ class MultiGraphDenseIntersectPruned {
           }
           // no pruning on last frame; we want all final-arcs.
           // -1 because t starts from 0.
-          if (t == final_t - 1) dynamic_beam = 1.0e+10;
+          if (!online_decoding && t == final_t - 1) dynamic_beam = 1.0e+10;
 
           dynamic_beams_data[i] = dynamic_beam;
           cutoffs_data[i] = best_loglike - dynamic_beam;
@@ -774,7 +774,10 @@ class MultiGraphDenseIntersectPruned {
     }
 
     bool online_decoding = online_decoding_;
-    bool *is_final_data = is_final_.Data();
+    bool *is_final_data;
+    if (online_decoding) {
+      is_final_data = is_final_.Data();
+    }
 
     K2_EVAL(
         c_, ai.values.Dim(), ai_lambda, (int32_t ai_arc_idx012)->void {
@@ -797,11 +800,15 @@ class MultiGraphDenseIntersectPruned {
           float acoustic_score = scores_acc(scores_idx01, scores_idx2);
           auto dest_state = arc.dest_state;
           auto final_t = b_fsas_row_splits1[ai_fsa_idx0+1] - b_fsas_row_splits1[ai_fsa_idx0];
-          bool is_final_chunk = is_final_data[ai_fsa_idx0];
 
-          if ((online_decoding && final_t - 1 == t && !is_final_chunk) ||
-              (final_t - 1 == t && !has_valid_final_arc_data[ai_fsa_idx0] &&
-               allow_partial)) {
+          bool is_final_chunk = false;
+          if (online_decoding) {
+            is_final_chunk = is_final_data[ai_fsa_idx0];
+          }
+
+          if (final_t - 1 == t &&
+              ((online_decoding && !is_final_chunk) ||
+              (allow_partial && !has_valid_final_arc_data[ai_fsa_idx0]))) {
               int32_t a_fsas_idx0 = a_fsas_row_ids1[sinfo.a_fsas_state_idx01];
               // state_idx1 is 0-based.
               // So "-1" is used when calculating a_fsas_final_state_idx1.

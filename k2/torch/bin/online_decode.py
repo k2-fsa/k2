@@ -232,7 +232,6 @@ def main():
             [[i, 0, current_num_frames[i]] for i in range(args.num_streams)],
             dtype=torch.int32,
         )
-        logging.info(f"supervision_segments : {supervision_segments}")
         dense_fsa_vec = k2.DenseFsaVec(current_nnet_outputs, supervision_segments)
         lattice, current_state_infos = intersector.decode(
             dense_fsa_vec, current_state_infos

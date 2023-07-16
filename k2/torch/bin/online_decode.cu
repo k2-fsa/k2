@@ -227,7 +227,7 @@ int main(int argc, char *argv[]) {
   std::vector<int32_t> positions(num_waves, 0);
 
   int32_t T = nnet_output.size(1);
-  int32_t chunk_size = 20;  // 20 frames per chunk
+  int32_t chunk_size = 10;  // 10 frames per chunk
 
   // simulate asynchronous decoding
   while (true) {
