@@ -23,7 +23,10 @@ def get_parser():
     )
 
     parser.add_argument(
-        "--nn-model", type=str, required=True, help="Path to the jit script model. "
+        "--nn-model",
+        type=str,
+        required=True,
+        help="Path to the jit script model.",
     )
 
     parser.add_argument(
@@ -153,12 +156,13 @@ def main():
     for f in features:
         feature_len.append(f.shape[0])
 
-    features = pad_sequence(features, batch_first=True, padding_value=math.log(1e-10))
+    features = pad_sequence(
+        features, batch_first=True, padding_value=math.log(1e-10)
+    )
 
     # Note: We don't use key padding mask for attention during decoding
     nnet_output, _, _ = model(features)
     num_frames = [x // args.subsampling_factor for x in feature_len]
-    T = nnet_output.shape[1]
 
     if args.method == "ctc-decoding":
         logging.info("Use CTC decoding")
@@ -171,7 +175,9 @@ def main():
     else:
         assert args.method == "1best", args.method
         logging.info(f"Loading HLG from {args.HLG}")
-        decoding_graph = k2.Fsa.from_dict(torch.load(args.HLG, map_location="cpu"))
+        decoding_graph = k2.Fsa.from_dict(
+            torch.load(args.HLG, map_location="cpu")
+        )
         decoding_graph = decoding_graph.to(device)
         word_sym_table = k2.SymbolTable.from_file(args.words_file)
     decoding_graph = k2.Fsa.from_fsas([decoding_graph])
@@ -226,13 +232,17 @@ def main():
             )
             current_state_infos.append(DecodeStateInfo())
 
-        current_nnet_outputs = pad_sequence(current_nnet_outputs, batch_first=True)
+        current_nnet_outputs = pad_sequence(
+            current_nnet_outputs, batch_first=True
+        )
         supervision_segments = torch.tensor(
             # seq_index, start_time, duration
             [[i, 0, current_num_frames[i]] for i in range(args.num_streams)],
             dtype=torch.int32,
         )
-        dense_fsa_vec = k2.DenseFsaVec(current_nnet_outputs, supervision_segments)
+        dense_fsa_vec = k2.DenseFsaVec(
+            current_nnet_outputs, supervision_segments
+        )
         lattice, current_state_infos = intersector.decode(
             dense_fsa_vec, current_state_infos
         )
@@ -241,10 +251,14 @@ def main():
         symbol_ids = get_aux_labels(best_path)
 
         if args.method == "ctc-decoding":
-            hyps = ["".join([token_sym_table[i] for i in ids]) for ids in symbol_ids]
+            hyps = [
+                "".join([token_sym_table[i] for i in ids]) for ids in symbol_ids
+            ]
         else:
             assert args.method == "1best", args.method
-            hyps = [" ".join([word_sym_table[i] for i in ids]) for ids in symbol_ids]
+            hyps = [
+                " ".join([word_sym_table[i] for i in ids]) for ids in symbol_ids
+            ]
         logging.info(f"hyps : {hyps}")
 
         s = "\n"
@@ -264,7 +278,9 @@ def main():
 
 
 if __name__ == "__main__":
-    formatter = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
+    formatter = (
+        "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
+    )
 
     logging.basicConfig(format=formatter, level=logging.INFO)
     main()

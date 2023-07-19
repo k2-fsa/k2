@@ -22,7 +22,10 @@ def get_parser():
     )
 
     parser.add_argument(
-        "--nn-model", type=str, required=True, help="Path to the jit script model. "
+        "--nn-model",
+        type=str,
+        required=True,
+        help="Path to the jit script model.",
     )
 
     parser.add_argument(
@@ -144,7 +147,9 @@ def main():
     for f in features:
         feature_len.append(f.shape[0])
 
-    features = pad_sequence(features, batch_first=True, padding_value=math.log(1e-10))
+    features = pad_sequence(
+        features, batch_first=True, padding_value=math.log(1e-10)
+    )
 
     # Note: We don't use key padding mask for attention during decoding
     nnet_output, _, _ = model(features)
@@ -157,7 +162,10 @@ def main():
         logging.info("Use CTC decoding")
         max_token_id = args.num_classes - 1
 
-        H = k2.ctc_topo(max_token=max_token_id, device=device,)
+        H = k2.ctc_topo(
+            max_token=max_token_id,
+            device=device,
+        )
 
         lattice = get_lattice(
             log_prob=log_prob,
@@ -187,7 +195,9 @@ def main():
 
         if args.method == "1best":
             logging.info("Use HLG decoding")
-            best_path = one_best_decoding(lattice=lattice, use_double_scores=True)
+            best_path = one_best_decoding(
+                lattice=lattice, use_double_scores=True
+            )
 
         hyps = get_aux_labels(best_path)
         word_sym_table = k2.SymbolTable.from_file(args.words_file)
@@ -205,7 +215,9 @@ def main():
 
 
 if __name__ == "__main__":
-    formatter = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
+    formatter = (
+        "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
+    )
 
     logging.basicConfig(format=formatter, level=logging.INFO)
     main()
