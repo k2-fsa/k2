@@ -95,7 +95,7 @@ class MultiGraphDenseIntersectPruned {
         forward_semaphore_(1),
         final_t_(a_fsas.Context(), num_seqs, 0) {
     NVTX_RANGE(K2_FUNC);
-
+    T_ = 0;
     c_ = GetContext(a_fsas.shape);
     K2_CHECK_GT(search_beam, 0);
     K2_CHECK_GT(output_beam, 0);
@@ -774,7 +774,7 @@ class MultiGraphDenseIntersectPruned {
     }
 
     bool online_decoding = online_decoding_;
-    bool *is_final_data;
+    bool *is_final_data = nullptr;
     if (online_decoding) {
       is_final_data = is_final_.Data();
     }
