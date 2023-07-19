@@ -753,7 +753,7 @@ static void PybindLevenshteinGraph(py::module &m) {
 
 static void PybindDecodeStateInfo(py::module &m) {
   using PyClass = DecodeStateInfo;
-  py::class_<PyClass, std::shared_ptr<DecodeStateInfo>> state_info(
+  py::class_<PyClass> state_info(
       m, "DecodeStateInfo");
   state_info.def(py::init<>());
   state_info.def_readwrite("is_final", &PyClass::is_final);
@@ -782,15 +782,15 @@ static void PybindOnlineDenseIntersecter(py::module &m) {
   intersecter.def(
       "decode",
       [](PyClass &self, DenseFsaVec &dense_fsa_vec,
-         std::vector<std::shared_ptr<DecodeStateInfo>> &decode_states)
+         std::vector<DecodeStateInfo> &decode_states)
           -> std::tuple<FsaVec, torch::Tensor,
-                        std::vector<std::shared_ptr<DecodeStateInfo>>> {
+                        std::vector<DecodeStateInfo>> {
         DeviceGuard guard(self.Context());
         FsaVec ofsa;
         Array1<int32_t> arc_map;
         std::vector<DecodeStateInfo*> decode_states_ptr(decode_states.size());
         for (size_t i = 0; i < decode_states.size(); ++i) {
-            decode_states_ptr[i] = decode_states[i].get();
+            decode_states_ptr[i] = &decode_states[i];
         }
         self.Decode(dense_fsa_vec, &decode_states_ptr, &ofsa, &arc_map);
         torch::Tensor arc_map_tensor = ToTorch(arc_map);
