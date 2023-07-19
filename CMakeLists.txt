@@ -52,17 +52,25 @@ project(k2 ${languages})
 set(K2_VERSION "1.24.3")
 
 # ----------------- Supported build types for K2 project -----------------
+message(STATUS "The generator is ${CMAKE_GENERATOR}")
+message(STATUS "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_CONFIGURATION_TYPES=${CMAKE_CONFIGURATION_TYPES}")
 set(K2_ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
 set(K2_DEFAULT_BUILD_TYPE "Release")
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${K2_ALLOWABLE_BUILD_TYPES}")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   # CMAKE_CONFIGURATION_TYPES: with config type values from other generators (IDE).
   message(STATUS "No CMAKE_BUILD_TYPE given, default to ${K2_DEFAULT_BUILD_TYPE}")
-  set(CMAKE_BUILD_TYPE "${K2_DEFAULT_BUILD_TYPE}")
+  set(CMAKE_BUILD_TYPE "${K2_DEFAULT_BUILD_TYPE}" CACHE STRING "" FORCE)
+elseif(WIN32 AND NOT CMAKE_BUILD_TYPE AND CMAKE_CONFIGURATION_TYPES)
+  # for Generator Visual Studio 16 2019
+  message(STATUS "No CMAKE_BUILD_TYPE given, default to ${K2_DEFAULT_BUILD_TYPE}")
+  set(CMAKE_BUILD_TYPE "${K2_DEFAULT_BUILD_TYPE}" CACHE STRING "" FORCE)
 elseif(NOT CMAKE_BUILD_TYPE IN_LIST K2_ALLOWABLE_BUILD_TYPES)
   message(FATAL_ERROR "Invalid build type: ${CMAKE_BUILD_TYPE}, \
     choose one from ${K2_ALLOWABLE_BUILD_TYPES}")
 endif()
+# win32 will not find CMAKE_BUILD_TYPE in CACHE, if not set CMAKE_BUILD_TYPE CACHE
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${K2_ALLOWABLE_BUILD_TYPES}")
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
 if("${CMAKE_BUILD_TYPE_UPPERCASE}" STREQUAL "DEBUG")
@@ -74,11 +82,11 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
-option(K2_USE_PYTORCH "Whether to build with PyTorch" ON)
-option(K2_ENABLE_BENCHMARK "Whether to enable benchmark" ON)
+option(K2_USE_PYTORCH "Whether to build with PyTorch" OFF)
+option(K2_ENABLE_BENCHMARK "Whether to enable benchmark" OFF)
 option(K2_WITH_CUDA "Whether to build k2 with CUDA" ${_K2_WITH_CUDA})
-option(K2_ENABLE_NVTX "Whether to build k2 with the NVTX library" ON)
-option(K2_ENABLE_TESTS "Whether to build tests" ON)
+option(K2_ENABLE_NVTX "Whether to build k2 with the NVTX library" OFF)
+option(K2_ENABLE_TESTS "Whether to build tests" OFF)
 
 # You have to enable this option if you will run k2 on a machine different from
 # the one you used to build k2 and the two machines have different types of GPUs
@@ -93,9 +101,20 @@ if(NOT K2_WITH_CUDA)
   set(K2_ENABLE_NVTX OFF CACHE BOOL "" FORCE)
 endif()
 
+if(K2_WITH_CUDA)
+  if(${CMAKE_VERSION} VERSION_LESS "3.18.0")
+    find_package(CUDA QUIET)
+    message(STATUS "CUDA_INCLUDE_DIRS=${CUDA_INCLUDE_DIRS}")
+    message(STATUS "CUDA_LIBRARIES=${CUDA_LIBRARIES}")
+    message(STATUS "CUDA_nvToolsExt_LIBRARY=${CUDA_nvToolsExt_LIBRARY}")
+    message(STATUS "CUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}")
+  endif()
+endif()
+
 if(NOT K2_USE_PYTORCH)
-  message(FATAL_ERROR "\
-    Please set K2_USE_PYTORCH to ON.
+  message(WARNING "\
+    K2_USE_PYTORCH is OFF, only k2 core lib will be build.
+    If you want using with PyTorch, please turn it ON. 
     Support for other frameworks will be added later")
 endif()
 
@@ -103,10 +122,16 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-if(WIN32 AND BUILD_SHARED_LIBS)
-  message(STATUS "Set BUILD_SHARED_LIBS to OFF for Windows")
-  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+if(WIN32)
+  # win32 dll export symbols
+  # https://cmake.org/cmake/help/v3.4/prop_tgt/WINDOWS_EXPORT_ALL_SYMBOLS.html#prop_tgt:WINDOWS_EXPORT_ALL_SYMBOLS
+  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "" FORCE)
 endif()
+
+# if(WIN32 AND BUILD_SHARED_LIBS)
+#   message(STATUS "Set BUILD_SHARED_LIBS to OFF for Windows")
+#   set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+# endif()
 
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
 set(BUILD_RPATH_USE_ORIGIN TRUE)
@@ -430,7 +455,9 @@ install(FILES
   DESTINATION share/cmake/k2
 )
 
-install(FILES
-  ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py
-  DESTINATION ./
-)
+if(K2_USE_PYTORCH)
+  install(FILES
+    ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py
+    DESTINATION ./
+  )
+endif()

@@ -18,11 +18,17 @@
  */
 
 #include <cstdlib>
+#include <cstring>
 #include <mutex>  // NOLINT
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/nvtx.h"
+#include "k2/csrc/device_guard.h"
+
+#ifdef _WIN32
+#define posix_memalign(p, a, s) (((*(p)) = _aligned_malloc((s), (a))), *(p) ?0 :errno)
+#endif // _WIN32
 
 namespace k2 {
 
@@ -32,7 +38,7 @@ static constexpr std::size_t kAlignment = 64;
 class CpuContext : public Context {
  public:
   CpuContext() = default;
-  ContextPtr GetCpuContext() override { return shared_from_this(); }
+  ContextPtr GetCpuContext() { return shared_from_this(); }
   DeviceType GetDeviceType() const override { return kCpu; }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
@@ -52,6 +58,28 @@ class CpuContext : public Context {
   void Deallocate(void *data, void * /*deleter_context*/) override {
     free(data);
   }
+
+  void CopyDataTo(size_t num_bytes, const void *src, ContextPtr dst_context,
+                  void *dst) override {
+    DeviceType device_type = dst_context->GetDeviceType();
+    switch (device_type) {
+      case kCpu:
+        memcpy(dst, src, num_bytes);
+        break;
+      case kCuda: {
+        // CPU -> CUDA
+        DeviceGuard guard(dst_context);
+        ContextPtr pinned_context = GetPinnedContext();
+        auto region = NewRegion(pinned_context, num_bytes);
+        memcpy(region->data, src, num_bytes);
+        pinned_context->CopyDataTo(num_bytes, region->data, dst_context, dst);
+        break;
+      }
+      default:
+        K2_LOG(FATAL) << "Unsupported device type: " << device_type;
+        break;
+    }
+  }
 };
 
 class CudaContext : public Context {
@@ -66,7 +94,7 @@ class CudaContext : public Context {
     auto ret = cudaStreamCreate(&stream_);
     K2_CHECK_CUDA_ERROR(ret);
   }
-  ContextPtr GetCpuContext() override { return k2::GetCpuContext(); }
+  ContextPtr GetCpuContext() { return k2::GetCpuContext(); }
   DeviceType GetDeviceType() const override { return kCuda; }
   int32_t GetDeviceId() const override { return gpu_id_; }
 
@@ -96,6 +124,29 @@ class CudaContext : public Context {
   void Sync() const override {
     auto ret = cudaStreamSynchronize(stream_);
     K2_CHECK_CUDA_ERROR(ret);
+  }
+
+  void CopyDataTo(size_t num_bytes, const void *src, ContextPtr dst_context,
+                  void *dst) override {
+      DeviceType device_type = dst_context->GetDeviceType();
+      switch (device_type) {
+        case kCpu: {
+          cudaError_t ret =
+              cudaMemcpy(dst, src, num_bytes, cudaMemcpyDeviceToHost);
+          K2_CHECK_CUDA_ERROR(ret);
+          break;
+        }
+        case kCuda: {
+          cudaError_t ret =
+              cudaMemcpyAsync(dst, src, num_bytes, cudaMemcpyDeviceToDevice,
+                              dst_context->GetCudaStream());
+          K2_CHECK_CUDA_ERROR(ret);
+          break;
+        }
+        default:
+          K2_LOG(FATAL) << "Unsupported device type: " << device_type;
+          break;
+    }
   }
 
   ~CudaContext() {

@@ -38,6 +38,8 @@ add_library(k2_nvtx INTERFACE)
 target_include_directories(k2_nvtx INTERFACE ${CMAKE_SOURCE_DIR})
 if(K2_ENABLE_NVTX)
   target_compile_definitions(k2_nvtx INTERFACE K2_ENABLE_NVTX=1)
+  target_include_directories(k2_nvtx INTERFACE ${CUDA_INCLUDE_DIRS})
+  target_link_libraries(k2_nvtx INTERFACE ${CUDA_nvToolsExt_LIBRARY})
   if(WIN32)
     target_include_directories(k2_nvtx INTERFACE
       ${CUDA_TOOLKIT_ROOT_DIR}/include/nvtx3
@@ -79,14 +81,13 @@ set(context_srcs
   thread_pool.cu
   timer.cu
   top_sort.cu
-  torch_util.cu
   utils.cu
   nbest.cu
 )
 
 
 if(K2_USE_PYTORCH)
-  list(APPEND context_srcs pytorch_context.cu)
+  list(APPEND context_srcs pytorch_context.cu torch_util.cu)
 else()
   list(APPEND context_srcs default_context.cu)
 endif()
