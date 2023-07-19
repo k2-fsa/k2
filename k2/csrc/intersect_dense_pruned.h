@@ -173,7 +173,7 @@ class OnlineDenseIntersecter {
  public:
     OnlineDenseIntersecter(FsaVec &a_fsas, int32_t num_seqs, float search_beam,
                       float output_beam, int32_t min_states,
-                      int32_t max_states, bool allow_partial=true);
+                      int32_t max_states, bool allow_partial = true);
 
     /* Does intersection/composition for current chunk of nnet_output(given
        by a DenseFsaVec), sequences in every chunk may come from different
