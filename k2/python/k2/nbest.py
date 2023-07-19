@@ -93,7 +93,7 @@ class Nbest(object):
 
     def __str__(self):
         s = 'Nbest('
-        s += f'num_seqs:{self.shape.dim0()}, '
+        s += f'num_seqs:{self.shape.dim0}, '
         s += f'num_fsas:{self.fsa.shape[0]})'
         return s
 
