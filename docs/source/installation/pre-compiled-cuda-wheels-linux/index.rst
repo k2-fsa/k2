@@ -16,6 +16,7 @@ This page describes pre-compiled ``CUDA`` wheels for `k2`_ on Linux.
    ./1.10.2.rst
    ./1.10.1.rst
    ./1.10.0.rst
+   ./1.9.1.rst
    ./1.9.0.rst
    ./1.8.1.rst
    ./1.8.0.rst
