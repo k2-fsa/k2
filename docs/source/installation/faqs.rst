@@ -145,3 +145,57 @@ to
   cd k2
   export K2_CMAKE_ARGS="-DK2_BUILD_FOR_ALL_ARCHS=ON"
   python3 setup.py install
+
+#error C++14 or later compatible compiler is required to use ATen
+-----------------------------------------------------------------
+
+If you encounter this error, it means you need to update your GCC.
+
+
+What if it throws the same error after updating GCC?
+
+The solution is to setup the following environment variables
+after updating GCC:
+
+.. code-block:: bash
+
+  # Please change gcc_dir accordingly
+  gcc_dir=/ceph-fj/fangjun/software/gcc-12.2.0
+
+  export CC=$gcc_dir/bin/gcc
+  export CXX=$gcc_dir/bin/g++
+  export LIBRARY_PATH=$gcc_dir/lib64:$LIBRARY_PATH
+  export LD_LIBRARY_PATH=$gcc_dir/lib64:$LD_LIBRARY_PATH
+  export C_INCLUDE_PATH=$gcc_dir/include
+  export CPLUS_INCLUDE_PATH=$gcc_dir/include
+
+.. caution::
+
+  After setting the above environment variables, please run:
+
+    .. code-block:: bash
+
+      rm -rf
+
+  before you start to re-build ``k2``.
+
+relocation R_X86_64_PC32 against symbol `_PyRuntime' can not be used when making a shared object; recompile with -fPIC
+-----------------------------------------------------------------------------------------------------------------------
+
+The error indicates that your Python is statically linked. Please pass ``--enable-shared``
+to ``./configure`` when you compile Python from source.
+
+See also `<https://github.com/k2-fsa/k2/issues/1225>`_
+
+ImportError: libpython3.8.so.1.0: cannot open shared object file: No such file or directory
+-------------------------------------------------------------------------------------------
+
+Please see `<https://github.com/k2-fsa/k2/issues/1011>`_. You need to set the
+environment variable ``LD_LIBRARY_PATH``.
+
+/usr/bin/ld: cannot find -lPYTHON_LIBRARY-NOTFOUND
+--------------------------------------------------
+
+Please see `<https://github.com/k2-fsa/k2/issues/1038>`.
+
+

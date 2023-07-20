@@ -23,6 +23,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -155,18 +156,19 @@ static void PybindRnntDecodingStreams(py::module &m) {
 
   streams.def("format_output",
               [](PyClass &self, std::vector<int32_t> &num_frames,
-                 bool allow_partial, bool is_final)
-              -> std::pair<FsaVec, torch::Tensor> {
+                 bool allow_partial, const RaggedShape &t2s2c_shape)
+              -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
                 DeviceGuard guard(self.Context());
                 FsaVec ofsa;
                 Array1<int32_t> out_map;
-                self.FormatOutput(num_frames,
-                                  allow_partial,
-                                  is_final,
-                                  &ofsa,
-                                  &out_map);
+                Array1<int32_t> arc_map_token;
+                self.FormatOutput(num_frames, allow_partial, &ofsa, &out_map,
+                                  &arc_map_token, t2s2c_shape);
                 torch::Tensor out_map_tensor = ToTorch<int32_t>(out_map);
-                return std::make_pair(ofsa, out_map_tensor);
+                torch::Tensor arc_map_token_tensor =
+                                  ToTorch<int32_t>(arc_map_token);
+                return std::make_tuple(ofsa, out_map_tensor,
+                                       arc_map_token_tensor);
               });
 }
 

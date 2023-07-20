@@ -51,20 +51,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        torch: ["1.13.0"]
+        torch: ["1.13.1"]
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         build_type: ["Release", "Debug"]
 
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
-
-      - name: Install GCC 7
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo apt-get install -y gcc-7 g++-7
-          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
 
       - name: Display GCC version
         run: |

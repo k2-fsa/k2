@@ -22,8 +22,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2019]
-        torch: ["1.12.1"]
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        torch: ["1.13.1"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v2

@@ -8,11 +8,13 @@ set(torch_srcs
   mutual_information.cu
   mutual_information_cpu.cu
   nbest.cu
+  pruned_ranges_to_lattice.cu
   ragged.cu
   ragged_ops.cu
   rnnt_decode.cu
 
   v2/any.cu
+  v2/autograd/swoosh.cu
   v2/doc/doc.cu
   v2/k2.cu
   v2/ragged_any.cu

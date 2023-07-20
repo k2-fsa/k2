@@ -22,10 +22,31 @@ function(download_moderngpu)
 
   # this is the latest commit of modern gpu as of 2022-04-03
   set(moderngpu_URL  "https://github.com/moderngpu/moderngpu/archive/8ec9ac0de8672de7217d014917eedec5317f75f3.zip")
+  set(moderngpu_URL2 "https://huggingface.co/csukuangfj/k2-cmake-deps/resolve/main/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip")
   set(moderngpu_HASH "SHA256=1c20ffbb81d6f7bbe6107aaa5ee6d37392677c8a5fc7894935149c3ef0a3c2fb")
 
+  # If you don't have access to the Internet,
+  # please pre-download moderngpu
+  set(possible_file_locations
+    $ENV{HOME}/Downloads/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip
+    ${PROJECT_SOURCE_DIR}/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip
+    ${PROJECT_BINARY_DIR}/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip
+    /tmp/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip
+    /star-fj/fangjun/download/github/moderngpu-8ec9ac0de8672de7217d014917eedec5317f75f3.zip
+  )
+
+  foreach(f IN LISTS possible_file_locations)
+    if(EXISTS ${f})
+      set(moderngpu_URL  "file://${f}")
+      set(moderngpu_URL2)
+      break()
+    endif()
+  endforeach()
+
   FetchContent_Declare(moderngpu
-    URL               ${moderngpu_URL}
+    URL
+      ${moderngpu_URL}
+      ${moderngpu_URL2}
     URL_HASH          ${moderngpu_HASH}
   )
 

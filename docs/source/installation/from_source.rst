@@ -3,6 +3,13 @@
 Install from source
 ===================
 
+.. caution::
+
+   Users who have issues about installing `k2`_ from source are mostly installing
+   PyTorch with ``conda install``.
+
+   We suggest that you install ``PyTorch`` using ``pip install``.
+
 .. hint::
 
     It supports Linux (CPU + CUDA), macOS (CPU), and Windows (CPU + CUDA).
@@ -35,9 +42,18 @@ Before compiling k2, some preparation work has to be done:
   - Install CMake. CMake 3.11.0 and 3.18.0 are known to work.
   - Install Python3.
   - Install PyTorch.
-  - Install CUDA toolkit.
-  - Install cuDNN. Please install a version that is compatible with the
-    CUDA toolkit you are using.
+  - Install CUDA toolkit and cuDNN.
+
+
+.. hint::
+
+  You can use ``pip install cmake`` to install the latest version of CMake.
+
+.. caution::
+
+  cudatoolkit installed by ``conda install`` cannot be used to compile ``k2``.
+
+  Please follow :ref:`cuda_and_cudnn` to install cudatoolkit and cuDNN.
 
 After setting up the environment, we are ready to build k2:
 

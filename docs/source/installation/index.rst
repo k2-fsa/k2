@@ -38,6 +38,9 @@ below:
 .. toctree::
    :maxdepth: 1
 
+   cuda-cudnn.rst
+   ./pre-compiled-cpu-wheels-linux/index.rst
+   ./pre-compiled-cuda-wheels-linux/index.rst
    conda
    pip
    pip_pypi

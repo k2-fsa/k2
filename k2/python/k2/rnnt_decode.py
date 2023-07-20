@@ -38,7 +38,7 @@ class RnntDecodingStream(object):
         decoding graphs for different streams.
 
         Args:
-          graph:
+          fsa:
             The decoding graph used in this stream.
 
         Returns:
@@ -150,7 +150,8 @@ class RnntDecodingStreams(object):
             self,
             num_frames: List[int],
             allow_partial: bool = False,
-            is_final: bool = False,
+            log_probs: torch.Tensor = None,
+            t2s2c_shape: RaggedShape = None,
     ) -> Fsa:
         """
         Generate the lattice Fsa currently got.
@@ -174,11 +175,15 @@ class RnntDecodingStreams(object):
             If false, we only care about the real final state in the
             decoding graph on the last frame when generating lattice.
             Default False.
-          is_final:
-            If true, function GetFinalArcs() will be called.
-            See detail of the problem solved by GetFinalArcs() at
-            https://github.com/k2-fsa/k2/pull/1089
-
+          log_probs:
+            A tensor of shape [t2s2c_shape.tot_size(2)][num_symbols].
+            It's a stacked tensor of logprobs passed to function `advance`
+            during decoding.
+          t2s2c_shape:
+            It is short for time2stream2context_shape,
+            which describes shape of log_probs used to generate lattice.
+            Used to generate arc_map_token
+            and make the whole decoding process differentiable.
 
         Returns:
           Return the lattice Fsa with all the attributes propagated.
@@ -186,9 +191,16 @@ class RnntDecodingStreams(object):
         """
         assert len(num_frames) == self.num_streams
 
-        ragged_arcs, out_map = self.streams.format_output(
-            num_frames, allow_partial, is_final,
-        )
+        if log_probs is not None:
+            assert t2s2c_shape is not None
+            assert t2s2c_shape.tot_size(2) == log_probs.shape[0]
+            ragged_arcs, out_map, arc_map_token = self.streams.format_output(
+                num_frames, allow_partial, t2s2c_shape
+            )
+        else:
+            ragged_arcs, out_map = self.streams.format_output(
+                num_frames, allow_partial
+            )
         fsa = Fsa(ragged_arcs)
 
         # propagate attributes
@@ -270,4 +282,16 @@ class RnntDecodingStreams(object):
             for name, value in src.named_non_tensor_attr():
                 setattr(fsa, name, value)
 
+        if log_probs is not None:
+            # Make fsa.scores tracked by autograd
+            # to make the whole decoding process differentiable.
+            scores_tracked_by_autograd = index_select(
+                log_probs.reshape(-1), arc_map_token, default_value=0.0)
+
+            # Decoding graph may contain non-zero scores on arcs.
+            graph_scores = \
+                fsa.scores.detach() - scores_tracked_by_autograd.detach()
+            scores_tracked_by_autograd = \
+                scores_tracked_by_autograd + graph_scores
+            fsa.scores = scores_tracked_by_autograd
         return fsa
