@@ -20,7 +20,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="CUDA and cuDNN" href="cuda-cudnn.html" />
+    <link rel="next" title="From pre-compiled wheels (recommended)" href="from_wheels.html" />
     <link rel="prev" title="k2" href="../index.html" /> 
 </head>
 
@@ -45,14 +45,10 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="cuda-cudnn.html">CUDA and cuDNN</a></li>
-<li class="toctree-l2"><a class="reference internal" href="pre-compiled-cpu-wheels-linux/index.html">Pre-compiled CPU wheels (Linux)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="pre-compiled-cuda-wheels-linux/index.html">Pre-compiled CUDA wheels (Linux)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="conda.html">Install using conda (Linux/macOS)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="pip.html">Install using pip (k2-fsa.org)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="pip_pypi.html">Install using pip (pypi.org)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="from_wheels.html">From pre-compiled wheels (recommended)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="from_source.html">Install from source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="for_developers.html">For developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cuda-cudnn.html">CUDA and cuDNN</a></li>
 <li class="toctree-l2"><a class="reference internal" href="faqs.html">FAQs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#reporting-issues">Reporting issues</a></li>
 </ul>
@@ -88,56 +84,14 @@
              
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline"></a></h1>
-<div class="admonition hint">
-<p class="admonition-title">Hint</p>
-<p>You don’t need GPUs to build, install, and run k2.</p>
-</div>
 <p>We provide the following approaches to install k2. You can choose any of them that
 is appropriate for you.</p>
-<p>Available versions of Python, CUDA, and PyTorch of different approaches are listed
-below:</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>From conda (<strong>recommended</strong>)</p>
-<ul>
-<li><p><img alt="Supported python versions" src="../_images/python_ge_3.6-blue.svg" /></p></li>
-<li><p><img alt="Supported cuda versions" src="../_images/cuda_ge_10.1-orange.svg" /></p></li>
-<li><p><img alt="Supported pytorch versions" src="../_images/pytorch_ge_1.6.0-green.svg" /></p></li>
-</ul>
-</li>
-<li><p>From pip (k2-fsa.org)</p>
-<ul>
-<li><p><img alt="Supported python versions" src="../_images/python_ge_3.6-blue.svg" /></p></li>
-<li><p><img alt="Supported cuda versions" src="../_images/cuda_ge_10.1-orange.svg" /></p></li>
-<li><p><img alt="Supported pytorch versions" src="../_images/pytorch_ge_1.6.0-green.svg" /></p></li>
-</ul>
-</li>
-<li><p>From pypi (pypi.org)</p>
-<ul>
-<li><p><img alt="Supported python versions" src="../_images/pypi_python-3.6_3.7_3.8-blue.svg" /></p></li>
-<li><p><img alt="Supported cuda versions" src="../_images/pypi_cuda-10.1-orange.svg" /></p></li>
-<li><p><img alt="Supported pytorch versions" src="../_images/pypi_pytorch-1.7.1-green.svg" /></p></li>
-</ul>
-</li>
-<li><p>From source (<strong>for advanced users</strong>)</p>
-<ul>
-<li><p><img alt="Supported python versions" src="../_images/python_ge_3.6-blue.svg" /></p></li>
-<li><p><img alt="Supported cuda versions" src="../_images/cuda_ge_10.1-orange.svg" /></p></li>
-<li><p><img alt="Supported pytorch versions" src="../_images/pytorch_ge_1.6.0-green.svg" /></p></li>
-</ul>
-</li>
-</ul>
-</div></blockquote>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="cuda-cudnn.html">CUDA and cuDNN</a></li>
-<li class="toctree-l1"><a class="reference internal" href="pre-compiled-cpu-wheels-linux/index.html">Pre-compiled CPU wheels (Linux)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="pre-compiled-cuda-wheels-linux/index.html">Pre-compiled CUDA wheels (Linux)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="conda.html">Install using conda (Linux/macOS)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="pip.html">Install using pip (k2-fsa.org)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="pip_pypi.html">Install using pip (pypi.org)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="from_wheels.html">From pre-compiled wheels (recommended)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="from_source.html">Install from source</a></li>
 <li class="toctree-l1"><a class="reference internal" href="for_developers.html">For developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cuda-cudnn.html">CUDA and cuDNN</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faqs.html">FAQs</a></li>
 </ul>
 </div>
@@ -159,7 +113,7 @@ two commands:</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../index.html" class="btn btn-neutral float-left" title="k2" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="cuda-cudnn.html" class="btn btn-neutral float-right" title="CUDA and cuDNN" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="from_wheels.html" class="btn btn-neutral float-right" title="From pre-compiled wheels (recommended)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

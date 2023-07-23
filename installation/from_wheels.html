@@ -1,0 +1,230 @@
+<!-- see https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>From pre-compiled wheels (recommended) &mdash; k2 1.24.3 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Pre-compiled CPU wheels (Linux)" href="pre-compiled-cpu-wheels-linux/index.html" />
+    <link rel="prev" title="Installation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> k2
+          </a>
+              <div class="version">
+                1.24.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Installation</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">From pre-compiled wheels (recommended)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="pre-compiled-cpu-wheels-linux/index.html">Pre-compiled CPU wheels (Linux)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pre-compiled-cuda-wheels-linux/index.html">Pre-compiled CUDA wheels (Linux)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pre-compiled-cpu-wheels-macos/index.html">Pre-compiled CPU wheels (macOS)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pre-compiled-cpu-wheels-windows/index.html">Pre-compiled CPU wheels (Windows)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#linux-cpu-example">Linux (CPU) example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#macos-cpu-example">macOS (CPU) example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#windows-cpu-example">Windows (CPU) example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#linux-cuda-example">Linux (CUDA) example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="from_source.html">Install from source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="for_developers.html">For developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cuda-cudnn.html">CUDA and cuDNN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faqs.html">FAQs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#reporting-issues">Reporting issues</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/index.html">Python API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Installation</a> &raquo;</li>
+      <li>From pre-compiled wheels (recommended)</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/installation/from_wheels.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="from-pre-compiled-wheels-recommended">
+<h1>From pre-compiled wheels (recommended)<a class="headerlink" href="#from-pre-compiled-wheels-recommended" title="Permalink to this headline"></a></h1>
+<p>We provide pre-compiled wheels for the following platforms:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pre-compiled-cpu-wheels-linux/index.html">Pre-compiled CPU wheels (Linux)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pre-compiled-cuda-wheels-linux/index.html">Pre-compiled CUDA wheels (Linux)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pre-compiled-cpu-wheels-macos/index.html">Pre-compiled CPU wheels (macOS)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pre-compiled-cpu-wheels-windows/index.html">Pre-compiled CPU wheels (Windows)</a></li>
+</ul>
+</div>
+<p>We recommend that you use this approach to install <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a>.</p>
+<p>We provide several examples below to show you how to install <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a></p>
+<section id="linux-cpu-example">
+<h2>Linux (CPU) example<a class="headerlink" href="#linux-cpu-example" title="Permalink to this headline"></a></h2>
+<p>Suppose that we want to install the following wheel</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">cpu</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230719</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">manylinux_2_17_x86_64</span><span class="o">.</span><span class="n">manylinux2014_x86_64</span><span class="o">.</span><span class="n">whl</span>
+</pre></div>
+</div>
+<p>we can use one of the following methods:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># method 1</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.0.1+cpu<span class="w"> </span>-f<span class="w"> </span>https://download.pytorch.org/whl/torch_stable.html
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">k2</span><span class="o">==</span><span class="m">1</span>.24.3.dev20230719+cpu.torch2.0.1<span class="w"> </span>-f<span class="w"> </span>https://k2-fsa.github.io/k2/cuda.html
+
+<span class="c1"># method 2</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.0.1+cpu<span class="w"> </span>-f<span class="w"> </span>https://download.pytorch.org/whl/torch_stable.html
+wget<span class="w"> </span>https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.3.dev20230719+cpu.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.3.dev20230719+cpu.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+</pre></div>
+</div>
+</section>
+<section id="macos-cpu-example">
+<h2>macOS (CPU) example<a class="headerlink" href="#macos-cpu-example" title="Permalink to this headline"></a></h2>
+<p>Suppose we want to use the following wheel:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">macos</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230720</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">macosx_10_9_x86_64</span><span class="o">.</span><span class="n">whl</span>
+</pre></div>
+</div>
+<p>we can use the following methods:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># method 1</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.0.1
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">k2</span><span class="o">==</span><span class="m">1</span>.24.3.dev20230720+cpu.torch2.0.1
+
+<span class="c1"># method 2</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.0.1
+wget<span class="w"> </span>https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-macosx_10_9_x86_64.whl
+pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-macosx_10_9_x86_64.whl
+</pre></div>
+</div>
+</section>
+<section id="windows-cpu-example">
+<h2>Windows (CPU) example<a class="headerlink" href="#windows-cpu-example" title="Permalink to this headline"></a></h2>
+<p>Suppose we want to install the following wheel</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">windows</span><span class="o">-</span><span class="n">cpu</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230720</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">win_amd64</span><span class="o">.</span><span class="n">whl</span>
+</pre></div>
+</div>
+<p>we can use the one of the following methods:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># method 1</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.0.1+cpu<span class="w"> </span>-f<span class="w"> </span>https://download.pytorch.org/whl/torch_stable.html
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">k2</span><span class="o">==</span><span class="m">1</span>.24.3.dev20230720+cpu.torch2.0.1
+
+<span class="c1"># method 2</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.0.1+cpu<span class="w"> </span>-f<span class="w"> </span>https://download.pytorch.org/whl/torch_stable.html
+wget<span class="w"> </span>https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
+pip<span class="w"> </span>install<span class="w"> </span>k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
+</pre></div>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>If you want to build <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a> with CUDA support on Windows, please consider compiling
+<a class="reference external" href="https://github.com/k2-fsa/k2">k2</a> from source.</p>
+</div>
+</section>
+<section id="linux-cuda-example">
+<h2>Linux (CUDA) example<a class="headerlink" href="#linux-cuda-example" title="Permalink to this headline"></a></h2>
+<p>Suppose we want to install</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.24.3.dev20230718+cuda11.7.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+</pre></div>
+</div>
+<p>we can use the following methods:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># method 1</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.0.1+cu117<span class="w"> </span>-f<span class="w"> </span>https://download.pytorch.org/whl/torch_stable.html
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">k2</span><span class="o">==</span><span class="m">1</span>.24.3.dev20230718+cuda11.7.torch2.0.1
+
+<span class="c1"># method 2</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.0.1+cu117<span class="w"> </span>-f<span class="w"> </span>https://download.pytorch.org/whl/torch_stable.html
+wget<span class="w"> </span>https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.24.3.dev20230718+cuda11.7.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.3.dev20230718+cuda11.7.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="pre-compiled-cpu-wheels-linux/index.html" class="btn btn-neutral float-right" title="Pre-compiled CPU wheels (Linux)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020-2022, k2 development team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+
+</body>
+</html>
