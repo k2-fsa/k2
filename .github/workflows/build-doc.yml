@@ -99,6 +99,8 @@ jobs:
           cd docs
           python3 -m pip install -r ./requirements.txt
           make html
+          cp -v source/cpu.html ./build/html/
+          cp -v source/cuda.html ./build/html/
           touch build/html/.nojekyll
 
       - name: Deploy
