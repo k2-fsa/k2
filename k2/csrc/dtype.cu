@@ -48,4 +48,8 @@ std::ostream &operator<<(std::ostream &os, Dtype dtype) {
   return os;
 }
 
+DtypeTraits TraitsOf(Dtype dtype) {
+  return g_dtype_traits_array[static_cast<int32_t>(dtype)];
+}
+
 }  // namespace k2
