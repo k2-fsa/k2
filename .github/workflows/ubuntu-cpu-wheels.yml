@@ -3,7 +3,7 @@ name: build-wheels-cpu-ubuntu
 on:
   push:
     branches:
-      - wheels-2
+      - wheels
     tags:
       - '*'
   workflow_dispatch:
