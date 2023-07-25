@@ -1,4 +1,4 @@
-name: build-wheels-cpu-ubuntu
+name: build-wheels-cpu-macos
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: build-wheels-cpu-ubuntu-${{ github.ref }}
+  group: build-wheels-cpu-macos-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,14 +26,14 @@ jobs:
         id: set-matrix
         run: |
           # outputting for debugging purposes
-          python ./scripts/github_actions/generate_build_matrix.py
-          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py)
+          python ./scripts/github_actions/generate_build_matrix.py --for-macos
+          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --for-macos)
           echo "::set-output name=matrix::${MATRIX}"
 
-  build-manylinux-wheels:
+  build_wheels_macos_cpu:
     needs: generate_build_matrix
     name: ${{ matrix.torch }} ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
@@ -44,36 +44,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      # see https://github.com/pytorch/test-infra/blob/9e3d392690719fac85bad0c9b67f530e48375ca1/tools/scripts/generate_binary_build_matrix.py
-      # https://github.com/pytorch/builder/tree/main/manywheel
-      # https://github.com/pytorch/builder/pull/476
-      # https://github.com/k2-fsa/k2/issues/733
-      # https://github.com/pytorch/pytorch/pull/50633  (generate build matrix)
-      - name: Run the build process with Docker
-        uses: addnab/docker-run-action@v3
-        with:
-            image: ${{ matrix.image }}
-            options: -v ${{ github.workspace }}:/var/www -e PYTHON_VERSION=${{ matrix.python-version }} -e TORCH_VERSION=${{ matrix.torch }}
-            run: |
-              echo "pwd: $PWD"
-              uname -a
-              id
-              cat /etc/*release
-              gcc --version
-              python3 --version
-              which python3
+      # see https://cibuildwheel.readthedocs.io/en/stable/changelog/
+      # for a list of versions
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.11.4
+        env:
+          CIBW_BEFORE_BUILD: pip install torch==${{ matrix.torch}} cmake numpy
+          CIBW_BUILD: ${{ matrix.python-version }}-*
+          CIBW_REPAIR_WHEEL_COMMAND_MACOS: ""
+          CIBW_BUILD_VERBOSITY: 3
 
-              /var/www/scripts/github_actions/build-ubuntu-cpu.sh
+      - name: Display wheels
+        shell: bash
+        run: |
+          ls -lh ./wheelhouse/
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-latest-cpu
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-macos-latest-cpu
           path: wheelhouse/*.whl
 
       # https://huggingface.co/docs/hub/spaces-github-actions
       - name: Publish to huggingface
-        # if: github.repository_owner == 'csukuangfj' || github.repository_owner == 'k2-fsa'
+        if: github.repository_owner == 'csukuangfj'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         uses: nick-fields/retry@v2
@@ -92,10 +86,10 @@ jobs:
             cd huggingface
             git pull
 
-            mkdir -p cpu
-            cp -v ../wheelhouse/*.whl ./cpu
+            mkdir -p macos
+            cp -v ../wheelhouse/*.whl ./macos
             git status
             git lfs track "*.whl"
             git add .
-            git commit -m "upload ubuntu-cpu wheel for torch ${{ matrix.torch }} python ${{ matrix.python-version }}"
+            git commit -m "upload macos wheel for torch ${{ matrix.torch }} python ${{ matrix.python-version }}"
             git push https://csukuangfj:$HF_TOKEN@huggingface.co/csukuangfj/k2 main
