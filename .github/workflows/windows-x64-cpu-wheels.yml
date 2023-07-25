@@ -15,7 +15,7 @@ concurrency:
 jobs:
   generate_build_matrix:
     # see https://github.com/pytorch/pytorch/pull/50633
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
