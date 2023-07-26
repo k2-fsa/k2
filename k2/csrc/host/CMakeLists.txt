@@ -87,6 +87,7 @@ install(TARGETS fsa
 )
 
 if(BUILD_SHARED_LIBS AND WIN32)
-install(TARGETS fsa
-  DESTINATION ../
-)
+  install(TARGETS fsa
+      DESTINATION ../
+    )
+endif()
