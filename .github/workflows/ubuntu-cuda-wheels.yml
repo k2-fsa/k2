@@ -2,8 +2,6 @@ name: build-wheels-cuda-ubuntu
 
 on:
   push:
-    branches:
-      - wheels-2
     tags:
       - '*'
   workflow_dispatch:
