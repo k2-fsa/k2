@@ -65,7 +65,7 @@ jobs:
   build-cuda-ubuntu:
     if: github.event.label.name == 'ready' || github.event_name == 'push'
     needs: generate_build_matrix
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -98,13 +98,6 @@ jobs:
         run: |
           which nvcc
           nvcc --version
-
-      - name: Install GCC 7
-        run: |
-          sudo apt-get install -y gcc-7 g++-7
-          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
-          echo "CUDAHOSTCXX=/usr/bin/g++-7" >> $GITHUB_ENV
 
       - name: Install git lfs
         run: |
@@ -162,5 +155,5 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: gcc-7-cuda-${{ matrix.cuda }}-torch-${{ matrix.torch }}-python-${{ matrix.python-version }}
+          name: cuda-${{ matrix.cuda }}-torch-${{ matrix.torch }}-python-${{ matrix.python-version }}
           path: dist/*.whl
