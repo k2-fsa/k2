@@ -108,6 +108,10 @@
 </ul>
 </div>
 <p>We recommend that you use this approach to install <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a>.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>Please always install the latest version of <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a>.</p>
+</div>
 <section id="installation-examples">
 <h2>Installation examples<a class="headerlink" href="#installation-examples" title="Permalink to this headline"></a></h2>
 <p>We provide several examples below to show you how to install <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a></p>
@@ -158,18 +162,18 @@ pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.3.dev2023072
 <section id="windows-cpu-example">
 <h3>Windows (CPU) example<a class="headerlink" href="#windows-cpu-example" title="Permalink to this headline"></a></h3>
 <p>Suppose we want to install the following wheel</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">windows</span><span class="o">-</span><span class="n">cpu</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230720</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">win_amd64</span><span class="o">.</span><span class="n">whl</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">windows</span><span class="o">-</span><span class="n">cpu</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230726</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">win_amd64</span><span class="o">.</span><span class="n">whl</span>
 </pre></div>
 </div>
 <p>we can use the one of the following methods:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># method 1</span>
 pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.0.1+cpu<span class="w"> </span>-f<span class="w"> </span>https://download.pytorch.org/whl/torch_stable.html
-pip<span class="w"> </span>install<span class="w"> </span><span class="nv">k2</span><span class="o">==</span><span class="m">1</span>.24.3.dev20230720+cpu.torch2.0.1<span class="w"> </span>-f<span class="w"> </span>https://k2-fsa.github.io/k2/cpu.html
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">k2</span><span class="o">==</span><span class="m">1</span>.24.3.dev20230726+cpu.torch2.0.1<span class="w"> </span>-f<span class="w"> </span>https://k2-fsa.github.io/k2/cpu.html
 
 <span class="c1"># method 2</span>
 pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.0.1+cpu<span class="w"> </span>-f<span class="w"> </span>https://download.pytorch.org/whl/torch_stable.html
-wget<span class="w"> </span>https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
-pip<span class="w"> </span>install<span class="w"> </span>k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
+wget<span class="w"> </span>https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.3.dev20230726+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
+pip<span class="w"> </span>install<span class="w"> </span>k2-1.24.3.dev20230726+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
 </pre></div>
 </div>
 <div class="admonition hint">
