@@ -3,7 +3,7 @@ name: build-wheels-cpu-win64
 on:
   push:
     branches:
-      - wheels-2
+      - wheels
     tags:
       - '*'
   workflow_dispatch:
