@@ -1,7 +1,0 @@
-torch 1.7.0
-===========
-
-
-- `k2-1.24.3.dev20230720+cpu.torch1.7.0-cp38-cp38-macosx_10_9_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.3.dev20230720+cpu.torch1.7.0-cp38-cp38-macosx_10_9_x86_64.whl>`_
-- `k2-1.24.3.dev20230720+cpu.torch1.7.0-cp37-cp37m-macosx_10_9_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.3.dev20230720+cpu.torch1.7.0-cp37-cp37m-macosx_10_9_x86_64.whl>`_
-- `k2-1.24.3.dev20230720+cpu.torch1.7.0-cp36-cp36m-macosx_10_9_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.3.dev20230720+cpu.torch1.7.0-cp36-cp36m-macosx_10_9_x86_64.whl>`_

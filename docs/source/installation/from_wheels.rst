@@ -14,6 +14,10 @@ We provide pre-compiled wheels for the following platforms:
 
 We recommend that you use this approach to install `k2`_.
 
+.. hint::
+
+   Please always install the latest version of `k2`_.
+
 Installation examples
 ---------------------
 
@@ -79,7 +83,7 @@ Suppose we want to install the following wheel
 
 .. code-block::
 
-   https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
+   https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.3.dev20230726+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
 
 we can use the one of the following methods:
 
@@ -87,12 +91,12 @@ we can use the one of the following methods:
 
    # method 1
    pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
-   pip install k2==1.24.3.dev20230720+cpu.torch2.0.1 -f https://k2-fsa.github.io/k2/cpu.html
+   pip install k2==1.24.3.dev20230726+cpu.torch2.0.1 -f https://k2-fsa.github.io/k2/cpu.html
 
    # method 2
    pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
-   wget https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
-   pip install k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
+   wget https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.3.dev20230726+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
+   pip install k2-1.24.3.dev20230726+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
 
 .. hint::
 

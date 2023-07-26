@@ -17,6 +17,7 @@ exclude =
   k2/python/host,
   k2/python/k2/__init__.py,
   k2/python/k2/ctc_loss.py,
+  scripts/github_actions/generate_build_matrix.py,
   docs
 
 ignore =
