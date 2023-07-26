@@ -2,6 +2,9 @@ torch 1.9.0
 ===========
 
 
+- `k2-1.24.3.dev20230725+cpu.torch1.9.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.3.dev20230725+cpu.torch1.9.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
+- `k2-1.24.3.dev20230725+cpu.torch1.9.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.3.dev20230725+cpu.torch1.9.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
+- `k2-1.24.3.dev20230725+cpu.torch1.9.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.3.dev20230725+cpu.torch1.9.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
 - `k2-1.24.3.dev20230719+cpu.torch1.9.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.3.dev20230719+cpu.torch1.9.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
 - `k2-1.24.3.dev20230719+cpu.torch1.9.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.3.dev20230719+cpu.torch1.9.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
 - `k2-1.24.3.dev20230719+cpu.torch1.9.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.3.dev20230719+cpu.torch1.9.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_

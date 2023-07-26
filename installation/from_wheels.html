@@ -50,10 +50,13 @@
 <li class="toctree-l3"><a class="reference internal" href="pre-compiled-cuda-wheels-linux/index.html">Pre-compiled CUDA wheels (Linux)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pre-compiled-cpu-wheels-macos/index.html">Pre-compiled CPU wheels (macOS)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pre-compiled-cpu-wheels-windows/index.html">Pre-compiled CPU wheels (Windows)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#linux-cpu-example">Linux (CPU) example</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#macos-cpu-example">macOS (CPU) example</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#windows-cpu-example">Windows (CPU) example</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#linux-cuda-example">Linux (CUDA) example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installation-examples">Installation examples</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#linux-cpu-example">Linux (CPU) example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#macos-cpu-example">macOS (CPU) example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#windows-cpu-example">Windows (CPU) example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#linux-cuda-example">Linux (CUDA) example</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="from_source.html">Install from source</a></li>
@@ -105,9 +108,11 @@
 </ul>
 </div>
 <p>We recommend that you use this approach to install <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a>.</p>
+<section id="installation-examples">
+<h2>Installation examples<a class="headerlink" href="#installation-examples" title="Permalink to this headline"></a></h2>
 <p>We provide several examples below to show you how to install <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a></p>
 <section id="linux-cpu-example">
-<h2>Linux (CPU) example<a class="headerlink" href="#linux-cpu-example" title="Permalink to this headline"></a></h2>
+<h3>Linux (CPU) example<a class="headerlink" href="#linux-cpu-example" title="Permalink to this headline"></a></h3>
 <p>Suppose that we want to install the following wheel</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">cpu</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230719</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">manylinux_2_17_x86_64</span><span class="o">.</span><span class="n">manylinux2014_x86_64</span><span class="o">.</span><span class="n">whl</span>
 </pre></div>
@@ -129,7 +134,7 @@ pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.3.dev2023071
 </div>
 </section>
 <section id="macos-cpu-example">
-<h2>macOS (CPU) example<a class="headerlink" href="#macos-cpu-example" title="Permalink to this headline"></a></h2>
+<h3>macOS (CPU) example<a class="headerlink" href="#macos-cpu-example" title="Permalink to this headline"></a></h3>
 <p>Suppose we want to use the following wheel:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">macos</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230720</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">macosx_10_9_x86_64</span><span class="o">.</span><span class="n">whl</span>
 </pre></div>
@@ -151,7 +156,7 @@ pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.3.dev2023072
 </div>
 </section>
 <section id="windows-cpu-example">
-<h2>Windows (CPU) example<a class="headerlink" href="#windows-cpu-example" title="Permalink to this headline"></a></h2>
+<h3>Windows (CPU) example<a class="headerlink" href="#windows-cpu-example" title="Permalink to this headline"></a></h3>
 <p>Suppose we want to install the following wheel</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">windows</span><span class="o">-</span><span class="n">cpu</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230720</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">win_amd64</span><span class="o">.</span><span class="n">whl</span>
 </pre></div>
@@ -178,7 +183,7 @@ pip<span class="w"> </span>install<span class="w"> </span>k2-1.24.3.dev20230720+
 </div>
 </section>
 <section id="linux-cuda-example">
-<h2>Linux (CUDA) example<a class="headerlink" href="#linux-cuda-example" title="Permalink to this headline"></a></h2>
+<h3>Linux (CUDA) example<a class="headerlink" href="#linux-cuda-example" title="Permalink to this headline"></a></h3>
 <p>Suppose we want to install</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.24.3.dev20230718+cuda11.7.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 </pre></div>
@@ -198,6 +203,7 @@ pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.3.dev2023071
 <p class="admonition-title">Hint</p>
 <p>You can visit <a class="reference external" href="https://k2-fsa.github.io/k2/cuda.html">https://k2-fsa.github.io/k2/cuda.html</a> to see avaiable versions of <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a>.</p>
 </div>
+</section>
 </section>
 </section>
 
