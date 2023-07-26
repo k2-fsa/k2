@@ -128,4 +128,4 @@ auditwheel --verbose repair \
   -w /var/www/wheelhouse \
   dist/*.whl
 
-ls -lh  /var/www/wheels
+ls -lh  /var/www/wheelhouse

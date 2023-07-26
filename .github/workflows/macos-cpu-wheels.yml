@@ -1,15 +1,15 @@
-name: build-wheels-cpu-win64
+name: build-wheels-cpu-macos
 
 on:
   push:
     branches:
-      - wheels-2
+      - wheels
     tags:
       - '*'
   workflow_dispatch:
 
 concurrency:
-  group: build-wheels-cpu-win64-${{ github.ref }}
+  group: build-wheels-cpu-macos-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,14 +26,14 @@ jobs:
         id: set-matrix
         run: |
           # outputting for debugging purposes
-          python ./scripts/github_actions/generate_build_matrix.py --for-windows
-          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --for-windows)
+          python ./scripts/github_actions/generate_build_matrix.py --for-macos
+          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --for-macos)
           echo "::set-output name=matrix::${MATRIX}"
 
-  build_wheels_win64_cpu:
+  build_wheels_macos_cpu:
     needs: generate_build_matrix
     name: ${{ matrix.torch }} ${{ matrix.python-version }}
-    runs-on: windows-latest
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
@@ -49,9 +49,9 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.11.4
         env:
-          CIBW_BEFORE_BUILD: pip install torch==${{ matrix.torch}}+cpu cmake numpy -f https://download.pytorch.org/whl/torch_stable.html
-          CIBW_BUILD: ${{ matrix.python-version }}-win_amd64
-          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: ""
+          CIBW_BEFORE_BUILD: pip install torch==${{ matrix.torch}} cmake numpy
+          CIBW_BUILD: ${{ matrix.python-version }}-*
+          CIBW_REPAIR_WHEEL_COMMAND_MACOS: ""
           CIBW_BUILD_VERBOSITY: 3
 
       - name: Display wheels
@@ -62,12 +62,12 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-latest-cpu
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-macos-latest-cpu
           path: wheelhouse/*.whl
 
       # https://huggingface.co/docs/hub/spaces-github-actions
       - name: Publish to huggingface
-        # if: github.repository_owner == 'k2-fsa'
+        if: github.repository_owner == 'csukuangfj'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         uses: nick-fields/retry@v2
@@ -86,10 +86,10 @@ jobs:
             cd huggingface
             git pull
 
-            mkdir -p windows-cpu
-            cp -v ../wheelhouse/*.whl ./windows-cpu
+            mkdir -p macos
+            cp -v ../wheelhouse/*.whl ./macos
             git status
             git lfs track "*.whl"
             git add .
-            git commit -m "upload windows-cpu wheel for torch ${{ matrix.torch }} python ${{ matrix.python-version }}"
+            git commit -m "upload macos wheel for torch ${{ matrix.torch }} python ${{ matrix.python-version }}"
             git push https://csukuangfj:$HF_TOKEN@huggingface.co/csukuangfj/k2 main
