@@ -18,6 +18,9 @@ We recommend that you use this approach to install `k2`_.
 
    Please always install the latest version of `k2`_.
 
+Installation examples
+---------------------
+
 We provide several examples below to show you how to install `k2`_
 
 Linux (CPU) example
