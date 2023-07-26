@@ -1,6 +1,0 @@
-torch 1.9.1
-===========
-
-
-- `k2-1.24.3.dev20230718+cuda10.2.torch1.9.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.24.3.dev20230718+cuda10.2.torch1.9.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
-- `k2-1.24.3.dev20230718+cuda10.2.torch1.9.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.24.3.dev20230718+cuda10.2.torch1.9.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_

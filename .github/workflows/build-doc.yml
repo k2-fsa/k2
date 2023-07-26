@@ -24,6 +24,7 @@ on:
       - master
       - doc
       - doc-test
+      - wheels
     paths:
       - '.github/workflows/build-doc.yml'
       - 'k2/csrc/**'
@@ -40,6 +41,7 @@ env:
 
 jobs:
   build-doc:
+    if: github.repository_owner == 'csukuangfj' || github.repository_owner == 'k2-fsa'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -90,12 +92,28 @@ jobs:
           pwd
           ls -lh lib
 
+      - name: Update wheels
+        shell: bash
+        run: |
+            export K2_DIR=$PWD
+            ls -lh $K2_DIR
+
+            export GIT_LFS_SKIP_SMUDGE=1
+            git clone https://huggingface.co/csukuangfj/k2 huggingface
+            cd huggingface
+
+            ./run.sh
+
+            cd ..
+            rm -rf huggingface
+
       - name: Build doc
         shell: bash
         run: |
           python3 -m pip install numpy
           export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
           echo "PYTHONPATH: $PYTHONPATH"
+          git status
           cd docs
           python3 -m pip install -r ./requirements.txt
           make html
