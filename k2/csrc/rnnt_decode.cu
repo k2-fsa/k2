@@ -489,6 +489,7 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
   const auto logprobs_acc = logprobs.Accessor();
   const Arc *const *graphs_arcs_data = graphs_.values.Data();
 
+
   K2_EVAL(
       c_, cur_num_arcs, lambda_populate_arcs_states_scores, (int32_t arc_idx) {
         // Init renumber_arcs to 0, place here to save one kernel.
@@ -530,7 +531,7 @@ void RnntDecodingStreams::Advance(const Array2<float> &logprobs) {
             So definitely there are enough negative values
             to represent positive state index.
           */
-          ai.graph_arc_idx01 = -this_graph_state - 1;
+          ai.graph_arc_idx01 = -(this_graph_state + 1);
           K2_CHECK_LT(ai.graph_arc_idx01, 0);
           ai.score = logprobs_acc(idx01, 0);
           ai.label = 0;
@@ -743,7 +744,7 @@ void RnntDecodingStreams::GetFinalArcs() {
 
   int32_t frames = prev_frames_.size();
 
-  // with shape [stream][state][arc]
+  // with shape [stream][context][state][arc]
   auto last_frame_shape = prev_frames_[frames - 1]->shape;
 
   // Note: last_frame_arc_data is non-const
@@ -753,8 +754,10 @@ void RnntDecodingStreams::GetFinalArcs() {
   // and those expanded destination states are NOT grouped to save time.
   // So "dest_state" should be re-assigned to a new value.
   ArcInfo *last_frame_arc_data = prev_frames_[frames - 1]->values.Data();
-  const int32_t *lfs_row_ids2_data = last_frame_shape.RowIds(2).Data(),
+  const int32_t *lfs_row_ids3_data = last_frame_shape.RowIds(3).Data(),
+                *lfs_row_ids2_data = last_frame_shape.RowIds(2).Data(),
                 *lfs_row_ids1_data = last_frame_shape.RowIds(1).Data(),
+                *lfs_row_splits3_data = last_frame_shape.RowSplits(3).Data(),
                 *lfs_row_splits2_data = last_frame_shape.RowSplits(2).Data(),
                 *lfs_row_splits1_data = last_frame_shape.RowSplits(1).Data();
 
@@ -778,34 +781,34 @@ void RnntDecodingStreams::GetFinalArcs() {
 
   K2_EVAL(
       c_, last_frame_shape.NumElements(), lambda_get_final_arcs_shape,
-      (int32_t idx012) {
+      (int32_t idx0123) {
         // place here to save one kernel.
-        num_final_arcs_data[idx012] = 0;
+        num_final_arcs_data[idx0123] = 0;
 
-        int32_t idx01 = lfs_row_ids2_data[idx012],  // state_idx01
-                idx0 = lfs_row_ids1_data[idx01],    // stream_idx0
-                arc_idx0x = lfs_row_splits1_data[idx0],
-                arc_idx0xx = lfs_row_splits2_data[arc_idx0x],
-                arc_idx12 = idx012 - arc_idx0xx;
+        int32_t idx012 = lfs_row_ids3_data[idx0123],   // state_idx012
+                idx01 = lfs_row_ids2_data[idx012],     // context_idx01
+                idx0 = lfs_row_ids1_data[idx01],       // stream_idx0
+                arc_idx01x = lfs_row_splits2_data[idx01],
+                arc_idx01xx = lfs_row_splits3_data[arc_idx01x],
+                arc_idx23 = idx0123 - arc_idx01xx;
 
-        ArcInfo& ai = last_frame_arc_data[idx012];
+        ArcInfo& ai = last_frame_arc_data[idx0123];
 
         // Re-assign dest_state to a new value.
         // See more detail comment at previous last_frame_arc_data definition.
-        ai.dest_state = arc_idx12;
+        ai.dest_state = arc_idx23;
 
         if (ai.label == -1) {
-            num_final_arcs_data[idx012] = 0;
             // -(num_graph_states_data[idx0]) for state not expandable.
-            final_graph_states_data[idx012] = -(num_graph_states_data[idx0]);
+            final_graph_states_data[idx0123] = -(num_graph_states_data[idx0]);
             return;
         }
-        int dest_state = -1;
+        int32_t dest_state = -1;
         const int32_t *graph_row_split1_data = graph_row_splits1_ptr_data[idx0];
         const Arc *graph_arcs_data = graphs_arcs_data[idx0];
         if (ai.graph_arc_idx01 < 0) {
           // For implicit self-loop arcs.
-          dest_state = -(ai.graph_arc_idx01 + 1);
+          dest_state = -ai.graph_arc_idx01 - 1;
           K2_CHECK_GE(dest_state, 0);
           K2_CHECK_LE(dest_state, num_graph_states_data[idx0]);
         } else {
@@ -814,35 +817,40 @@ void RnntDecodingStreams::GetFinalArcs() {
         }
         K2_CHECK_GE(dest_state, 0);
 
-        final_graph_states_data[idx012] = dest_state;
+        final_graph_states_data[idx0123] = dest_state;
         // Plus one for the implicit epsilon self-loop.
-        num_final_arcs_data[idx012] = graph_row_split1_data[dest_state + 1] -
+        num_final_arcs_data[idx0123] = graph_row_split1_data[dest_state + 1] -
                                 graph_row_split1_data[dest_state] + 1;
       });
 
+
   ExclusiveSum(num_final_arcs, &num_final_arcs);
+
   auto final_arcs_shape = RaggedShape2(&num_final_arcs, nullptr, -1);
   final_arcs_shape = ComposeRaggedShapes(last_frame_shape, final_arcs_shape);
-  // [steam][state][arc][arc] --> [stream][arc][arc]
-  // could be viewd as [strem][final state][arc]
-  final_arcs_shape = RemoveAxis(final_arcs_shape, 1);
-  const int32_t *fas_row_ids1_data = final_arcs_shape.RowIds(1).Data();
-  const int32_t *fas_row_ids2_data = final_arcs_shape.RowIds(2).Data();
-  const int32_t *fas_row_splits2_data = final_arcs_shape.RowSplits(2).Data();
+  // [steam][context][state][arc][arc] --> [stream][context][arc][arc]
+  // could be viewd as [strem][context][final state][arc]
+  final_arcs_shape = RemoveAxis(final_arcs_shape, 2);
+  const int32_t *fas_row_ids1_data = final_arcs_shape.RowIds(1).Data(),
+                *fas_row_ids2_data = final_arcs_shape.RowIds(2).Data(),
+                *fas_row_ids3_data = final_arcs_shape.RowIds(3).Data(),
+                *fas_row_splits3_data = final_arcs_shape.RowSplits(3).Data();
 
   auto final_arcs = Ragged<ArcInfo>(final_arcs_shape);
   ArcInfo *final_arcs_data = final_arcs.values.Data();
+
   K2_EVAL(
       c_, final_arcs_shape.NumElements(), lambda_populate_final_arcs,
-      (int32_t idx012) {
-        const int32_t idx01 = fas_row_ids2_data[idx012],  // state
+      (int32_t idx0123) {
+        const int32_t idx012 = fas_row_ids3_data[idx0123],  // state
+                idx01 = fas_row_ids2_data[idx012],  // context
                 idx0 = fas_row_ids1_data[idx01],  // stream
-                idx01x = fas_row_splits2_data[idx01],
-                arc_idx2 = idx012 - idx01x;
+                idx012x = fas_row_splits3_data[idx012],
+                arc_idx3 = idx0123 - idx012x;
 
         const Arc *graph_arcs_data = graphs_arcs_data[idx0];
         const int32_t *graph_row_split1_data = graph_row_splits1_ptr_data[idx0];
-        int32_t graph_state_idx0 = final_graph_states_data[idx01];
+        int32_t graph_state_idx0 = final_graph_states_data[idx012];
 
         int32_t ai_graph_arc_idx01 = 0;
         int32_t ai_arc_label = 0;
@@ -861,7 +869,7 @@ void RnntDecodingStreams::GetFinalArcs() {
           // arc_idx2 could be viewed as graph_arc_idx1,
           // since final_arcs_shape has 3 axes where arc_idx2 is calculated,
           // while decoding_graph only has 2 axes where arc_idx2 is used.
-          ai_graph_arc_idx01 = graph_arc_idx0x + arc_idx2;
+          ai_graph_arc_idx01 = graph_arc_idx0x + arc_idx3;
           auto graph_arc = graph_arcs_data[ai_graph_arc_idx01];
           ai_arc_label = graph_arc.label;
         }
@@ -872,7 +880,7 @@ void RnntDecodingStreams::GetFinalArcs() {
         ai.graph_arc_idx01 = ai_graph_arc_idx01;
         ai.score = 0.0;
         ai.label = ai_arc_label;
-        final_arcs_data[idx012] = ai;
+        final_arcs_data[idx0123] = ai;
       });
 
   prev_frames_.emplace_back(std::make_shared<Ragged<ArcInfo>>(final_arcs));
@@ -1053,7 +1061,7 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
     K2_EVAL(
         c_, num_streams_, lambda_set_start_offset, (int32_t stream_idx) {
         num_padded_frames_data[stream_idx] =
-          frames - num_padded_frames_data[stream_idx];
+          frames - num_padded_frames_data[stream_idx] - 1;
         K2_CHECK_LE(0, num_padded_frames_data[stream_idx]);
     });
   }
@@ -1117,11 +1125,12 @@ void RnntDecodingStreams::FormatOutput(const std::vector<int32_t> &num_frames,
           // make the generated lattice a valid k2 fsa.
           if (arc_info.graph_arc_idx01 <= -1 || arc_info.label == -1) {
             arc.label = 0;
+            out_map_data[oarc_idx01234] = -1;
           } else {
             arc.label = graph_arcs_data[arc_info.graph_arc_idx01].label;
+            out_map_data[oarc_idx01234] = arc_info.graph_arc_idx01;
           }
           arc.score = arc_info.score;
-          out_map_data[oarc_idx01234] = arc_info.graph_arc_idx01;
         }
         arcs_out_data[oarc_idx01234] = arc;
         if (arc_map_b != nullptr) {
