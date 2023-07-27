@@ -65,7 +65,7 @@ jobs:
   build-cpu-ubuntu:
     if: github.event.label.name == 'ready' || github.event_name == 'push'
     needs: generate_build_matrix
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -83,12 +83,6 @@ jobs:
 
       - name: Display date and time
         run: date
-
-      - name: Install GCC 7
-        run: |
-          sudo apt-get install -y gcc-7 g++-7
-          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -119,7 +113,7 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-18.04-cpu
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-latest-cpu
           path: dist/*.whl
 
       - name: Build k2

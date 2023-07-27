@@ -196,6 +196,6 @@ environment variable ``LD_LIBRARY_PATH``.
 /usr/bin/ld: cannot find -lPYTHON_LIBRARY-NOTFOUND
 --------------------------------------------------
 
-Please see `<https://github.com/k2-fsa/k2/issues/1038>`.
+Please see `<https://github.com/k2-fsa/k2/issues/1038>`_.
 
 
