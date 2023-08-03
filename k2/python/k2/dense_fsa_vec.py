@@ -102,7 +102,7 @@ class DenseFsaVec(object):
             segment_index, start_frame, duration = segment
             assert 0 <= segment_index < N
             assert 0 <= start_frame < T
-            assert duration > 0
+            assert duration >= 0
             assert start_frame + duration <= T + allow_truncate
             offset = segment_index * T
             end_frame = min(start_frame + duration, T)  # exclusive

@@ -91,6 +91,7 @@ class OnlineDenseIntersecter(object):
             decode_states[1] = new_decode_states[1]
             ...
         """
+        self.num_streams_ = num_streams
         self.decoding_graph = decoding_graph
         self.device = decoding_graph.device
         self.intersecter = _k2.OnlineDenseIntersecter(
@@ -101,6 +102,10 @@ class OnlineDenseIntersecter(object):
             min_active_states,
             max_active_states,
         )
+
+    @property
+    def num_streams(self) -> int:
+        return self.num_streams_
 
     def decode(
         self, dense_fsas: DenseFsaVec, decode_states: List[DecodeStateInfo]

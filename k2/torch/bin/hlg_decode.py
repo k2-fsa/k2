@@ -1,7 +1,8 @@
 import argparse
 import logging
 import math
-from typing import List
+import os
+from typing import Any, Dict, List, Optional, Tuple
 
 import k2
 import kaldifeat
@@ -69,9 +70,28 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--wav-scp",
+        type=str,
+        help="""The audio lists to transcribe in wav.scp format""",
+    )
+
+    parser.add_argument(
+        "--output-file",
+        type=str,
+        help="The file to write out results to, only used when giving --wav-scp",
+    )
+
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=5,
+        help="The number of wavs in a batch.",
+    )
+
+    parser.add_argument(
         "sound_files",
         type=str,
-        nargs="+",
+        nargs="*",
         help="The input sound file(s) to transcribe. "
         "Supported formats are those supported by torchaudio.load(). "
         "For example, wav and flac are supported. "
@@ -104,6 +124,61 @@ def read_sound_files(
     return ans
 
 
+def decode_one_batch(
+    params: object,
+    batch: List[Tuple[str, str]],
+    model: torch.nn.Module,
+    feature_extractor: kaldifeat.Fbank,
+    decoding_graph: k2.Fsa,
+    token_sym_table: Optional[k2.SymbolTable] = None,
+    word_sym_table: Optional[k2.SymbolTable] = None,
+) -> Dict[str, str]:
+    device = params.device
+    filenames = [x[1] for x in batch]
+    waves = read_sound_files(
+        filenames=filenames, expected_sample_rate=params.sample_rate
+    )
+    waves = [w.to(device) for w in waves]
+
+    features = feature_extractor(waves)
+
+    feature_len = []
+    for f in features:
+        feature_len.append(f.shape[0])
+
+    features = pad_sequence(
+        features, batch_first=True, padding_value=math.log(1e-10)
+    )
+
+    # Note: We don't use key padding mask for attention during decoding
+    nnet_output, _, _ = model(features)
+
+    log_prob = torch.nn.functional.log_softmax(nnet_output, dim=-1)
+    log_prob_len = torch.tensor(feature_len) // params.subsampling_factor
+    log_prob_len = log_prob_len.to(device)
+
+    lattice = get_lattice(
+        log_prob=log_prob,
+        log_prob_len=log_prob_len,
+        decoding_graph=decoding_graph,
+        subsampling_factor=params.subsampling_factor,
+    )
+    best_path = one_best_decoding(lattice=lattice, use_double_scores=True)
+
+    hyps = get_aux_labels(best_path)
+
+    if params.method == "ctc-decoding":
+        hyps = ["".join([token_sym_table[i] for i in ids]) for ids in hyps]
+    else:
+        assert params.method == "1best", params.method
+        hyps = [" ".join([word_sym_table[i] for i in ids]) for ids in hyps]
+
+    results = {}
+    for i, hyp in enumerate(hyps):
+        results[batch[i][0]] = hyp.replace("▁", " ").strip()
+    return results
+
+
 def main():
     parser = get_parser()
     args = parser.parse_args()
@@ -113,11 +188,36 @@ def main():
     args.feature_dim = 80
     args.num_classes = 500
 
+    wave_list: List[Tuple[str, str]] = []
+    if args.wav_scp is not None:
+        assert os.path.isfile(
+            args.wav_scp
+        ), f"wav_scp not exists : {args.wav_scp}"
+        assert (
+            args.output_file is not None
+        ), "You should provide output_file when using wav_scp"
+        with open(args.wav_scp, "r") as f:
+            for line in f:
+                toks = line.strip().split()
+                assert len(toks) == 2, toks
+                if not os.path.isfile(toks[1]):
+                    logging.warning(f"File {toks[1]} not exists, skipping.")
+                    continue
+                wave_list.append(toks)
+    else:
+        assert len(args.sound_files) > 0, "No wav_scp or waves provided."
+        for i, f in enumerate(args.sound_files):
+            if not os.path.isfile(f):
+                logging.warning(f"File {f} not exists, skipping.")
+                continue
+            wave_list.append((i, f))
+
     device = torch.device("cpu")
     if torch.cuda.is_available():
         device = torch.device("cuda", 0)
+    args.device = device
 
-    logging.info(f"device: {device}")
+    logging.info(f"params : {args}")
 
     logging.info("Creating model")
     model = torch.jit.load(args.nn_model)
@@ -134,82 +234,59 @@ def main():
 
     fbank = kaldifeat.Fbank(opts)
 
-    logging.info(f"Reading sound files: {args.sound_files}")
-    waves = read_sound_files(
-        filenames=args.sound_files, expected_sample_rate=args.sample_rate
-    )
-    waves = [w.to(device) for w in waves]
-
-    logging.info("Decoding started")
-    features = fbank(waves)
-
-    feature_len = []
-    for f in features:
-        feature_len.append(f.shape[0])
-
-    features = pad_sequence(
-        features, batch_first=True, padding_value=math.log(1e-10)
-    )
-
-    # Note: We don't use key padding mask for attention during decoding
-    nnet_output, _, _ = model(features)
-
-    log_prob = torch.nn.functional.log_softmax(nnet_output, dim=-1)
-    log_prob_len = torch.tensor(feature_len) // args.subsampling_factor
-    log_prob_len = log_prob_len.to(device)
-
+    token_sym_table = None
+    word_sym_table = None
     if args.method == "ctc-decoding":
         logging.info("Use CTC decoding")
         max_token_id = args.num_classes - 1
-
-        H = k2.ctc_topo(
-            max_token=max_token_id,
-            device=device,
-        )
-
-        lattice = get_lattice(
-            log_prob=log_prob,
-            log_prob_len=log_prob_len,
-            decoding_graph=H,
-            subsampling_factor=args.subsampling_factor,
-        )
-
-        best_path = one_best_decoding(lattice=lattice, use_double_scores=True)
-        token_ids = get_aux_labels(best_path)
+        decoding_graph = k2.ctc_topo(max_token=max_token_id, device=device,)
         token_sym_table = k2.SymbolTable.from_file(args.tokens)
-
-        hyps = ["".join([token_sym_table[i] for i in ids]) for ids in token_ids]
-
     else:
         assert args.method == "1best", args.method
         logging.info(f"Loading HLG from {args.HLG}")
-        HLG = k2.Fsa.from_dict(torch.load(args.HLG, map_location="cpu"))
-        HLG = HLG.to(device)
-
-        lattice = get_lattice(
-            log_prob=log_prob,
-            log_prob_len=log_prob_len,
-            decoding_graph=HLG,
-            subsampling_factor=args.subsampling_factor,
+        decoding_graph = k2.Fsa.from_dict(
+            torch.load(args.HLG, map_location="cpu")
         )
-
-        if args.method == "1best":
-            logging.info("Use HLG decoding")
-            best_path = one_best_decoding(
-                lattice=lattice, use_double_scores=True
-            )
-
-        hyps = get_aux_labels(best_path)
+        decoding_graph = decoding_graph.to(device)
         word_sym_table = k2.SymbolTable.from_file(args.words_file)
-        hyps = [" ".join([word_sym_table[i] for i in ids]) for ids in hyps]
+    decoding_graph = k2.Fsa.from_fsas([decoding_graph])
 
-    s = "\n"
-    for filename, hyp in zip(args.sound_files, hyps):
-        words = hyp.replace("▁", " ").strip()
-        s += f"{filename}:\n{words}\n\n"
-    logging.info(s)
+    results = {}
+    start = 0
+    while start + args.batch_size <= len(wave_list):
 
-    torch.save(lattice.as_dict(), "offline.pt")
+        if start % 100 == 0:
+            logging.info(f"Decoding progress: {start}/{len(wave_list)}.")
+
+        res = decode_one_batch(
+            params=args,
+            batch=wave_list[start : start + args.batch_size],
+            model=model,
+            feature_extractor=fbank,
+            decoding_graph=decoding_graph,
+            token_sym_table=token_sym_table,
+            word_sym_table=word_sym_table,
+        )
+        start += args.batch_size
+
+        results.update(res)
+
+    logging.info(f"results : {results}")
+
+    if args.wav_scp is not None:
+        output_dir = os.path.dirname(args.output_file)
+        if output_dir != "":
+            os.makedirs(output_dir, exist_ok=True)
+        with open(args.output_file, "w", encoding="utf-8") as f:
+            for x in wave_list:
+                f.write(x[0] + "\t" + results[x[0]] + "\n")
+        logging.info(f"Decoding results are written to {args.output_file}")
+    else:
+        s = "\n"
+        logging.info(f"results : {results}")
+        for x in wave_list:
+            s += f"{x[1]}:\n{results[x[0]]}\n\n"
+        logging.info(s)
 
     logging.info("Decoding Done")
 
