@@ -298,7 +298,8 @@ class MultiGraphDenseIntersectPruned {
       }
       if (t == b_fsas_->shape.MaxSize(1)) {
         int32_t start = std::max<int32_t>(0, T_ - 3);
-        PruneTimeRange(start, T_ + t);
+        PruneTimeRange(start, T_ + t - 1);
+        PruneTimeRange(T_ + t - 1, T_ + t);
       }
     }
     // The FrameInfo for time T+1 will have no states.  We did that
