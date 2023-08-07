@@ -78,7 +78,9 @@ def get_parser():
     parser.add_argument(
         "--output-file",
         type=str,
-        help="The file to write out results to, only used when giving --wav-scp",
+        help="""
+        The file to write out results to, only used when giving --wav-scp
+        """,
     )
 
     parser.add_argument(
@@ -239,7 +241,10 @@ def main():
     if args.method == "ctc-decoding":
         logging.info("Use CTC decoding")
         max_token_id = args.num_classes - 1
-        decoding_graph = k2.ctc_topo(max_token=max_token_id, device=device,)
+        decoding_graph = k2.ctc_topo(
+            max_token=max_token_id,
+            device=device,
+        )
         token_sym_table = k2.SymbolTable.from_file(args.tokens)
     else:
         assert args.method == "1best", args.method
@@ -260,7 +265,7 @@ def main():
 
         res = decode_one_batch(
             params=args,
-            batch=wave_list[start : start + args.batch_size],
+            batch=wave_list[start: start + args.batch_size],
             model=model,
             feature_extractor=fbank,
             decoding_graph=decoding_graph,

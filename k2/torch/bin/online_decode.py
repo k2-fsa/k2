@@ -86,7 +86,9 @@ def get_parser():
     parser.add_argument(
         "--output-file",
         type=str,
-        help="The file to write out results to, only used when giving --wav-scp",
+        help="""
+        The file to write out results to, only used when giving --wav-scp
+        """,
     )
 
     parser.add_argument(
@@ -158,7 +160,8 @@ def decode_one_chunk(
         current_num_frames.append(0)
         current_nnet_outputs.append(
             torch.zeros(
-                (params.chunk_size, params.num_classes), device=params.device,
+                (params.chunk_size, params.num_classes),
+                device=params.device,
             )
         )
         current_state_infos.append(DecodeStateInfo())
@@ -211,7 +214,8 @@ def decode_dataset(
             data, sample_rate = torchaudio.load(waves[wave_index][1])
             assert (
                 sample_rate == params.sample_rate
-            ), f"expected sample rate: {params.sample_rate}. Given: {sample_rate}"
+            ), f"expected sample rate: {params.sample_rate}. "
+            f"Given: {sample_rate}"
             data = data[0].to(params.device)
             feature = feature_extractor(data)
             nnet_output, _, _ = model(feature.unsqueeze(0))
@@ -318,7 +322,10 @@ def main():
     if args.method == "ctc-decoding":
         logging.info("Use CTC decoding")
         max_token_id = args.num_classes - 1
-        decoding_graph = k2.ctc_topo(max_token=max_token_id, device=device,)
+        decoding_graph = k2.ctc_topo(
+            max_token=max_token_id,
+            device=device,
+        )
         token_sym_table = k2.SymbolTable.from_file(args.tokens)
     else:
         assert args.method == "1best", args.method
