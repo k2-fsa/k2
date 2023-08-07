@@ -178,3 +178,24 @@ after updating GCC:
       rm -rf
 
   before you start to re-build ``k2``.
+
+relocation R_X86_64_PC32 against symbol `_PyRuntime' can not be used when making a shared object; recompile with -fPIC
+-----------------------------------------------------------------------------------------------------------------------
+
+The error indicates that your Python is statically linked. Please pass ``--enable-shared``
+to ``./configure`` when you compile Python from source.
+
+See also `<https://github.com/k2-fsa/k2/issues/1225>`_
+
+ImportError: libpython3.8.so.1.0: cannot open shared object file: No such file or directory
+-------------------------------------------------------------------------------------------
+
+Please see `<https://github.com/k2-fsa/k2/issues/1011>`_. You need to set the
+environment variable ``LD_LIBRARY_PATH``.
+
+/usr/bin/ld: cannot find -lPYTHON_LIBRARY-NOTFOUND
+--------------------------------------------------
+
+Please see `<https://github.com/k2-fsa/k2/issues/1038>`_.
+
+

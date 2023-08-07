@@ -85,3 +85,9 @@ endif()
 install(TARGETS fsa
   DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
+
+if(BUILD_SHARED_LIBS AND WIN32)
+  install(TARGETS fsa
+      DESTINATION ../
+    )
+endif()
