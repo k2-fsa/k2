@@ -183,7 +183,7 @@ def generate_build_matrix(enable_cuda, for_windows, for_macos, test_only_latest_
                             "torch": torch,
                             "python-version": p,
                             "cuda": c,
-                            "image": f"pytorch/manylinux-builder:cuda{c}",
+                            "image": "pytorch/manylinux-builder:cuda" + c,
                         }
                     )
         else:
