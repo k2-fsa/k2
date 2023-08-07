@@ -35,6 +35,7 @@ class OnlineDenseIntersecter(object):
         output_beam: float,
         min_active_states: int,
         max_active_states: int,
+        allow_partial: bool = True,
     ) -> None:
         """Create a new online intersecter object.
         Args:
@@ -101,6 +102,7 @@ class OnlineDenseIntersecter(object):
             output_beam,
             min_active_states,
             max_active_states,
+            allow_partial=allow_partial,
         )
 
     @property

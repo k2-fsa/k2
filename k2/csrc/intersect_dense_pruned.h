@@ -135,9 +135,6 @@ struct DecodeStateInfo {
 
   // current search beam for this sequence
   float beam;
-
-  // True if the chunk to be decoded is the final chunk
-  bool is_final;
 };
 
 

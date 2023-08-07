@@ -146,7 +146,6 @@ def decode_one_chunk(
             current_num_frames.append(stream.num_frames - stream.position)
             end = stream.num_frames
             stream.position = stream.num_frames
-            stream.state_info.is_final = True
             finised_streams.append(i)
         else:
             current_num_frames.append(params.chunk_size)
@@ -264,7 +263,7 @@ def main():
     args.subsampling_factor = 4
     args.feature_dim = 80
     args.num_classes = 500
-    args.chunk_size = 10
+    args.chunk_size = 16
 
     wave_list: List[Tuple[str, str]] = []
     if args.wav_scp is not None:

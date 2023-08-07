@@ -248,7 +248,6 @@ int main(int argc, char *argv[]) {
       if (num_frames[i] <= chunk_size * subsampling_factor) {
         num_frame.push_back(num_frames[i]);
         num_frames[i] = 0;
-        states_info[i].is_final = true;
       } else {
         num_frame.push_back(chunk_size * subsampling_factor);
         num_frames[i] -= chunk_size * subsampling_factor;

@@ -756,7 +756,6 @@ static void PybindDecodeStateInfo(py::module &m) {
   py::class_<PyClass> state_info(
       m, "DecodeStateInfo");
   state_info.def(py::init<>());
-  state_info.def_readwrite("is_final", &PyClass::is_final);
 }
 
 static void PybindOnlineDenseIntersecter(py::module &m) {
