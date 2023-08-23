@@ -2,8 +2,6 @@ name: build-wheels-cpu-macos-m1
 
 on:
   push:
-    branches:
-      - wheel-macos-m1
     tags:
       - '*'
   workflow_dispatch:
@@ -49,7 +47,6 @@ jobs:
       # for a list of versions
       - name: ${{ matrix.torch }} ${{ matrix.python-version }}
         uses: pypa/cibuildwheel@v2.11.4
-        # uses: pypa/cibuildwheel@v2.15.0
         env:
           CIBW_BEFORE_BUILD: pip install torch==${{ matrix.torch}} cmake numpy
           CIBW_BUILD: ${{ matrix.python-version }}-*
