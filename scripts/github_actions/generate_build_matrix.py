@@ -29,6 +29,13 @@ def get_args():
     )
 
     parser.add_argument(
+        "--for-macos-m1",
+        action="store_true",
+        default=False,
+        help="True for macOS M1",
+    )
+
+    parser.add_argument(
         "--test-only-latest-torch",
         action="store_true",
         default=False,
@@ -38,7 +45,13 @@ def get_args():
     return parser.parse_args()
 
 
-def generate_build_matrix(enable_cuda, for_windows, for_macos, test_only_latest_torch):
+def generate_build_matrix(
+    enable_cuda,
+    for_windows,
+    for_macos,
+    for_macos_m1,
+    test_only_latest_torch,
+):
     matrix = {
         # 1.5.x is removed because there are compilation errors.
         #  See
@@ -162,14 +175,31 @@ def generate_build_matrix(enable_cuda, for_windows, for_macos, test_only_latest_
     excluded_python_versions = ["3.6"]
     enabled_torch_versions = []
 
+    if for_macos_m1:
+        matrix = dict()
+        matrix["1.8.0"] = {"python-version": ["3.8"]}
+        matrix["1.8.1"] = {"python-version": ["3.8"]}
+        matrix["1.9.0"] = {"python-version": ["3.8", "3.9"]}
+        matrix["1.9.1"] = {"python-version": ["3.8", "3.9"]}
+        matrix["1.10.0"] = {"python-version": ["3.8", "3.9"]}
+        matrix["1.10.1"] = {"python-version": ["3.8", "3.9"]}
+        matrix["1.10.2"] = {"python-version": ["3.8", "3.9"]}
+        matrix["1.11.0"] = {"python-version": ["3.8", "3.9", "3.10"]}
+        matrix["1.12.0"] = {"python-version": ["3.7", "3.8", "3.9", "3.10"]}
+        matrix["1.12.1"] = {"python-version": ["3.7", "3.8", "3.9", "3.10"]}
+        matrix["1.13.0"] = {"python-version": ["3.7", "3.8", "3.9", "3.10"]}
+        matrix["1.13.1"] = {"python-version": ["3.7", "3.8", "3.9", "3.10"]}
+        matrix["2.0.0"] = {"python-version": ["3.8", "3.9", "3.10", "3.11"]}
+        matrix["2.0.1"] = {"python-version": ["3.8", "3.9", "3.10", "3.11"]}
+
     ans = []
     for torch, python_cuda in matrix.items():
         if enabled_torch_versions and torch not in enabled_torch_versions:
             continue
 
         python_versions = python_cuda["python-version"]
-        cuda_versions = python_cuda["cuda"]
         if enable_cuda:
+            cuda_versions = python_cuda["cuda"]
             for p in python_versions:
                 if p in excluded_python_versions:
                     continue
@@ -191,7 +221,7 @@ def generate_build_matrix(enable_cuda, for_windows, for_macos, test_only_latest_
                 if p in excluded_python_versions:
                     continue
 
-                if for_windows or for_macos:
+                if for_windows or for_macos or for_macos_m1:
                     p = "cp" + "".join(p.split("."))
                     ans.append({"torch": torch, "python-version": p})
                 else:
@@ -212,6 +242,7 @@ def main():
         enable_cuda=args.enable_cuda,
         for_windows=args.for_windows,
         for_macos=args.for_macos,
+        for_macos_m1=args.for_macos_m1,
         test_only_latest_torch=args.test_only_latest_torch,
     )
 
