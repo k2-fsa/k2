@@ -14,8 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-torch=$TORCH_VERSION
-cuda=$CUDA_VERSION
+if [ $TORCH_VERSION != "" ] && [ $CUDA_VERSION != ""]; then
+    torch=$TORCH_VERSION
+    cuda=$CUDA_VERSION
+fi
+
 case ${torch} in
   1.5.*)
     case ${cuda} in
