@@ -31,6 +31,8 @@ on:
       - 'k2/python/**'
       - 'docs/**'
 
+  workflow_dispatch:
+
 concurrency:
   group: build-doc-${{ github.ref }}
   cancel-in-progress: true
