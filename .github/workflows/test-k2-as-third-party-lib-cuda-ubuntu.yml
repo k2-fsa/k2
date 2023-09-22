@@ -104,6 +104,7 @@ jobs:
 
       - name: Install GCC 7
         run: |
+          sudo echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu focal main universe" >> /etc/apt/sources.list
           sudo apt-get install -y gcc-7 g++-7
           echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
           echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV

@@ -75,7 +75,7 @@ target_link_libraries(k2_torch_api PUBLIC k2_torch)
 
 if(K2_ENABLE_TESTS)
   add_executable(torch_api_test torch_api_test.cc)
-  target_link_libraries(torch_api_test PRIVATE k2_torch_api gtest gtest_main)
+  target_link_libraries(torch_api_test k2_torch_api gtest gtest_main)
 
   # NOTE: We set the working directory here so that
   # it works also on windows. The reason is that
