@@ -642,6 +642,11 @@ decode
 
 .. automethod:: k2.OnlineDenseIntersecter.decode
 
+num_streams
+^^^^^^^^^^^
+
+.. autoattribute:: k2.OnlineDenseIntersecter.num_streams
+
 RaggedShape
 -----------
 

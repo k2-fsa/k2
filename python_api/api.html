@@ -193,6 +193,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#onlinedenseintersecter">OnlineDenseIntersecter</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#id17">__init__</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#decode">decode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#num-streams">num_streams</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#raggedshape">RaggedShape</a><ul>
@@ -2025,7 +2026,7 @@ a_arc_map and b_arc_map.</p>
 <h2>intersect_dense<a class="headerlink" href="#intersect-dense" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.intersect_dense">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">intersect_dense</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_states</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15000000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_arcs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1073741824</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_to_b_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seqframe_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/autograd.py#L736-L809"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.intersect_dense" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">intersect_dense</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_states</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15000000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_arcs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1073741824</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_to_b_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seqframe_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/autograd.py#L751-L824"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.intersect_dense" title="Permalink to this definition"></a></dt>
 <dd><p>Intersect array of FSAs on CPU/GPU.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
@@ -2074,7 +2075,7 @@ is exact, it uses forward and backward scores.</p>
 <h2>intersect_dense_pruned<a class="headerlink" href="#intersect-dense-pruned" title="Permalink to this headline"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="k2.intersect_dense_pruned">
-<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">intersect_dense_pruned</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_active_states</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_active_states</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seqframe_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/autograd.py#L659-L733"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.intersect_dense_pruned" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">k2.</span></span><span class="sig-name descname"><span class="pre">intersect_dense_pruned</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_active_states</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_active_states</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seqframe_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_idx_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_partial</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/autograd.py#L667-L748"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.intersect_dense_pruned" title="Permalink to this definition"></a></dt>
 <dd><p>Intersect array of FSAs on CPU/GPU.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
@@ -2101,6 +2102,22 @@ Set it to zero if there is no constraint.</p></li>
 frame for any given intersection/composition task. This is advisory,
 in that it will try not to exceed that but may not always succeed.
 You can use a very large number if no constraint is needed.</p></li>
+<li><p><strong>active</strong> (<em>allow_partial If true and there was no final state</em>) – we will treat all the states on the
+last frame to be final state. If false, we only
+care about the real final state in the decoding
+graph on the last frame when generating lattice.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>:param<span class="classifier">we will treat all the states on the</span></dt><dd><p>last frame to be final state. If false, we only
+care about the real final state in the decoding
+graph on the last frame when generating lattice.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
 <li><p><strong>seqframe_idx_name</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – If set (e.g. to ‘seqframe’), an attribute in the output will be created
 that encodes the sequence-index and the frame-index within that
 sequence; this is equivalent to a row-index into b_fsas.values,
@@ -4890,7 +4907,7 @@ semiring produce the same total scores.</p>
 <h3>__init__<a class="headerlink" href="#id17" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.OnlineDenseIntersecter.__init__">
-<span class="sig-prename descclassname"><span class="pre">OnlineDenseIntersecter.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">decoding_graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_streams</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_active_states</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_active_states</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/online_dense_intersecter.py#L30-L103"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.OnlineDenseIntersecter.__init__" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">OnlineDenseIntersecter.</span></span><span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">decoding_graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_streams</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_beam</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_active_states</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_active_states</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_partial</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/online_dense_intersecter.py#L30-L106"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.OnlineDenseIntersecter.__init__" title="Permalink to this definition"></a></dt>
 <dd><p>Create a new online intersecter object.
 :type decoding_graph: <code class="xref py py-class docutils literal notranslate"><span class="pre">Fsa</span></code>
 :param decoding_graph: The decoding graph used in this intersecter.
@@ -4926,7 +4943,7 @@ succeed. You can use a very large number if no constraint is needed.</p></li>
 <h3>decode<a class="headerlink" href="#decode" title="Permalink to this headline"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="k2.OnlineDenseIntersecter.decode">
-<span class="sig-prename descclassname"><span class="pre">OnlineDenseIntersecter.</span></span><span class="sig-name descname"><span class="pre">decode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dense_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decode_states</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/online_dense_intersecter.py#L105-L134"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.OnlineDenseIntersecter.decode" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">OnlineDenseIntersecter.</span></span><span class="sig-name descname"><span class="pre">decode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dense_fsas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decode_states</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/k2/python/k2/online_dense_intersecter.py#L112-L141"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#k2.OnlineDenseIntersecter.decode" title="Permalink to this definition"></a></dt>
 <dd><p>Does intersection/composition for current chunk of nnet_output(given
 by a DenseFsaVec), sequences in every chunk may come from different
 sources.
@@ -4952,6 +4969,19 @@ at the corresponding position.</p>
 The Fsa which has 3 axes(i.e. (batch, state, arc)) contains the output
 lattices. See the example in the constructor to get more info about
 how to use the list of new decoding states.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="num-streams">
+<h3>num_streams<a class="headerlink" href="#num-streams" title="Permalink to this headline"></a></h3>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="k2.OnlineDenseIntersecter.num_streams">
+<span class="sig-prename descclassname"><span class="pre">OnlineDenseIntersecter.</span></span><span class="sig-name descname"><span class="pre">num_streams</span></span><a class="headerlink" href="#k2.OnlineDenseIntersecter.num_streams" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></p>
 </dd>
 </dl>
 </dd></dl>
