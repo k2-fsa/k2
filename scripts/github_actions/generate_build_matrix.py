@@ -213,7 +213,7 @@ def generate_build_matrix(
                             "torch": torch,
                             "python-version": p,
                             "cuda": c,
-                            "image": f"pytorch/manylinux-builder:cuda{c}",
+                            "image": "pytorch/manylinux-builder:cuda" + c,
                         }
                     )
         else:

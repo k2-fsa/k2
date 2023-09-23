@@ -85,13 +85,19 @@ FsaClass TrivialGraph(int32_t max_token, torch::Device device = torch::kCPU);
                               in that it will try not to have fewer than this
                               number active. Set it to zero if there is no
                               constraint.
+     @param [in] allow_partial If true and there was no final state active,
+                         we will treat all the states on the last frame
+                         to be final state. If false, we only
+                         care about the real final state in the decoding
+                         graph on the last frame when generating lattice.
    @return  Returns an FsaClass containing the intersection of DenseFsaVec and
             decoding graphs with the attributes propagated.
  */
 FsaClass IntersectDensePruned(FsaClass &graphs, DenseFsaVec &dense,
                               float search_beam, float output_beam,
                               int32_t min_activate_states,
-                              int32_t max_activate_states);
+                              int32_t max_activate_states,
+                              bool allow_partial = false);
 
 /* Return the shortest paths as linear FSAs from the start state
    to the final state in the tropical semiring.

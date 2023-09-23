@@ -59,7 +59,7 @@ class TestOnlineDenseIntersecter(unittest.TestCase):
             num_chunks = 3
             chunk_size = 5
 
-            decode_states = [None] * num_streams
+            decode_states = [k2.DecodeStateInfo()] * num_streams
 
             for i in range(num_chunks):
                 logits = torch.randn(
