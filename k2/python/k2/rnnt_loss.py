@@ -188,9 +188,7 @@ def get_rnnt_logprobs(
             dim=2,
         )  # now: [B][S][T+1], index [:,:,T] has -inf..
 
-    px_lm = torch.gather(
-        lm[:, :S], dim=2, index=symbols.unsqueeze(-1)
-    )  # [B][S][1]
+    px_lm = torch.gather(lm[:, :S], dim=2, index=symbols.unsqueeze(-1))  # [B][S][1]
 
     px = px_am + px_lm  # [B][S][T+1], last slice with indexes out of
     # boundary is  -inf
@@ -299,9 +297,9 @@ def rnnt_loss_simple(
             ).expand(B, 1, 1)
         else:
             offset = (boundary[:, 3] - 1) / 2
-        penalty = offset.reshape(B, 1, 1) - torch.arange(
-            T0, device=px.device
-        ).reshape(1, 1, T0)
+        penalty = offset.reshape(B, 1, 1) - torch.arange(T0, device=px.device).reshape(
+            1, 1, T0
+        )
         penalty = penalty * delay_penalty
         px += penalty.to(px.dtype)
 
@@ -412,18 +410,14 @@ def get_rnnt_logprobs_joint(
         px = torch.cat(
             (
                 px,
-                torch.full(
-                    (B, S, 1), float("-inf"), device=px.device, dtype=px.dtype
-                ),
+                torch.full((B, S, 1), float("-inf"), device=px.device, dtype=px.dtype),
             ),
             dim=2,
         )  # now: [B][S][T+1], index [:,:,T] has -inf..
 
     px[:, :, :T] -= normalizers[:, :S, :]
 
-    py = (
-        logits[:, :, :, termination_symbol].permute((0, 2, 1)).clone()
-    )  # [B][S+1][T]
+    py = logits[:, :, :, termination_symbol].permute((0, 2, 1)).clone()  # [B][S+1][T]
     py -= normalizers
 
     if rnnt_type == "regular":
@@ -508,9 +502,9 @@ def rnnt_loss(
             ).expand(B, 1, 1)
         else:
             offset = (boundary[:, 3] - 1) / 2
-        penalty = offset.reshape(B, 1, 1) - torch.arange(
-            T0, device=px.device
-        ).reshape(1, 1, T0)
+        penalty = offset.reshape(B, 1, 1) - torch.arange(T0, device=px.device).reshape(
+            1, 1, T0
+        )
         penalty = penalty * delay_penalty
         px += penalty.to(px.dtype)
 
@@ -564,9 +558,7 @@ def _monotonic_lower_bound(x: torch.Tensor) -> torch.Tensor:
     return x
 
 
-def _adjust_pruning_lower_bound(
-    s_begin: torch.Tensor, s_range: int
-) -> torch.Tensor:
+def _adjust_pruning_lower_bound(s_begin: torch.Tensor, s_range: int) -> torch.Tensor:
     """Adjust s_begin (pruning lower bounds) to make it satisfy the following
     constraints
 
@@ -603,17 +595,13 @@ def _adjust_pruning_lower_bound(
     (B, T) = s_begin.shape
     s_begin = _monotonic_lower_bound(s_begin)
     # do the magic transformation
-    s_begin = -(
-        s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device)
-    )
+    s_begin = -(s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device))
     # make the transformed tensor to be non-decreasing
     s_begin = _monotonic_lower_bound(s_begin)
     # make start symbol to be zero.
     s_begin = torch.clamp(s_begin, min=0)
     # do the magic transformation again to recover s_begin
-    s_begin = -(
-        s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device)
-    )
+    s_begin = -(s_begin - (s_range - 1) * torch.arange(0, T, device=s_begin.device))
     return s_begin
 
 
@@ -820,19 +808,13 @@ def get_rnnt_prune_ranges_deprecated(
         than 2, or no valid paths could survive pruning. Given {s_range}"""
 
     px_pad = torch.zeros((B, 1, T1), dtype=px_grad.dtype, device=px_grad.device)
-    py_pad = torch.zeros(
-        (B, S + 1, 1), dtype=py_grad.dtype, device=py_grad.device
-    )
+    py_pad = torch.zeros((B, S + 1, 1), dtype=py_grad.dtype, device=py_grad.device)
     py_grad_padded = py_grad if T1 == T else torch.cat((py_grad, py_pad), dim=2)
-    tot_grad = (
-        torch.cat((px_grad, px_pad), dim=1) + py_grad_padded
-    )  # (B, S + 1, T1)
+    tot_grad = torch.cat((px_grad, px_pad), dim=1) + py_grad_padded  # (B, S + 1, T1)
 
     tot_grad = torch.cat(
         (
-            torch.zeros(
-                (B, 1, T1), dtype=tot_grad.dtype, device=tot_grad.device
-            ),
+            torch.zeros((B, 1, T1), dtype=tot_grad.dtype, device=tot_grad.device),
             tot_grad,
         ),
         dim=1,
@@ -912,9 +894,7 @@ def do_rnnt_pruning(
     lm_pruned = torch.gather(
         lm,
         dim=1,
-        index=ranges.reshape(B, T * s_range, 1).expand(
-            (B, T * s_range, decoder_dim)
-        ),
+        index=ranges.reshape(B, T * s_range, 1).expand((B, T * s_range, decoder_dim)),
     ).reshape(B, T, s_range, decoder_dim)
     return am_pruned, lm_pruned
 
@@ -945,13 +925,199 @@ def _roll_by_shifts(src: torch.Tensor, shifts: torch.LongTensor):
     assert shifts.shape == (B, T), (shifts.shape, B, T)
 
     index = (
-        torch.arange(S, device=src.device)
-        .view((1, S))
-        .repeat((T, 1))
-        .repeat((B, 1, 1))
+        torch.arange(S, device=src.device).view((1, S)).repeat((T, 1)).repeat((B, 1, 1))
     )
     index = (index - shifts.reshape(B, T, 1)) % S
     return torch.gather(src, 2, index)
+
+
+def get_hat_logprobs_pruned(
+    logits: Tensor,
+    symbols: Tensor,
+    ranges: Tensor,
+    termination_symbol: int,
+    boundary: Tensor,
+    rnnt_type: str = "regular",
+) -> Tuple[Tensor, Tensor]:
+    """Construct px, py for mutual_information_recursion with pruned output.
+    This is a variant of get_rnnt_logprobs_pruned based on the Hybrid Autoregressive
+    Transducer (HAT) model proposed in https://arxiv.org/abs/2003.07705.
+
+    NOTE: We assume that the RNNT blank is the zeroth symbol.
+
+    Args:
+      logits:
+        The pruned output of joiner network, with shape (B, T, s_range, C)
+      symbols:
+        The symbol sequences, a LongTensor of shape [B][S], and elements in
+        {0..C-1}.
+      ranges:
+        A tensor containing the symbol ids for each frame that we want to keep.
+        It is a LongTensor of shape ``[B][T][s_range]``, where ``ranges[b,t,0]``
+        contains the begin symbol ``0 <= s <= S - s_range + 1``, such that
+        ``logits[b,t,:,:]`` represents the logits with positions
+        ``s, s + 1, ... s + s_range - 1``.
+        See docs in :func:`get_rnnt_prune_ranges` for more details of what
+        ranges contains.
+      termination_symbol:
+        the termination symbol, with 0 <= termination_symbol < C.
+      boundary:
+        a optional LongTensor of shape [B, 4] with elements interpreted as
+        [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
+        [0, 0, S, T]
+        if boundary is not supplied.
+        Most likely you will want begin_symbol and begin_frame to be zero.
+      rnnt_type:
+        Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
+        `regular`: The regular rnnt that taking you to the next frame only if
+                   emitting a blank (i.e., emitting a symbol does not take you
+                   to the next frame).
+        `modified`: A modified version of rnnt that will take you to the next
+                    frame whether emitting a blank or a non-blank symbol.
+        `constrained`: A version likes the modified one that will go to the next
+                       frame when you emit a non-blank symbol, but this is done
+                       by "forcing" you to take the blank transition from the
+                       *next* context on the *current* frame, e.g. if we emit
+                       c given "a b" context, we are forced to emit "blank"
+                       given "b c" context on the current frame.
+    Returns:
+      (px, py) (the names are quite arbitrary)::
+
+          px: logprobs, of shape [B][S][T+1] if rnnt_type is regular,
+                                 [B][S][T] if rnnt_type is not regular.
+          py: logprobs, of shape [B][S+1][T]
+
+      in the recursion::
+
+         p[b,0,0] = 0.0
+         if rnnt_type == "regular":
+            p[b,s,t] = log_add(p[b,s-1,t] + px[b,s-1,t],
+                               p[b,s,t-1] + py[b,s,t-1])
+         if rnnt_type != "regular":
+            p[b,s,t] = log_add(p[b,s-1,t-1] + px[b,s-1,t-1],
+                               p[b,s,t-1] + py[b,s,t-1])
+
+      .. where p[b][s][t] is the "joint score" of the pair of subsequences of
+      length s and t respectively.  px[b][s][t] represents the probability of
+      extending the subsequences of length (s,t) by one in the s direction,
+      given the particular symbol, and py[b][s][t] represents the probability
+      of extending the subsequences of length (s,t) by one in the t direction,
+      i.e. of emitting the termination/next-frame symbol.
+
+      if `rnnt_type == "regular"`, px[:,:,T] equals -infinity, meaning on the
+      "one-past-the-last" frame we cannot emit any symbols.
+      This is simply a way of incorporating
+      the probability of the termination symbol on the last frame.
+    """
+    # logits (B, T, s_range, C)
+    # symbols (B, S)
+    # ranges (B, T, s_range)
+    assert logits.ndim == 4, logits.shape
+    (B, T, s_range, C) = logits.shape
+    assert ranges.shape == (B, T, s_range), (ranges.shape, B, T, s_range)
+    (B, S) = symbols.shape
+    assert S >= 0, S
+    assert (
+        rnnt_type != "modified" or T >= S
+    ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
+    assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
+
+    # For blank symbol, log-prob is log-sigmoid of the score
+    logp_b = torch.nn.functional.logsigmoid(logits[..., 0])
+    logits[..., 0] = logp_b
+
+    # For non-blank, we will compute the log-probs using log-softmax, for which we
+    # will need the following normalization factor.
+    nb_normalizers = torch.logsumexp(logits[..., 1:], dim=3)
+
+    # Additionally, to ensure the the probs of blank and non-blank sum to 1, we
+    # need to add the following term to the log-probs of non-blank symbols. This
+    # is equivalent to log(1 - sigmoid(logits[..., 0])).
+    nb_shift = logp_b - logits[..., 0]
+
+    symbols_with_terminal = torch.cat(
+        (
+            symbols,
+            torch.tensor(
+                [termination_symbol] * B,
+                dtype=torch.int64,
+                device=symbols.device,
+            ).reshape((B, 1)),
+        ),
+        dim=1,
+    )
+
+    # (B, T, s_range)
+    pruned_symbols = torch.gather(
+        symbols_with_terminal.unsqueeze(1).expand((B, T, S + 1)),
+        dim=2,
+        index=ranges,
+    )
+
+    # (B, T, s_range)
+    px = torch.gather(
+        logits, dim=3, index=pruned_symbols.reshape(B, T, s_range, 1)
+    ).squeeze(-1)
+    px = px - nb_normalizers + nb_shift
+
+    # (B, T, S) with index larger than s_range in dim 2 fill with -inf
+    px = torch.cat(
+        (
+            px,
+            torch.full(
+                (B, T, S + 1 - s_range),
+                float("-inf"),
+                device=px.device,
+                dtype=px.dtype,
+            ),
+        ),
+        dim=2,
+    )
+
+    # (B, T, S) with index out of s_range in dim 2 fill with -inf
+    px = _roll_by_shifts(px, ranges[:, :, 0])[:, :, :S]
+
+    px = px.permute((0, 2, 1))
+
+    if rnnt_type == "regular":
+        px = torch.cat(
+            (
+                px,
+                torch.full((B, S, 1), float("-inf"), device=px.device, dtype=px.dtype),
+            ),
+            dim=2,
+        )  # now: [B][S][T+1], index [:,:,T] has -inf..
+
+    py = logits[:, :, :, termination_symbol].clone()  # (B, T, s_range)
+    # py is blank log-probs, so we need to subtract the normalizers and add the shift.
+    # Note that it denotes the horizontal arcs on the RNNT lattice (blank transition)
+    # py = py - nb_normalizers + nb_shift
+
+    # (B, T, S + 1) with index larger than s_range in dim 2 filled with -inf
+    py = torch.cat(
+        (
+            py,
+            torch.full(
+                (B, T, S + 1 - s_range),
+                float("-inf"),
+                device=py.device,
+                dtype=py.dtype,
+            ),
+        ),
+        dim=2,
+    )
+
+    # (B, T, S + 1) with index out of s_range in dim 2 fill with -inf
+    py = _roll_by_shifts(py, ranges[:, :, 0])
+    # (B, S + 1, T)
+    py = py.permute((0, 2, 1))
+
+    if rnnt_type == "regular":
+        px = fix_for_boundary(px, boundary)
+    elif rnnt_type == "constrained":
+        px += py[:, 1:, :]
+
+    return (px, py)
 
 
 def get_rnnt_logprobs_pruned(
@@ -1091,9 +1257,7 @@ def get_rnnt_logprobs_pruned(
         px = torch.cat(
             (
                 px,
-                torch.full(
-                    (B, S, 1), float("-inf"), device=px.device, dtype=px.dtype
-                ),
+                torch.full((B, S, 1), float("-inf"), device=px.device, dtype=px.dtype),
             ),
             dim=2,
         )  # now: [B][S][T+1], index [:,:,T] has -inf..
@@ -1137,6 +1301,7 @@ def rnnt_loss_pruned(
     rnnt_type: str = "regular",
     delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
+    use_hat_loss: bool = False,
 ) -> Tensor:
     """A RNN-T loss with pruning, which uses the output of a pruned 'joiner'
     network as input, i.e. a 4 dimensions tensor with shape (B, T, s_range, C),
@@ -1187,19 +1352,35 @@ def rnnt_loss_pruned(
         `mean`: apply `torch.mean` over the batches.
         `sum`: the output will be summed.
         Default: `mean`
+      use_hat_loss:
+        If True, we compute the Hybrid Autoregressive Transducer (HAT) loss from
+        https://arxiv.org/abs/2003.07705. This is a variant of RNN-T that models
+        the blank distribution separately as a Bernoulli distribution, and the
+        non-blanks are modeled as a multinomial. This formulation may be useful
+        for performing internal LM estimation, as described in the paper.
     Returns:
       If reduction is `none`, returns a tensor of shape (B,), containing the
       total RNN-T loss values for each sequence of the batch, otherwise a scalar
       with the reduction applied.
     """
-    px, py = get_rnnt_logprobs_pruned(
-        logits=logits,
-        symbols=symbols,
-        ranges=ranges,
-        termination_symbol=termination_symbol,
-        boundary=boundary,
-        rnnt_type=rnnt_type,
-    )
+    if not use_hat_loss:
+        px, py = get_rnnt_logprobs_pruned(
+            logits=logits,
+            symbols=symbols,
+            ranges=ranges,
+            termination_symbol=termination_symbol,
+            boundary=boundary,
+            rnnt_type=rnnt_type,
+        )
+    else:
+        px, py = get_hat_logprobs_pruned(
+            logits=logits,
+            symbols=symbols,
+            ranges=ranges,
+            termination_symbol=termination_symbol,
+            boundary=boundary,
+            rnnt_type=rnnt_type,
+        )
 
     if delay_penalty > 0.0:
         B, S, T0 = px.shape
@@ -1212,9 +1393,9 @@ def rnnt_loss_pruned(
             ).expand(B, 1, 1)
         else:
             offset = (boundary[:, 3] - 1) / 2
-        penalty = offset.reshape(B, 1, 1) - torch.arange(
-            T0, device=px.device
-        ).reshape(1, 1, T0)
+        penalty = offset.reshape(B, 1, 1) - torch.arange(T0, device=px.device).reshape(
+            1, 1, T0
+        )
         penalty = penalty * delay_penalty
         px += penalty.to(px.dtype)
 
@@ -1379,9 +1560,7 @@ def get_rnnt_logprobs_smoothed(
         + torch.finfo(lm_probs.dtype).tiny
     )  # [1][1][C]
     amonly_normalizers = (
-        torch.mv(am_probs.reshape(-1, C), unigram_lm.reshape(C))
-        .reshape(B, T, 1)
-        .log()
+        torch.mv(am_probs.reshape(-1, C), unigram_lm.reshape(C)).reshape(B, T, 1).log()
         + am_max
     )  # [B][T][1]
     amonly_normalizers = amonly_normalizers.transpose(1, 2)  # [B][1][T]
@@ -1415,9 +1594,7 @@ def get_rnnt_logprobs_smoothed(
             dim=2,
         )  # now: [B][S][T+1], index [:,:,T] has -inf..
 
-    px_lm = torch.gather(
-        lm[:, :S], dim=2, index=symbols.unsqueeze(-1)
-    )  # [B][S][1]
+    px_lm = torch.gather(lm[:, :S], dim=2, index=symbols.unsqueeze(-1))  # [B][S][1]
     px_lm_unigram = torch.gather(
         unigram_lm.expand(B, S, C), dim=2, index=symbols.unsqueeze(-1)
     )  # [B][S][1]
@@ -1450,14 +1627,10 @@ def get_rnnt_logprobs_smoothed(
         am_only_scale = 1.0e-20
 
     px_interp = (
-        px * combined_scale
-        + px_lmonly * lm_only_scale
-        + px_amonly * am_only_scale
+        px * combined_scale + px_lmonly * lm_only_scale + px_amonly * am_only_scale
     )
     py_interp = (
-        py * combined_scale
-        + py_lmonly * lm_only_scale
-        + py_amonly * am_only_scale
+        py * combined_scale + py_lmonly * lm_only_scale + py_amonly * am_only_scale
     )
 
     if rnnt_type == "regular":
@@ -1570,9 +1743,9 @@ def rnnt_loss_smoothed(
             ).expand(B, 1, 1)
         else:
             offset = (boundary[:, 3] - 1) / 2
-        penalty = offset.reshape(B, 1, 1) - torch.arange(
-            T0, device=px.device
-        ).reshape(1, 1, T0)
+        penalty = offset.reshape(B, 1, 1) - torch.arange(T0, device=px.device).reshape(
+            1, 1, T0
+        )
         penalty = penalty * delay_penalty
         px += penalty.to(px.dtype)
 
