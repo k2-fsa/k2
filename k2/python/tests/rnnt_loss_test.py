@@ -768,8 +768,8 @@ class TestRnntLoss(unittest.TestCase):
 
         am_ = torch.randn((B, T, C), dtype=torch.float64)
         lm_ = torch.randn((B, S + 1, C), dtype=torch.float64)
-        symbols_ = torch.randint(0, C - 1, (B, S))
-        terminal_symbol = C - 1
+        symbols_ = torch.randint(1, C, (B, S))
+        terminal_symbol = 0
 
         boundary_ = torch.zeros((B, 4), dtype=torch.int64)
         boundary_[:, 2] = seq_length

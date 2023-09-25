@@ -1021,10 +1021,10 @@ def get_hat_logprobs_pruned(
         rnnt_type != "modified" or T >= S
     ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
+    assert termination_symbol == 0, f"Termination symbol must be 0, but got {termination_symbol}"
 
     # For blank symbol, log-prob is log-sigmoid of the score
     logp_b = torch.nn.functional.logsigmoid(logits[..., 0])
-    logits[..., 0] = logp_b
 
     # For non-blank, we will compute the log-probs using log-softmax, for which we
     # will need the following normalization factor.
@@ -1088,10 +1088,9 @@ def get_hat_logprobs_pruned(
             dim=2,
         )  # now: [B][S][T+1], index [:,:,T] has -inf..
 
-    py = logits[:, :, :, termination_symbol].clone()  # (B, T, s_range)
+    py = logp_b.clone()  # (B, T, s_range)
     # py is blank log-probs, so we need to subtract the normalizers and add the shift.
     # Note that it denotes the horizontal arcs on the RNNT lattice (blank transition)
-    # py = py - nb_normalizers + nb_shift
 
     # (B, T, S + 1) with index larger than s_range in dim 2 filled with -inf
     py = torch.cat(
