@@ -358,6 +358,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
                 output_beam: float,
                 min_active_states: int,
                 max_active_states: int,
+                allow_partial: bool,
                 unused_scores_a: torch.Tensor,
                 unused_scores_b: torch.Tensor,
                 seqframe_idx_name: Optional[str] = None,
@@ -383,16 +384,21 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
           output_beam:
             Pruning beam for the output of intersection (vs. best path);
             equivalent to kaldi's lattice-beam.  E.g. 8.
-          max_active_states:
-            Maximum number of FSA states that are allowed to be active on any
-            given frame for any given intersection/composition task. This is
-            advisory, in that it will try not to exceed that but may not always
-            succeed. You can use a very large number if no constraint is needed.
           min_active_states:
             Minimum number of FSA states that are allowed to be active on any
             given frame for any given intersection/composition task. This is
             advisory, in that it will try not to have fewer than this number
             active. Set it to zero if there is no constraint.
+          max_active_states:
+            Maximum number of FSA states that are allowed to be active on any
+            given frame for any given intersection/composition task. This is
+            advisory, in that it will try not to exceed that but may not always
+            succeed. You can use a very large number if no constraint is needed.
+          allow_partial If true and there was no final state active,
+            we will treat all the states on the
+            last frame to be final state. If false, we only
+            care about the real final state in the decoding
+            graph on the last frame when generating lattice.
           unused_scores_a:
             It equals to `a_fsas.scores` and its sole purpose is for back
             propagation.
@@ -418,7 +424,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             search_beam=search_beam,
             output_beam=output_beam,
             min_active_states=min_active_states,
-            max_active_states=max_active_states)
+            max_active_states=max_active_states,
+            allow_partial=allow_partial)
 
         out_fsa[0] = Fsa(ragged_arc)
 
@@ -466,7 +473,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, out_fsa_grad: torch.Tensor) \
-            -> Tuple[None, None, None, None, None, None, None, torch.Tensor, torch.Tensor]: # noqa
+            -> Tuple[None, None, None, None, None, None, None, None, torch.Tensor, torch.Tensor, None, None]: # noqa
         a_scores, b_scores = ctx.saved_tensors
         arc_map_a = ctx.arc_map_a
         arc_map_b = ctx.arc_map_b
@@ -493,6 +500,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             None,  # output_beam
             None,  # min_active_states
             None,  # max_active_states
+            None,  # allow_partial
             grad_a,  # unused_scores_a
             grad_b,  # unused_scores_b
             None,  # seqframe_idx_name
@@ -663,7 +671,8 @@ def intersect_dense_pruned(a_fsas: Fsa,
                            min_active_states: int,
                            max_active_states: int,
                            seqframe_idx_name: Optional[str] = None,
-                           frame_idx_name: Optional[str] = None) -> Fsa:
+                           frame_idx_name: Optional[str] = None,
+                           allow_partial: bool = False) -> Fsa:
     '''Intersect array of FSAs on CPU/GPU.
 
     Caution:
@@ -694,6 +703,11 @@ def intersect_dense_pruned(a_fsas: Fsa,
         frame for any given intersection/composition task. This is advisory,
         in that it will try not to exceed that but may not always succeed.
         You can use a very large number if no constraint is needed.
+      allow_partial If true and there was no final state active,
+        we will treat all the states on the
+        last frame to be final state. If false, we only
+        care about the real final state in the decoding
+        graph on the last frame when generating lattice.
       seqframe_idx_name:
         If set (e.g. to 'seqframe'), an attribute in the output will be created
         that encodes the sequence-index and the frame-index within that
@@ -727,7 +741,8 @@ def intersect_dense_pruned(a_fsas: Fsa,
     # in `out_fsa[0].scores`
     _IntersectDensePrunedFunction.apply(a_fsas, b_fsas, out_fsa, search_beam,
                                         output_beam, min_active_states,
-                                        max_active_states, a_fsas.scores,
+                                        max_active_states, allow_partial,
+                                        a_fsas.scores,
                                         b_fsas.scores, seqframe_idx_name,
                                         frame_idx_name)
     return out_fsa[0]

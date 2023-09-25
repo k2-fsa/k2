@@ -68,9 +68,6 @@ class DtypeTraits {
   const char *name_;  // name, e.g. "float", "int8", "int32"
 };
 
-// We initialize this in dtype.cu
-extern const DtypeTraits g_dtype_traits_array[];
-
 // It's just an enum, we can use TraitsOf(dtype).NumBytes() and so on..
 enum class Dtype {
   kAnyDtype,  // for when dtype is unknown because it's a generic tensor
@@ -111,9 +108,7 @@ constexpr Dtype kOtherDtype = Dtype::kOtherDtype;
 
 std::ostream &operator<<(std::ostream &os, Dtype dtype);
 
-inline DtypeTraits TraitsOf(Dtype dtype) {
-  return g_dtype_traits_array[static_cast<int32_t>(dtype)];
-}
+DtypeTraits TraitsOf(Dtype dtype);
 
 template <typename T>
 struct DtypeOf;

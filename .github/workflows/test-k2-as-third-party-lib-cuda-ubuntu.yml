@@ -67,7 +67,7 @@ jobs:
   test-k2-as-third-party-lib-cuda-ubuntu:
     if: github.event.label.name == 'ready' || github.event_name == 'push'
     needs: generate_build_matrix
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -104,6 +104,9 @@ jobs:
 
       - name: Install GCC 7
         run: |
+          sudo apt update
+          sudo apt install software-properties-common
+          sudo add-apt-repository "deb [arch=amd64] http://archive.ubuntu.com/ubuntu focal main universe"
           sudo apt-get install -y gcc-7 g++-7
           echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
           echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV

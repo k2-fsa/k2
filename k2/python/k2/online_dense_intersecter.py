@@ -35,6 +35,7 @@ class OnlineDenseIntersecter(object):
         output_beam: float,
         min_active_states: int,
         max_active_states: int,
+        allow_partial: bool = True,
     ) -> None:
         """Create a new online intersecter object.
         Args:
@@ -91,6 +92,7 @@ class OnlineDenseIntersecter(object):
             decode_states[1] = new_decode_states[1]
             ...
         """
+        self.num_streams_ = num_streams
         self.decoding_graph = decoding_graph
         self.device = decoding_graph.device
         self.intersecter = _k2.OnlineDenseIntersecter(
@@ -100,7 +102,12 @@ class OnlineDenseIntersecter(object):
             output_beam,
             min_active_states,
             max_active_states,
+            allow_partial=allow_partial,
         )
+
+    @property
+    def num_streams(self) -> int:
+        return self.num_streams_
 
     def decode(
         self, dense_fsas: DenseFsaVec, decode_states: List[DecodeStateInfo]

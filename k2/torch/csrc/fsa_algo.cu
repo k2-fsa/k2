@@ -47,13 +47,14 @@ FsaClass TrivialGraph(int32_t max_token,
 FsaClass IntersectDensePruned(FsaClass &graph, DenseFsaVec &dense,
                               float search_beam, float output_beam,
                               int32_t min_activate_states,
-                              int32_t max_activate_states) {
+                              int32_t max_activate_states,
+                              bool allow_partial) {
   Array1<int32_t> graph_arc_map;
   Array1<int32_t> dense_arc_map;
   FsaVec fsa;
   IntersectDensePruned(graph.fsa, dense, search_beam, output_beam,
-                       min_activate_states, max_activate_states, &fsa,
-                       &graph_arc_map, &dense_arc_map);
+                       min_activate_states, max_activate_states, allow_partial,
+                       &fsa, &graph_arc_map, &dense_arc_map);
   FsaClass dest(fsa);
   dest.CopyAttrs(graph, Array1ToTorch(graph_arc_map));
   return dest;

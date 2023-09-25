@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if [ $TORCH_VERSION != "" ] && [ $CUDA_VERSION != ""]; then
+    torch=$TORCH_VERSION
+    cuda=$CUDA_VERSION
+fi
+
 case ${torch} in
   1.5.*)
     case ${cuda} in
@@ -155,6 +160,18 @@ case ${torch} in
         ;;
     esac
     ;;
+  2.0.*)
+    case ${cuda} in
+      11.7)
+        package="torch==${torch}+cu117"
+        url=https://download.pytorch.org/whl/torch_stable.html
+        ;;
+      11.8)
+        package="torch==${torch}+cu118"
+        url=https://download.pytorch.org/whl/torch_stable.html
+        ;;
+    esac
+    ;;
   *)
     echo "Unsupported PyTorch version: ${torch}"
     exit 1
@@ -170,3 +187,5 @@ if [ x"${url}" == "x" ]; then
 else
   retry python3 -m pip install -q $package -f $url
 fi
+
+rm -rfv ~/.cache/pip

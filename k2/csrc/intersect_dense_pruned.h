@@ -117,7 +117,7 @@ class MultiGraphDenseIntersectPruned;
 
 // DecodeStateInfo contains the history decoding states for each sequence, this
 // is normally constructed from `frames_` in MultiGraphDenseIntersectPruned
-// bu using `Stack` and `Unstack`.
+// by using `Stack` and `Unstack`.
 struct DecodeStateInfo {
   // States that survived for the previously decoded frames. Indexed
   // [frame_idx][state_idx], state_idx just enumerates the active states
@@ -170,7 +170,7 @@ class OnlineDenseIntersecter {
  public:
     OnlineDenseIntersecter(FsaVec &a_fsas, int32_t num_seqs, float search_beam,
                       float output_beam, int32_t min_states,
-                      int32_t max_states);
+                      int32_t max_states, bool allow_partial = true);
 
     /* Does intersection/composition for current chunk of nnet_output(given
        by a DenseFsaVec), sequences in every chunk may come from different
@@ -194,7 +194,7 @@ class OnlineDenseIntersecter {
                         will have been assigned to this location.
      */
     void Decode(DenseFsaVec &b_fsas,
-                std::vector<std::shared_ptr<DecodeStateInfo>> *decode_states,
+                std::vector<DecodeStateInfo* > *decode_states,
                 FsaVec *ofsa, Array1<int32_t> *arc_map_a);
 
     ContextPtr &Context() { return c_;}
