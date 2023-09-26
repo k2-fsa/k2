@@ -485,7 +485,7 @@ class TestRnntLoss(unittest.TestCase):
             assert torch.allclose(m, expected.to(device))
 
     def test_rnnt_loss_pruned(self):
-        print(f"\ntest_rnnt_loss_pruned.")
+        print("\ntest_rnnt_loss_pruned.")
         B = 4
         T = 300
         S = 50
@@ -572,7 +572,7 @@ class TestRnntLoss(unittest.TestCase):
     # at this circumstance, the s_range would be greater than S, which will
     # raise errors (like, nan or inf loss) in our previous versions.
     def test_rnnt_loss_pruned_small_symbols_number(self):
-        print(f"\ntest_rnnt_loss_pruned_small_symbols_number.")
+        print("\ntest_rnnt_loss_pruned_small_symbols_number.")
         B = 2
         T = 20
         S = 3
@@ -672,7 +672,7 @@ class TestRnntLoss(unittest.TestCase):
     # because we can not 100% sure that the new method is better than the old
     # one all the time, both of them are local optimal bounds.
     def test_prune_ranges(self):
-        print(f"\ntest_prune_range.")
+        print("\ntest_prune_range.")
         B = 5
         T = 200
         S = 100
@@ -764,7 +764,7 @@ class TestRnntLoss(unittest.TestCase):
     # to cover the whole sequence length (in regular rnnt mode)
     # and would result in inf loss
     def test_rnnt_loss_pruned_small_s_range(self):
-        print(f"\ntest_rnnt_loss_pruned_small_s_range.")
+        print("\ntest_rnnt_loss_pruned_small_s_range.")
         B = 2
         T = 2
         S = 10
@@ -853,7 +853,7 @@ class TestRnntLoss(unittest.TestCase):
                     )
                     assert (
                         not pruned_loss.isinf().any()
-                    ), f"Pruned loss is inf for r={r}, S={S}, T={T}: {pruned_loss}"
+                    ), f"Pruned loss is inf for r={r}, S={S}, T={T}."
                     print(f"Pruned loss with range {r} : {pruned_loss}")
 
     # Check that training with an empty reference does not cause a crash.
