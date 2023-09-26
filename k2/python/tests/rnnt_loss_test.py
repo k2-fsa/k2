@@ -281,7 +281,8 @@ class TestRnntLoss(unittest.TestCase):
                 )
                 assert (
                     px.shape == (B, S, T)
-                    if rnnt_type != "regular" else (B, S, T + 1)
+                    if rnnt_type != "regular"
+                    else (B, S, T + 1)
                 )
                 assert py.shape == (B, S + 1, T)
                 assert symbols.shape == (B, S)
@@ -484,6 +485,7 @@ class TestRnntLoss(unittest.TestCase):
             assert torch.allclose(m, expected.to(device))
 
     def test_rnnt_loss_pruned(self):
+        print("\ntest_rnnt_loss_pruned.")
         B = 4
         T = 300
         S = 50
@@ -570,6 +572,7 @@ class TestRnntLoss(unittest.TestCase):
     # at this circumstance, the s_range would be greater than S, which will
     # raise errors (like, nan or inf loss) in our previous versions.
     def test_rnnt_loss_pruned_small_symbols_number(self):
+        print("\ntest_rnnt_loss_pruned_small_symbols_number.")
         B = 2
         T = 20
         S = 3
@@ -629,7 +632,7 @@ class TestRnntLoss(unittest.TestCase):
                 )
 
                 S0 = 2
-                if rnnt_type != "regular":
+                if rnnt_type == "modified":
                     S0 = 1
 
                 for r in range(S0, S + 2):
@@ -669,6 +672,7 @@ class TestRnntLoss(unittest.TestCase):
     # because we can not 100% sure that the new method is better than the old
     # one all the time, both of them are local optimal bounds.
     def test_prune_ranges(self):
+        print("\ntest_prune_range.")
         B = 5
         T = 200
         S = 100
@@ -754,6 +758,103 @@ class TestRnntLoss(unittest.TestCase):
                 )
 
                 print(f"Pruned with old ranges {r} : {loss}")
+
+    # Test low s_range values with large S and small T,
+    # at this circumstance, the s_range would not be enough
+    # to cover the whole sequence length (in regular rnnt mode)
+    # and would result in inf loss
+    def test_rnnt_loss_pruned_small_s_range(self):
+        print("\ntest_rnnt_loss_pruned_small_s_range.")
+        B = 2
+        T = 2
+        S = 10
+        C = 10
+
+        frames = torch.randint(1, T, (B,))
+        seq_lengths = torch.randint(1, S, (B,))
+        T = torch.max(frames)
+        S = torch.max(seq_lengths)
+
+        am_ = torch.randn((B, T, C), dtype=torch.float64)
+        lm_ = torch.randn((B, S + 1, C), dtype=torch.float64)
+        symbols_ = torch.randint(0, C, (B, S))
+        terminal_symbol = C - 1
+
+        boundary_ = torch.zeros((B, 4), dtype=torch.int64)
+        boundary_[:, 2] = seq_lengths
+        boundary_[:, 3] = frames
+
+        print(f"B = {B}, T = {T}, S = {S}, C = {C}")
+
+        for rnnt_type in ["regular"]:
+            for device in self.devices:
+                # normal rnnt
+                am = am_.to(device)
+                lm = lm_.to(device)
+                symbols = symbols_.to(device)
+                boundary = boundary_.to(device)
+
+                logits = am.unsqueeze(2) + lm.unsqueeze(1)
+                logits = logits.float()
+
+                # nonlinear transform
+                logits = torch.sigmoid(logits)
+
+                loss = k2.rnnt_loss(
+                    logits=logits,
+                    symbols=symbols,
+                    termination_symbol=terminal_symbol,
+                    boundary=boundary,
+                    rnnt_type=rnnt_type,
+                    reduction="none",
+                )
+
+                print(f"Unpruned rnnt loss with {rnnt_type} rnnt : {loss}")
+
+                # pruning
+                simple_loss, (px_grad, py_grad) = k2.rnnt_loss_simple(
+                    lm=lm,
+                    am=am,
+                    symbols=symbols,
+                    termination_symbol=terminal_symbol,
+                    boundary=boundary,
+                    rnnt_type=rnnt_type,
+                    return_grad=True,
+                    reduction="none",
+                )
+
+                S0 = 2
+
+                for r in range(S0, S + 2):
+                    ranges = k2.get_rnnt_prune_ranges(
+                        px_grad=px_grad,
+                        py_grad=py_grad,
+                        boundary=boundary,
+                        s_range=r,
+                    )
+                    # (B, T, r, C)
+                    pruned_am, pruned_lm = k2.do_rnnt_pruning(
+                        am=am, lm=lm, ranges=ranges
+                    )
+
+                    logits = pruned_am + pruned_lm
+
+                    # nonlinear transform
+                    logits = torch.sigmoid(logits)
+
+                    pruned_loss = k2.rnnt_loss_pruned(
+                        logits=logits,
+                        symbols=symbols,
+                        ranges=ranges,
+                        termination_symbol=terminal_symbol,
+                        boundary=boundary,
+                        rnnt_type=rnnt_type,
+                        reduction="none",
+                    )
+                    assert (
+                        not pruned_loss.isinf().any()
+                    ), f"Pruned loss is inf for r={r}, S={S}, T={T}."
+                    print(f"Pruned loss with range {r} : {pruned_loss}")
 
     # Check that training with an empty reference does not cause a crash.
     def _test_rnnt_loss_empty_reference(self):
