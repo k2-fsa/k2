@@ -1451,7 +1451,9 @@ def get_rnnt_logprobs_smoothed(
         unigram_lm.expand(B, S, C), dim=2, index=symbols.unsqueeze(-1)
     )  # [B][S][1]
 
-    px = px_am + px_lm  # [B][S][T+1] if rnnt_type == "regular", otherwise [B][S][T]
+    px = (
+        px_am + px_lm
+    )  # [B][S][T+1] if rnnt_type == "regular", otherwise [B][S][T]
     px[:, :, :T] -= normalizers[:, :S, :]  # px: [B][S][T+1] or [B][S][T]
 
     px_amonly = (

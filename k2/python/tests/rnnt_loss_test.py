@@ -281,7 +281,8 @@ class TestRnntLoss(unittest.TestCase):
                 )
                 assert (
                     px.shape == (B, S, T)
-                    if rnnt_type != "regular" else (B, S, T + 1)
+                    if rnnt_type != "regular"
+                    else (B, S, T + 1)
                 )
                 assert py.shape == (B, S + 1, T)
                 assert symbols.shape == (B, S)
@@ -484,7 +485,7 @@ class TestRnntLoss(unittest.TestCase):
             assert torch.allclose(m, expected.to(device))
 
     def test_rnnt_loss_pruned(self):
-        print (f"\ntest_rnnt_loss_pruned.")
+        print(f"\ntest_rnnt_loss_pruned.")
         B = 4
         T = 300
         S = 50
@@ -758,7 +759,6 @@ class TestRnntLoss(unittest.TestCase):
 
                 print(f"Pruned with old ranges {r} : {loss}")
 
-
     # Test low s_range values with large S and small T,
     # at this circumstance, the s_range would not be enough
     # to cover the whole sequence length (in regular rnnt mode)
@@ -858,7 +858,6 @@ class TestRnntLoss(unittest.TestCase):
 
     # Check that training with an empty reference does not cause a crash.
     def _test_rnnt_loss_empty_reference(self):
-
         B = 1
         S = 0
         T = 4
