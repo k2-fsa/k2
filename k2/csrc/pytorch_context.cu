@@ -171,7 +171,7 @@ class PytorchCudaContext : public Context {
     return g_stream_override.OverrideStream(
         c10::cuda::getCurrentCUDAStream(gpu_id_));
 #else
-    return cudaStream_t{};
+    return kCudaStreamInvalid;
 #endif
   }
 
