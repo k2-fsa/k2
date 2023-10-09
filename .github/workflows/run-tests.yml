@@ -46,12 +46,13 @@ jobs:
   run-tests:
     if: github.event.label.name == 'ready' || github.event_name == 'push'
     runs-on: ${{ matrix.os }}
+    name: ${{ matrix.build_type }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        cuda: ["11.7"]
-        torch: ["1.13.1"]
+        cuda: ["12.1"]
+        torch: ["2.1.0"]
         python-version: ["3.11"]
         build_type: ["Release", "Debug"]
 
