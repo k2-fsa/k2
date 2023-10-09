@@ -69,7 +69,7 @@ yum clean all >/dev/null 2>&1
 cd /var/www
 
 export CMAKE_CUDA_COMPILER_LAUNCHER=
-export K2_CMAKE_ARGS=" -DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
+export K2_CMAKE_ARGS="-DCUDAToolkit_TARGET_DIR=/usr/local/cuda/targets/x86_64-linux -DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
 export K2_MAKE_ARGS=" -j2 "
 
 python3 setup.py bdist_wheel

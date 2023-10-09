@@ -14,7 +14,22 @@ find_package(Torch REQUIRED)
 # k2 uses the same abi flag as PyTorch
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 if(K2_WITH_CUDA)
+  if(CUDA_VERSION VERSION_GREATER_EQUAL "12.0")
+    string(REPLACE " " ";" MY_LIST ${CMAKE_CUDA_FLAGS})
+    set(TEMP_LIST)
+    foreach(f IN LISTS MY_LIST)
+      if(f STREQUAL arch=compute_35,code=sm_35)
+        list(REMOVE_AT TEMP_LIST -1)
+        continue()
+      endif()
+      list(APPEND TEMP_LIST ${f})
+    endforeach()
+
+    string(REPLACE ";" " " CMAKE_CUDA_FLAGS "${TEMP_LIST}")
+  endif()
+
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${TORCH_CXX_FLAGS}")
+  message(WARNING " CMAKE_CUDA_FLAGS is ${CMAKE_CUDA_FLAGS}")
 endif()
 
 
