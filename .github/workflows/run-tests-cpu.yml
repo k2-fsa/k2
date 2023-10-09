@@ -38,6 +38,7 @@ on:
       - 'cmake/**'
       - 'k2/csrc/**'
       - 'k2/python/**'
+  workflow_dispatch:
 
 concurrency:
   group: run-tests-cpu-${{ github.ref }}

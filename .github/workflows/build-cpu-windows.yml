@@ -35,6 +35,7 @@ on:
       - 'cmake/**'
       - 'k2/csrc/**'
       - 'k2/python/**'
+  workflow_dispatch:
 
 concurrency:
   group: build-cpu-windows-${{ github.ref }}
