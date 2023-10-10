@@ -90,6 +90,7 @@ auditwheel --verbose repair \
   --exclude libcublas.so.11 \
   --exclude libcublasLt.so.11 \
   --exclude libcudart.so.11.0 \
+  --exclude libcudart.so.12 \
   --exclude libnvrtc.so.11.2 \
   --exclude libtorch_cuda_cu.so \
   --exclude libtorch_cuda_cpp.so \

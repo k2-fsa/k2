@@ -57,7 +57,7 @@ execute_process(
 message(STATUS "PyTorch version: ${TORCH_VERSION}")
 
 if(TORCH_VERSION VERSION_GREATER_EQUAL "2.1")
-  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD 17 CACHE STRING "" FORCE)
 endif()
 
 if(K2_WITH_CUDA)
