@@ -70,6 +70,8 @@ filename=$(basename $url)
 echo "filename: $filename"
 chmod +x ./$filename
 
+ls -lh
+
 sudo ./$filename \
   --silent \
   --toolkit \
