@@ -69,10 +69,18 @@ retry curl -LSs -O $url
 filename=$(basename $url)
 echo "filename: $filename"
 chmod +x ./$filename
-sudo ./$filename --toolkit --silent
+
+sudo ./$filename \
+  --silent \
+  --toolkit \
+  --no-opengl-libs \
+  --no-drm \
+  --no-man-page
+
 rm -fv ./$filename
 
 export CUDA_HOME=/usr/local/cuda
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+ls -lh $CUDA_HOME
