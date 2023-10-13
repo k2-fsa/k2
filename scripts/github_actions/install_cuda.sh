@@ -71,6 +71,7 @@ echo "filename: $filename"
 chmod +x ./$filename
 
 ls -lh
+ls -lh /usr/local
 
 sudo ./$filename \
   --silent \
