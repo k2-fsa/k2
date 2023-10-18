@@ -366,11 +366,11 @@ Example 2: Autograd in log semiring
 
 For the log semiring, we just change::
 
-  total_scores = fsa.get_tot_scores(log_semiring=False, use_double_scores=False)
+  total_scores = fsa_vec.get_tot_scores(log_semiring=False, use_double_scores=False)
 
 to::
 
-  total_scores = fsa.get_tot_scores(log_semiring=True, use_double_scores=False)
+  total_scores = fsa_vec.get_tot_scores(log_semiring=True, use_double_scores=False)
 
 For completeness and ease of reference, we repost the code below.
 
