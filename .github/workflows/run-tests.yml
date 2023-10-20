@@ -27,6 +27,7 @@ on:
       - '.github/workflows/run-tests.yml'
       - 'CMakeLists.txt'
       - 'cmake/**'
+      - 'scripts/github_actions/**'
       - 'k2/csrc/**'
       - 'k2/python/**'
   pull_request:
@@ -35,6 +36,7 @@ on:
       - '.github/workflows/run-tests.yml'
       - 'CMakeLists.txt'
       - 'cmake/**'
+      - 'scripts/github_actions/**'
       - 'k2/csrc/**'
       - 'k2/python/**'
   workflow_dispatch:
