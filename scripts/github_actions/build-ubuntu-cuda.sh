@@ -18,7 +18,7 @@ fi
 if [ -z $CUDA_VERSION ]; then
   echo "Please set the environment variable CUDA_VERSION"
   echo "Example: export CUDA_VERSION=10.2"
-  # valid values: 10.2, 11.1, 11.3, 11.6, 11.7, 11.8
+  # valid values: 10.2, 11.1, 11.3, 11.6, 11.7, 11.8, 12.1
   exit 1
 fi
 

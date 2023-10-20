@@ -55,103 +55,33 @@ jobs:
         cuda: ["12.1"]
         torch: ["2.1.0"]
         python-version: ["3.11"]
-        build_type: ["Release", "Debug"]
 
     steps:
       # refer to https://github.com/actions/checkout
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - name: Install CUDA Toolkit ${{ matrix.cuda }}
-        env:
-          cuda: ${{ matrix.cuda }}
-        run: |
-          source ./scripts/github_actions/install_cuda.sh
-          echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
-          echo "CUDAToolkit_ROOT_DIR=${CUDA_HOME}" >> $GITHUB_ENV
-          echo "CUDAToolkit_ROOT_DIR=${CUDA_HOME}" >> $GITHUB_ENV
-
-          echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
-          echo "LD_LIBRARY_PATH=${CUDA_HOME}/lib:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
-        shell: bash
-
-      - name: Display NVCC version
-        run: |
-          which nvcc
-          nvcc --version
-
-      - name: Display GCC version
-        run: |
-          gcc --version
-
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Run the build process with Docker
+        uses: addnab/docker-run-action@v3
         with:
-          python-version: ${{ matrix.python-version }}
+            image: "pytorch/manylinux-builder:cuda12.1"
+            options: -v ${{ github.workspace }}:/var/www -e PYTHON_VERSION=${{ matrix.python-version }} -e TORCH_VERSION=${{ matrix.torch }} -e CUDA_VERSION=${{ matrix.cuda }}
+            run: |
+              echo "pwd: $PWD"
+              uname -a
+              id
+              cat /etc/*release
+              gcc --version
+              python3 --version
+              which python3
 
-      - name: Display Python version
-        run: python -c "import sys; print(sys.version)"
+              pushd /usr/local
+              rm cuda
+              ln -s cuda-$CUDA_VERSION cuda
+              popd
+              which nvcc
+              nvcc --version
 
-      - name: Install PyTorch ${{ matrix.torch }}
-        env:
-          cuda: ${{ matrix.cuda }}
-          torch: ${{ matrix.torch }}
-        shell: bash
-        run: |
-          python3 -m pip install -qq --upgrade pip six
-          python3 -m pip install -qq bs4 requests tqdm typing_extensions
-          python3 -m pip install -qq dataclasses graphviz
-          sudo apt-get -qq install graphviz
+              cp /var/www/scripts/github_actions/install_torch.sh .
+              chmod +x install_torch.sh
 
-          ./scripts/github_actions/install_torch.sh
-          python3 -c "import torch; print('torch version:', torch.__version__)"
-
-      - name: Install git lfs
-        run: |
-          sudo apt-get install -y git-lfs
-
-      - name: Download cudnn 8.0
-        env:
-          cuda: ${{ matrix.cuda }}
-        run: |
-          ./scripts/github_actions/install_cudnn.sh
-
-      - name: Configure CMake
-        shell: bash
-        env:
-          torch: ${{ matrix.torch }}
-        run: |
-          pwd
-          ./scripts/github_actions/fix_torch.sh
-          mkdir build
-          cd build
-          cmake -DCUDAToolkit_TARGET_DIR=$CUDA_HOME/targets/x86_64-linux -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
-          cat k2/csrc/version.h
-
-      - name: ${{ matrix.build_type }} Build
-        shell: bash
-        run: |
-          echo "number of cores: $(nproc)"
-          cd build
-          # we cannot use -j here because of limited RAM
-          # of the VM provided by GitHub actions
-          make VERBOSE=1 -j2
-
-      - name: Display Build Information
-        shell: bash
-        run: |
-          export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
-          python3 -m k2.version
-
-      - name: Run Tests
-        shell: bash
-        run: |
-          cd build
-          ctest --output-on-failure
-          # default log level is INFO
-          ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=TRACE ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=DEBUG ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=INFO ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=WARNING ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=ERROR ./bin/cu_log_test --gtest_filter="Log.Cpu"
-          K2_LOG_LEVEL=FATAL ./bin/cu_log_test --gtest_filter="Log.Cpu"
+              /var/www/scripts/github_actions/build-ubuntu-cuda.sh

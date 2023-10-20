@@ -198,7 +198,7 @@ endif()
 
 # ========= Settings for CUB begin =========
 # the following settings are modified from cub/CMakeLists.txt
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "The C++ version to be used.")
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
