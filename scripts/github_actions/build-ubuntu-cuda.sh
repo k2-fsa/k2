@@ -90,9 +90,28 @@ auditwheel --verbose repair \
   --exclude libcudnn.so.8 \
   --exclude libcublas.so.11 \
   --exclude libcublasLt.so.11 \
+  --exclude libcublas.so.12 \
+  --exclude libcublas.so \
+  --exclude libcublasLt.so.12 \
+  --exclude libcublasLt.so \
   --exclude libcudart.so.11.0 \
   --exclude libcudart.so.12 \
   --exclude libnvrtc.so.11.2 \
+  --exclude libnvrtc.so.12 \
+  --exclude libnvrtc.so \
+  --exclude libcupti.so.12 \
+  --exclude libcupti.so \
+  --exclude libcusparse.so.12 \
+  --exclude libcusparse.so \
+  --exclude libnvJitLink.so.12 \
+  --exclude libnvJitLink.so \
+  --exclude libcurand.so.10 \
+  --exclude libcurand.so \
+  --exclude libcufft.so.11 \
+  --exclude libcufft.so \
+  --exclude libnccl.so.2 \
+  --exclude libnccl.so \
+  --exclude libshm.so \
   --exclude libtorch_cuda_cu.so \
   --exclude libtorch_cuda_cpp.so \
   --plat manylinux_2_17_x86_64 \
