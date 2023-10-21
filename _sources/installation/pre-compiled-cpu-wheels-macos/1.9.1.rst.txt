@@ -2,6 +2,8 @@ torch 1.9.1
 ===========
 
 
+- `k2-1.24.4.dev20231021+cpu.torch1.9.1-cp39-cp39-macosx_10_9_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20231021+cpu.torch1.9.1-cp39-cp39-macosx_10_9_x86_64.whl>`_
+- `k2-1.24.4.dev20231021+cpu.torch1.9.1-cp38-cp38-macosx_10_9_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20231021+cpu.torch1.9.1-cp38-cp38-macosx_10_9_x86_64.whl>`_
 - `k2-1.24.4.dev20230926+cpu.torch1.9.1-cp39-cp39-macosx_10_9_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20230926+cpu.torch1.9.1-cp39-cp39-macosx_10_9_x86_64.whl>`_
 - `k2-1.24.4.dev20230926+cpu.torch1.9.1-cp38-cp38-macosx_10_9_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20230926+cpu.torch1.9.1-cp38-cp38-macosx_10_9_x86_64.whl>`_
 - `k2-1.24.3.dev20230726+cpu.torch1.9.1-cp39-cp39-macosx_10_9_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.3.dev20230726+cpu.torch1.9.1-cp39-cp39-macosx_10_9_x86_64.whl>`_
