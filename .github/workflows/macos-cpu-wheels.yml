@@ -2,6 +2,8 @@ name: build-wheels-cpu-macos
 
 on:
   push:
+    branches:
+      - torch-2.1
     tags:
       - '*'
   workflow_dispatch:
@@ -18,7 +20,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Generating build matrix
@@ -39,7 +41,7 @@ jobs:
         ${{ fromJson(needs.generate_build_matrix.outputs.matrix) }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -59,7 +61,7 @@ jobs:
           ls -lh ./wheelhouse/
 
       - name: Upload Wheel
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-macos-latest-cpu
           path: wheelhouse/*.whl

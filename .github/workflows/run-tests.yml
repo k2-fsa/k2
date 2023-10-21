@@ -22,7 +22,6 @@ on:
   push:
     branches:
       - master
-      - torch-2.1
     paths:
       - '.github/workflows/run-tests.yml'
       - 'CMakeLists.txt'
