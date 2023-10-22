@@ -150,6 +150,12 @@ class BuildExtension(build_ext):
             f" -DCMAKE_INSTALL_PREFIX={Path(self.build_lib).resolve()}/k2 "  # noqa
         )
 
+        major, minor = get_pytorch_version().split(".")[:2]
+        major = int(major)
+        minor = int(minor)
+        if major > 2 or (major == 2 and minor >= 1):
+            extra_cmake_args += f" -DCMAKE_CXX_STANDARD=17 "
+
         if cmake_args == "":
             cmake_args = "-DCMAKE_BUILD_TYPE=Release"
 
