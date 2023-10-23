@@ -89,6 +89,11 @@
 <li class="toctree-l4"><a class="reference internal" href="#set-environment-variables-for-cuda-11-8">Set environment variables for CUDA 11.8</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#cuda-12-1">CUDA 12.1</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#install-cudnn-for-cuda-12-1">Install cuDNN for CUDA 12.1</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#set-environment-variables-for-cuda-12-1">Set environment variables for CUDA 12.1</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="faqs.html">FAQs</a></li>
@@ -643,6 +648,73 @@ Copyright<span class="w"> </span><span class="o">(</span>c<span class="o">)</spa
 Built<span class="w"> </span>on<span class="w"> </span>Wed_Sep_21_10:33:58_PDT_2022
 Cuda<span class="w"> </span>compilation<span class="w"> </span>tools,<span class="w"> </span>release<span class="w"> </span><span class="m">11</span>.8,<span class="w"> </span>V11.8.89
 Build<span class="w"> </span>cuda_11.8.r11.8/compiler.31833905_0
+</pre></div>
+</div>
+</section>
+</section>
+<section id="cuda-12-1">
+<h2>CUDA 12.1<a class="headerlink" href="#cuda-12-1" title="Permalink to this headline"></a></h2>
+<p>You can use the following commands to install CUDA 12.1. We install it
+into <code class="docutils literal notranslate"><span class="pre">/star-fj/fangjun/software/cuda-12.1.0</span></code>. You can replace it
+if needed.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda_12.1.0_530.30.02_linux.run
+
+chmod<span class="w"> </span>+x<span class="w"> </span>cuda_12.1.0_530.30.02_linux.run
+
+./cuda_12.1.0_530.30.02_linux.run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--silent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--toolkit<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--installpath<span class="o">=</span>/star-fj/fangjun/software/cuda-12.1.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-opengl-libs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-drm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-man-page
+</pre></div>
+</div>
+<section id="install-cudnn-for-cuda-12-1">
+<h3>Install cuDNN for CUDA 12.1<a class="headerlink" href="#install-cudnn-for-cuda-12-1" title="Permalink to this headline"></a></h3>
+<p>Now, install <code class="docutils literal notranslate"><span class="pre">cuDNN</span></code> for CUDA 12.1.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9.5.29_cuda12-archive.tar.xz
+
+tar<span class="w"> </span>xvf<span class="w"> </span>cudnn-linux-x86_64-8.9.5.29_cuda12-archive.tar.xz<span class="w"> </span>--strip-components<span class="o">=</span><span class="m">1</span><span class="w"> </span>-C<span class="w"> </span>/star-fj/fangjun/software/cuda-12.1.0
+</pre></div>
+</div>
+</section>
+<section id="set-environment-variables-for-cuda-12-1">
+<h3>Set environment variables for CUDA 12.1<a class="headerlink" href="#set-environment-variables-for-cuda-12-1" title="Permalink to this headline"></a></h3>
+<p>Note that we have to set the following environment variables after installing
+CUDA 11.8. You can save the following code to <code class="docutils literal notranslate"><span class="pre">activate-cuda-12.1.sh</span></code>
+and use <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">activate-cuda-12.1.sh</span></code> if you want to activate CUDA 12.1.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_HOME</span><span class="o">=</span>/star-fj/fangjun/software/cuda-12.1.0
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/bin:<span class="nv">$PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/extras/CUPTI/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDAToolkit_ROOT_DIR</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDAToolkit_ROOT</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT_DIR</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_TOOLKIT_ROOT</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_BIN_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_INC_PATH</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/targets/x86_64-linux
+<span class="nb">export</span><span class="w"> </span><span class="nv">CFLAGS</span><span class="o">=</span>-I<span class="nv">$CUDA_HOME</span>/targets/x86_64-linux/include:<span class="nv">$CFLAGS</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDAToolkit_TARGET_DIR</span><span class="o">=</span><span class="nv">$CUDA_HOME</span>/targets/x86_64-linux
+</pre></div>
+</div>
+<p>To check that you have installed CUDA 12.1 successfully, please run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which<span class="w"> </span>nvcc
+
+nvcc<span class="w"> </span>--version
+</pre></div>
+</div>
+<p>The output should look like the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/star-fj/fangjun/software/cuda-12.1.0/bin/nvcc
+
+nvcc:<span class="w"> </span>NVIDIA<span class="w"> </span><span class="o">(</span>R<span class="o">)</span><span class="w"> </span>Cuda<span class="w"> </span>compiler<span class="w"> </span>driver
+Copyright<span class="w"> </span><span class="o">(</span>c<span class="o">)</span><span class="w"> </span><span class="m">2005</span>-2023<span class="w"> </span>NVIDIA<span class="w"> </span>Corporation
+Built<span class="w"> </span>on<span class="w"> </span>Tue_Feb__7_19:32:13_PST_2023
+Cuda<span class="w"> </span>compilation<span class="w"> </span>tools,<span class="w"> </span>release<span class="w"> </span><span class="m">12</span>.1,<span class="w"> </span>V12.1.66
+Build<span class="w"> </span>cuda_12.1.r12.1/compiler.32415258_0
 </pre></div>
 </div>
 </section>
