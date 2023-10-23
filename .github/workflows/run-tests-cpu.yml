@@ -56,9 +56,6 @@ jobs:
         torch: ["2.1.0"]
         python-version: ["3.8", "3.9", "3.10", "3.11"]
         build_type: ["Release", "Debug"]
-        # exclude:
-        #   - os: macos-latest
-        #     python-version: "3.11"
 
     steps:
       # refer to https://github.com/actions/checkout
@@ -116,7 +113,7 @@ jobs:
           ./scripts/github_actions/fix_torch.sh
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DK2_WITH_CUDA=OFF ..
+          cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DK2_WITH_CUDA=OFF -DCMAKE_CXX_STANDARD=17 ..
           cat k2/csrc/version.h
 
       - name: ${{ matrix.build_type }} Build
