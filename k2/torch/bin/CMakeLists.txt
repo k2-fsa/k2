@@ -15,7 +15,7 @@ if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE ctc_decode_srcs SRCS ${ctc_decode_srcs})
 endif()
 add_executable(ctc_decode ${ctc_decode_srcs})
-set_property(TARGET ctc_decode PROPERTY CXX_STANDARD 14)
+set_property(TARGET ctc_decode PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD})
 target_link_libraries(ctc_decode ${bin_dep_libs})
 
 #----------------------------------------
@@ -26,7 +26,7 @@ if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE hlg_decode_srcs SRCS ${hlg_decode_srcs})
 endif()
 add_executable(hlg_decode ${hlg_decode_srcs})
-set_property(TARGET hlg_decode PROPERTY CXX_STANDARD 14)
+set_property(TARGET hlg_decode PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD})
 target_link_libraries(hlg_decode ${bin_dep_libs})
 
 #-------------------------------------------
@@ -37,7 +37,7 @@ if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE ngram_lm_rescore_srcs SRCS ${ngram_lm_rescore_srcs})
 endif()
 add_executable(ngram_lm_rescore ${ngram_lm_rescore_srcs})
-set_property(TARGET ngram_lm_rescore PROPERTY CXX_STANDARD 14)
+set_property(TARGET ngram_lm_rescore PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD})
 target_link_libraries(ngram_lm_rescore ${bin_dep_libs})
 
 #---------------------------------------------------------------
@@ -48,7 +48,7 @@ if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE attention_rescore_srcs SRCS ${attention_rescore_srcs})
 endif()
 add_executable(attention_rescore ${attention_rescore_srcs})
-set_property(TARGET attention_rescore PROPERTY CXX_STANDARD 14)
+set_property(TARGET attention_rescore PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD})
 target_link_libraries(attention_rescore ${bin_dep_libs})
 
 
@@ -61,7 +61,7 @@ if(NOT K2_WITH_CUDA)
 endif()
 
 add_executable(online_decode ${online_decode_srcs})
-set_property(TARGET online_decode PROPERTY CXX_STANDARD 14)
+set_property(TARGET online_decode PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD})
 target_link_libraries(online_decode ${bin_dep_libs})
 
 #-------------------------------------------
@@ -73,7 +73,7 @@ if(NOT K2_WITH_CUDA)
 endif()
 
 add_executable(rnnt_demo ${rnnt_demo_srcs})
-set_property(TARGET rnnt_demo PROPERTY CXX_STANDARD 14)
+set_property(TARGET rnnt_demo PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD})
 target_link_libraries(rnnt_demo ${bin_dep_libs})
 
 #-------------------------------------------
@@ -85,5 +85,5 @@ if(NOT K2_WITH_CUDA)
 endif()
 
 add_executable(pruned_stateless_transducer ${pruned_stateless_transducer_srcs})
-set_property(TARGET pruned_stateless_transducer PROPERTY CXX_STANDARD 14)
+set_property(TARGET pruned_stateless_transducer PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD})
 target_link_libraries(pruned_stateless_transducer ${bin_dep_libs})

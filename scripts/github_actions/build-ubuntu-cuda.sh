@@ -18,7 +18,7 @@ fi
 if [ -z $CUDA_VERSION ]; then
   echo "Please set the environment variable CUDA_VERSION"
   echo "Example: export CUDA_VERSION=10.2"
-  # valid values: 10.2, 11.1, 11.3, 11.6, 11.7, 11.8
+  # valid values: 10.2, 11.1, 11.3, 11.6, 11.7, 11.8, 12.1
   exit 1
 fi
 
@@ -69,7 +69,8 @@ yum clean all >/dev/null 2>&1
 cd /var/www
 
 export CMAKE_CUDA_COMPILER_LAUNCHER=
-export K2_CMAKE_ARGS=" -DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
+# export K2_CMAKE_ARGS="-DCUDAToolkit_TARGET_DIR=/usr/local/cuda/targets/x86_64-linux -DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
+export K2_CMAKE_ARGS="-DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
 export K2_MAKE_ARGS=" -j2 "
 
 python3 setup.py bdist_wheel
@@ -89,8 +90,28 @@ auditwheel --verbose repair \
   --exclude libcudnn.so.8 \
   --exclude libcublas.so.11 \
   --exclude libcublasLt.so.11 \
+  --exclude libcublas.so.12 \
+  --exclude libcublas.so \
+  --exclude libcublasLt.so.12 \
+  --exclude libcublasLt.so \
   --exclude libcudart.so.11.0 \
+  --exclude libcudart.so.12 \
   --exclude libnvrtc.so.11.2 \
+  --exclude libnvrtc.so.12 \
+  --exclude libnvrtc.so \
+  --exclude libcupti.so.12 \
+  --exclude libcupti.so \
+  --exclude libcusparse.so.12 \
+  --exclude libcusparse.so \
+  --exclude libnvJitLink.so.12 \
+  --exclude libnvJitLink.so \
+  --exclude libcurand.so.10 \
+  --exclude libcurand.so \
+  --exclude libcufft.so.11 \
+  --exclude libcufft.so \
+  --exclude libnccl.so.2 \
+  --exclude libnccl.so \
+  --exclude libshm.so \
   --exclude libtorch_cuda_cu.so \
   --exclude libtorch_cuda_cpp.so \
   --plat manylinux_2_17_x86_64 \

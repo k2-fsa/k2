@@ -52,6 +52,9 @@ case "$cuda" in
   11.8)
     url=https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
     ;;
+  12.1)
+    url=https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda_12.1.0_530.30.02_linux.run
+    ;;
   *)
     echo "Unknown cuda version: $cuda"
     exit 1
@@ -66,10 +69,21 @@ retry curl -LSs -O $url
 filename=$(basename $url)
 echo "filename: $filename"
 chmod +x ./$filename
-sudo ./$filename --toolkit --silent
+
+ls -lh
+ls -lh /usr/local
+
+sudo ./$filename \
+  --silent \
+  --toolkit \
+  --no-opengl-libs \
+  --no-drm \
+  --no-man-page
+
 rm -fv ./$filename
 
 export CUDA_HOME=/usr/local/cuda
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+ls -lh $CUDA_HOME
