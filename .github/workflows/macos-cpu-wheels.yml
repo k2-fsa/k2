@@ -2,8 +2,6 @@ name: build-wheels-cpu-macos
 
 on:
   push:
-    branches:
-      - torch-2.1
     tags:
       - '*'
   workflow_dispatch:
