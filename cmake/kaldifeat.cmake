@@ -47,6 +47,7 @@ function(download_kaldifeat)
   endforeach()
 
   set(kaldifeat_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(kaldifeat_BUILD_PYMODULE OFF CACHE BOOL "" FORCE)
 
   FetchContent_Declare(kaldifeat
     URL
