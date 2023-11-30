@@ -38,6 +38,7 @@ on:
       - 'k2/csrc/**'
       - 'k2/python/**'
       - 'scripts/github_actions/k2-torch-api-test/**'
+  workflow_dispatch:
 
 concurrency:
   group: test-k2-as-third-party-lib-cuda-ubuntu-${{ github.ref }}

@@ -43,6 +43,25 @@ def fix_for_boundary(px: Tensor, boundary: Optional[Tensor] = None) -> Tensor:
     return px.scatter_(dim=2, index=boundary, value=float("-inf"))
 
 
+def _validate_st_lengths(
+    S: int,
+    T: int,
+    is_rnnt_type_regular: bool,
+    boundary: Optional[Tensor] = None,
+):
+    assert S >= 0, S
+    if boundary is None:
+        assert (
+            is_rnnt_type_regular or T >= S
+        ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
+    else:
+        Ss = boundary[:, 2]
+        Ts = boundary[:, 3]
+        assert (
+            is_rnnt_type_regular or (Ts >= Ss).all()
+        ), f"Modified transducer requires T >= S, but got T={Ts} and S={Ss}"
+
+
 def get_rnnt_logprobs(
     lm: Tensor,
     am: Tensor,
@@ -145,11 +164,8 @@ def get_rnnt_logprobs(
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
     assert symbols.shape == (B, S), (symbols.shape, B, S)
-    assert S >= 0, S
-    assert (
-        rnnt_type != "modified" or T >= S
-    ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
+    _validate_st_lengths(S, T, rnnt_type == "regular", boundary)
 
     # subtracting am_max and lm_max is to ensure the probs are in a good range
     # to do exp() without causing underflow or overflow.
@@ -394,11 +410,8 @@ def get_rnnt_logprobs_joint(
     (B, T, S1, C) = logits.shape
     S = S1 - 1
     assert symbols.shape == (B, S), (symbols.shape, B, S)
-    assert S >= 0, S
-    assert (
-        rnnt_type != "modified" or T >= S
-    ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
+    _validate_st_lengths(S, T, rnnt_type == "regular", boundary)
 
     normalizers = torch.logsumexp(logits, dim=3)
     normalizers = normalizers.permute((0, 2, 1))
@@ -669,28 +682,50 @@ def get_rnnt_prune_ranges(
     """
     (B, S, T1) = px_grad.shape
     T = py_grad.shape[-1]
+
+    is_regular = T1 != T
+
     assert T1 in [T, T + 1], (T1, T)
     S1 = S + 1
     assert py_grad.shape == (B, S1, T), (py_grad.shape, B, S1, T)
     assert boundary.shape == (B, 4), (boundary.shape, B)
-    assert S >= 0, S
+
+    _validate_st_lengths(S, T, is_regular, boundary)
+
+    # in regular case s_range should be no less than
+    # a minimum integer satisfying `(s_range - 1) * t + 1 >= s + 1`
+    if is_regular:
+        Ss = boundary[:, 2]
+        Ts = boundary[:, 3]
+        s_range_min = (
+            Ss.sub(1).div(Ts, rounding_mode="trunc").add(2).max().item()
+        )
+        if s_range < s_range_min:
+            print(
+                f"Warning: get_rnnt_prune_ranges - got s_range={s_range} "
+                f"for boundaries S={Ss}, T={Ts}. Adjusting to {s_range_min}"
+            )
+            s_range = s_range_min
 
     # s_range > S means we won't prune out any symbols. To make indexing with
     # ranges run normally, s_range should be equal to or less than ``S + 1``.
     if s_range > S:
+        print(
+            f"Warning: get_rnnt_prune_ranges - got s_range={s_range} "
+            f"for boundaries S={S}. Adjusting to {S + 1}"
+        )
         s_range = S + 1
 
-    if T1 == T:
-        assert (
-            s_range >= 1
-        ), f"""Pruning range for modified RNN-T should be equal to or greater
-        than 1, or no valid paths could survive pruning. Given {s_range}"""
-
-    else:
+    if is_regular:
         assert (
             s_range >= 2
         ), f"""Pruning range for standard RNN-T should be equal to or greater
         than 2, or no valid paths could survive pruning. Given {s_range}"""
+    else:
+        assert (
+            s_range >= 1
+        ), f"""Pruning range for modified RNN-T should be equal to or greater
+        than 1, or no valid paths could survive pruning. Given {s_range}"""
 
     (B_stride, S_stride, T_stride) = py_grad.stride()
     blk_grad = torch.as_strided(
@@ -1223,11 +1258,8 @@ def get_rnnt_logprobs_pruned(
     (B, T, s_range, C) = logits.shape
     assert ranges.shape == (B, T, s_range), (ranges.shape, B, T, s_range)
     (B, S) = symbols.shape
-    assert S >= 0, S
-    assert (
-        rnnt_type != "modified" or T >= S
-    ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
+    _validate_st_lengths(S, T, rnnt_type == "regular", boundary)
 
     normalizers = torch.logsumexp(logits, dim=3)
 
@@ -1552,11 +1584,8 @@ def get_rnnt_logprobs_smoothed(
     (B, T, C) = am.shape
     S = lm.shape[1] - 1
     assert symbols.shape == (B, S), (symbols.shape, B, S)
-    assert S >= 0, S
-    assert (
-        rnnt_type != "modified" or T >= S
-    ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
+    _validate_st_lengths(S, T, rnnt_type == "regular", boundary)
 
     # Caution: some parts of this code are a little less clear than they could
     # be due to optimizations.  In particular it may not be totally obvious that
@@ -1627,7 +1656,9 @@ def get_rnnt_logprobs_smoothed(
         unigram_lm.expand(B, S, C), dim=2, index=symbols.unsqueeze(-1)
     )  # [B][S][1]
 
-    px = px_am + px_lm  # [B][S][T+1] if rnnt_type == "regular", otherwise [B][S][T]
+    px = (
+        px_am + px_lm
+    )  # [B][S][T+1] if rnnt_type == "regular", otherwise [B][S][T]
     px[:, :, :T] -= normalizers[:, :S, :]  # px: [B][S][T+1] or [B][S][T]
 
     px_amonly = (

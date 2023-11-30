@@ -38,6 +38,7 @@ on:
       - 'cmake/**'
       - 'k2/csrc/**'
       - 'k2/python/**'
+  workflow_dispatch:
 
 concurrency:
   group: run-tests-cpu-${{ github.ref }}
@@ -47,16 +48,14 @@ jobs:
   run-tests-cpu:
     if: github.event.label.name == 'ready' || github.event.label.name == 'cpp-test' || github.event_name == 'push'
     runs-on: ${{ matrix.os }}
+    name: ${{ matrix.python-version }} ${{ matrix.build_type }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        torch: ["1.13.1"]
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        torch: ["2.1.1"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
         build_type: ["Release", "Debug"]
-        exclude:
-          - os: macos-latest
-            python-version: "3.11"
 
     steps:
       # refer to https://github.com/actions/checkout
@@ -114,7 +113,7 @@ jobs:
           ./scripts/github_actions/fix_torch.sh
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DK2_WITH_CUDA=OFF ..
+          cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DK2_WITH_CUDA=OFF -DCMAKE_CXX_STANDARD=17 ..
           cat k2/csrc/version.h
 
       - name: ${{ matrix.build_type }} Build

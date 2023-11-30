@@ -83,12 +83,21 @@ enum class LogLevel {
 //  K2_LOG(TRACE) << "some message";
 //  K2_LOG(DEBUG) << "some message";
 //
+#ifndef _MSC_VER
 constexpr LogLevel TRACE = LogLevel::kTrace;
 constexpr LogLevel DEBUG = LogLevel::kDebug;
 constexpr LogLevel INFO = LogLevel::kInfo;
 constexpr LogLevel WARNING = LogLevel::kWarning;
 constexpr LogLevel ERROR = LogLevel::kError;
 constexpr LogLevel FATAL = LogLevel::kFatal;
+#else
+#define TRACE LogLevel::kTrace
+#define DEBUG LogLevel::kDebug
+#define INFO LogLevel::kInfo
+#define WARNING LogLevel::kWarning
+#define ERROR LogLevel::kError
+#define FATAL LogLevel::kFatal
+#endif
 
 std::string GetStackTrace();
 
@@ -110,9 +119,8 @@ K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel();
 inline bool EnableAbort() {
   static std::once_flag init_flag;
   static bool enable_abort = false;
-  std::call_once(init_flag, []() {
-    enable_abort = (std::getenv("K2_ABORT") != nullptr);
-  });
+  std::call_once(init_flag,
+                 []() { enable_abort = (std::getenv("K2_ABORT") != nullptr); });
   return enable_abort;
 }
 
@@ -274,7 +282,7 @@ class Logger {
 
 class Voidifier {
  public:
-  K2_CUDA_HOSTDEV void operator&(const Logger &)const {}
+  K2_CUDA_HOSTDEV void operator&(const Logger &) const {}
 };
 
 inline bool EnableCudaDeviceSync() {

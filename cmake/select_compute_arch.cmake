@@ -44,6 +44,11 @@ endif()
 # This list is used to filter CUDA archs when autodetecting
 set(CUDA_ALL_GPU_ARCHITECTURES "3.5" "5.0")
 
+if(CUDA_VERSION VERSION_GREATER_EQUAL "12.0")
+  list(REMOVE_ITEM CUDA_COMMON_GPU_ARCHITECTURES "3.5")
+  list(REMOVE_ITEM CUDA_ALL_GPU_ARCHITECTURES "3.5")
+endif()
+
 if(CUDA_VERSION VERSION_GREATER "6.5")
   list(APPEND CUDA_KNOWN_GPU_ARCHITECTURES "Kepler+Tegra" "Kepler+Tesla" "Maxwell+Tegra")
   list(APPEND CUDA_COMMON_GPU_ARCHITECTURES "5.2")
