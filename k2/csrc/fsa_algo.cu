@@ -2056,13 +2056,13 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
           index_arc_idx2 = idx4;  // corresponds to foo=0, so idx3 will be 0;
                                   // the idx4 enumerates the arcs leaving it..
         } else {
-          // this is one of the extra `foo` indexes, it's conrespoding index
+          // this is one of the extra `foo` indexes, it's corresponding index
           // into `index` is `foo` index minus 1
           index_arc_idx2 = idx2 - 1;
         }
 
         int32_t index_arc_idx01x = index_row_splits2_data[idx01];
-        // index of the arc in source FSA, FSA that we're replaceing..
+        // index of the arc in source FSA, FSA that we're replacing..
         int32_t index_arc_idx012 = index_arc_idx01x + index_arc_idx2;
 
         Arc index_arc = index_arcs_data[index_arc_idx012];
@@ -2105,8 +2105,8 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
             } else {
               // this arc would point to the initial state of the fsa in src,
               // the state id bias to current state(the src-state) is the count
-              // of all the ostates coresponding to the original state util now,
-              // the idx4 enumerates foo index
+              // of all the ostates corresponding to the original state until
+              // now, the idx4 enumerates foo index
               int32_t idx012_t = idx01x + 0,
                       idx2_t = idx4,
                       idx012x_t = tos_row_splits3_data[idx012_t],
@@ -2121,7 +2121,7 @@ FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
             arc_index_map_idx = index_arc_idx012;
           } else {   // handle the arcs belongs to src
             // the arc point to the final state of the fsa in src would point to
-            // the dest state of the arc we're replaceing
+            // the dest state of the arc we're replacing
             if (src_arc.label == -1) {
               oarc.dest_state = orig_dest_state_idx0123 - idx0xxx;
             } else {
@@ -2178,6 +2178,351 @@ FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec &src,
       });
   FsaVec ans = Index(src, 2, renumber_lists.New2Old(), arc_map);
   return ans;
+}
+
+FsaVec GenerateDenominatorLattice(Ragged<int32_t> &sampled_paths,
+                                  Ragged<int32_t> &frame_ids,
+                                  Ragged<int32_t> &left_symbols,
+                                  Ragged<float> &sampling_probs,
+                                  Array1<int32_t> &boundary,
+                                  int32_t vocab_size,
+                                  int32_t context_size,
+                                  Array1<int32_t> *arc_map) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK(arc_map);
+  K2_CHECK_EQ(sampled_paths.NumAxes(), 3);
+  K2_CHECK_EQ(frame_ids.NumAxes(), 3);
+  K2_CHECK_EQ(left_symbols.NumAxes(), 4);
+  K2_CHECK_EQ(sampling_probs.NumAxes(), 3);
+
+  K2_DCHECK_EQ(sampled_paths.NumElements(), frame_ids.NumElements());
+  K2_DCHECK_EQ(sampled_paths.NumElements(),
+      left_symbols.NumElements() * context_size);
+  K2_DCHECK_EQ(sampled_paths.NumElements(), sampling_probs.NumElements());
+  K2_DCHECK_EQ(sampled_paths.TotSize(0), boundary.Dim());
+  for (int32_t i = 0; i < 3; ++i) {
+    K2_DCHECK_EQ(sampled_paths.TotSize(i), frame_ids.TotSize(i));
+    K2_DCHECK_EQ(sampled_paths.TotSize(i), left_symbols.TotSize(i));
+    K2_DCHECK_EQ(sampled_paths.TotSize(i), sampling_probs.TotSize(i));
+  }
+
+  ContextPtr c = GetContext(
+      sampled_paths, frame_ids, left_symbols, sampling_probs);
+
+  // The states indicating we are in on each position of each path, which has
+  // the same shape as `sampled_paths`, because each symbol in the paths is
+  // sampled from a specific frame with corresponding left contexts.
+  // Each state represents a tuple like (t, left_symbols1, left_symbols2...),
+  // the number of left_symbols equals to the `context_size`. A state is
+  // calculated from t * V ^ c + \sum_{i=1}^{c} s_i * V ^ (c - i),
+  // V is vocab_size, c is context_size, s_i is the ith left_symbols.
+  // For example, if context_size = 2, vocab_size = 10, so, one possible tuple
+  // would be (2, 4, 5), then the corresponding state is
+  // 2 * 10 ^ 2 + 4 * 10 + 5 = 245.
+  Ragged<int64_t> states(sampled_paths.shape);
+  int32_t num_states = states.NumElements();
+
+  const int32_t *frame_ids_data = frame_ids.values.Data(),
+                *left_symbols_row_splits3_data
+                    = left_symbols.RowSplits(3).Data(),
+                *left_symbols_data = left_symbols.values.Data();
+  int64_t *states_data = states.values.Data();
+
+  // This kernel calculates t * V ^ c for each state.
+  K2_EVAL(
+      c, num_states, lambda_init_states_with_t, (int32_t idx012) -> void {
+        states_data[idx012]
+            = frame_ids_data[idx012] * Pow(vocab_size, context_size);
+  });
+
+  // The following kernels calculate \sum_{i=1}^{c} s_i * V ^ (c - i)
+  for (int32_t i = 0; i < context_size; ++i) {
+    K2_EVAL(
+        c, num_states, lambda_generate_states, (int32_t idx012) -> void {
+          int32_t left_symbols_idx012x = left_symbols_row_splits3_data[idx012],
+                  left_symbols_idx0123 = left_symbols_idx012x + i,
+                  exp = context_size - i - 1;
+          states_data[idx012]
+              += left_symbols_data[left_symbols_idx0123] * Pow(vocab_size, exp);
+    });
+  }
+
+  // Sort those states for each sequence, so as to merge the same states.
+  // sorted_states has two axes: [seq][state]
+  auto sorted_states = Ragged<int64_t>(
+      RemoveAxis(states.shape, 1 /*axis*/), states.values.Clone());
+  Array1<int32_t> sorted_states_new2old(c, num_states);
+  SortSublists<int64_t>(&sorted_states, &sorted_states_new2old);
+
+  // We need old2new map to find the original consecutive state.
+  Array1<int32_t> sorted_states_old2new(c, num_states);
+  const int32_t *sorted_states_new2old_data = sorted_states_new2old.Data();
+  int32_t *sorted_states_old2new_data = sorted_states_old2new.Data();
+  K2_EVAL(
+      c, num_states, lambda_get_old2new, (int32_t i) -> void {
+      sorted_states_old2new_data[sorted_states_new2old_data[i]] = i;
+  });
+
+  // Search "tails concept" in k2/csrc/utils.h for the details of tail array.
+  // By applying ExclusiveSum on the tail_array, we can get a row_id mapping the
+  // sorted states to unique_states (i.e. the merged states).
+  Array1<int32_t> tail_array(c, num_states);
+  const int32_t *sorted_states_row_ids1_data = sorted_states.RowIds(1).Data();
+  const int64_t *sorted_states_data = sorted_states.values.Data();
+  int32_t *tail_array_data = tail_array.Data();
+
+  K2_EVAL(
+      c, num_states, lambda_get_tail_array, (int32_t idx01) -> void {
+      if (idx01 == num_states - 1) tail_array_data[idx01] = 1;
+      int32_t idx0 = sorted_states_row_ids1_data[idx01],
+              next_idx0 = sorted_states_row_ids1_data[idx01 + 1];
+      if (idx0 == next_idx0 &&
+          sorted_states_data[idx01] == sorted_states_data[idx01 + 1])
+          tail_array_data[idx01] = 0;
+      else
+          tail_array_data[idx01] = 1;
+  });
+
+  Array1<int32_t> unique_states_row_ids(c, num_states);
+  ExclusiveSum(tail_array, &unique_states_row_ids);
+
+  // unique_states_shape's shape [merged state][sorted state]
+  // unique_states_shape.row_splits.Dim() - 1 equals to the number of merged
+  // states.
+  RaggedShape unique_states_shape = RaggedShape2(
+      nullptr, &unique_states_row_ids, unique_states_row_ids.Dim());
+
+  // We are figuring out the ragged shape of the lattice.
+  // First, figure out the number of states (i.e. the merged states) for each
+  // sequence.
+  // Second, figure out the number of arcs for each merged state.
+  int32_t num_seqs = states.TotSize(0);
+
+  // Plus 1 here because we will apply ExclusiveSum on this array.
+  Array1<int32_t> num_states_for_seqs(c, states.TotSize(0) + 1);
+
+  // "ss" is short for "sorted states"
+  // "us" is short for "unique states".
+  const int32_t *ss_row_splits1_data = sorted_states.RowSplits(1).Data(),
+                *us_row_ids1_data = unique_states_shape.RowIds(1).Data();
+  int32_t *num_states_for_seqs_data = num_states_for_seqs.Data();
+
+  K2_EVAL(
+      c, num_seqs, lambda_get_num_states, (int32_t idx0) -> void {
+      int32_t ss_idx0x = ss_row_splits1_data[idx0],
+              ss_idx0x_next = ss_row_splits1_data[idx0 + 1],
+              us_idx0 = us_row_ids1_data[ss_idx0x],
+              us_idx0_next_minus_1 = us_row_ids1_data[ss_idx0x_next - 1],
+              num_unique_states = us_idx0_next_minus_1 - us_idx0 + 1;
+      // Plus 3 here, because we need a super dest_state for the states sampled
+      // on the last frame (this dest_state will point to the final state),
+      // a fake super dest_state for the last states of linear paths that
+      // are not sampled on the last frames (this fake dest_state will be
+      // removed by connect operation), and a final state needed by k2.
+      num_states_for_seqs_data[idx0] = num_unique_states + 3;
+  });
+
+  ExclusiveSum(num_states_for_seqs, &num_states_for_seqs);
+  RaggedShape seqs_to_states_shape = RaggedShape2(
+      &num_states_for_seqs, nullptr, -1);
+  int32_t num_merged_states = seqs_to_states_shape.NumElements();
+
+  K2_CHECK_EQ(unique_states_shape.RowSplits(1).Dim() - 1 + num_seqs * 3,
+              num_merged_states);
+
+  // Plus 1 here because we will apply ExclusiveSum on this array.
+  Array1<int32_t> num_arcs_for_states(
+      c, seqs_to_states_shape.NumElements() + 1);
+
+  // "sts" is short for "seqs to states"
+  // "us" is short for "unique states".
+  const int32_t *us_row_splits1_data = unique_states_shape.RowSplits(1).Data(),
+                *sts_row_ids1_data = seqs_to_states_shape.RowIds(1).Data(),
+                *sts_row_splits1_data
+                  = seqs_to_states_shape.RowSplits(1).Data();
+  int32_t *num_arcs_for_states_data = num_arcs_for_states.Data();
+
+  K2_EVAL(
+      c, num_merged_states, lambda_get_num_arcs, (int32_t idx01) -> void {
+      int32_t idx0 = sts_row_ids1_data[idx01],
+              idx0x_next = sts_row_splits1_data[idx0 + 1],
+              num_arcs = 0;
+      // The final arc for each sequence.
+      if (idx01 == idx0x_next - 2) num_arcs = 1;
+      if (idx01 < idx0x_next - 3) {
+          // Minus idx0 * 3, because we add extra three states for each sequence.
+          int32_t us_idx0 = idx01 - idx0 * 3,
+                  us_idx0x = us_row_splits1_data[us_idx0],
+                  us_idx0x_next = us_row_splits1_data[us_idx0 + 1];
+          num_arcs = us_idx0x_next - us_idx0x;
+     }
+     // idx01 == idx0x_next - 3 (i.e. the fake super dest_state) and
+     // idx01 == idx0x_next -1 (i.e. the final state) don't have arcs.
+     num_arcs_for_states_data[idx01] = num_arcs;
+  });
+
+  ExclusiveSum(num_arcs_for_states, &num_arcs_for_states);
+  RaggedShape states_to_arcs_shape = RaggedShape2(
+      &num_arcs_for_states, nullptr, -1);
+
+  RaggedShape arcs_shape = ComposeRaggedShapes(
+      seqs_to_states_shape, states_to_arcs_shape);
+  int32_t num_arcs = arcs_shape.NumElements();
+
+  // Each state (before merging) has a leaving arc, we add a final arc
+  // to each sequence, so, the total number of arcs equals to
+  // num_states + num_seqs
+  K2_CHECK_EQ(num_arcs, num_seqs + num_states);
+
+  // Populate arcs.
+  // "ss" is short for "sorted states"
+  const int32_t *sampled_paths_data = sampled_paths.values.Data(),
+                *arcs_shape_row_ids1_data = arcs_shape.RowIds(1).Data(),
+                *arcs_shape_row_splits1_data = arcs_shape.RowSplits(1).Data(),
+                *arcs_shape_row_ids2_data = arcs_shape.RowIds(2).Data(),
+                *states_row_ids2_data = states.RowIds(2).Data(),
+                *boundary_data = boundary.Data(),
+                *ss_row_ids1_data = sorted_states.RowIds(1).Data();
+  const float *sampling_probs_data = sampling_probs.values.Data();
+  Array1<Arc> arcs(c, num_arcs);
+  Arc *arcs_data = arcs.Data();
+
+  // The arc_map mapping from lattice arcs to original state indexes.
+  Array1<int32_t> raw_arc_map(c, num_arcs);
+  int32_t *raw_arc_map_data = raw_arc_map.Data();
+
+  K2_EVAL(
+      c, num_arcs, lambda_set_arcs, (int32_t idx012) -> void {
+      Arc arc;
+      int32_t arc_map_value = -1;
+      int32_t idx01 = arcs_shape_row_ids2_data[idx012],
+              idx0 = arcs_shape_row_ids1_data[idx01],
+              idx0x = arcs_shape_row_splits1_data[idx0],
+              idx1 = idx01 - idx0x;
+      arc.src_state = idx1;
+
+      // Final arc of the last sequence.
+      if (idx012 == num_arcs - 1) {
+        arc.dest_state = idx1 + 1;
+        arc.label = -1;
+        arc.score = 0.0;
+      } else {
+        int32_t idx01_next = arcs_shape_row_ids2_data[idx012 + 1],
+                idx0_next = arcs_shape_row_ids1_data[idx01_next];
+        // Final arc for each sequence, except the last sequence.
+        if (idx0 != idx0_next) {
+          arc.dest_state = idx1 + 1;
+          arc.label = -1;
+          arc.score = 0.0;
+        } else {
+          // ss_idx01 is the global index of sorted states, minus idx0 here
+          // because we added an extra final arc for each sequence.
+          int32_t ss_idx01 = idx012 - idx0,
+                  states_idx012 = sorted_states_new2old_data[ss_idx01];
+
+          arc_map_value = states_idx012;
+          arc.label = sampled_paths_data[states_idx012];
+          float sampling_prob = sampling_probs_data[states_idx012];
+
+          int32_t us_idx0 = us_row_ids1_data[ss_idx01],
+                  repeat_num = us_row_splits1_data[us_idx0 + 1] -
+                    us_row_splits1_data[us_idx0];
+
+          float score = -logf(1 - powf(1 - sampling_prob, repeat_num));
+          if (score - score != 0) {
+            arc.score = 0.0;
+          } else {
+            arc.score = score;
+          }
+
+          K2_DCHECK_LT(frame_ids_data[states_idx012], boundary_data[idx0]);
+
+          int32_t idx0x_next = arcs_shape_row_splits1_data[idx0 + 1];
+
+          // Handle the final state of last sequence.
+          if (states_idx012 == num_states - 1) {
+            // If current state is on final frame, it will point to the added
+            // super dest_state.
+            if (frame_ids_data[states_idx012] == boundary_data[idx0] - 1) {
+              arc.dest_state = idx0x_next - idx0x - 2;
+            } else {
+              // point to the fake added dest_state.
+              arc.dest_state = idx0x_next - idx0x - 3;
+            }
+          } else {
+            // states_idx01 is path index
+            int32_t states_idx01 = states_row_ids2_data[states_idx012],
+                    states_idx01_next =
+                      states_row_ids2_data[states_idx012 + 1];
+            if (states_idx01 != states_idx01_next) {
+              // If current state is on final frame, it will point to the added
+              // super dest_state.
+              if (frame_ids_data[states_idx012] == boundary_data[idx0] - 1) {
+                arc.dest_state = idx0x_next - idx0x - 2;
+              } else {
+                // point to the fake added dest_state.
+                arc.dest_state = idx0x_next - idx0x - 3;
+              }
+            } else {
+              // If current state is on final frame, it will point to the added
+              // super dest_state.
+              if (frame_ids_data[states_idx012] == boundary_data[idx0] - 1 &&
+                  frame_ids_data[states_idx012 + 1] != boundary_data[idx0] - 1) {
+                arc.dest_state = idx0x_next - idx0x - 2;
+              } else {
+                // states_idx012 + 1 is the index of original consecutive state.
+                // "ss" is short for "sorted states"
+                // "us" is short for "unique states".
+                int32_t ss_idx01_next =
+                  sorted_states_old2new_data[states_idx012 + 1],
+                        us_idx0_next = us_row_ids1_data[ss_idx01_next];
+                // Plus 3 * idx0, because we add 3 state for each sequence
+                arc.dest_state = us_idx0_next +  3 * idx0 - idx0x;
+              }
+            }
+          }
+        }
+      }
+     arcs_data[idx012] = arc;
+     raw_arc_map_data[idx012] = arc_map_value;
+  });
+
+  FsaVec fsas = Ragged<Arc>(arcs_shape, arcs);
+  // arcsort so as to remove duplicate arcs.
+  Array1<int32_t> arc_sort_new2old(c, num_arcs);
+  SortSublists<Arc>(&fsas, &arc_sort_new2old);
+
+  // remove duplicate arcs, use renumbering
+  Renumbering renumber_arcs(c, num_arcs);
+  char *keep_arcs_data = renumber_arcs.Keep().Data();
+  K2_EVAL(
+      c, num_arcs, lambda_set_keep_arcs, (int32_t idx012) -> void {
+      char keep = 1;
+      if (idx012 < num_arcs - 1) {
+        int32_t idx01 = arcs_shape_row_ids2_data[idx012],
+                idx01_next = arcs_shape_row_ids2_data[idx012 + 1];
+        // duplicate arcs, which are arcs with the same symbol going from the
+        // same src_state to the same dest_state. The symbol will automatically
+        // be the same if the src_state and dest_state are the same if
+        // context_size > 0.
+        if (idx01 == idx01_next &&
+            arcs_data[idx012].src_state == arcs_data[idx012 + 1].src_state &&
+            arcs_data[idx012].dest_state == arcs_data[idx012 + 1].dest_state) {
+          K2_DCHECK_EQ(arcs_data[idx012].label, arcs_data[idx012 + 1].label);
+          keep = 0;
+        }
+      }
+      keep_arcs_data[idx012] = keep;
+  });
+
+  Array1<int32_t> renumber_arc_map;
+  FsaVec final_fsas = Index(
+      fsas, 2, renumber_arcs.New2Old(), &renumber_arc_map);
+
+  if (arc_map != nullptr) {
+    *arc_map = raw_arc_map[arc_sort_new2old][renumber_arc_map];
+  }
+  return final_fsas;
 }
 
 }  // namespace k2

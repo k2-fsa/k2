@@ -55,6 +55,7 @@ from .fsa_algo import ctc_graph
 from .fsa_algo import ctc_topo
 from .fsa_algo import determinize
 from .fsa_algo import expand_ragged_attributes
+from .fsa_algo import generate_denominator_lattice
 from .fsa_algo import intersect
 from .fsa_algo import intersect_device
 from .fsa_algo import invert

@@ -34,6 +34,7 @@ set(py_test_files
   fsa_from_unary_function_ragged_test.py
   fsa_from_unary_function_tensor_test.py
   fsa_test.py
+  generate_denominator_lattice_test.py
   get_arc_post_test.py
   get_backward_scores_test.py
   get_forward_scores_test.py

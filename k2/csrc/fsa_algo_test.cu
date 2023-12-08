@@ -1383,4 +1383,48 @@ TEST(FsaAlgo, TestLevenshteinGraph) {
   }
 }
 
+TEST(FsaAlgo, TestGenerateDenominatorLattice) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<int32_t> sampled_paths(c, "[ [ [ 3 5 0 4 6 0 2 1 ] "
+                                     "    [ 2 0 5 4 0 6 1 2 ] "
+                                     "    [ 3 5 2 0 0 1 6 4 ] ] "
+                                     "  [ [ 7 0 4 0 6 0 3 0 ] "
+                                     "    [ 0 7 3 0 2 0 4 5 ] "
+                                     "    [ 7 0 3 4 0 1 2 0 ] ] ]");
+    Ragged<int32_t> frame_ids(c, "[ [ [ 0 0 0 1 1 1 2 2 ] "
+                                 "    [ 0 0 1 1 1 2 2 2 ] "
+                                 "    [ 0 0 0 0 1 2 2 2 ] ] "
+                                 "  [ [ 0 0 1 1 2 2 3 3 ] "
+                                 "    [ 0 1 1 1 2 2 3 1 ] "
+                                 "    [ 0 0 1 1 1 2 2 2 ] ] ]");
+    Ragged<int32_t> left_symbols(c,
+      "[ [ [ [ 0 0 ] [ 0 3 ] [ 3 5 ] [ 3 5 ] [ 5 4 ] [ 4 6 ] [ 4 6 ] [ 6 2 ] ] "
+      "    [ [ 0 0 ] [ 0 2 ] [ 0 2 ] [ 2 5 ] [ 5 4 ] [ 5 4 ] [ 4 6 ] [ 6 1 ] ] "
+      "    [ [ 0 0 ] [ 0 3 ] [ 3 5 ] [ 5 2 ] [ 5 2 ] [ 5 2 ] [ 2 1 ] [ 1 6 ] ] "
+      "  ] "
+      "  [ [ [ 0 0 ] [ 0 7 ] [ 0 7 ] [ 7 4 ] [ 7 4 ] [ 4 6 ] [ 4 6 ] [ 6 3 ] ] "
+      "    [ [ 0 0 ] [ 0 0 ] [ 0 7 ] [ 7 3 ] [ 7 3 ] [ 3 2 ] [ 3 2 ] [ 0 0 ] ] "
+      "    [ [ 0 0 ] [ 0 7 ] [ 0 7 ] [ 7 3 ] [ 3 4 ] [ 3 4 ] [ 4 1 ] [ 1 2 ] ] "
+      "  ] ]");
+
+    Ragged<float> sampling_probs(c, "[ [ [ 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 ] "
+                                    "    [ 0.2 0.2 0.2 0.1 0.2 0.2 0.1 0.2 ] "
+                                    "    [ 0.1 0.1 0.1 0.3 0.2 0.3 0.3 0.3 ] ] "
+                                    "  [ [ 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 ] "
+                                    "    [ 0.2 0.2 0.2 0.1 0.2 0.1 0.2 0.2 ] "
+                                    "    [ 0.1 0.1 0.2 0.2 0.3 0.3 0.3 0.3 ] ] "
+                                    "]");
+    Array1<int32_t> boundary(c, "[ 3 4 ]");
+
+    Array1<int32_t> arc_map;
+    FsaVec lattice = GenerateDenominatorLattice(
+        sampled_paths, frame_ids, left_symbols, sampling_probs, boundary,
+        10 /*vocab_size*/, 2 /*context_size*/, &arc_map);
+    K2_LOG(INFO) << arc_map;
+    K2_LOG(INFO) << lattice;
+    K2_LOG(INFO) << FsaToString(lattice.Index(0, 0));
+    K2_LOG(INFO) << FsaToString(lattice.Index(0, 1));
+  }
+}
+
 }  // namespace k2

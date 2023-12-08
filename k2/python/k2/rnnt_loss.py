@@ -344,6 +344,7 @@ def get_rnnt_logprobs_joint(
     termination_symbol: int,
     rnnt_type: str = "regular",
     boundary: Optional[Tensor] = None,
+    normalized: bool = True,
 ) -> Tuple[Tensor, Tensor]:
     """Reduces RNN-T problem to a compact, standard form that can then be given
     (with boundaries) to mutual_information_recursion().
@@ -364,6 +365,8 @@ def get_rnnt_logprobs_joint(
         [0, 0, S, T]
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
+      normalized:
+        True to do log_softmax normalization, otherwise not.
       rnnt_type:
         Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
         `regular`: The regular rnnt that taking you to the next frame only if
@@ -413,8 +416,10 @@ def get_rnnt_logprobs_joint(
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
     _validate_st_lengths(S, T, rnnt_type == "regular", boundary)
 
-    normalizers = torch.logsumexp(logits, dim=3)
-    normalizers = normalizers.permute((0, 2, 1))
+    normalizers = None
+    if normalized:
+        normalizers = torch.logsumexp(logits, dim=3)
+        normalizers = normalizers.permute((0, 2, 1))
 
     px = torch.gather(
         logits, dim=3, index=symbols.reshape(B, 1, S, 1).expand(B, T, S, 1)
@@ -432,12 +437,18 @@ def get_rnnt_logprobs_joint(
             dim=2,
         )  # now: [B][S][T+1], index [:,:,T] has -inf..
 
-    px[:, :, :T] -= normalizers[:, :S, :]
+    if normalized:
+        px[:, :, :T] -= normalizers[:, :S, :]
 
     py = (
         logits[:, :, :, termination_symbol].permute((0, 2, 1)).clone()
     )  # [B][S+1][T]
-    py -= normalizers
+
+    if normalized:
+        py -= normalizers
+
+    px = px.contiguous()
+    py = py.contiguous()
 
     if rnnt_type == "regular":
         px = fix_for_boundary(px, boundary)
@@ -452,6 +463,7 @@ def rnnt_loss(
     symbols: Tensor,
     termination_symbol: int,
     boundary: Optional[Tensor] = None,
+    normalized: bool = True,
     rnnt_type: str = "regular",
     delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
@@ -473,6 +485,8 @@ def rnnt_loss(
         [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
         [0, 0, S, T] if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
+      normalized:
+        True to do log_softmax normalization, otherwise not.
       rnnt_type:
         Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
         `regular`: The regular rnnt that taking you to the next frame only if
@@ -507,6 +521,7 @@ def rnnt_loss(
         symbols=symbols,
         termination_symbol=termination_symbol,
         boundary=boundary,
+        normalized=normalized,
         rnnt_type=rnnt_type,
     )
 
@@ -538,7 +553,6 @@ def rnnt_loss(
         raise ValueError(
             f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
         )
-
 
 def _monotonic_lower_bound(x: torch.Tensor) -> torch.Tensor:
     """Compute a monotonically increasing lower bound of the tensor `x` on the
@@ -575,7 +589,6 @@ def _monotonic_lower_bound(x: torch.Tensor) -> torch.Tensor:
     x, _ = torch.cummin(x, dim=-1)
     x = torch.flip(x, dims=(-1,))
     return x
-
 
 def _adjust_pruning_lower_bound(
     s_begin: torch.Tensor, s_range: int
@@ -995,6 +1008,7 @@ def get_rnnt_logprobs_pruned(
     ranges: Tensor,
     termination_symbol: int,
     boundary: Tensor,
+    normalized: bool = True,
     rnnt_type: str = "regular",
 ) -> Tuple[Tensor, Tensor]:
     """Construct px, py for mutual_information_recursion with pruned output.
@@ -1021,6 +1035,8 @@ def get_rnnt_logprobs_pruned(
         [0, 0, S, T]
         if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
+      normalized:
+        True to do log_softmax normalization, otherwise not.
       rnnt_type:
         Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
         `regular`: The regular rnnt that taking you to the next frame only if
@@ -1073,7 +1089,9 @@ def get_rnnt_logprobs_pruned(
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
     _validate_st_lengths(S, T, rnnt_type == "regular", boundary)
 
-    normalizers = torch.logsumexp(logits, dim=3)
+    normalizers = None
+    if normalized:
+        normalizers = torch.logsumexp(logits, dim=3)
 
     symbols_with_terminal = torch.cat(
         (
@@ -1098,7 +1116,9 @@ def get_rnnt_logprobs_pruned(
     px = torch.gather(
         logits, dim=3, index=pruned_symbols.reshape(B, T, s_range, 1)
     ).squeeze(-1)
-    px = px - normalizers
+
+    if normalized:
+        px = px - normalizers
 
     # (B, T, S) with index larger than s_range in dim 2 fill with -inf
     px = torch.cat(
@@ -1131,7 +1151,9 @@ def get_rnnt_logprobs_pruned(
         )  # now: [B][S][T+1], index [:,:,T] has -inf..
 
     py = logits[:, :, :, termination_symbol].clone()  # (B, T, s_range)
-    py = py - normalizers
+
+    if normalized:
+        py = py - normalizers
 
     # (B, T, S + 1) with index larger than s_range in dim 2 filled with -inf
     py = torch.cat(
@@ -1166,10 +1188,12 @@ def rnnt_loss_pruned(
     ranges: Tensor,
     termination_symbol: int,
     boundary: Tensor = None,
+    normalized: bool = True,
+    return_grad: bool = False,
     rnnt_type: str = "regular",
     delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
-) -> Tensor:
+) -> Union[Tensor, Tuple[Tensor, Tuple[Tensor, Tensor]]]:
     """A RNN-T loss with pruning, which uses the output of a pruned 'joiner'
     network as input, i.e. a 4 dimensions tensor with shape (B, T, s_range, C),
     s_range means the number of symbols kept for each frame.
@@ -1196,6 +1220,8 @@ def rnnt_loss_pruned(
         [begin_symbol, begin_frame, end_symbol, end_frame] that is treated as
         [0, 0, S, T] if boundary is not supplied.
         Most likely you will want begin_symbol and begin_frame to be zero.
+      normalized:
+        True to do log_softmax normalization, otherwise not.
       rnnt_type:
         Specifies the type of rnnt paths: `regular`, `modified` or `constrained`.
         `regular`: The regular rnnt that taking you to the next frame only if
@@ -1219,10 +1245,20 @@ def rnnt_loss_pruned(
         `mean`: apply `torch.mean` over the batches.
         `sum`: the output will be summed.
         Default: `mean`
+      return_grad:
+        Whether to return grads of px and py, this grad standing for the
+        occupation probability is the output of the backward with a
+        `fake gradient`, the `fake gradient` is the same as the gradient you'd
+        get if you did `torch.autograd.grad((-loss.sum()), [px, py])`, note, the
+        loss here is the loss with reduction "none".
+        This is useful to implement the pruned version of rnnt loss.
     Returns:
-      If reduction is `none`, returns a tensor of shape (B,), containing the
-      total RNN-T loss values for each sequence of the batch, otherwise a scalar
-      with the reduction applied.
+       If return_grad is False, returns a tensor of shape (B,), containing the
+       total RNN-T loss values for each element of the batch if reduction equals
+       to "none", otherwise a scalar with the reduction applied.
+       If return_grad is True, the grads of px and py, which is the output of
+       backward with a `fake gradient`(see above), will be returned too. And the
+       returned value will be a tuple like (loss, (px_grad, py_grad)).
     """
     px, py = get_rnnt_logprobs_pruned(
         logits=logits,
@@ -1230,6 +1266,7 @@ def rnnt_loss_pruned(
         ranges=ranges,
         termination_symbol=termination_symbol,
         boundary=boundary,
+        normalized=normalized,
         rnnt_type=rnnt_type,
     )
 
@@ -1250,17 +1287,22 @@ def rnnt_loss_pruned(
         penalty = penalty * delay_penalty
         px += penalty.to(px.dtype)
 
-    negated_loss = mutual_information_recursion(px=px, py=py, boundary=boundary)
+    scores_and_grads = mutual_information_recursion(
+        px=px, py=py, boundary=boundary, return_grad=return_grad
+    )
+    negated_loss = scores_and_grads[0] if return_grad else scores_and_grads
+
     if reduction == "none":
-        return -negated_loss
+        loss = -negated_loss
     elif reduction == "mean":
-        return -torch.mean(negated_loss)
+        loss = -torch.mean(negated_loss)
     elif reduction == "sum":
-        return -torch.sum(negated_loss)
+        loss = -torch.sum(negated_loss)
     else:
-        raise ValueError(
+        raise ValueError (
             f"reduction should be ('none' | 'mean' | 'sum'), given {reduction}"
         )
+    return (loss, scores_and_grads[1]) if return_grad else loss
 
 
 def get_rnnt_logprobs_smoothed(

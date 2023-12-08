@@ -816,6 +816,31 @@ static void PybindReverse(py::module &m) {
       py::arg("src"), py::arg("need_arc_map") = true);
 }
 
+static void PybindGenerateDenominatorLattice(py::module &m) {
+  m.def(
+      "generate_denominator_lattice",
+      [](RaggedAny &sampled_paths, RaggedAny &frame_ids,
+         RaggedAny &left_symbols, RaggedAny &sampling_probs,
+         torch::Tensor &boundary, int32_t vocab_size, int32_t context_size)
+      -> std::pair<FsaVec, torch::Tensor> {
+        DeviceGuard guard(sampled_paths.any.Context());
+        Array1<int32_t> arc_map;
+        Array1<int32_t> boundary_array = FromTorch<int32_t>(boundary);
+        FsaVec lattice = GenerateDenominatorLattice(
+            sampled_paths.any.Specialize<int32_t>(),
+            frame_ids.any.Specialize<int32_t>(),
+            left_symbols.any.Specialize<int32_t>(),
+            sampling_probs.any.Specialize<float>(),
+            boundary_array,
+            vocab_size, context_size, &arc_map);
+        auto arc_map_tensor = ToTorch(arc_map);
+        return std::make_pair(lattice, arc_map_tensor);
+      },
+      py::arg("sampled_paths"), py::arg("frame_ids"), py::arg("left_symbols"),
+      py::arg("sampling_probs"), py::arg("boundary"), py::arg("vocab_size"),
+      py::arg("context_size"));
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -829,6 +854,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindDeterminize(m);
   k2::PybindExpandArcs(m);
   k2::PybindFixFinalLabels(m);
+  k2::PybindGenerateDenominatorLattice(m);
   k2::PybindIntersect(m);
   k2::PybindIntersectDense(m);
   k2::PybindIntersectDensePruned(m);
