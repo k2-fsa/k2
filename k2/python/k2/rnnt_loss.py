@@ -1355,9 +1355,9 @@ def rnnt_loss_pruned(
     termination_symbol: int,
     boundary: Tensor = None,
     rnnt_type: str = "regular",
-    use_hat_loss: bool = False,
     delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
+    use_hat_loss: bool = False,
 ) -> Tensor:
     """A RNN-T loss with pruning, which uses the output of a pruned 'joiner'
     network as input, i.e. a 4 dimensions tensor with shape (B, T, s_range, C),
@@ -1398,12 +1398,6 @@ def rnnt_loss_pruned(
                        *next* context on the *current* frame, e.g. if we emit
                        c given "a b" context, we are forced to emit "blank"
                        given "b c" context on the current frame.
-      use_hat_loss:
-        If True, we compute the Hybrid Autoregressive Transducer (HAT) loss from
-        https://arxiv.org/abs/2003.07705. This is a variant of RNN-T that models
-        the blank distribution separately as a Bernoulli distribution, and the
-        non-blanks are modeled as a multinomial. This formulation may be useful
-        for performing internal LM estimation, as described in the paper.
       delay_penalty: A constant value to penalize symbol delay, this may be
          needed when training with time masking, to avoid the time-masking
          encouraging the network to delay symbols.
@@ -1414,6 +1408,12 @@ def rnnt_loss_pruned(
         `mean`: apply `torch.mean` over the batches.
         `sum`: the output will be summed.
         Default: `mean`
+      use_hat_loss:
+        If True, we compute the Hybrid Autoregressive Transducer (HAT) loss from
+        https://arxiv.org/abs/2003.07705. This is a variant of RNN-T that models
+        the blank distribution separately as a Bernoulli distribution, and the
+        non-blanks are modeled as a multinomial. This formulation may be useful
+        for performing internal LM estimation, as described in the paper.
     Returns:
       If reduction is `none`, returns a tensor of shape (B,), containing the
       total RNN-T loss values for each sequence of the batch, otherwise a scalar
