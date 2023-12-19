@@ -856,6 +856,74 @@ class TestRnntLoss(unittest.TestCase):
                     ), f"Pruned loss is inf for r={r}, S={S}, T={T}."
                     print(f"Pruned loss with range {r} : {pruned_loss}")
 
+    def test_hat_loss_pruned(self):
+        B = 4
+        T = 300
+        S = 50
+        C = 10
+
+        frames = torch.randint(S, T, (B,))
+        seq_length = torch.randint(3, S - 1, (B,))
+        T = torch.max(frames)
+        S = torch.max(seq_length)
+
+        am_ = torch.randn((B, T, C), dtype=torch.float64)
+        lm_ = torch.randn((B, S + 1, C), dtype=torch.float64)
+        symbols_ = torch.randint(1, C, (B, S))
+        terminal_symbol = 0
+
+        boundary_ = torch.zeros((B, 4), dtype=torch.int64)
+        boundary_[:, 2] = seq_length
+        boundary_[:, 3] = frames
+
+        for rnnt_type in ["regular", "modified", "constrained"]:
+            for device in self.devices:
+                # normal rnnt
+                am = am_.to(device)
+                lm = lm_.to(device)
+                symbols = symbols_.to(device)
+                boundary = boundary_.to(device)
+
+                # pruning
+                k2_simple_loss, (px_grad, py_grad) = k2.rnnt_loss_simple(
+                    lm=lm,
+                    am=am,
+                    symbols=symbols,
+                    termination_symbol=terminal_symbol,
+                    boundary=boundary,
+                    rnnt_type=rnnt_type,
+                    return_grad=True,
+                    reduction="none",
+                )
+
+                for r in range(2, 50, 5):
+                    ranges = k2.get_rnnt_prune_ranges(
+                        px_grad=px_grad,
+                        py_grad=py_grad,
+                        boundary=boundary,
+                        s_range=r,
+                    )
+                    # (B, T, r, C)
+                    pruned_am, pruned_lm = k2.do_rnnt_pruning(
+                        am=am, lm=lm, ranges=ranges
+                    )
+
+                    logits = pruned_am + pruned_lm
+                    # nonlinear transform
+                    logits = torch.tanh(logits)
+
+                    pruned_loss = k2.rnnt_loss_pruned(
+                        logits=logits,
+                        symbols=symbols,
+                        ranges=ranges,
+                        termination_symbol=terminal_symbol,
+                        boundary=boundary,
+                        rnnt_type=rnnt_type,
+                        reduction="none",
+                        use_hat_loss=True,
+                    )
+                    print(f"Pruned HAT loss with range {r} : {pruned_loss}")
+
     # Check that training with an empty reference does not cause a crash.
     def _test_rnnt_loss_empty_reference(self):
         B = 1
