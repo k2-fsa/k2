@@ -46,7 +46,6 @@ concurrency:
 
 jobs:
   run-tests:
-    if: github.event.label.name == 'ready' || github.event_name == 'push'
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.build_type }}
     strategy:
@@ -54,7 +53,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         cuda: ["12.1"]
-        torch: ["2.1.1"]
+        torch: ["2.1.2"]
         python-version: ["3.11"]
 
     steps:
