@@ -47,7 +47,7 @@ concurrency:
 jobs:
   run-tests-cpu:
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.python-version }} ${{ matrix.build_type }}
+    name: ${{ matrix.os }} ${{ matrix.torch }} ${{ matrix.python-version }} ${{ matrix.build_type }}
     strategy:
       fail-fast: false
       matrix:

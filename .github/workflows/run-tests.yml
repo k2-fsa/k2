@@ -47,7 +47,6 @@ concurrency:
 jobs:
   run-tests:
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.build_type }}
     strategy:
       fail-fast: false
       matrix:
