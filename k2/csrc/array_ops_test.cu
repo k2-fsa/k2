@@ -1573,7 +1573,9 @@ TEST(OpsTest, InvertPermutationTest) {
       int32_t len = RandInt(0, 10);
       std::vector<int32_t> permutation(len);
       std::iota(permutation.begin(), permutation.end(), 0);
-      std::random_shuffle(permutation.begin(), permutation.end());
+      std::random_device rd;
+      std::mt19937 g(rd());
+      std::shuffle(permutation.begin(), permutation.end(), g);
       Array1<int32_t> permutation_array(c, permutation);
       Array1<int32_t> permutation_array_inv =
           InvertPermutation(permutation_array);

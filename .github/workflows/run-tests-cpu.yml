@@ -46,14 +46,13 @@ concurrency:
 
 jobs:
   run-tests-cpu:
-    if: github.event.label.name == 'ready' || github.event.label.name == 'cpp-test' || github.event_name == 'push'
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.python-version }} ${{ matrix.build_type }}
+    name: ${{ matrix.os }} ${{ matrix.torch }} ${{ matrix.python-version }} ${{ matrix.build_type }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        torch: ["2.1.1"]
+        torch: ["2.1.2"]
         python-version: ["3.8", "3.9", "3.10", "3.11"]
         build_type: ["Release", "Debug"]
 
