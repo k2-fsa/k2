@@ -52,8 +52,8 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         cuda: ["12.1"]
-        torch: ["2.1.2"]
-        python-version: ["3.11"]
+        torch: ["2.2.0"]
+        python-version: ["3.12"]
 
     steps:
       # refer to https://github.com/actions/checkout
