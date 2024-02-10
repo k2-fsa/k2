@@ -24,18 +24,18 @@ function(download_kaldifeat)
 
   include(FetchContent)
 
-  set(kaldifeat_URL "https://github.com/csukuangfj/kaldifeat/archive/refs/tags/v1.25.1.tar.gz")
-  set(kaldifeat_URL2 "https://huggingface.co/csukuangfj/k2-cmake-deps/resolve/main/kaldifeat-1.25.1.tar.gz")
-  set(kaldifeat_HASH "SHA256=28a6f77963f390220675614932e1d3c4a49d394f7d192d6af46b383765673a2e")
+  set(kaldifeat_URL  "https://github.com/csukuangfj/kaldifeat/archive/refs/tags/v1.25.4.tar.gz")
+  set(kaldifeat_URL2 "https://hub.nuaa.cf/csukuangfj/kaldifeat/archive/refs/tags/v1.25.4.tar.gz")
+  set(kaldifeat_HASH "SHA256=8a2cb45873a39d92b5e4e1f150269e7ef061c3537ad5acc3cff5ced4997bca96")
 
   # If you don't have access to the Internet,
   # please pre-download kaldifeat
   set(possible_file_locations
-    $ENV{HOME}/Downloads/kaldifeat-1.25.1.tar.gz
-    ${PROJECT_SOURCE_DIR}/kaldifeat-1.25.1.tar.gz
-    ${PROJECT_BINARY_DIR}/kaldifeat-1.25.1.tar.gz
-    /tmp/kaldifeat-1.25.1.tar.gz
-    /star-fj/fangjun/download/github/kaldifeat-1.25.1.tar.gz
+    $ENV{HOME}/Downloads/kaldifeat-1.25.4.tar.gz
+    ${CMAKE_SOURCE_DIR}/kaldifeat-1.25.4.tar.gz
+    ${CMAKE_BINARY_DIR}/kaldifeat-1.25.4.tar.gz
+    /tmp/kaldifeat-1.25.4.tar.gz
+    /star-fj/fangjun/download/github/kaldifeat-1.25.4.tar.gz
   )
 
   foreach(f IN LISTS possible_file_locations)

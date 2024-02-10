@@ -21,15 +21,15 @@ function(download_cub)
   include(FetchContent)
 
   set(cub_URL  "https://github.com/NVlabs/cub/archive/1.15.0.tar.gz")
-  set(cub_URL2 "https://huggingface.co/csukuangfj/k2-cmake-deps/resolve/main/cub-1.15.0.tar.gz")
+  set(cub_URL2 "https://hub.nuaa.cf/NVlabs/cub/archive/1.15.0.tar.gz")
   set(cub_HASH "SHA256=1781ee5eb7f00acfee5bff88e3acfc67378f6b3c24281335e18ae19e1f2ff685")
 
   # If you don't have access to the Internet,
   # please pre-download cub
   set(possible_file_locations
     $ENV{HOME}/Downloads/cub-1.15.0.tar.gz
-    ${PROJECT_SOURCE_DIR}/cub-1.15.0.tar.gz
-    ${PROJECT_BINARY_DIR}/cub-1.15.0.tar.gz
+    ${CMAKE_SOURCE_DIR}/cub-1.15.0.tar.gz
+    ${CMAKE_BINARY_DIR}/cub-1.15.0.tar.gz
     /tmp/cub-1.15.0.tar.gz
     /star-fj/fangjun/download/github/cub-1.15.0.tar.gz
   )
