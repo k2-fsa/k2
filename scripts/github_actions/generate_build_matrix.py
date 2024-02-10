@@ -248,8 +248,10 @@ def generate_build_matrix(
                 if p in excluded_python_versions:
                     continue
 
-                if for_windows or for_macos or for_macos_m1:
+                if for_windows:
                     p = "cp" + "".join(p.split("."))
+                    ans.append({"torch": torch, "python-version": p})
+                elif for_macos or for_macos_m1:
                     ans.append({"torch": torch, "python-version": p})
                 else:
                     ans.append(

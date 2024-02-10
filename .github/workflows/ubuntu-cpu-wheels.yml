@@ -27,6 +27,9 @@ jobs:
           # outputting for debugging purposes
           python ./scripts/github_actions/generate_build_matrix.py
           MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py)
+
+          # python ./scripts/github_actions/generate_build_matrix.py --test-only-latest-torch
+          # MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --test-only-latest-torch)
           echo "::set-output name=matrix::${MATRIX}"
 
   build-manylinux-wheels:

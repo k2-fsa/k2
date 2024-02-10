@@ -25,8 +25,11 @@ jobs:
         id: set-matrix
         run: |
           # outputting for debugging purposes
-          python ./scripts/github_actions/generate_build_matrix.py --for-macos
-          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --for-macos)
+          # python ./scripts/github_actions/generate_build_matrix.py --for-macos
+          # MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --for-macos)
+
+          python ./scripts/github_actions/generate_build_matrix.py --for-macos --test-only-latest-torch
+          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --for-macos --test-only-latest-torch)
           echo "::set-output name=matrix::${MATRIX}"
 
   build_wheels_macos_cpu:
@@ -43,15 +46,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      # see https://cibuildwheel.readthedocs.io/en/stable/changelog/
-      # for a list of versions
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.11.4
-        env:
-          CIBW_BEFORE_BUILD: pip install torch==${{ matrix.torch}} cmake numpy
-          CIBW_BUILD: ${{ matrix.python-version }}-*
-          CIBW_REPAIR_WHEEL_COMMAND_MACOS: ""
-          CIBW_BUILD_VERBOSITY: 3
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          pip install -q torch==${{ matrix.torch}} cmake numpy wheel twine setuptools
+
+      - name: Build wheel
+        shell: bash
+        run: |
+          python3 setup.py bdist_wheel
+          mkdir wheelhouse
+          cp -v dist/* wheelhouse
 
       - name: Display wheels
         shell: bash

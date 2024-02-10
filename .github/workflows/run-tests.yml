@@ -59,6 +59,15 @@ jobs:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v4
 
+      - name: Free space
+        shell: bash
+        run: |
+          df -h
+          rm -rf /opt/hostedtoolcache
+          df -h
+          echo "pwd: $PWD"
+          echo "github.workspace ${{ github.workspace }}"
+
       - name: Run the build process with Docker
         uses: addnab/docker-run-action@v3
         with:
