@@ -352,7 +352,7 @@ torch::IValue Load(
                      "when invoking torch.save()";
   }
 
-  auto reader = torch::make_unique<caffe2::serialize::PyTorchStreamReader>(
+  auto reader = std::make_unique<caffe2::serialize::PyTorchStreamReader>(
       std::move(rai));
 
   auto cu = std::make_shared<torch::jit::CompilationUnit>();
