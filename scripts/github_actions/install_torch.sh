@@ -185,6 +185,19 @@ case ${torch} in
         ;;
     esac
     ;;
+  2.2.*)
+    case ${cuda} in
+      11.8)
+        package="torch==${torch}+cu118"
+        url=https://download.pytorch.org/whl/torch_stable.html
+        ;;
+      12.1)
+        package="torch==${torch}"
+        # Leave it empty to use PyPI.
+        url=
+        ;;
+    esac
+    ;;
   *)
     echo "Unsupported PyTorch version: ${torch}"
     exit 1

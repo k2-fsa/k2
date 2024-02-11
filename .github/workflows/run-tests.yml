@@ -52,12 +52,21 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         cuda: ["12.1"]
-        torch: ["2.1.2"]
-        python-version: ["3.11"]
+        torch: ["2.2.0"]
+        python-version: ["3.12"]
 
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v4
+
+      - name: Free space
+        shell: bash
+        run: |
+          df -h
+          rm -rf /opt/hostedtoolcache
+          df -h
+          echo "pwd: $PWD"
+          echo "github.workspace ${{ github.workspace }}"
 
       - name: Run the build process with Docker
         uses: addnab/docker-run-action@v3

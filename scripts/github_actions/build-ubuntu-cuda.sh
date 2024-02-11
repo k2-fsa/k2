@@ -22,14 +22,18 @@ if [ -z $CUDA_VERSION ]; then
   exit 1
 fi
 
+if [[ $TORCH_VERSION =~ 2.2.* && $CUDA_VERSION =~ 12.* ]]; then
+  # see https://github.com/pytorch/pytorch/issues/113948
+  export TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0"
+fi
 
 yum -y install openssl-devel bzip2-devel libffi-devel xz-devel wget redhat-lsb-core
 
 
-echo "Installing ${PYTHON_VERSION}.3"
-curl -O https://www.python.org/ftp/python/${PYTHON_VERSION}.3/Python-${PYTHON_VERSION}.3.tgz
-tar xf Python-${PYTHON_VERSION}.3.tgz
-pushd Python-${PYTHON_VERSION}.3
+echo "Installing ${PYTHON_VERSION}.2"
+curl -O https://www.python.org/ftp/python/${PYTHON_VERSION}.2/Python-${PYTHON_VERSION}.2.tgz
+tar xf Python-${PYTHON_VERSION}.2.tgz
+pushd Python-${PYTHON_VERSION}.2
 
 PYTHON_INSTALL_DIR=$PWD/py-${PYTHON_VERSION}
 
