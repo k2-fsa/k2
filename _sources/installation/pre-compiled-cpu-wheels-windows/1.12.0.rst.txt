@@ -2,6 +2,9 @@ torch 1.12.0
 ============
 
 
+- `k2-1.24.4.dev20240211+cpu.torch1.12.0-cp310-cp310-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20240211+cpu.torch1.12.0-cp310-cp310-win_amd64.whl>`_
+- `k2-1.24.4.dev20240211+cpu.torch1.12.0-cp39-cp39-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20240211+cpu.torch1.12.0-cp39-cp39-win_amd64.whl>`_
+- `k2-1.24.4.dev20240211+cpu.torch1.12.0-cp38-cp38-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20240211+cpu.torch1.12.0-cp38-cp38-win_amd64.whl>`_
 - `k2-1.24.4.dev20231220+cpu.torch1.12.0-cp310-cp310-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20231220+cpu.torch1.12.0-cp310-cp310-win_amd64.whl>`_
 - `k2-1.24.4.dev20231220+cpu.torch1.12.0-cp39-cp39-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20231220+cpu.torch1.12.0-cp39-cp39-win_amd64.whl>`_
 - `k2-1.24.4.dev20231220+cpu.torch1.12.0-cp38-cp38-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20231220+cpu.torch1.12.0-cp38-cp38-win_amd64.whl>`_
