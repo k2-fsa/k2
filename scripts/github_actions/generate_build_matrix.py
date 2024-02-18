@@ -5,6 +5,18 @@ import argparse
 import json
 
 
+def version_ge(a, b):
+    a_major, a_minor = list(map(int, a.split(".")))[:2]
+    b_major, b_minor = list(map(int, b.split(".")))[:2]
+    if a_major > b_major:
+        return True
+
+    if a_major == b_major and a_minor >= b_minor:
+        return True
+
+    return False
+
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -253,6 +265,14 @@ def generate_build_matrix(
                     ans.append({"torch": torch, "python-version": p})
                 elif for_macos or for_macos_m1:
                     ans.append({"torch": torch, "python-version": p})
+                elif version_ge(torch, "2.2.0"):
+                    ans.append(
+                        {
+                            "torch": torch,
+                            "python-version": p,
+                            "image": "pytorch/manylinux-builder:cpu-2.2",
+                        }
+                    )
                 else:
                     ans.append(
                         {
