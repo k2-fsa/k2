@@ -91,7 +91,7 @@ cd /var/www
 
 export CMAKE_CUDA_COMPILER_LAUNCHER=
 export K2_CMAKE_ARGS=" -DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
-export K2_MAKE_ARGS=" -j "
+export K2_MAKE_ARGS=" -j2 "
 
 python3 setup.py bdist_wheel
 
