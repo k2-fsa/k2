@@ -2,6 +2,10 @@ torch 2.1.2
 ===========
 
 
+- `k2-1.24.4.dev20240218+cpu.torch2.1.2-cp311-cp311-macosx_12_0_universal2.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20240218+cpu.torch2.1.2-cp311-cp311-macosx_12_0_universal2.whl>`_
+- `k2-1.24.4.dev20240218+cpu.torch2.1.2-cp310-cp310-macosx_12_0_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20240218+cpu.torch2.1.2-cp310-cp310-macosx_12_0_x86_64.whl>`_
+- `k2-1.24.4.dev20240218+cpu.torch2.1.2-cp39-cp39-macosx_12_0_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20240218+cpu.torch2.1.2-cp39-cp39-macosx_12_0_x86_64.whl>`_
+- `k2-1.24.4.dev20240218+cpu.torch2.1.2-cp38-cp38-macosx_12_0_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20240218+cpu.torch2.1.2-cp38-cp38-macosx_12_0_x86_64.whl>`_
 - `k2-1.24.4.dev20240211+cpu.torch2.1.2-cp311-cp311-macosx_12_0_universal2.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20240211+cpu.torch2.1.2-cp311-cp311-macosx_12_0_universal2.whl>`_
 - `k2-1.24.4.dev20240211+cpu.torch2.1.2-cp310-cp310-macosx_12_0_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20240211+cpu.torch2.1.2-cp310-cp310-macosx_12_0_x86_64.whl>`_
 - `k2-1.24.4.dev20240211+cpu.torch2.1.2-cp39-cp39-macosx_12_0_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20240211+cpu.torch2.1.2-cp39-cp39-macosx_12_0_x86_64.whl>`_
