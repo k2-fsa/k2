@@ -52,7 +52,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         cuda: ["12.1"]
-        torch: ["2.2.0"]
+        torch: ["2.2.1"]
         python-version: ["3.12"]
 
     steps:
