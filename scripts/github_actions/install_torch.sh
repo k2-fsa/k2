@@ -198,6 +198,21 @@ case ${torch} in
         ;;
     esac
     ;;
+  2.3.*)
+    case ${cuda} in
+      11.8)
+        package="torch"
+        # url=https://download.pytorch.org/whl/torch_stable.html
+        url=https://download.pytorch.org/whl/nightly/cu118
+        ;;
+      12.1)
+        package="torch"
+        # Leave it empty to use PyPI.
+        # url=
+        url=https://download.pytorch.org/whl/nightly/cu121
+        ;;
+    esac
+    ;;
   *)
     echo "Unsupported PyTorch version: ${torch}"
     exit 1
