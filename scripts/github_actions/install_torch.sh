@@ -201,12 +201,13 @@ case ${torch} in
   2.3.*)
     case ${cuda} in
       11.8)
-        package="torch"
+        package="torch==2.3.0.dev20240229+cu118"
         # url=https://download.pytorch.org/whl/torch_stable.html
+        # url=https://download.pytorch.org/whl/nightly/torch/
         url=https://download.pytorch.org/whl/nightly/cu118
         ;;
       12.1)
-        package="torch"
+        package="torch==2.3.0.dev20240229+cu121"
         # Leave it empty to use PyPI.
         # url=
         url=https://download.pytorch.org/whl/nightly/cu121
@@ -224,9 +225,9 @@ function retry() {
 }
 
 if [ x"${url}" == "x" ]; then
-  retry python3 -m pip install -q $package
+  retry python3 -m pip install --pre -q $package
 else
-  retry python3 -m pip install -q $package -f $url
+  retry python3 -m pip install --pre -q $package -f https://download.pytorch.org/whl/nightly/torch/ --index-url $url
 fi
 
 rm -rfv ~/.cache/pip

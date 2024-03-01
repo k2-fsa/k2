@@ -67,6 +67,8 @@ python3 -m pip install bs4 requests tqdm auditwheel
 echo "Installing torch"
 ./install_torch.sh
 
+sed -i.bak /9.0a/d /Python-*/py-3.*/lib/python3.*/site-packages/torch/share/cmake/Caffe2/Modules_CUDA_fix/upstream/FindCUDA/select_compute_arch.cmake
+
 rm -rf ~/.cache/pip >/dev/null 2>&1
 yum clean all >/dev/null 2>&1
 
