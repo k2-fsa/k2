@@ -42,12 +42,20 @@ we can use one of the following methods:
 
    # method 2
    pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+
    wget https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.3.dev20230719+cpu.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+
+   # For users from China
+   # 中国国内用户，如果访问不了 huggingface, 请使用
+   # wget https://hf-mirror.com/csukuangfj/k2/resolve/main/cpu/k2-1.24.3.dev20230719+cpu.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+
    pip install ./k2-1.24.3.dev20230719+cpu.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 
 .. hint::
 
    You can visit `<https://k2-fsa.github.io/k2/cpu.html>`_ to see avaiable versions of `k2`_.
+
+   For users from China, please visit `<https://k2-fsa.github.io/k2/cpu-cn.html>`_ to see avaiable versions of `k2`_.
 
 
 macOS (CPU) example
@@ -70,11 +78,18 @@ we can use the following methods:
    # method 2
    pip install torch==2.0.1
    wget https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-macosx_10_9_x86_64.whl
+
+   # For users from China
+   # 中国国内用户，如果访问不了 huggingface, 请使用
+   # wget https://hf-mirror.com/csukuangfj/k2/resolve/main/macos/k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-macosx_10_9_x86_64.whl
+
    pip install ./k2-1.24.3.dev20230720+cpu.torch2.0.1-cp38-cp38-macosx_10_9_x86_64.whl
 
 .. hint::
 
    You can visit `<https://k2-fsa.github.io/k2/cpu.html>`_ to see avaiable versions of `k2`_.
+
+   For users from China, please visit `<https://k2-fsa.github.io/k2/cpu-cn.html>`_ to see avaiable versions of `k2`_.
 
 Windows (CPU) example
 ^^^^^^^^^^^^^^^^^^^^^
@@ -96,6 +111,11 @@ we can use the one of the following methods:
    # method 2
    pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
    wget https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.3.dev20230726+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
+
+   # For users from China
+   # 中国国内用户，如果访问不了 huggingface, 请使用
+   # wget https://hf-mirror.com/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.3.dev20230726+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
+
    pip install k2-1.24.3.dev20230726+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
 
 .. hint::
@@ -106,6 +126,8 @@ we can use the one of the following methods:
 .. hint::
 
    You can visit `<https://k2-fsa.github.io/k2/cpu.html>`_ to see avaiable versions of `k2`_.
+
+   For users from China, please visit `<https://k2-fsa.github.io/k2/cpu-cn.html>`_ to see avaiable versions of `k2`_.
 
 Linux (CUDA) example
 ^^^^^^^^^^^^^^^^^^^^
@@ -126,9 +148,17 @@ we can use the following methods:
 
    # method 2
    pip install torch==2.0.1+cu117 -f https://download.pytorch.org/whl/torch_stable.html
+
    wget https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.24.3.dev20230718+cuda11.7.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+
+   # For users from China
+   # 中国国内用户，如果访问不了 huggingface, 请使用
+   # wget https://hf-mirror.com/csukuangfj/k2/resolve/main/cuda/k2-1.24.3.dev20230718+cuda11.7.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+
    pip install ./k2-1.24.3.dev20230718+cuda11.7.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 
 .. hint::
 
    You can visit `<https://k2-fsa.github.io/k2/cuda.html>`_ to see avaiable versions of `k2`_.
+
+   For users from China, please visit `<https://k2-fsa.github.io/k2/cuda-cn.html>`_ to see avaiable versions of `k2`_.

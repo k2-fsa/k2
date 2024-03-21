@@ -121,6 +121,8 @@ jobs:
           make html
           cp -v source/cpu.html ./build/html/
           cp -v source/cuda.html ./build/html/
+          cp -v source/cpu-cn.html ./build/html/
+          cp -v source/cuda-cn.html ./build/html/
           touch build/html/.nojekyll
 
       - name: Deploy
