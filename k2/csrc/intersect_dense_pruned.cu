@@ -381,11 +381,6 @@ class MultiGraphDenseIntersectPruned {
         ArcInfo old_ai = arcs_data[old_idx012];
         // Only 1 state (the final state) in next frame, so idx1 is always 0.
         old_ai.u.dest_info_state_idx1 = 0;
-        // The final arcs we are adding for online decoding partial should not
-        // map to any real arc in a_fsas.
-        // We add these final arcs for the purpose of making the partial lattice
-        // a valid Fsa.
-        old_ai.a_fsas_arc_idx012 = -1;
         new_arcs_data[new_idx012] = old_ai;
     });
 
@@ -635,6 +630,7 @@ class MultiGraphDenseIntersectPruned {
           if (t == final_t - 1 && arc_label != -1) {
             if (allow_partial) {
               arc.label = -1;
+              arc_info.a_fsas_arc_idx012 = -1;
             } else {
               // Unreachable code.
               K2_LOG(FATAL) <<
