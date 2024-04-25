@@ -67,6 +67,8 @@ python3 -m pip install bs4 requests tqdm auditwheel
 echo "Installing torch"
 ./install_torch.sh
 
+sed -i.bak /9.0a/d /Python-*/py-3.*/lib/python3.*/site-packages/torch/share/cmake/Caffe2/Modules_CUDA_fix/upstream/FindCUDA/select_compute_arch.cmake
+
 rm -rf ~/.cache/pip >/dev/null 2>&1
 yum clean all >/dev/null 2>&1
 
@@ -91,33 +93,33 @@ auditwheel --verbose repair \
   --exclude libtorch_cuda.so \
   --exclude libtorch_python.so \
   \
-  --exclude libcudnn.so.8 \
-  --exclude libcublas.so.11 \
-  --exclude libcublasLt.so.11 \
-  --exclude libcublas.so.12 \
   --exclude libcublas.so \
-  --exclude libcublasLt.so.12 \
+  --exclude libcublas.so.11 \
+  --exclude libcublas.so.12 \
   --exclude libcublasLt.so \
+  --exclude libcublasLt.so.11 \
+  --exclude libcublasLt.so.12 \
   --exclude libcudart.so.11.0 \
   --exclude libcudart.so.12 \
+  --exclude libcudnn.so.8 \
+  --exclude libcufft.so \
+  --exclude libcufft.so.11 \
+  --exclude libcupti.so \
+  --exclude libcupti.so.12 \
+  --exclude libcurand.so \
+  --exclude libcurand.so.10 \
+  --exclude libcusparse.so \
+  --exclude libcusparse.so.12 \
+  --exclude libnccl.so \
+  --exclude libnccl.so.2 \
+  --exclude libnvJitLink.so \
+  --exclude libnvJitLink.so.12 \
+  --exclude libnvrtc.so \
   --exclude libnvrtc.so.11.2 \
   --exclude libnvrtc.so.12 \
-  --exclude libnvrtc.so \
-  --exclude libcupti.so.12 \
-  --exclude libcupti.so \
-  --exclude libcusparse.so.12 \
-  --exclude libcusparse.so \
-  --exclude libnvJitLink.so.12 \
-  --exclude libnvJitLink.so \
-  --exclude libcurand.so.10 \
-  --exclude libcurand.so \
-  --exclude libcufft.so.11 \
-  --exclude libcufft.so \
-  --exclude libnccl.so.2 \
-  --exclude libnccl.so \
   --exclude libshm.so \
-  --exclude libtorch_cuda_cu.so \
   --exclude libtorch_cuda_cpp.so \
+  --exclude libtorch_cuda_cu.so \
   --plat manylinux_2_17_x86_64 \
   -w /var/www/wheelhouse \
   dist/*.whl

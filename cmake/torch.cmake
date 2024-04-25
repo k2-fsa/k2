@@ -8,6 +8,8 @@ execute_process(
 )
 
 list(APPEND CMAKE_PREFIX_PATH "${TORCH_DIR}")
+include_directories(${TORCH_DIR}/include/torch/csrc/api/include)
+include_directories(${TORCH_DIR}/include)
 
 if(NOT DEFINED TORCH_LIBRARY)
   find_package(Torch REQUIRED)
