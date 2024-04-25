@@ -35,7 +35,7 @@ jobs:
   build_wheels_macos_cpu:
     needs: generate_build_matrix
     name: ${{ matrix.torch }} ${{ matrix.python-version }}
-    runs-on: macos-latest
+    runs-on: macos-14
     strategy:
       fail-fast: false
       matrix:
@@ -46,28 +46,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.15.0
-        env:
-          CIBW_BEFORE_BUILD: pip install -q torch==${{ matrix.torch}} cmake
-          CIBW_BUILD: "${{ matrix.python-version}}-* "
-          CIBW_ENVIRONMENT: K2_CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES='arm64'"
-          CIBW_ARCHS: "arm64"
-          CIBW_BUILD_VERBOSITY: 3
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-      # - name: Install dependencies
-      #   shell: bash
-      #   run: |
-      #     pip install -q torch==${{ matrix.torch}} cmake numpy wheel twine setuptools
+      - name: Install dependencies
+        shell: bash
+        run: |
+          pip install -q torch==${{ matrix.torch}} cmake numpy wheel>=0.40.0 twine setuptools
 
-      # - name: Build wheel
-      #   shell: bash
-      #   run: |
-      #     python3 setup.py bdist_wheel
-      #     mkdir wheelhouse
-      #     cp -v dist/* wheelhouse
+      - name: Build wheel
+        shell: bash
+        run: |
+          python3 setup.py bdist_wheel
+          mkdir wheelhouse
+          cp -v dist/* wheelhouse
 
-      - name: Display wheels
+      - name: Display wheels (before fix)
+        shell: bash
+        run: |
+          ls -lh ./wheelhouse/
+
+      - name: Fix wheel platform tag
+        run: |
+          # See https://github.com/glencoesoftware/zeroc-ice-py-macos-x86_64/pull/3/files
+          # See:
+          #  * https://github.com/pypa/wheel/issues/406
+          python -m wheel tags \
+            --platform-tag=macosx_11_0_arm64 \
+            --remove wheelhouse/*.whl
+
+      - name: Display wheels (after fix)
         shell: bash
         run: |
           ls -lh ./wheelhouse/
