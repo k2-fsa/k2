@@ -35,7 +35,7 @@ jobs:
   build_wheels_macos_cpu:
     needs: generate_build_matrix
     name: ${{ matrix.torch }} ${{ matrix.python-version }}
-    runs-on: macos-11
+    runs-on: macos-14
     strategy:
       fail-fast: false
       matrix:
