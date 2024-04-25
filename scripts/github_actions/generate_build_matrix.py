@@ -277,14 +277,9 @@ def generate_build_matrix(
             for p in python_versions:
                 if p in excluded_python_versions:
                     continue
-                if for_macos and p in ["3.8", "3.9"]:
-                    # macOS arm64 in github actions does not support python 3.8 or 3.9
-                    continue
 
-                if for_windows:
+                if for_windows or for_macos:
                     p = "cp" + "".join(p.split("."))
-                    ans.append({"torch": torch, "python-version": p})
-                elif for_macos or for_macos_m1:
                     ans.append({"torch": torch, "python-version": p})
                 elif version_ge(torch, "2.2.0"):
                     ans.append(
