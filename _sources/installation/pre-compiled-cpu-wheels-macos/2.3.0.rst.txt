@@ -1,0 +1,7 @@
+torch 2.3.0
+===========
+
+
+- `k2-1.24.4.dev20240425+cpu.torch2.3.0-cp312-cp312-macosx_14_0_universal2.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20240425+cpu.torch2.3.0-cp312-cp312-macosx_14_0_universal2.whl>`_
+- `k2-1.24.4.dev20240425+cpu.torch2.3.0-cp311-cp311-macosx_14_0_universal2.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20240425+cpu.torch2.3.0-cp311-cp311-macosx_14_0_universal2.whl>`_
+- `k2-1.24.4.dev20240425+cpu.torch2.3.0-cp310-cp310-macosx_14_0_universal2.whl <https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20240425+cpu.torch2.3.0-cp310-cp310-macosx_14_0_universal2.whl>`_
