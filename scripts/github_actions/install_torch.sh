@@ -201,16 +201,13 @@ case ${torch} in
   2.3.*)
     case ${cuda} in
       11.8)
-        package="torch==2.3.0.dev20240229+cu118"
-        # url=https://download.pytorch.org/whl/torch_stable.html
-        # url=https://download.pytorch.org/whl/nightly/torch/
-        url=https://download.pytorch.org/whl/nightly/cu118
+        package="torch==${torch}+cu118"
+        url=https://download.pytorch.org/whl/torch_stable.html
         ;;
       12.1)
-        package="torch==2.3.0.dev20240229+cu121"
+        package="torch==${torch}"
         # Leave it empty to use PyPI.
-        # url=
-        url=https://download.pytorch.org/whl/nightly/cu121
+        url=
         ;;
     esac
     ;;
