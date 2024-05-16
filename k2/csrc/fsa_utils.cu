@@ -114,7 +114,7 @@ static Fsa K2FsaFromStream(std::istringstream &is,
                     << ": src-state < 0 or dest-state < 0.";
     }
     for (int32_t i = 0; i < num_aux_labels; i++) {
-      float aux;
+      double aux;
       line_is >> aux;
       if ((int32_t)aux != aux) {
         K2_LOG(FATAL) << "Invalid line " << line
