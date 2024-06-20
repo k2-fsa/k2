@@ -27,7 +27,6 @@
 
 #include "k2/csrc/log.h"
 #include "k2/csrc/torch_util.h"
-#include "k2/python/csrc/torch.h"
 #include "torch/extension.h"
 
 namespace pybind11 {
