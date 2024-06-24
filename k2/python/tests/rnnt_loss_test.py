@@ -280,11 +280,15 @@ class TestRnntLoss(unittest.TestCase):
                     rnnt_type=rnnt_type,
                 )
                 assert (
-                    px.shape == (B, S, T) if rnnt_type != "regular" else (B, S, T + 1)
+                    px.shape == (B, S, T)
+                    if rnnt_type != "regular"
+                    else (B, S, T + 1)
                 )
                 assert py.shape == (B, S + 1, T)
                 assert symbols.shape == (B, S)
-                m = k2.mutual_information_recursion(px=px, py=py, boundary=boundary)
+                m = k2.mutual_information_recursion(
+                    px=px, py=py, boundary=boundary
+                )
 
                 if device == torch.device("cpu"):
                     expected = -torch.mean(m)
