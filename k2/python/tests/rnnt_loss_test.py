@@ -280,15 +280,11 @@ class TestRnntLoss(unittest.TestCase):
                     rnnt_type=rnnt_type,
                 )
                 assert (
-                    px.shape == (B, S, T)
-                    if rnnt_type != "regular"
-                    else (B, S, T + 1)
+                    px.shape == (B, S, T) if rnnt_type != "regular" else (B, S, T + 1)
                 )
                 assert py.shape == (B, S + 1, T)
                 assert symbols.shape == (B, S)
-                m = k2.mutual_information_recursion(
-                    px=px, py=py, boundary=boundary
-                )
+                m = k2.mutual_information_recursion(px=px, py=py, boundary=boundary)
 
                 if device == torch.device("cpu"):
                     expected = -torch.mean(m)
@@ -566,6 +562,98 @@ class TestRnntLoss(unittest.TestCase):
                         rnnt_type=rnnt_type,
                         reduction="none",
                     )
+                    print(f"Pruned loss with range {r} : {pruned_loss}")
+
+    def test_rnnt_loss_pruned_fused_log_softmax(self):
+        print("\ntest_rnnt_loss_pruned_fused_log_softmax.")
+        B = 4
+        T = 300
+        S = 50
+        C = 10
+
+        frames = torch.randint(S, T, (B,))
+        seq_length = torch.randint(3, S - 1, (B,))
+        T = torch.max(frames)
+        S = torch.max(seq_length)
+
+        am_ = torch.randn((B, T, C), dtype=torch.float64)
+        lm_ = torch.randn((B, S + 1, C), dtype=torch.float64)
+        symbols_ = torch.randint(0, C - 1, (B, S))
+        terminal_symbol = C - 1
+
+        boundary_ = torch.zeros((B, 4), dtype=torch.int64)
+        boundary_[:, 2] = seq_length
+        boundary_[:, 3] = frames
+
+        for rnnt_type in ["regular", "modified", "constrained"]:
+            for device in self.devices:
+                # normal rnnt
+                am = am_.to(device)
+                lm = lm_.to(device)
+                symbols = symbols_.to(device)
+                boundary = boundary_.to(device)
+
+                logits = am.unsqueeze(2) + lm.unsqueeze(1)
+                logits = logits.float()
+
+                # nonlinear transform
+                logits = torch.sigmoid(logits)
+                k2_loss = k2.rnnt_loss(
+                    logits=logits,
+                    symbols=symbols,
+                    termination_symbol=terminal_symbol,
+                    boundary=boundary,
+                    rnnt_type=rnnt_type,
+                    reduction="none",
+                )
+
+                print(f"Unpruned rnnt loss with {rnnt_type} rnnt : {k2_loss}")
+
+                # pruning
+                k2_simple_loss, (px_grad, py_grad) = k2.rnnt_loss_simple(
+                    lm=lm,
+                    am=am,
+                    symbols=symbols,
+                    termination_symbol=terminal_symbol,
+                    boundary=boundary,
+                    rnnt_type=rnnt_type,
+                    return_grad=True,
+                    reduction="none",
+                )
+
+                for r in range(2, 50, 5):
+                    ranges = k2.get_rnnt_prune_ranges(
+                        px_grad=px_grad,
+                        py_grad=py_grad,
+                        boundary=boundary,
+                        s_range=r,
+                    )
+                    # (B, T, r, C)
+                    pruned_am, pruned_lm = k2.do_rnnt_pruning(
+                        am=am, lm=lm, ranges=ranges
+                    )
+
+                    logits = pruned_am + pruned_lm
+                    # nonlinear transform
+                    logits = torch.sigmoid(logits)
+
+                    for fused_log_softmax in [True, False]:
+                        if not fused_log_softmax:
+                            logits = logits.log_softmax(dim=-1)
+                        pruned_loss = k2.rnnt_loss_pruned(
+                            logits=logits,
+                            symbols=symbols,
+                            ranges=ranges,
+                            termination_symbol=terminal_symbol,
+                            boundary=boundary,
+                            rnnt_type=rnnt_type,
+                            reduction="none",
+                            fused_log_softmax=fused_log_softmax,
+                        )
+                        if fused_log_softmax:
+                            expected = pruned_loss
+                        assert torch.allclose(expected, pruned_loss)
+
                     print(f"Pruned loss with range {r} : {pruned_loss}")
 
     # Test the sequences that only have small number of symbols,
