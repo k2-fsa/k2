@@ -353,6 +353,8 @@ void PybindRaggedAny(py::module &m) {
   any.def("unique", &RaggedAny::Unique, py::arg("need_num_repeats") = false,
           py::arg("need_new2old_indexes") = false, kRaggedAnyUniqueDoc);
 
+  any.def("unsqueeze", &RaggedAny::Unsqueeze, py::arg("axis"));
+
   any.def("normalize", &RaggedAny::Normalize, py::arg("use_log"),
           kRaggedAnyNormalizeDoc);
 
