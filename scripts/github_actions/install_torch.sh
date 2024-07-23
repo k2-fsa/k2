@@ -246,7 +246,7 @@ function retry() {
 
 if [ x"${url}" == "x" ]; then
   # retry python3 -m pip install -q $package
-  retry python3 -m pip install --pre -q $package -f https://download.pytorch.org/whl/nightly/torch/ --index-url $url
+  retry python3 -m pip install --pre -q $package -f https://download.pytorch.org/whl/nightly/torch/
 else
   # retry python3 -m pip install -q $package -f $url
   retry python3 -m pip install --pre -q $package -f https://download.pytorch.org/whl/nightly/torch/ --index-url $url
