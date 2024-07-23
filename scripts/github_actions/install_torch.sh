@@ -219,16 +219,19 @@ case ${torch} in
         # https://download.pytorch.org/whl/nightly/torch/
         # package="torch==${torch}+cu118"
         package="torch==2.4.0.dev20240612+cu118"
+        url=https://download.pytorch.org/whl/nightly/torch/
         ;;
       12.1)
         # package="torch==${torch}"
         package="torch==2.4.0.dev20240612+cu121"
+        url=https://download.pytorch.org/whl/nightly/torch/
         # Leave it empty to use PyPI.
         # url=
         ;;
       12.4)
         # package="torch==${torch}"
         package="torch==2.4.0.dev20240612+cu124"
+        url=https://download.pytorch.org/whl/nightly/torch/
         # Leave it empty to use PyPI.
         # url=
         ;;
@@ -245,11 +248,10 @@ function retry() {
 }
 
 if [ x"${url}" == "x" ]; then
-  # retry python3 -m pip install -q $package
-  retry python3 -m pip install --pre -q $package -f https://download.pytorch.org/whl/nightly/torch/
+  retry python3 -m pip install -q $package
 else
   # retry python3 -m pip install -q $package -f $url
-  retry python3 -m pip install --pre -q $package -f https://download.pytorch.org/whl/nightly/torch/ --index-url $url
+  retry python3 -m pip install --pre -q $package --index-url $url
 fi
 
 rm -rfv ~/.cache/pip
