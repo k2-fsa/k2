@@ -213,6 +213,27 @@ case ${torch} in
         ;;
     esac
     ;;
+  2.4.*)
+    case ${cuda} in
+      11.8)
+        # https://download.pytorch.org/whl/nightly/torch/
+        # package="torch==${torch}+cu118"
+        package="torch==2.4.0.dev20240612+cu118"
+        ;;
+      12.1)
+        # package="torch==${torch}"
+        package="torch==2.4.0.dev20240612+cu121"
+        # Leave it empty to use PyPI.
+        # url=
+        ;;
+      12.4)
+        # package="torch==${torch}"
+        package="torch==2.4.0.dev20240612+cu124"
+        # Leave it empty to use PyPI.
+        # url=
+        ;;
+    esac
+    ;;
   *)
     echo "Unsupported PyTorch version: ${torch}"
     exit 1
@@ -226,7 +247,8 @@ function retry() {
 if [ x"${url}" == "x" ]; then
   retry python3 -m pip install -q $package
 else
-  retry python3 -m pip install -q $package -f $url
+  # retry python3 -m pip install -q $package -f $url
+  retry python3 -m pip install --pre -q $package -f https://download.pytorch.org/whl/nightly/torch/ --index-url $url
 fi
 
 rm -rfv ~/.cache/pip
