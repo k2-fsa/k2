@@ -6,7 +6,7 @@
 <!-- Title: WFST Pages: 1 -->
 <svg width="612pt" height="90pt"
  viewBox="0.00 0.00 612.00 89.83" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(0.62 0.62) rotate(0) translate(4 140)">
+<g id="graph0" class="graph" transform="scale(1.6 1.6) rotate(0) translate(4 140)">
 <title>WFST</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-140 977,-140 977,4 -4,4"/>
 <text text-anchor="middle" x="486.5" y="-7.8" font-family="Times,serif" font-size="14.00">k2.compose(ctc_topo_modified, linear_fsa)</text>
