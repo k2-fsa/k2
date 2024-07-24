@@ -578,12 +578,18 @@ struct PairOutputIteratorDeref {  // this is what you get when you dereference
 
 template <typename T>
 struct PairOutputIterator {  // outputs just the index of the pair.
-  explicit PairOutputIterator(int32_t *i) : i_(i) {}
-  __device__ __forceinline__ PairOutputIteratorDeref<T> operator[](
+  explicit __host__ __device__ __forceinline__ PairOutputIterator(int32_t *i)
+      : i_(i) {}
+  __host__ __device__ __forceinline__ PairOutputIteratorDeref<T> operator[](
       int32_t idx) const {
     return PairOutputIteratorDeref<T>(i_ + idx);
   }
-  __device__ __forceinline__ PairOutputIterator operator+(int32_t offset) {
+  __host__ __device__ __forceinline__ PairOutputIteratorDeref<T> operator*()
+      const {
+    return PairOutputIteratorDeref<T>(i_);
+  }
+  __host__ __device__ __forceinline__ PairOutputIterator
+  operator+(int32_t offset) {
     return PairOutputIterator{i_ + offset};
   }
   int32_t *i_;

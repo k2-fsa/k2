@@ -30,6 +30,14 @@
 #include "k2/python/csrc/torch.h"
 #include "torch/extension.h"
 
+#if K2_TORCH_VERSION_MAJOR > 2 || \
+    (K2_TORCH_VERSION_MAJOR == 2 && K2_TORCH_VERSION_MINOR >= 4)
+// For torch >= 2.4.x
+// do nothing to fix the following error
+// error: class "pybind11::detail::type_caster<c10::ScalarType, void>" has
+// already been defined
+#else
+// For torch < 2.4
 namespace pybind11 {
 namespace detail {
 
@@ -71,6 +79,7 @@ struct type_caster<torch::ScalarType> {
 
 }  // namespace detail
 }  // namespace pybind11
+#endif
 
 namespace k2 {
 /* Transfer an object to a specific device.

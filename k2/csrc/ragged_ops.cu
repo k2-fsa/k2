@@ -2515,12 +2515,18 @@ struct HashOutputIteratorDeref {  // this is what you get when you dereference
 
 template <typename T>
 struct HashOutputIterator {  // outputs just the index of the pair.
-  explicit HashOutputIterator(T *t) : t_(t) {}
-  __device__ __forceinline__ HashOutputIteratorDeref<T> operator[](
+  explicit __host__ __device__ __forceinline__ HashOutputIterator(T *t)
+      : t_(t) {}
+  __host__ __device__ __forceinline__ HashOutputIteratorDeref<T> operator[](
       int32_t idx) const {
     return HashOutputIteratorDeref<T>(t_ + idx);
   }
-  __device__ __forceinline__ HashOutputIterator operator+(size_t offset) {
+  __host__ __device__ __forceinline__ HashOutputIteratorDeref<T> operator*()
+      const {
+    return HashOutputIteratorDeref<T>(t_);
+  }
+  __host__ __device__ __forceinline__ HashOutputIterator
+  operator+(size_t offset) {
     return HashOutputIterator{t_ + offset};
   }
   T *t_;
