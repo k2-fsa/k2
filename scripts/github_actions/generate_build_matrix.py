@@ -298,6 +298,14 @@ def generate_build_matrix(
                     ans.append({"torch": torch, "python-version": p})
                 elif for_macos or for_macos_m1:
                     ans.append({"torch": torch, "python-version": p})
+                elif version_ge(torch, "2.4.0"):
+                    ans.append(
+                        {
+                            "torch": torch,
+                            "python-version": p,
+                            "image": "pytorch/manylinux-builder:cpu-2.4",
+                        }
+                    )
                 elif version_ge(torch, "2.2.0"):
                     ans.append(
                         {
