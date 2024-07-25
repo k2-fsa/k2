@@ -216,20 +216,17 @@ case ${torch} in
   2.4.*)
     case ${cuda} in
       11.8)
+        package="torch==${torch}+cu118"
         # https://download.pytorch.org/whl/nightly/torch/
-        url=https://download.pytorch.org/whl/nightly/cu118
+        url=https://download.pytorch.org/whl/torch/
         ;;
       12.1)
-        # package="torch==${torch}"
-        url=https://download.pytorch.org/whl/nightly/cu121
-        # Leave it empty to use PyPI.
-        # url=
+        package="torch==${torch}+cu121"
+        url=https://download.pytorch.org/whl/torch/
         ;;
       12.4)
-        # package="torch==${torch}"
-        url=https://download.pytorch.org/whl/nightly/cu124
-        # Leave it empty to use PyPI.
-        # url=
+        package="torch==${torch}+cu124"
+        url=https://download.pytorch.org/whl/torch/
         ;;
     esac
     ;;
@@ -247,7 +244,7 @@ if [ x"${url}" == "x" ]; then
   retry python3 -m pip install -q $package
 else
   # retry python3 -m pip install -q $package -f $url
-  retry python3 -m pip install --pre torch --index-url $url
+  retry python3 -m pip install torch --index-url $url
 fi
 
 rm -rfv ~/.cache/pip
