@@ -48,6 +48,9 @@ case $cuda in
   12.1)
     filename=cudnn-linux-x86_64-8.9.5.29_cuda12-archive.tar.xz
     ;;
+  12.4)
+    filename=cudnn-linux-x86_64-8.9.7.29_cuda12-archive.tar.xz
+    ;;
   *)
     echo "Unsupported cuda version: $cuda"
     exit 1

@@ -51,8 +51,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        cuda: ["12.1"]
-        torch: ["2.2.1"]
+        cuda: ["12.4"]
+        torch: ["2.4.0"]
         python-version: ["3.12"]
 
     steps:
@@ -71,7 +71,7 @@ jobs:
       - name: Run the build process with Docker
         uses: addnab/docker-run-action@v3
         with:
-            image: "pytorch/manylinux-builder:cuda12.1"
+            image: "pytorch/manylinux-builder:cuda12.4"
             options: -v ${{ github.workspace }}:/var/www -e PYTHON_VERSION=${{ matrix.python-version }} -e TORCH_VERSION=${{ matrix.torch }} -e CUDA_VERSION=${{ matrix.cuda }}
             run: |
               echo "pwd: $PWD"

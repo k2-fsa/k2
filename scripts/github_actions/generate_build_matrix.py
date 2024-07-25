@@ -220,10 +220,16 @@ def generate_build_matrix(
             if not for_windows
             else ["11.8.0", "12.1.0"],
         },
+        "2.4.0": {
+            "python-version": ["3.8", "3.9", "3.10", "3.11", "3.12"],
+            "cuda": ["11.8", "12.1", "12.4"]  # default 12.1
+            if not for_windows
+            else ["11.8.0", "12.1.0", "12.4.0"],
+        },
         # https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
     }
     if test_only_latest_torch:
-        latest = "2.3.1"
+        latest = "2.4.0"
         matrix = {latest: matrix[latest]}
 
     if for_windows or for_macos:
@@ -283,15 +289,20 @@ def generate_build_matrix(
             for p in python_versions:
                 if p in excluded_python_versions:
                     continue
-                if for_macos and p in ["3.8", "3.9"]:
-                    # macOS arm64 in github actions does not support python 3.8 or 3.9
-                    continue
 
                 if for_windows:
                     p = "cp" + "".join(p.split("."))
                     ans.append({"torch": torch, "python-version": p})
                 elif for_macos or for_macos_m1:
                     ans.append({"torch": torch, "python-version": p})
+                elif version_ge(torch, "2.4.0"):
+                    ans.append(
+                        {
+                            "torch": torch,
+                            "python-version": p,
+                            "image": "pytorch/manylinux-builder:cpu-2.4",
+                        }
+                    )
                 elif version_ge(torch, "2.2.0"):
                     ans.append(
                         {
