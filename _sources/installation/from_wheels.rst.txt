@@ -37,11 +37,11 @@ we can use one of the following methods:
 .. code-block:: bash
 
    # method 1
-   pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+   pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch/
    pip install k2==1.24.3.dev20230719+cpu.torch2.0.1 -f https://k2-fsa.github.io/k2/cpu.html
 
    # method 2
-   pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+   pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch/
 
    wget https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.3.dev20230719+cpu.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 
@@ -105,11 +105,11 @@ we can use the one of the following methods:
 .. code-block:: bash
 
    # method 1
-   pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+   pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch/
    pip install k2==1.24.3.dev20230726+cpu.torch2.0.1 -f https://k2-fsa.github.io/k2/cpu.html
 
    # method 2
-   pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+   pip install torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch/
    wget https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.3.dev20230726+cpu.torch2.0.1-cp38-cp38-win_amd64.whl
 
    # For users from China
@@ -143,11 +143,11 @@ we can use the following methods:
 .. code-block:: bash
 
    # method 1
-   pip install torch==2.0.1+cu117 -f https://download.pytorch.org/whl/torch_stable.html
+   pip install torch==2.0.1+cu117 -f https://download.pytorch.org/whl/torch/
    pip install k2==1.24.3.dev20230718+cuda11.7.torch2.0.1 -f https://k2-fsa.github.io/k2/cuda.html
 
    # method 2
-   pip install torch==2.0.1+cu117 -f https://download.pytorch.org/whl/torch_stable.html
+   pip install torch==2.0.1+cu117 -f https://download.pytorch.org/whl/torch/
 
    wget https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.24.3.dev20230718+cuda11.7.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 
