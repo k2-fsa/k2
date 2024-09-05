@@ -346,7 +346,8 @@ def generate_build_matrix(
                         {
                             "torch": torch,
                             "python-version": p,
-                            "image": "pytorch/manylinux-builder:cpu-2.4",
+                            #  "image": "pytorch/manylinux-builder:cpu-2.4",
+                            "image": "pytorch/manylinux-builder:cpu-27677ead7c8293c299a885ae2c474bf445e653a5",
                         }
                     )
                 elif version_ge(torch, "2.2.0"):
