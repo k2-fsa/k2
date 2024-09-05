@@ -84,27 +84,35 @@ def generate_build_matrix(
         },
         "1.7.0": {
             "python-version": ["3.6", "3.7", "3.8"],
-            "cuda": ["10.1", "10.2", "11.0"]
-            if not for_windows
-            else ["10.1.243", "10.2.89", "11.0.3"],
+            "cuda": (
+                ["10.1", "10.2", "11.0"]
+                if not for_windows
+                else ["10.1.243", "10.2.89", "11.0.3"]
+            ),
         },
         "1.7.1": {
             "python-version": ["3.6", "3.7", "3.8", "3.9"],
-            "cuda": ["10.1", "10.2", "11.0"]
-            if not for_windows
-            else ["10.1.243", "10.2.89", "11.0.3"],
+            "cuda": (
+                ["10.1", "10.2", "11.0"]
+                if not for_windows
+                else ["10.1.243", "10.2.89", "11.0.3"]
+            ),
         },
         "1.8.0": {
             "python-version": ["3.6", "3.7", "3.8", "3.9"],
-            "cuda": ["10.1", "10.2", "11.1"]
-            if not for_windows
-            else ["10.1.243", "10.2.89", "11.1.1"],
+            "cuda": (
+                ["10.1", "10.2", "11.1"]
+                if not for_windows
+                else ["10.1.243", "10.2.89", "11.1.1"]
+            ),
         },
         "1.8.1": {
             "python-version": ["3.6", "3.7", "3.8", "3.9"],
-            "cuda": ["10.1", "10.2", "11.1"]
-            if not for_windows
-            else ["10.1.243", "10.2.89", "11.1.1"],
+            "cuda": (
+                ["10.1", "10.2", "11.1"]
+                if not for_windows
+                else ["10.1.243", "10.2.89", "11.1.1"]
+            ),
         },
         "1.9.0": {
             "python-version": ["3.6", "3.7", "3.8", "3.9"],
@@ -116,39 +124,45 @@ def generate_build_matrix(
         },
         "1.10.0": {
             "python-version": ["3.6", "3.7", "3.8", "3.9"],
-            "cuda": ["10.2", "11.1", "11.3"]
-            if not for_windows
-            else ["10.2.89", "11.1.1", "11.3.1"],
+            "cuda": (
+                ["10.2", "11.1", "11.3"]
+                if not for_windows
+                else ["10.2.89", "11.1.1", "11.3.1"]
+            ),
         },
         "1.10.1": {
             "python-version": ["3.6", "3.7", "3.8", "3.9"],
-            "cuda": ["10.2", "11.1", "11.3"]
-            if not for_windows
-            else ["10.2.89", "11.1.1", "11.3.1"],
+            "cuda": (
+                ["10.2", "11.1", "11.3"]
+                if not for_windows
+                else ["10.2.89", "11.1.1", "11.3.1"]
+            ),
         },
         "1.10.2": {
             "python-version": ["3.6", "3.7", "3.8", "3.9"],
-            "cuda": ["10.2", "11.1", "11.3"]
-            if not for_windows
-            else ["10.2.89", "11.1.1", "11.3.1"],
+            "cuda": (
+                ["10.2", "11.1", "11.3"]
+                if not for_windows
+                else ["10.2.89", "11.1.1", "11.3.1"]
+            ),
         },
         "1.11.0": {
             "python-version": ["3.7", "3.8", "3.9", "3.10"],
-            "cuda": ["10.2", "11.3", "11.5"]
-            if not for_windows
-            else ["11.3.1", "11.5.2"],
+            "cuda": (
+                ["10.2", "11.3", "11.5"] if not for_windows else ["11.3.1", "11.5.2"]
+            ),
         },
         "1.12.0": {
             "python-version": ["3.7", "3.8", "3.9", "3.10"],
-            "cuda": ["10.2", "11.3", "11.6"]
-            if not for_windows
-            else ["11.3.1", "11.6.2"],
+            "cuda": (
+                ["10.2", "11.3", "11.6"] if not for_windows else ["11.3.1", "11.6.2"]
+            ),
         },
         "1.12.1": {
             "python-version": ["3.7", "3.8", "3.9", "3.10"],
-            "cuda": ["10.2", "11.3", "11.6"]
-            if not for_windows
-            else ["11.3.1", "11.6.2"],
+            "cuda": (
+                ["10.2", "11.3", "11.6"] if not for_windows else ["11.3.1", "11.6.2"]
+            ),
         },
         "1.13.0": {
             "python-version": ["3.7", "3.8", "3.9", "3.10", "3.11"],
@@ -156,80 +170,112 @@ def generate_build_matrix(
         },
         "1.13.1": {
             "python-version": ["3.7", "3.8", "3.9", "3.10", "3.11"],
-            "cuda": ["11.6", "11.7"]  # default 11.7
-            if not for_windows
-            else ["11.6.2", "11.7.1"],
+            "cuda": (
+                ["11.6", "11.7"]  # default 11.7
+                if not for_windows
+                else ["11.6.2", "11.7.1"]
+            ),
         },
         "2.0.0": {
             "python-version": ["3.8", "3.9", "3.10", "3.11"],
-            "cuda": ["11.7", "11.8"]  # default 11.7
-            if not for_windows
-            else ["11.7.1", "11.8.0"],
+            "cuda": (
+                ["11.7", "11.8"]  # default 11.7
+                if not for_windows
+                else ["11.7.1", "11.8.0"]
+            ),
         },
         "2.0.1": {
             "python-version": ["3.8", "3.9", "3.10", "3.11"],
-            "cuda": ["11.7", "11.8"]  # default 11.7
-            if not for_windows
-            else ["11.7.1", "11.8.0"],
+            "cuda": (
+                ["11.7", "11.8"]  # default 11.7
+                if not for_windows
+                else ["11.7.1", "11.8.0"]
+            ),
         },
         "2.1.0": {
             "python-version": ["3.8", "3.9", "3.10", "3.11"],
-            "cuda": ["11.8", "12.1"]  # default 12.1
-            if not for_windows
-            else ["11.8.0", "12.1.0"],
+            "cuda": (
+                ["11.8", "12.1"]  # default 12.1
+                if not for_windows
+                else ["11.8.0", "12.1.0"]
+            ),
         },
         "2.1.1": {
             "python-version": ["3.8", "3.9", "3.10", "3.11"],
-            "cuda": ["11.8", "12.1"]  # default 12.1
-            if not for_windows
-            else ["11.8.0", "12.1.0"],
+            "cuda": (
+                ["11.8", "12.1"]  # default 12.1
+                if not for_windows
+                else ["11.8.0", "12.1.0"]
+            ),
         },
         "2.1.2": {
             "python-version": ["3.8", "3.9", "3.10", "3.11"],
-            "cuda": ["11.8", "12.1"]  # default 12.1
-            if not for_windows
-            else ["11.8.0", "12.1.0"],
+            "cuda": (
+                ["11.8", "12.1"]  # default 12.1
+                if not for_windows
+                else ["11.8.0", "12.1.0"]
+            ),
         },
         "2.2.0": {
             "python-version": ["3.8", "3.9", "3.10", "3.11", "3.12"],
-            "cuda": ["11.8", "12.1"]  # default 12.1
-            if not for_windows
-            else ["11.8.0", "12.1.0"],
+            "cuda": (
+                ["11.8", "12.1"]  # default 12.1
+                if not for_windows
+                else ["11.8.0", "12.1.0"]
+            ),
         },
         "2.2.1": {
             "python-version": ["3.8", "3.9", "3.10", "3.11", "3.12"],
-            "cuda": ["11.8", "12.1"]  # default 12.1
-            if not for_windows
-            else ["11.8.0", "12.1.0"],
+            "cuda": (
+                ["11.8", "12.1"]  # default 12.1
+                if not for_windows
+                else ["11.8.0", "12.1.0"]
+            ),
         },
         "2.2.2": {
             "python-version": ["3.8", "3.9", "3.10", "3.11", "3.12"],
-            "cuda": ["11.8", "12.1"]  # default 12.1
-            if not for_windows
-            else ["11.8.0", "12.1.0"],
+            "cuda": (
+                ["11.8", "12.1"]  # default 12.1
+                if not for_windows
+                else ["11.8.0", "12.1.0"]
+            ),
         },
         "2.3.0": {
             "python-version": ["3.8", "3.9", "3.10", "3.11", "3.12"],
-            "cuda": ["11.8", "12.1"]  # default 12.1
-            if not for_windows
-            else ["11.8.0", "12.1.0"],
+            "cuda": (
+                ["11.8", "12.1"]  # default 12.1
+                if not for_windows
+                else ["11.8.0", "12.1.0"]
+            ),
         },
         "2.3.1": {
             "python-version": ["3.8", "3.9", "3.10", "3.11", "3.12"],
-            "cuda": ["11.8", "12.1"]  # default 12.1
-            if not for_windows
-            else ["11.8.0", "12.1.0"],
+            "cuda": (
+                ["11.8", "12.1"]  # default 12.1
+                if not for_windows
+                else ["11.8.0", "12.1.0"]
+            ),
         },
         "2.4.0": {
             "python-version": ["3.8", "3.9", "3.10", "3.11", "3.12"],
-            "cuda": ["11.8", "12.1", "12.4"]  # default 12.1
-            if not for_windows
-            else ["11.8.0", "12.1.0", "12.4.0"],
+            "cuda": (
+                ["11.8", "12.1", "12.4"]  # default 12.1
+                if not for_windows
+                else ["11.8.0", "12.1.0", "12.4.0"]
+            ),
+        },
+        "2.4.1": {
+            "python-version": ["3.8", "3.9", "3.10", "3.11", "3.12"],
+            "cuda": (
+                ["11.8", "12.1", "12.4"]  # default 12.1
+                if not for_windows
+                else ["11.8.0", "12.1.0", "12.4.0"]
+            ),
         },
         # https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
     }
     if test_only_latest_torch:
-        latest = "2.4.0"
+        latest = "2.4.1"
         matrix = {latest: matrix[latest]}
 
     if for_windows or for_macos:
