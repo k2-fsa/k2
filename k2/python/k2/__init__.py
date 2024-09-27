@@ -31,6 +31,7 @@ from _k2 import swoosh_r_forward_and_deriv
 
 from .ragged import RaggedShape
 from .ragged import RaggedTensor
+from .ragged import create_ragged_shape2
 
 from . import autograd
 from . import autograd_utils
