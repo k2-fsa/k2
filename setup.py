@@ -180,10 +180,15 @@ class BuildExtension(build_ext):
 
         cmake_args += extra_cmake_args
 
+        if "CMAKE_BUILD_TYPE=Release" in cmake_args:
+            config = "Release"
+        else:
+            config = "Debug"
+
         if is_windows():
             build_cmd = f"""
                 cmake {cmake_args} -B {self.build_temp} -S {k2_dir}
-                cmake --build {self.build_temp} --target install --config Release -- -m
+                cmake --build {self.build_temp} --target install --config {config} -- -m
             """
             print(f"build command is:\n{build_cmd}")
             ret = os.system(f"cmake {cmake_args} -B {self.build_temp} -S {k2_dir}")
@@ -191,7 +196,7 @@ class BuildExtension(build_ext):
                 raise Exception("Failed to build k2")
 
             ret = os.system(
-                f"cmake --build {self.build_temp} --target install --config Release -- -m"
+                f"cmake --build {self.build_temp} --target install --config {config} -- -m"
             )
             if ret != 0:
                 raise Exception("Failed to build k2")
