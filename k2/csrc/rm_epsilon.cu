@@ -769,17 +769,15 @@ void ComputeEpsilonClosure(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
   // since thanks to sorting the order is deterministic).
   Array1<Arc> epsilon_fsa_arcs = epsilon_fsa.values;
   ComputeEpsilonClosureOneIter(epsilon_fsa, closure_fsa, arc_map);
-  Array1<Arc> closure_fsa_arcs = closure_fsa->values;
   // note function `Equal` for Array1 requires the input two arrays have the
   // same size.
-  while (epsilon_fsa_arcs.Dim() != closure_fsa_arcs.Dim() ||
-         !Equal(epsilon_fsa_arcs, closure_fsa_arcs)) {
-    epsilon_fsa_arcs = closure_fsa_arcs;
+  while (epsilon_fsa_arcs.Dim() != closure_fsa->values.Dim() ||
+         !Equal(epsilon_fsa_arcs, closure_fsa->values)) {
+    epsilon_fsa_arcs = closure_fsa->values;
     FsaVec cur_iter_closure_fsa;
     Ragged<int32_t> cur_iter_arc_map;
     ComputeEpsilonClosureOneIter(*closure_fsa, &cur_iter_closure_fsa,
                                  &cur_iter_arc_map);
-    closure_fsa_arcs = cur_iter_closure_fsa.values;
     *closure_fsa = cur_iter_closure_fsa;
     *arc_map = ComposeArcMaps(*arc_map, cur_iter_arc_map);
   }
