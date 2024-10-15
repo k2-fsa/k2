@@ -93,6 +93,6 @@ general and extensible framework to allow further development of ASR technology.
 
 Want to try it out without installing anything? We have setup a [Google Colab][1].
 You can find more Colab notebooks using k2 in speech recognition at
-<https://icefall.readthedocs.io/en/latest/recipes/librispeech/conformer_ctc.html>.
+<https://k2-fsa.github.io/icefall/recipes/Non-streaming-ASR/librispeech/conformer_ctc.html>.
 
 [1]: https://colab.research.google.com/drive/1qbHUhNZUX7AYEpqnZyf29Lrz2IPHBGlX?usp=sharing
