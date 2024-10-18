@@ -273,7 +273,7 @@ def generate_build_matrix(
             ),
         },
         "2.5.0": {
-            # Only Linux support python 3.13
+            # Only Linux supports python 3.13
             "python-version": ["3.9", "3.10", "3.11", "3.12", "3.13"],
             "cuda": (
                 ["11.8", "12.1", "12.4"]  # default 12.4
