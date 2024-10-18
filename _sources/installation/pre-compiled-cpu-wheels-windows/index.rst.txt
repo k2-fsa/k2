@@ -6,6 +6,7 @@ This page describes pre-compiled ``CPU`` wheels for `k2`_ on Windows.
 .. toctree::
    :maxdepth: 2
 
+   ./2.5.0.rst
    ./2.4.1.rst
    ./2.4.0.rst
    ./2.3.1.rst
