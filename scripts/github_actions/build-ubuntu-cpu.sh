@@ -15,15 +15,19 @@ if [ -z $TORCH_VERSION ]; then
   exit 1
 fi
 
-echo "Installing ${PYTHON_VERSION}.3"
+INSTALLED_PYTHON_VERSION=${PYTHON_VERSION}.2
+if [[ $PYTHON_VERSION == "3.13" ]]; then
+  INSTALLED_PYTHON_VERSION=${PYTHON_VERSION}.0
+fi
+echo "Installing $INSTALLED_PYTHON_VERSION"
 
 yum -y install openssl-devel bzip2-devel libffi-devel xz-devel wget redhat-lsb-core
 
 if true; then
   echo "Installing ${PYTHON_VERSION}.2"
-  curl -O https://www.python.org/ftp/python/${PYTHON_VERSION}.2/Python-${PYTHON_VERSION}.2.tgz
-  tar xf Python-${PYTHON_VERSION}.2.tgz
-  pushd Python-${PYTHON_VERSION}.2
+  curl -O https://www.python.org/ftp/python/$INSTALLED_PYTHON_VERSION/Python-$INSTALLED_PYTHON_VERSION.tgz
+  tar xf Python-$INSTALLED_PYTHON_VERSION.tgz
+  pushd Python-$INSTALLED_PYTHON_VERSION
 
   PYTHON_INSTALL_DIR=$PWD/py-${PYTHON_VERSION}
 
