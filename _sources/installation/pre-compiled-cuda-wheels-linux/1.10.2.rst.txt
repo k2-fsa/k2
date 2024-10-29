@@ -2,6 +2,8 @@ torch 1.10.2
 ============
 
 
+- `k2-1.24.4.dev20241029+cuda10.2.torch1.10.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/ubuntu-cuda/1.24.4.dev20241029/k2-1.24.4.dev20241029+cuda10.2.torch1.10.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
+- `k2-1.24.4.dev20241029+cuda10.2.torch1.10.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/ubuntu-cuda/1.24.4.dev20241029/k2-1.24.4.dev20241029+cuda10.2.torch1.10.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
 - `k2-1.24.4.dev20240223+cuda10.2.torch1.10.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/ubuntu-cuda/k2-1.24.4.dev20240223+cuda10.2.torch1.10.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
 - `k2-1.24.4.dev20240223+cuda10.2.torch1.10.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/ubuntu-cuda/k2-1.24.4.dev20240223+cuda10.2.torch1.10.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
 - `k2-1.24.4.dev20240211+cuda10.2.torch1.10.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/ubuntu-cuda/k2-1.24.4.dev20240211+cuda10.2.torch1.10.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_

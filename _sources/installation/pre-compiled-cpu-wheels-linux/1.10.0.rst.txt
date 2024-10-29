@@ -2,6 +2,10 @@ torch 1.10.0
 ============
 
 
+- `k2-1.24.4.dev20241029+cpu.torch1.10.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/1.24.4.dev20241029/ubuntu/k2-1.24.4.dev20241029+cpu.torch1.10.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
+- `k2-1.24.4.dev20241029+cpu.torch1.10.0-cp39-cp39-macosx_11_0_arm64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/1.24.4.dev20241029/macos/k2-1.24.4.dev20241029+cpu.torch1.10.0-cp39-cp39-macosx_11_0_arm64.whl>`_
+- `k2-1.24.4.dev20241029+cpu.torch1.10.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/1.24.4.dev20241029/ubuntu/k2-1.24.4.dev20241029+cpu.torch1.10.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
+- `k2-1.24.4.dev20241029+cpu.torch1.10.0-cp38-cp38-macosx_11_0_arm64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/1.24.4.dev20241029/macos/k2-1.24.4.dev20241029+cpu.torch1.10.0-cp38-cp38-macosx_11_0_arm64.whl>`_
 - `k2-1.24.4.dev20240223+cpu.torch1.10.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.4.dev20240223+cpu.torch1.10.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
 - `k2-1.24.4.dev20240223+cpu.torch1.10.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.4.dev20240223+cpu.torch1.10.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
 - `k2-1.24.4.dev20240218+cpu.torch1.10.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/cpu/k2-1.24.4.dev20240218+cpu.torch1.10.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl>`_
