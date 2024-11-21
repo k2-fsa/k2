@@ -297,6 +297,9 @@ def generate_build_matrix(
         matrix = {latest: matrix[latest]}
 
     if for_windows or for_macos:
+        if "2.5.1" in matrix:
+            matrix["2.5.1"]["python-version"].remove("3.13")
+            
         if "2.5.0" in matrix:
             matrix["2.5.0"]["python-version"].remove("3.13")
 
