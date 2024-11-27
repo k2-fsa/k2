@@ -1301,7 +1301,7 @@ class MultiGraphDenseIntersectPruned {
             cur_states_data[arcs_rowids2[arcs_idx012]].forward_loglike);
 
         // should be <= 0.0, mathematically.
-        K2_CHECK_LT(backward_loglike, -src_state_forward_loglike + 2.0);
+        K2_CHECK_LE(backward_loglike, -src_state_forward_loglike + 2.0);
         if (backward_loglike + src_state_forward_loglike >= -output_beam) {
           keep_this_arc = 1;
         } else {
