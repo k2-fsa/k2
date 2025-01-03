@@ -605,11 +605,11 @@ class MultiGraphDenseIntersectPruned {
                     oarc_idx1 = oarc_idx01 - oarc_idx0x,
              oarc_idx01x_next = oshape_row_splits2[oarc_idx01 + 1];
 
-          int32_t m = oshape_merge_map_data[oarc_idx0123],
-                  t = m % (T + 2),  // actually we won't get t == T or t == T + 1
-                                    // here since those frames have no arcs.
-        arcs_idx012 = m / (T + 2);  // arc_idx012 into FrameInfo::arcs on time t,
-                                    // index of the arc on that frame.
+        uint32_t m = oshape_merge_map_data[oarc_idx0123];
+        int32_t  t = m % uint32_t(T + 2),  // actually we won't get t == T or t == T + 1
+                                            // here since those frames have no arcs.
+                arcs_idx012 = m / uint32_t(T + 2);  // arc_idx012 into FrameInfo::arcs on time t,
+                                            // index of the arc on that frame.
 
           K2_CHECK_EQ(t, oarc_idx1);
 
