@@ -25,11 +25,11 @@ jobs:
         id: set-matrix
         run: |
           # outputting for debugging purposes
-          python ./scripts/github_actions/generate_build_matrix.py --for-windows
-          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --for-windows)
+          # python ./scripts/github_actions/generate_build_matrix.py --for-windows
+          # MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --for-windows)
 
-          # python ./scripts/github_actions/generate_build_matrix.py --for-windows --test-only-latest-torch
-          # MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --for-windows --test-only-latest-torch)
+          python ./scripts/github_actions/generate_build_matrix.py --for-windows --test-only-latest-torch
+          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --for-windows --test-only-latest-torch)
           echo "::set-output name=matrix::${MATRIX}"
 
   build_wheels_win64_cpu:
