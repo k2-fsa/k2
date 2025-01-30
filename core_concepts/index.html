@@ -119,7 +119,7 @@ the final state 2 with label -1 and score 0.2.</p></li>
 <p>We use arc weight and arc score interchangeably in k2.</p>
 </div>
 <p>The above FSA is created with the following code:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
 <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
 <span class="s1">0 1 10 0.1</span>
 <span class="s1">1 2 -1 0.2</span>
@@ -176,8 +176,8 @@ the output label of arcs so that the FSA is converted to an FST.</p>
 <p>The attached attributes are <strong>automaticaly propagated</strong> through operations,
 with <code class="docutils literal notranslate"><span class="pre">autograd</span></code> if they are real-valued tensors.</p>
 <p>The following code converts the above simple acceptor to a transducer:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
-<span class="kn">import</span> <span class="nn">torch</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
 <span class="s1">0 1 10 0.1</span>
 <span class="s1">1 2 -1 0.2</span>
@@ -247,7 +247,7 @@ such as the Gallic semiring.</p>
 <p>So in the tropical semiring, we would consider that “total score” of
 this FSA is <code class="docutils literal notranslate"><span class="pre">max(0.1,</span> <span class="pre">0.2)</span> <span class="pre">==</span> <span class="pre">0.2</span></code>.</p>
 <p>In k2, you would use the following code to compute it:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
 <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
 <span class="s1">0 1 10 0.1</span>
 <span class="s1">0 2 20 0.2</span>
@@ -279,7 +279,7 @@ total score is <code class="docutils literal notranslate"><span class="pre">log(
 <p>Take the FSA in <a class="reference internal" href="#tropical"><span class="std std-numref">Fig. 3</span></a> as an example, the total score is
 <code class="docutils literal notranslate"><span class="pre">log(exp(0.1)</span> <span class="pre">+</span> <span class="pre">exp(0.2))</span> <span class="pre">=</span> <span class="pre">0.8444</span></code>.</p>
 <p>The code in k2 looks like:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
 <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
 <span class="s1">0 1 10 0.1</span>
 <span class="s1">0 2 20 0.2</span>
@@ -348,7 +348,7 @@ by some gradient descent based algorithms.</p>
 <h3>Example 1: Autograd in tropical semiring<a class="headerlink" href="#example-1-autograd-in-tropical-semiring" title="Permalink to this headline"></a></h3>
 <p>The following code shows how to compute the best score of the shortest path for
 the FSA given in <a class="reference internal" href="#autograd-example"><span class="std std-numref">Fig. 4</span></a>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
 
 <span class="n">nnet_output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 <span class="c1"># assume nnet_output is the output of some neural network</span>
@@ -409,7 +409,7 @@ of the <cite>best score</cite> <code class="docutils literal notranslate"><span 
 </pre></div>
 </div>
 <p>For completeness and ease of reference, we repost the code below.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">k2</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
 
 <span class="n">nnet_output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 <span class="c1"># assume nnet_output is the output of some neural network</span>
