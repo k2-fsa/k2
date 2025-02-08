@@ -156,7 +156,7 @@ class PytorchCudaContext : public Context {
 #if  K2_TORCH_VERSION_MAJOR > 2 || (K2_TORCH_VERSION_MAJOR == 2 && K2_TORCH_VERSION_MINOR >= 6)
     at::globalContext().lazyInitDevice(torch::kCUDA);
 #else
-    at::globalContext().lazyInitCUDA(torch::kCUDA);
+    at::globalContext().lazyInitCUDA();
 #endif
 
     allocator_ = c10::cuda::CUDACachingAllocator::get();
