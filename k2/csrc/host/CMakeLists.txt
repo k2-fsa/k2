@@ -25,7 +25,7 @@ set_target_properties(fsa PROPERTIES OUTPUT_NAME "k2fsa")
 target_link_libraries(fsa PUBLIC k2_log)
 target_link_libraries(fsa PUBLIC k2_nvtx)
 target_include_directories(fsa PUBLIC ${CUDA_TOOLKIT_INCLUDE})
-if(K2_ENABLE_NVTX)
+if(K2_ENABLE_NVTX AND CUDA_VERSION VERSION_LESS "12.8")
   if(NOT WIN32)
     target_link_libraries(fsa
       PUBLIC
