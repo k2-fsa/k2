@@ -267,16 +267,16 @@ case ${torch} in
   2.7.*)
     case ${cuda} in
       11.8)
-        pip install torch==2.7.0.dev20250210+cu118 -f https://download.pytorch.org/whl/nightly/torch/
+        pip install torch==2.7.0.dev20250210+cu118 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/
         ;;
       12.4)
-        pip install torch==2.7.0.dev20250210+cu124 -f https://download.pytorch.org/whl/nightly/torch/
+        pip install torch==2.7.0.dev20250210+cu124 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/
         ;;
       12.6)
-        pip install torch==2.7.0.dev20250210+cu126 -f https://download.pytorch.org/whl/nightly/torch/
+        pip install torch==2.7.0.dev20250210+cu126 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/
         ;;
       12.8)
-        pip install torch==2.7.0.dev20250210+cu128 -f https://download.pytorch.org/whl/nightly/torch/
+        pip install torch==2.7.0.dev20250210+cu128 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/
         ;;
     esac
     ;;
