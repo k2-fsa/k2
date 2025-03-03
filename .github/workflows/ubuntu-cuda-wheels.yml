@@ -68,7 +68,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
             image: ${{ matrix.image }}
-            options: -v ${{ github.workspace }}:/var/www -e PYTHON_VERSION=${{ matrix.python-version }} -e TORCH_VERSION=${{ matrix.torch }} -e CUDA_VERSION=${{ matrix.cuda }}
+            options: -v ${{ github.workspace }}:/var/www -e IS_2_28=${{ matrix.is_2_28 }} -e PYTHON_VERSION=${{ matrix.python-version }} -e TORCH_VERSION=${{ matrix.torch }} -e CUDA_VERSION=${{ matrix.cuda }}
             run: |
               echo "pwd: $PWD"
               uname -a
@@ -96,9 +96,9 @@ jobs:
           ls -lh ./wheelhouse/
 
       - name: Upload Wheel
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-latest-cuda
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-latest-cuda-is_2_28-${{ matrix.is_2_28 }}
           path: wheelhouse/*.whl
 
       # https://huggingface.co/docs/hub/spaces-github-actions

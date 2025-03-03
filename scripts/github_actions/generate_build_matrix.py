@@ -298,10 +298,19 @@ def generate_build_matrix(
                 else ["11.8.0", "12.4.0", "12.6.0"]
             ),
         },
+        "2.7.0": {
+            "python-version": ["3.10", "3.11", "3.12", "3.13"],
+            "cuda": (
+                #  ["11.8", "12.4", "12.6", "12.8"]  # default 12.4
+                ["12.8"]  # default 12.4
+                if not for_windows
+                else ["11.8.0", "12.4.0", "12.6.0"]
+            ),
+        },
         # https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
     }
     if test_only_latest_torch:
-        latest = "2.6.0"
+        latest = "2.7.0"
         matrix = {latest: matrix[latest]}
 
     if for_windows or for_macos:
@@ -355,12 +364,30 @@ def generate_build_matrix(
                     if c in ["10.1", "11.0"]:
                         # no docker image for cuda 10.1 and 11.0
                         continue
+
+                    if version_ge(torch, "2.7.0") or (
+                        version_ge(torch, "2.6.0") and c == "12.6"
+                    ):
+                        # case 1: torch >= 2.7
+                        # case 2: torch == 2.6.0 && cuda == 12.6
+                        ans.append(
+                            {
+                                "torch": torch,
+                                "python-version": p,
+                                "cuda": c,
+                                "image": f"pytorch/manylinux2_28-builder:cuda{c}",
+                                "is_2_28": "1",
+                            }
+                        )
+                        continue
+
                     ans.append(
                         {
                             "torch": torch,
                             "python-version": p,
                             "cuda": c,
                             "image": "pytorch/manylinux-builder:cuda" + c,
+                            "is_2_28": "0",
                         }
                     )
         else:
@@ -380,6 +407,7 @@ def generate_build_matrix(
                             "python-version": p,
                             #  "image": "pytorch/manylinux-builder:cpu-2.4",
                             "image": "pytorch/manylinux-builder:cpu-27677ead7c8293c299a885ae2c474bf445e653a5",
+                            "is_2_28": "0",
                         }
                     )
                 elif version_ge(torch, "2.2.0"):
@@ -388,6 +416,7 @@ def generate_build_matrix(
                             "torch": torch,
                             "python-version": p,
                             "image": "pytorch/manylinux-builder:cpu-2.2",
+                            "is_2_28": "0",
                         }
                     )
                 else:
@@ -396,6 +425,7 @@ def generate_build_matrix(
                             "torch": torch,
                             "python-version": p,
                             "image": "pytorch/manylinux-builder:cuda10.2",
+                            "is_2_28": "0",
                         }
                     )
 

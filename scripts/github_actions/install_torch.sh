@@ -264,20 +264,36 @@ case ${torch} in
         ;;
     esac
     ;;
+  2.7.*)
+    case ${cuda} in
+      11.8)
+        pip install torch==2.7.0.dev20250210+cu118 -f https://download.pytorch.org/whl/nightly/torch/
+        ;;
+      12.4)
+        pip install torch==2.7.0.dev20250210+cu124 -f https://download.pytorch.org/whl/nightly/torch/
+        ;;
+      12.6)
+        pip install torch==2.7.0.dev20250210+cu126 -f https://download.pytorch.org/whl/nightly/torch/
+        ;;
+      12.8)
+        pip install torch==2.7.0.dev20250210+cu128 -f https://download.pytorch.org/whl/nightly/torch/
+        ;;
+    esac
+    ;;
   *)
     echo "Unsupported PyTorch version: ${torch}"
     exit 1
     ;;
 esac
 
-function retry() {
-  $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
-}
-
-if [ x"${url}" == "x" ]; then
-  retry python3 -m pip install -q $package
-else
-  retry python3 -m pip install -q $package -f $url
-fi
+# function retry() {
+#   $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
+# }
+#
+# if [ x"${url}" == "x" ]; then
+#   retry python3 -m pip install -q $package
+# else
+#   retry python3 -m pip install -q $package -f $url
+# fi
 
 rm -rfv ~/.cache/pip

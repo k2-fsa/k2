@@ -72,7 +72,9 @@ python3 -m pip install bs4 requests tqdm auditwheel
 echo "Installing torch"
 ./install_torch.sh
 
-sed -i.bak /9.0a/d /Python-*/py-3.*/lib/python3.*/site-packages/torch/share/cmake/Caffe2/Modules_CUDA_fix/upstream/FindCUDA/select_compute_arch.cmake
+python3 -c "import torch; print(torch.__file__)"
+
+sed -i.bak /9.0a/d /Python-*/py-3.*/lib/python3.*/site-packages/torch/share/cmake/Caffe2/Modules_CUDA_fix/upstream/FindCUDA/select_compute_arch.cmake || true
 
 rm -rf ~/.cache/pip >/dev/null 2>&1
 yum clean all >/dev/null 2>&1
@@ -85,6 +87,11 @@ export K2_CMAKE_ARGS="-DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
 export K2_MAKE_ARGS=" -j2 "
 
 python3 setup.py bdist_wheel
+if [[ x"$IS_2_28" == x"1" ]]; then
+  plat=manylinux_2_28_x86_64
+else
+  plat=manylinux_2_17_x86_64
+fi
 
 auditwheel --verbose repair \
   --exclude libc10.so \
@@ -125,7 +132,7 @@ auditwheel --verbose repair \
   --exclude libshm.so \
   --exclude libtorch_cuda_cpp.so \
   --exclude libtorch_cuda_cu.so \
-  --plat manylinux_2_17_x86_64 \
+  --plat $plat \
   -w /var/www/wheelhouse \
   dist/*.whl
 
