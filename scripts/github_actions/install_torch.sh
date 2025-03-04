@@ -267,16 +267,20 @@ case ${torch} in
   2.7.*)
     case ${cuda} in
       11.8)
-        pip install torch==2.7.0.dev20250210+cu118 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/
+        package="torch==2.7.0.dev20250303+cu118 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/"
+        url=
         ;;
       12.4)
-        pip install torch==2.7.0.dev20250210+cu124 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/
+        package="torch==2.7.0.dev20250303+cu124 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/"
+        url=
         ;;
       12.6)
-        pip install torch==2.7.0.dev20250210+cu126 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/
+        package="torch==2.7.0.dev20250303+cu126 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/"
+        url=
         ;;
       12.8)
-        pip install torch==2.7.0.dev20250210+cu128 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/
+        package="torch==2.7.0.dev20250303+cu128 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/"
+        url=
         ;;
     esac
     ;;
@@ -286,14 +290,14 @@ case ${torch} in
     ;;
 esac
 
-# function retry() {
-#   $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
-# }
-#
-# if [ x"${url}" == "x" ]; then
-#   retry python3 -m pip install -q $package
-# else
-#   retry python3 -m pip install -q $package -f $url
-# fi
+function retry() {
+  $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
+}
+
+if [ x"${url}" == "x" ]; then
+  retry python3 -m pip install -q $package
+else
+  retry python3 -m pip install -q $package -f $url
+fi
 
 rm -rf ~/.cache/pip

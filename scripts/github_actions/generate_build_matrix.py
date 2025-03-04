@@ -299,10 +299,9 @@ def generate_build_matrix(
             ),
         },
         "2.7.0": {
-            "python-version": ["3.10", "3.11", "3.12", "3.13"],
+            "python-version": ["3.9", "3.10", "3.11", "3.12", "3.13"],
             "cuda": (
-                #  ["11.8", "12.4", "12.6", "12.8"]  # default 12.4
-                ["12.8"]  # default 12.4
+                ["11.8", "12.4", "12.6", "12.8"]  # default 12.4
                 if not for_windows
                 else ["11.8.0", "12.4.0", "12.6.0"]
             ),
@@ -327,7 +326,8 @@ def generate_build_matrix(
             matrix["1.13.1"]["python-version"].remove("3.11")
 
     excluded_python_versions = ["3.6", "3.7"]
-    enabled_torch_versions = []
+
+    enabled_torch_versions = ["1.13.0", "2.0.0", "2.6.0", "2.7.0"]
 
     if for_macos_m1:
         matrix = dict()
