@@ -19,10 +19,10 @@
 #define K2_CSRC_NVTX_H_
 
 #ifdef K2_ENABLE_NVTX
-#ifdef K2_USE_NVTX3
+// #ifdef K2_USE_NVTX3
 #include <nvtx3/nvToolsExt.h>
-#else
-#include "nvToolsExt.h"
+// #else
+// #include "nvToolsExt.h"
 #endif
 #endif
 

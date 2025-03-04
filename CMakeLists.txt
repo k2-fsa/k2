@@ -225,6 +225,7 @@ if(K2_WITH_CUDA)
   include(cmake/select_compute_arch.cmake)
   cuda_select_nvcc_arch_flags(K2_COMPUTE_ARCH_FLAGS)
   message(STATUS "K2_COMPUTE_ARCH_FLAGS: ${K2_COMPUTE_ARCH_FLAGS}")
+  message(STATUS "CUDA_VERSION: ${CUDA_VERSION}")
 
   # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
   # message(WARNING "arch 62/72 are not supported for now")
@@ -255,6 +256,13 @@ if(K2_WITH_CUDA)
     # https://docs.nvidia.com/cuda/archive/12.0.0/pdf/CUDA_Toolkit_Release_Notes.pdf
     # support for 35, 37 compute capabilities removed in CUDA 12.0
     list(REMOVE_ITEM K2_COMPUTE_ARCH_CANDIDATES 35 37)
+  endif()
+
+  if(CUDA_VERSION VERSION_GREATER_EQUAL "12.8")
+    message(WARNING "Use NVTX3 for ${CUDA_VERSION}")
+    add_definitions(-DK2_USE_NVTX3)
+  else()
+    message(WARNING "Use NVTX2 for ${CUDA_VERSION}")
   endif()
 
   message(STATUS "K2_COMPUTE_ARCH_CANDIDATES ${K2_COMPUTE_ARCH_CANDIDATES}")
