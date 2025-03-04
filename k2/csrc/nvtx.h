@@ -23,7 +23,7 @@
 #include <nvtx3/nvToolsExt.h>
 // #else
 // #include "nvToolsExt.h"
-#endif
+// #endif
 #endif
 
 namespace k2 {
