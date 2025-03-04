@@ -6,6 +6,7 @@ This page describes pre-compiled ``CUDA`` wheels for `k2`_ on Linux.
 .. toctree::
    :maxdepth: 2
 
+   ./2.7.0.rst
    ./2.6.0.rst
    ./2.5.1.rst
    ./2.5.0.rst

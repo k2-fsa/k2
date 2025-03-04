@@ -1,0 +1,8 @@
+torch 2.7.0
+===========
+
+
+- `k2-1.24.4.dev20250304+cuda12.8.torch2.7.0.dev20250210-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/ubuntu-cuda/k2-1.24.4.dev20250304+cuda12.8.torch2.7.0.dev20250210-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl>`_
+- `k2-1.24.4.dev20250304+cuda12.8.torch2.7.0.dev20250210-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/ubuntu-cuda/k2-1.24.4.dev20250304+cuda12.8.torch2.7.0.dev20250210-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl>`_
+- `k2-1.24.4.dev20250304+cuda12.8.torch2.7.0.dev20250210-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/ubuntu-cuda/k2-1.24.4.dev20250304+cuda12.8.torch2.7.0.dev20250210-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl>`_
+- `k2-1.24.4.dev20250304+cuda12.8.torch2.7.0.dev20250210-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/ubuntu-cuda/k2-1.24.4.dev20250304+cuda12.8.torch2.7.0.dev20250210-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl>`_
