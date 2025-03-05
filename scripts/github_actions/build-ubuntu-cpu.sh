@@ -15,82 +15,70 @@ if [ -z $TORCH_VERSION ]; then
   exit 1
 fi
 
+# python3 -m pip install scikit-build
+python3 -m pip install -U pip cmake
+python3 -m pip install wheel twine typing_extensions
+python3 -m pip install bs4 requests tqdm auditwheel
+
+echo "Installing torch $TORCH_VERSION"
+
+if [[ $TORCH_VERSION == "2.7.0" ]]; then
+  python3 -m pip install -qq torch==2.7.0.dev20250304+cpu -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton
+else
+  python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch_stable.html || \
+  python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch/
+fi
+
+python3 -c "import torch; print(torch.__file__)"
+python3 -m torch.utils.collect_env
+
+rm -rf ~/.cache/pip
+yum clean all
+
+if [[ x"$IS_2_28" != x"1" ]]; then
+  yum -y install openssl-devel
+fi
+
+yum -y install zlib-devel bzip2-devel libffi-devel xz-devel wget redhat-lsb-core
+
 INSTALLED_PYTHON_VERSION=${PYTHON_VERSION}.2
 if [[ $PYTHON_VERSION == "3.13" ]]; then
   INSTALLED_PYTHON_VERSION=${PYTHON_VERSION}.0
 fi
 echo "Installing $INSTALLED_PYTHON_VERSION"
 
-yum -y install openssl-devel bzip2-devel libffi-devel xz-devel wget redhat-lsb-core
+curl -O https://www.python.org/ftp/python/$INSTALLED_PYTHON_VERSION/Python-$INSTALLED_PYTHON_VERSION.tgz
+tar xf Python-$INSTALLED_PYTHON_VERSION.tgz
+pushd Python-$INSTALLED_PYTHON_VERSION
 
-if true; then
-  echo "Installing ${PYTHON_VERSION}.2"
-  curl -O https://www.python.org/ftp/python/$INSTALLED_PYTHON_VERSION/Python-$INSTALLED_PYTHON_VERSION.tgz
-  tar xf Python-$INSTALLED_PYTHON_VERSION.tgz
-  pushd Python-$INSTALLED_PYTHON_VERSION
+PYTHON_INSTALL_DIR=$PWD/py-${PYTHON_VERSION}
 
-  PYTHON_INSTALL_DIR=$PWD/py-${PYTHON_VERSION}
-
-  if [[ $PYTHON_VERSION =~ 3.1. ]]; then
-    yum install -y openssl11-devel
-    sed -i 's/PKG_CONFIG openssl /PKG_CONFIG openssl11 /g' configure
-  fi
-
-  ./configure --enable-shared --prefix=$PYTHON_INSTALL_DIR >/dev/null 2>&1
-  make install >/dev/null 2>&1
-
-  popd
-
-  export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
-  export LD_LIBRARY_PATH=$PYTHON_INSTALL_DIR/lib:$LD_LIBRARY_PATH
-  ls -lh $PYTHON_INSTALL_DIR/lib/
-
-  python3 --version
-  which python3
-else
-  case ${PYTHON_VERSION} in
-    3.7)
-      export PATH=/opt/python/cp37-cp37m/bin:$PATH
-      ;;
-    3.8)
-      export PATH=/opt/python/cp38-cp38/bin:$PATH
-      ;;
-    3.9)
-      export PATH=/opt/python/cp39-cp39/bin:$PATH
-      ;;
-    3.10)
-      export PATH=/opt/python/cp310-cp310/bin:$PATH
-      ;;
-    3.11)
-      export PATH=/opt/python/cp311-cp311/bin:$PATH
-      ;;
-  esac
+if [[ $PYTHON_VERSION =~ 3.1. && x"$IS_2_28" != x"1" ]]; then
+  yum install -y openssl11-devel
+  sed -i 's/PKG_CONFIG openssl /PKG_CONFIG openssl11 /g' configure
 fi
+
+./configure --enable-shared --prefix=$PYTHON_INSTALL_DIR >/dev/null
+make install >/dev/null
+
+popd
+
+export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
+export LD_LIBRARY_PATH=$PYTHON_INSTALL_DIR/lib:$LD_LIBRARY_PATH
+ls -lh $PYTHON_INSTALL_DIR/lib/
+
+python3 --version
+which python3
+
+rm -rf ~/.cache/pip >/dev/null 2>&1
+yum clean all >/dev/null 2>&1
 
 
 nvcc --version || true
 rm -rf /usr/local/cuda*
 nvcc --version || true
 
-python3 --version
-which python3
 
-if [[ $PYTHON_VERSION != 3.6 ]]; then
-  curl -O https://bootstrap.pypa.io/get-pip.py
-  python3 get-pip.py
-fi
-
-python3 -m pip install scikit-build
-python3 -m pip install -U pip cmake
-python3 -m pip install wheel twine typing_extensions
-python3 -m pip install bs4 requests tqdm auditwheel
-
-echo "Installing torch $TORCH_VERSION"
-python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch_stable.html || \
-python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch/
-
-rm -rf ~/.cache/pip
-yum clean all
 
 cd /var/www
 
