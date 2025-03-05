@@ -426,7 +426,8 @@ def generate_build_matrix(
                         {
                             "torch": torch,
                             "python-version": p,
-                            "image": "pytorch/manylinux-builder:cpu-2.2",
+                            #  "image": "pytorch/manylinux-builder:cpu-2.2",
+                            "image": "pytorch/manylinux-builder:cpu-27677ead7c8293c299a885ae2c474bf445e653a5",
                             "is_2_28": "0",
                         }
                     )
@@ -435,7 +436,8 @@ def generate_build_matrix(
                         {
                             "torch": torch,
                             "python-version": p,
-                            "image": "pytorch/manylinux-builder:cuda10.2",
+                            #  "image": "pytorch/manylinux-builder:cuda10.2",
+                            "image": "pytorch/manylinux-builder:cpu-27677ead7c8293c299a885ae2c474bf445e653a5",
                             "is_2_28": "0",
                         }
                     )
