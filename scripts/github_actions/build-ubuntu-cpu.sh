@@ -73,12 +73,9 @@ which python3
 rm -rf ~/.cache/pip >/dev/null 2>&1
 yum clean all >/dev/null 2>&1
 
-
 nvcc --version || true
 rm -rf /usr/local/cuda*
 nvcc --version || true
-
-
 
 cd /var/www
 
@@ -87,6 +84,14 @@ export K2_CMAKE_ARGS=" -DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
 export K2_MAKE_ARGS=" -j2 "
 
 python3 setup.py bdist_wheel
+if [[ x"$IS_2_28" == x"1" ]]; then
+  plat=manylinux_2_28_x86_64
+else
+  plat=manylinux_2_17_x86_64
+fi
+export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
+python3 --version
+which python3
 
 pushd dist
 unzip *.whl
@@ -117,7 +122,7 @@ auditwheel --verbose repair \
   --exclude libtorch_cuda_cu.so \
   --exclude libtorch_cuda_cpp.so \
   \
-  --plat manylinux_2_17_x86_64 \
+  --plat $plat \
   -w /var/www/wheelhouse \
   dist/*.whl
 
