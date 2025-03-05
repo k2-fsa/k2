@@ -121,7 +121,7 @@ endif()
 
 target_link_libraries(context PUBLIC fsa)
 target_link_libraries(context PUBLIC k2_log)
-if(CUDA_VERSION VERSION_LESS "12.8")
+if(CUDA_VERSION VERSION_LESS "12.6")
   target_link_libraries(context PUBLIC k2_nvtx)
 endif()
 if(K2_USE_PYTORCH)
