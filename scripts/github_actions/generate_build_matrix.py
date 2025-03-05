@@ -327,7 +327,8 @@ def generate_build_matrix(
 
     excluded_python_versions = ["3.6", "3.7"]
 
-    enabled_torch_versions = ["1.13.0", "2.0.0", "2.6.0", "2.7.0"]
+    enabled_torch_versions = ["1.13.0", "1.13.1"]
+    min_torch_version = "2.0.0"
 
     if for_macos_m1:
         matrix = dict()
@@ -351,7 +352,8 @@ def generate_build_matrix(
     ans = []
     for torch, python_cuda in matrix.items():
         if enabled_torch_versions and torch not in enabled_torch_versions:
-            continue
+            if not version_ge(torch, min_torch_version):
+                continue
 
         python_versions = python_cuda["python-version"]
         if enable_cuda:
