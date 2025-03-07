@@ -48,6 +48,13 @@ def get_args():
     )
 
     parser.add_argument(
+        "--for-arm64",
+        action="store_true",
+        default=False,
+        help="True for arm64",
+    )
+
+    parser.add_argument(
         "--test-only-latest-torch",
         action="store_true",
         default=False,
@@ -62,6 +69,7 @@ def generate_build_matrix(
     for_windows,
     for_macos,
     for_macos_m1,
+    for_arm64,
     test_only_latest_torch,
 ):
     matrix = {
@@ -408,7 +416,9 @@ def generate_build_matrix(
                         {
                             "torch": torch,
                             "python-version": p,
-                            "image": "pytorch/manylinux2_28-builder:cpu",
+                            "image": "pytorch/manylinux2_28-builder:cpu"
+                            if not for_arm64
+                            else "pytorch/manylinux2_28_aarch64-builder:cpu-aarch64",
                             "is_2_28": "1",
                         }
                     )
@@ -418,7 +428,9 @@ def generate_build_matrix(
                             "torch": torch,
                             "python-version": p,
                             #  "image": "pytorch/manylinux-builder:cpu-2.4",
-                            "image": "pytorch/manylinux-builder:cpu-27677ead7c8293c299a885ae2c474bf445e653a5",
+                            "image": "pytorch/manylinux-builder:cpu-27677ead7c8293c299a885ae2c474bf445e653a5"
+                            if not for_arm64
+                            else "pytorch/manylinuxaarch64-builder:cpu-aarch64-195148266541a9789074265141cb7dc19dc14c54",
                             "is_2_28": "0",
                         }
                     )
@@ -428,7 +440,9 @@ def generate_build_matrix(
                             "torch": torch,
                             "python-version": p,
                             #  "image": "pytorch/manylinux-builder:cpu-2.2",
-                            "image": "pytorch/manylinux-builder:cpu-27677ead7c8293c299a885ae2c474bf445e653a5",
+                            "image": "pytorch/manylinux-builder:cpu-27677ead7c8293c299a885ae2c474bf445e653a5"
+                            if not for_arm64
+                            else "pytorch/manylinuxaarch64-builder:cpu-aarch64-195148266541a9789074265141cb7dc19dc14c54",
                             "is_2_28": "0",
                         }
                     )
@@ -438,7 +452,9 @@ def generate_build_matrix(
                             "torch": torch,
                             "python-version": p,
                             #  "image": "pytorch/manylinux-builder:cuda10.2",
-                            "image": "pytorch/manylinux-builder:cpu-27677ead7c8293c299a885ae2c474bf445e653a5",
+                            "image": "pytorch/manylinux-builder:cpu-27677ead7c8293c299a885ae2c474bf445e653a5"
+                            if not for_arm64
+                            else "pytorch/manylinuxaarch64-builder:cpu-aarch64-195148266541a9789074265141cb7dc19dc14c54",
                             "is_2_28": "0",
                         }
                     )
@@ -453,6 +469,7 @@ def main():
         for_windows=args.for_windows,
         for_macos=args.for_macos,
         for_macos_m1=args.for_macos_m1,
+        for_arm64=args.for_arm64,
         test_only_latest_torch=args.test_only_latest_torch,
     )
 
