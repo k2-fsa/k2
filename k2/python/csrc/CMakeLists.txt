@@ -53,13 +53,13 @@ if(UNIX AND NOT APPLE)
   # It causes errors on macOS
   target_link_libraries(_k2 PRIVATE ${TORCH_DIR}/lib/libtorch_python.so)
   # CAUTION: It is PYTHON_LIBRARY on unix
-  target_link_libraries(_k2 PRIVATE ${PYTHON_LIBRARY})
-  message(STATUS "PYTHON_LIBRARY: ${PYTHON_LIBRARY}")
+  # target_link_libraries(_k2 PRIVATE ${PYTHON_LIBRARY})
+  # message(STATUS "PYTHON_LIBRARY: ${PYTHON_LIBRARY}")
 elseif(WIN32)
   target_link_libraries(_k2 PRIVATE ${TORCH_DIR}/lib/torch_python.lib)
   # CAUTION: It is PYTHON_LIBRARIES on Windows
-  target_link_libraries(_k2 PRIVATE ${PYTHON_LIBRARIES})
-  message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
+  # target_link_libraries(_k2 PRIVATE ${PYTHON_LIBRARIES})
+  # message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
 endif()
 
 install(TARGETS _k2

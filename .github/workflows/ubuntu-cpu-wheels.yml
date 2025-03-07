@@ -2,6 +2,8 @@ name: build-wheels-cpu-ubuntu
 
 on:
   push:
+    branches:
+      - cuda-12.8
     tags:
       - '*'
   workflow_dispatch:
@@ -122,20 +124,10 @@ jobs:
               export PYTHON_INSTALL_DIR=$python_dir
               export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
 
-              # There are no libpython.so inside $PYTHON_INSTALL_DIR
-              # since they are statically linked.
-
               python3 --version
               which python3
 
               /var/www/scripts/github_actions/build-ubuntu-cpu.sh
-
-      - name: Upload Wheel
-        if: false
-        uses: actions/upload-artifact@v4
-        with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-latest-cpu-is_2_28-${{ matrix.is_2_28 }}
-          path: wheelhouse/*.whl
 
       # https://huggingface.co/docs/hub/spaces-github-actions
       - name: Publish to huggingface
@@ -158,8 +150,9 @@ jobs:
             cd huggingface
             git pull
 
-            mkdir -p cpu
-            cp -v ../wheelhouse/*.whl ./cpu
+            d=cpu/1.24.4.dev20250307/linux-x64
+            mkdir -p $d
+            cp -v ../wheelhouse/*.whl $d
             git status
             git lfs track "*.whl"
             git add .

@@ -309,7 +309,7 @@ def generate_build_matrix(
         # https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
     }
     if test_only_latest_torch:
-        latest = "2.7.0"
+        latest = "2.6.0"
         matrix = {latest: matrix[latest]}
 
     if for_windows or for_macos:
@@ -325,9 +325,10 @@ def generate_build_matrix(
         if "1.13.1" in matrix:
             matrix["1.13.1"]["python-version"].remove("3.11")
 
-    excluded_python_versions = ["3.6", "3.7"]
+    excluded_python_versions = ["3.6"]
 
-    enabled_torch_versions = ["1.13.0", "1.13.1"]
+    enabled_torch_versions = ["1.10.0"]
+    enabled_torch_versions += ["1.13.0", "1.13.1"]
     min_torch_version = "2.0.0"
 
     if for_macos_m1:
@@ -402,7 +403,7 @@ def generate_build_matrix(
                     ans.append({"torch": torch, "python-version": p})
                 elif for_macos or for_macos_m1:
                     ans.append({"torch": torch, "python-version": p})
-                elif version_ge(torch, "2.7.0"):
+                elif version_ge(torch, "2.6.0"):
                     ans.append(
                         {
                             "torch": torch,
