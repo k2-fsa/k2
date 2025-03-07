@@ -3,14 +3,14 @@ name: build-wheels-cpu-ubuntu
 on:
   push:
     branches:
-      - wheel
-      # - cuda-12.8
+      # - wheel
+      - cuda-12.8
     tags:
       - '*'
   workflow_dispatch:
 
 concurrency:
-  group: build-wheels-cpu-ubuntu-${{ github.ref }}
+  group: build-wheels-cpu-ubuntu-arm64-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
   build-manylinux-wheels:
     needs: generate_build_matrix
     name: ${{ matrix.torch }} ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -128,7 +128,7 @@ jobs:
               python3 --version
               which python3
 
-              /var/www/scripts/github_actions/build-ubuntu-cpu.sh
+              /var/www/scripts/github_actions/build-ubuntu-cpu-arm64.sh
 
       # https://huggingface.co/docs/hub/spaces-github-actions
       - name: Publish to huggingface
@@ -151,7 +151,7 @@ jobs:
             cd huggingface
             git pull
 
-            d=cpu/1.24.4.dev20250307/linux-x64
+            d=cpu/1.24.4.dev20250307/linux-arm64
             mkdir -p $d
             cp -v ../wheelhouse/*.whl $d
             git status
