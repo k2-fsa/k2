@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - wheel
-      # - cuda-12.8
+      - torch-2.7.0
     tags:
       - '*'
   workflow_dispatch:

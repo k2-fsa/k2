@@ -2,6 +2,8 @@ name: build-wheels-cpu-win64
 
 on:
   push:
+    branches:
+      - torch-2.7.0
     tags:
       - '*'
   workflow_dispatch:
