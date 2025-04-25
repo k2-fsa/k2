@@ -3,8 +3,7 @@ name: build-wheels-cpu-ubuntu-arm64
 on:
   push:
     branches:
-      # - wheel
-      - torch-2.7.0
+      - wheel
     tags:
       - '*'
   workflow_dispatch:
