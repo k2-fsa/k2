@@ -15,6 +15,11 @@ if [ -z $TORCH_VERSION ]; then
   exit 1
 fi
 
+export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
+export LD_LIBRARY_PATH=$PYTHON_INSTALL_DIR/lib:$LD_LIBRARY_PATH
+ls -lh $PYTHON_INSTALL_DIR/lib/
+
+# python3 -m pip install scikit-build
 python3 -m pip install -U pip cmake "numpy<=1.26.4"
 python3 -m pip install wheel twine typing_extensions
 python3 -m pip install bs4 requests tqdm auditwheel
@@ -25,7 +30,9 @@ if [[ $TORCH_VERSION == "2.8.0" ]]; then
   python3 -m pip install -qq torch==2.8.0.dev20250424+cpu -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton
 else
   python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch_stable.html || \
-  python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch/
+  python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch/ || \
+  python3 -m pip install -qq torch==$TORCH_VERSION -f https://download.pytorch.org/whl/torch/ || \
+  python3 -m pip install -qq torch==$TORCH_VERSION
 fi
 
 python3 -c "import torch; print(torch.__file__)"
@@ -49,24 +56,20 @@ export CMAKE_CUDA_COMPILER_LAUNCHER=
 export K2_CMAKE_ARGS=" -DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
 export K2_MAKE_ARGS=" -j2 "
 
+nvcc --version || true
+rm -rf /usr/local/cuda*
+nvcc --version || true
+
 python3 setup.py bdist_wheel
+
 if [[ x"$IS_2_28" == x"1" ]]; then
-  plat=manylinux_2_28_x86_64
+  plat=manylinux_2_28_aarch64
 else
-  plat=manylinux_2_17_x86_64
+  plat=manylinux_2_17_aarch64
 fi
 export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
 python3 --version
 which python3
-
-pushd dist
-unzip *.whl
-export LD_LIBRARY_PATH=$PWD/k2/lib:$LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=$PWD/k2/lib64:$LD_LIBRARY_PATH
-popd
-
-echo $LD_LIBRARY_PATH
-ls -lh $PWD/dist/k2/lib*
 
 auditwheel --verbose repair \
   --exclude libc10.so \

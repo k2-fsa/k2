@@ -21,6 +21,12 @@
 #define K2_CSRC_CUB_H_
 
 #ifdef K2_WITH_CUDA
+#ifdef K2_USE_NVTX3
+#include <nvtx3/nvToolsExt.h>
+#else
+#include "nvToolsExt.h"
+#endif
+
 #include "cub/cub.cuh"  // NOLINT
 #endif
 

@@ -2,6 +2,8 @@ name: build-wheels-cpu-ubuntu
 
 on:
   push:
+    branches:
+      - wheel
     tags:
       - '*'
   workflow_dispatch:
@@ -25,11 +27,11 @@ jobs:
         id: set-matrix
         run: |
           # outputting for debugging purposes
-          # python ./scripts/github_actions/generate_build_matrix.py
-          # MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py)
+          python ./scripts/github_actions/generate_build_matrix.py
+          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py)
 
-          python ./scripts/github_actions/generate_build_matrix.py --test-only-latest-torch
-          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --test-only-latest-torch)
+          # python ./scripts/github_actions/generate_build_matrix.py --test-only-latest-torch
+          # MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --test-only-latest-torch)
           echo "::set-output name=matrix::${MATRIX}"
 
   build-manylinux-wheels:
@@ -55,7 +57,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
             image: ${{ matrix.image }}
-            options: -v ${{ github.workspace }}:/var/www -e PYTHON_VERSION=${{ matrix.python-version }} -e TORCH_VERSION=${{ matrix.torch }}
+            options: -v ${{ github.workspace }}:/var/www -e IS_2_28=${{ matrix.is_2_28 }} -e PYTHON_VERSION=${{ matrix.python-version }} -e TORCH_VERSION=${{ matrix.torch }}
             run: |
               echo "pwd: $PWD"
               uname -a
@@ -65,13 +67,67 @@ jobs:
               python3 --version
               which python3
 
-              /var/www/scripts/github_actions/build-ubuntu-cpu.sh
+              ls -lh /opt/python/
 
-      - name: Upload Wheel
-        uses: actions/upload-artifact@v3
-        with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-latest-cpu
-          path: wheelhouse/*.whl
+              echo "---"
+
+              ls -lh /opt/python/cp*
+
+              ls -lh /opt/python/*/bin
+
+              echo "---"
+              find /opt/python/cp* -name "libpython*"
+              echo "-----"
+              find /opt/_internal/cp* -name "libpython*"
+
+              echo "-----"
+              find / -name "libpython*"
+
+              # cp36-cp36m
+              # cp37-cp37m
+              # cp38-cp38
+              # cp39-cp39
+              # cp310-cp310
+              # cp311-cp311
+              # cp312-cp312
+              # cp313-cp313
+              # cp313-cp313t  (no gil)
+              if [[ $PYTHON_VERSION == "3.6" ]]; then
+                python_dir=/opt/python/cp36-cp36m
+                export PYTHONPATH=/opt/python/cp36-cp36m/lib/python3.6/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.7" ]]; then
+                python_dir=/opt/python/cp37-cp37m
+                export PYTHONPATH=/opt/python/cp37-cp37m/lib/python3.7/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.8" ]]; then
+                python_dir=/opt/python/cp38-cp38
+                export PYTHONPATH=/opt/python/cp38-cp38/lib/python3.8/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.9" ]]; then
+                python_dir=/opt/python/cp39-cp39
+                export PYTHONPATH=/opt/python/cp39-cp39/lib/python3.9/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.10" ]]; then
+                python_dir=/opt/python/cp310-cp310
+                export PYTHONPATH=/opt/python/cp310-cp310/lib/python3.10/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.11" ]]; then
+                python_dir=/opt/python/cp311-cp311
+                export PYTHONPATH=/opt/python/cp311-cp311/lib/python3.11/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.12" ]]; then
+                python_dir=/opt/python/cp312-cp312
+                export PYTHONPATH=/opt/python/cp312-cp312/lib/python3.12/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.13" ]]; then
+                python_dir=/opt/python/cp313-cp313
+                export PYTHONPATH=/opt/python/cp313-cp313/lib/python3.13/site-packages:$PYTHONPATH
+              else
+                echo "Unsupported Python version $PYTHON_VERSION"
+                exit 1
+              fi
+
+              export PYTHON_INSTALL_DIR=$python_dir
+              export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
+
+              python3 --version
+              which python3
+
+              /var/www/scripts/github_actions/build-ubuntu-cpu.sh
 
       # https://huggingface.co/docs/hub/spaces-github-actions
       - name: Publish to huggingface
@@ -94,8 +150,9 @@ jobs:
             cd huggingface
             git pull
 
-            mkdir -p cpu
-            cp -v ../wheelhouse/*.whl ./cpu
+            d=cpu/1.24.4.dev20250307/linux-x64
+            mkdir -p $d
+            cp -v ../wheelhouse/*.whl $d
             git status
             git lfs track "*.whl"
             git add .
