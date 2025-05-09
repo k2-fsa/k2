@@ -264,6 +264,8 @@ struct RaggedAny {
              torch::optional<torch::Tensor>>
   Unique(bool need_num_repeats = false, bool need_new2old_indexes = false);
 
+  RaggedAny Unsqueeze(int32_t axis);
+
   /// Wrapper for k2::NormalizePerSublist
   RaggedAny Normalize(bool use_log) /*const*/;
 
