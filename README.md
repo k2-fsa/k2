@@ -96,3 +96,7 @@ You can find more Colab notebooks using k2 in speech recognition at
 <https://k2-fsa.github.io/icefall/recipes/Non-streaming-ASR/librispeech/conformer_ctc.html>.
 
 [1]: https://colab.research.google.com/drive/1qbHUhNZUX7AYEpqnZyf29Lrz2IPHBGlX?usp=sharing
+
+## Acknowledgements
+
+Some contributors to this project were supported by Xiaomi Corporation. Others were supported by National Science Foundation CCRI award 2120435.  This is not an exhaustive list of sources of support.
