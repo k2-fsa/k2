@@ -97,12 +97,6 @@ if(NOT K2_WITH_CUDA)
   set(K2_ENABLE_NVTX OFF CACHE BOOL "" FORCE)
 endif()
 
-if(NOT K2_USE_PYTORCH)
-  message(FATAL_ERROR "\
-    Please set K2_USE_PYTORCH to ON.
-    Support for other frameworks will be added later")
-endif()
-
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
@@ -315,8 +309,9 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 
-include(pybind11)
 if(K2_USE_PYTORCH)
+  message(STATUS "Build k2 with Pytorch.")
+  include(pybind11)
   add_definitions(-DK2_USE_PYTORCH)
   include(torch)
   configure_file(
@@ -324,6 +319,8 @@ if(K2_USE_PYTORCH)
     ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py @ONLY
   )
   message(STATUS "Generated ${PROJECT_BINARY_DIR}/torch_version.py")
+else()
+  message(STATUS "Build k2 without Pytorch.")
 endif()
 
 if(K2_WITH_CUDA)

@@ -1,7 +1,7 @@
 add_subdirectory(csrc)
-add_subdirectory(python)
 
 if(K2_USE_PYTORCH)
+  add_subdirectory(python)
   # We use K2_TORCH_VERSION instead of TORCH_VERSION
   # since TORCH_VERSION may contain something like "+cpu", "+cu113"
   if(K2_TORCH_VERSION VERSION_GREATER_EQUAL 1.8 OR NOT K2_WITH_CUDA)
