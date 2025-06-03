@@ -5,6 +5,8 @@ set(torch_srcs
   fsa_algo.cu
   index_add.cu
   index_select.cu
+  levenshtein_distance.cu
+  levenshtein_distance_cpu.cu
   mutual_information.cu
   mutual_information_cpu.cu
   nbest.cu
@@ -22,7 +24,7 @@ set(torch_srcs
 )
 
 if (K2_WITH_CUDA)
-  list(APPEND torch_srcs mutual_information_cuda.cu)
+  list(APPEND torch_srcs levenshtein_distance_cuda.cu mutual_information_cuda.cu)
 endif()
 
 set(torch_srcs_with_prefix)
