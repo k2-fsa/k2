@@ -1,23 +1,24 @@
 <!-- see https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="../">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Core concepts in k2 &mdash; k2 1.24.4 documentation</title>
-      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=c976b32c" />
+
   
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-        <script src="../_static/jquery.js"></script>
-        <script src="../_static/underscore.js"></script>
-        <script src="../_static/doctools.js"></script>
-        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=ca3bc075"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -30,14 +31,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> k2
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            k2
           </a>
-              <div class="version">
-                1.24.4
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -82,8 +84,8 @@
         <div class="rst-content style-external-links">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>Core concepts in k2</li>
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Core concepts in k2</li>
       <li class="wy-breadcrumbs-aside">
               <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/core_concepts/index.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
@@ -94,17 +96,18 @@
            <div itemprop="articleBody">
              
   <section id="core-concepts-in-k2">
-<h1>Core concepts in k2<a class="headerlink" href="#core-concepts-in-k2" title="Permalink to this headline"></a></h1>
+<h1>Core concepts in k2<a class="headerlink" href="#core-concepts-in-k2" title="Link to this heading"></a></h1>
 <p>Please refer to <span id="id1">[<a class="reference internal" href="#id5" title="Mehryar Mohri. Finite-state transducers in language and speech processing. Computational linguistics, 23(2):269–311, 1997. URL: https://cs.nyu.edu/~mohri/pub/cl1.pdf.">Moh97</a>]</span>, <span id="id2">[<a class="reference internal" href="#id6" title="Mehryar Mohri, Fernando Pereira, and Michael Riley. Weighted finite-state transducers in speech recognition. Computer Speech &amp; Language, 16(1):69–88, 2002. URL: https://cs.nyu.edu/~mohri/postscript/csl01.pdf.">MPR02</a>]</span>, and
 <span id="id3">[<a class="reference internal" href="#id7" title="Mehryar Mohri, Fernando Pereira, and Michael Riley. Speech recognition with weighted finite-state transducers. In Springer Handbook of Speech Processing, pages 559–584. Springer, 2008. URL: https://wiki.eecs.yorku.ca/course_archive/2011-12/W/6328/_media/wfst-lvcsr.pdf.">MPR08</a>]</span> for an introduction about weighted finite state
 acceptor (WFSA) and weighted finite state transducer (WFST).</p>
 <p>We use FSA to indicate either WFSA or WFST in k2.</p>
 <section id="a-simple-fsa-example">
-<h2>A simple FSA example<a class="headerlink" href="#a-simple-fsa-example" title="Permalink to this headline"></a></h2>
+<h2>A simple FSA example<a class="headerlink" href="#a-simple-fsa-example" title="Link to this heading"></a></h2>
 <p>A simple FSA is shown in <a class="reference internal" href="#a-simple-fsa"><span class="std std-numref">Fig. 1</span></a>.</p>
 <figure class="align-center" id="id8" style="width: 600px">
-<span id="a-simple-fsa"></span><img alt="A simple FSA in k2" src="../_images/simple_fsa.svg" /><figcaption>
-<p><span class="caption-number">Fig. 1 </span><span class="caption-text">A simple FSA in k2.</span><a class="headerlink" href="#id8" title="Permalink to this image"></a></p>
+<span id="a-simple-fsa"></span><img alt="A simple FSA in k2" src="../_images/simple_fsa.svg" />
+<figcaption>
+<p><span class="caption-number">Fig. 1 </span><span class="caption-text">A simple FSA in k2.</span><a class="headerlink" href="#id8" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <ul class="simple">
@@ -165,11 +168,11 @@ state to the start state to 0.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>k2 supports conversion of FSAs from OpenFST. See <a class="reference internal" href="../python_api/api.html#k2.Fsa.from_openfst" title="k2.Fsa.from_openfst"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.from_openfst()</span></code></a>.</p>
+<p>k2 supports conversion of FSAs from OpenFST. See <code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.from_openfst()</span></code>.</p>
 </div>
 </section>
 <section id="attributes">
-<h2>Attributes<a class="headerlink" href="#attributes" title="Permalink to this headline"></a></h2>
+<h2>Attributes<a class="headerlink" href="#attributes" title="Link to this heading"></a></h2>
 <p>Arbitrary attributes can be attached to the arcs of an FSA.
 For example, we can attach a tensor attribute to an FSA indicating
 the output label of arcs so that the FSA is converted to an FST.</p>
@@ -190,8 +193,9 @@ with <code class="docutils literal notranslate"><span class="pre">autograd</span
 </div>
 <p>The resulting FST is visualized in <a class="reference internal" href="#a-simple-fst"><span class="std std-numref">Fig. 2</span></a>.</p>
 <figure class="align-center" id="id9" style="width: 600px">
-<span id="a-simple-fst"></span><img alt="A simple FST in k2" src="../_images/simple_fst.svg" /><figcaption>
-<p><span class="caption-number">Fig. 2 </span><span class="caption-text">A simple FST in k2.</span><a class="headerlink" href="#id9" title="Permalink to this image"></a></p>
+<span id="a-simple-fst"></span><img alt="A simple FST in k2" src="../_images/simple_fst.svg" />
+<figcaption>
+<p><span class="caption-number">Fig. 2 </span><span class="caption-text">A simple FST in k2.</span><a class="headerlink" href="#id9" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <div class="admonition caution">
@@ -209,7 +213,7 @@ to the FSA.</p>
 </div>
 </section>
 <section id="semirings">
-<h2>Semirings<a class="headerlink" href="#semirings" title="Permalink to this headline"></a></h2>
+<h2>Semirings<a class="headerlink" href="#semirings" title="Link to this heading"></a></h2>
 <p>In the FSA literature, generality is achieved through the concept
 of “semirings”. The two most common are the “tropical semiring”
 and “log semiring”. The way we will explain these is a little
@@ -229,12 +233,13 @@ the framework is designed to be flexible through the concept of
 things that are normally accomplished through exotic semirings
 such as the Gallic semiring.</p>
 <section id="tropical-semiring">
-<h3>Tropical semiring<a class="headerlink" href="#tropical-semiring" title="Permalink to this headline"></a></h3>
+<h3>Tropical semiring<a class="headerlink" href="#tropical-semiring" title="Link to this heading"></a></h3>
 <p>In tropical semirings, it takes the <strong>max</strong> score of alternative paths.</p>
 <p>For example, for the FSA in <a class="reference internal" href="#tropical"><span class="std std-numref">Fig. 3</span></a>:</p>
 <figure class="align-center" id="id10" style="width: 600px">
-<span id="tropical"></span><img alt="An FSA with two alternative paths" src="../_images/fsa2.svg" /><figcaption>
-<p><span class="caption-number">Fig. 3 </span><span class="caption-text">An FSA with two alternative paths to the final states.</span><a class="headerlink" href="#id10" title="Permalink to this image"></a></p>
+<span id="tropical"></span><img alt="An FSA with two alternative paths" src="../_images/fsa2.svg" />
+<figcaption>
+<p><span class="caption-number">Fig. 3 </span><span class="caption-text">An FSA with two alternative paths to the final states.</span><a class="headerlink" href="#id10" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <p>There are two paths from the start state to the final state:</p>
@@ -265,14 +270,14 @@ this FSA is <code class="docutils literal notranslate"><span class="pre">max(0.1
 </div>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
-<p><a class="reference internal" href="../python_api/api.html#k2.Fsa.get_tot_scores" title="k2.Fsa.get_tot_scores"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code></a> takes a vector of FSAs as input,
-so we use <a class="reference internal" href="../python_api/api.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> to turn an FSA into a vector of FSAs.</p>
+<p><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.get_tot_scores()</span></code> takes a vector of FSAs as input,
+so we use <code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code> to turn an FSA into a vector of FSAs.</p>
 <p>Most operations in k2 take a vector of FSAs as input and process them
 in parallel.</p>
 </div>
 </section>
 <section id="log-semiring">
-<h3>Log semiring<a class="headerlink" href="#log-semiring" title="Permalink to this headline"></a></h3>
+<h3>Log semiring<a class="headerlink" href="#log-semiring" title="Link to this heading"></a></h3>
 <p>In log semirings, it takes the <strong>log_add</strong> score of alternative paths.</p>
 <p>For example, if there are two paths with score <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>, then the
 total score is <code class="docutils literal notranslate"><span class="pre">log(exp(a)</span> <span class="pre">+</span> <span class="pre">exp(b))</span></code>.</p>
@@ -297,7 +302,7 @@ total score is <code class="docutils literal notranslate"><span class="pre">log(
 </section>
 </section>
 <section id="vectors-of-fsas">
-<h2>Vectors of FSAs<a class="headerlink" href="#vectors-of-fsas" title="Permalink to this headline"></a></h2>
+<h2>Vectors of FSAs<a class="headerlink" href="#vectors-of-fsas" title="Link to this heading"></a></h2>
 <p>The Python class <code class="xref py py-class docutils literal notranslate"><span class="pre">k2.Fsa</span></code> can represent either a single FSA
 or a 1-D vector of FSAs.</p>
 <p>Most operations in k2 are done on a vector of FSAs in parallel.</p>
@@ -309,13 +314,13 @@ only <code class="xref py py-class docutils literal notranslate"><span class="pr
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><a class="reference internal" href="../python_api/api.html#k2.create_fsa_vec" title="k2.create_fsa_vec"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code></a> can create a FsaVec from a list of
-FSAs. and <a class="reference internal" href="../python_api/api.html#k2.Fsa.__getitem__" title="k2.Fsa.__getitem__"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.__getitem__()</span></code></a> selects an FSA with specified
+<p><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.create_fsa_vec()</span></code> can create a FsaVec from a list of
+FSAs. and <code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.__getitem__()</span></code> selects an FSA with specified
 index from a FsaVec.</p>
 </div>
 </section>
 <section id="autograd">
-<h2>Autograd<a class="headerlink" href="#autograd" title="Permalink to this headline"></a></h2>
+<h2>Autograd<a class="headerlink" href="#autograd" title="Link to this heading"></a></h2>
 <p>Nearly all operations in k2 support autograd, which is compatible
 with PyTorch. It can be extended to support other frameworks as well,
 e.g., TensorFlow.</p>
@@ -336,8 +341,9 @@ API users.</p>
 <p>In the following we give two examples about autograd with the following FSA
 in the context of computing total scores with tropical semiring and log semiring.</p>
 <figure class="align-center" id="id11" style="width: 600px">
-<span id="autograd-example"></span><img alt="An FSA for demonstrating autograd." src="../_images/autograd.svg" /><figcaption>
-<p><span class="caption-number">Fig. 4 </span><span class="caption-text">An example FSA for demonstrating autograd in k2.</span><a class="headerlink" href="#id11" title="Permalink to this image"></a></p>
+<span id="autograd-example"></span><img alt="An FSA for demonstrating autograd." src="../_images/autograd.svg" />
+<figcaption>
+<p><span class="caption-number">Fig. 4 </span><span class="caption-text">An example FSA for demonstrating autograd in k2.</span><a class="headerlink" href="#id11" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <p>Arc scores <code class="docutils literal notranslate"><span class="pre">a</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, <code class="docutils literal notranslate"><span class="pre">c</span></code>, and <code class="docutils literal notranslate"><span class="pre">d</span></code> are some numbers not known yet.
@@ -345,7 +351,7 @@ They can come from the output of some neural network and their value depends
 on the internal parameters of the neural network which are updated
 by some gradient descent based algorithms.</p>
 <section id="example-1-autograd-in-tropical-semiring">
-<h3>Example 1: Autograd in tropical semiring<a class="headerlink" href="#example-1-autograd-in-tropical-semiring" title="Permalink to this headline"></a></h3>
+<h3>Example 1: Autograd in tropical semiring<a class="headerlink" href="#example-1-autograd-in-tropical-semiring" title="Link to this heading"></a></h3>
 <p>The following code shows how to compute the best score of the shortest path for
 the FSA given in <a class="reference internal" href="#autograd-example"><span class="std std-numref">Fig. 4</span></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
@@ -372,8 +378,9 @@ the FSA given in <a class="reference internal" href="#autograd-example"><span cl
 </pre></div>
 </div>
 <figure class="align-center" id="id12" style="width: 600px">
-<img alt="An example FSA for autograd with tropical scores" src="../_images/autograd_tropical.svg" /><figcaption>
-<p><span class="caption-number">Fig. 5 </span><span class="caption-text">Output of the above code: autograd_tropical.svg</span><a class="headerlink" href="#id12" title="Permalink to this image"></a></p>
+<img alt="An example FSA for autograd with tropical scores" src="../_images/autograd_tropical.svg" />
+<figcaption>
+<p><span class="caption-number">Fig. 5 </span><span class="caption-text">Output of the above code: autograd_tropical.svg</span><a class="headerlink" href="#id12" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <dl>
@@ -399,7 +406,7 @@ of the <cite>best score</cite> <code class="docutils literal notranslate"><span 
 </dl>
 </section>
 <section id="example-2-autograd-in-log-semiring">
-<h3>Example 2: Autograd in log semiring<a class="headerlink" href="#example-2-autograd-in-log-semiring" title="Permalink to this headline"></a></h3>
+<h3>Example 2: Autograd in log semiring<a class="headerlink" href="#example-2-autograd-in-log-semiring" title="Link to this heading"></a></h3>
 <p>For the log semiring, we just change:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa_vec</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
@@ -454,7 +461,7 @@ use autograd in k2.</p>
 </section>
 </section>
 <section id="dense-fsa-vector">
-<h2>Dense fsa vector<a class="headerlink" href="#dense-fsa-vector" title="Permalink to this headline"></a></h2>
+<h2>Dense fsa vector<a class="headerlink" href="#dense-fsa-vector" title="Link to this heading"></a></h2>
 <p>We have mentioned that gradients are computed with respect to arc scores
 and arc scores may come from the output of some neural network.</p>
 <p>This brings up the question:</p>
@@ -487,12 +494,6 @@ for three symbols:</p>
 <p>At frame 0, suppose the last layer <strong>log-softmax</strong> of the network produces
 the following output:</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 13%" />
-<col style="width: 29%" />
-<col style="width: 29%" />
-<col style="width: 29%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td></td>
 <td><p><span class="math notranslate nohighlight">\(\sqcup\)</span></p></td>
@@ -508,8 +509,9 @@ the following output:</p>
 </table>
 <p>We would convert it to an FSA shown in <a class="reference internal" href="#dense-fsa-vec-frame-0"><span class="std std-numref">Fig. 6</span></a>.</p>
 <figure class="align-center" id="id13" style="width: 600px">
-<span id="dense-fsa-vec-frame-0"></span><img alt="FSA for frame 0" src="../_images/dense_fsa_vec_frame_0.svg" /><figcaption>
-<p><span class="caption-number">Fig. 6 </span><span class="caption-text">Convert output for frame 0 to an FSA in k2.</span><a class="headerlink" href="#id13" title="Permalink to this image"></a></p>
+<span id="dense-fsa-vec-frame-0"></span><img alt="FSA for frame 0" src="../_images/dense_fsa_vec_frame_0.svg" />
+<figcaption>
+<p><span class="caption-number">Fig. 6 </span><span class="caption-text">Convert output for frame 0 to an FSA in k2.</span><a class="headerlink" href="#id13" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <dl class="simple">
@@ -528,12 +530,6 @@ final state have label -1 on them. Therefore, the FSA has 3 states in k2.</p>
 </div>
 <p>At frame 1, the network may produce the following output:</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 13%" />
-<col style="width: 29%" />
-<col style="width: 29%" />
-<col style="width: 29%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td></td>
 <td><p><span class="math notranslate nohighlight">\(\sqcup\)</span></p></td>
@@ -554,8 +550,9 @@ final state have label -1 on them. Therefore, the FSA has 3 states in k2.</p>
 </table>
 <p>The corresponding FSA is visualized in <a class="reference internal" href="#dense-fsa-vec-frame-01"><span class="std std-numref">Fig. 7</span></a>.</p>
 <figure class="align-center" id="id14" style="width: 600px">
-<span id="dense-fsa-vec-frame-01"></span><img alt="FSA for frame 0 and frame 1" src="../_images/dense_fsa_vec_frame_01.svg" /><figcaption>
-<p><span class="caption-number">Fig. 7 </span><span class="caption-text">Convert outputs for frame 0 and frame 1 to an FSA in k2.</span><a class="headerlink" href="#id14" title="Permalink to this image"></a></p>
+<span id="dense-fsa-vec-frame-01"></span><img alt="FSA for frame 0 and frame 1" src="../_images/dense_fsa_vec_frame_01.svg" />
+<figcaption>
+<p><span class="caption-number">Fig. 7 </span><span class="caption-text">Convert outputs for frame 0 and frame 1 to an FSA in k2.</span><a class="headerlink" href="#id14" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <dl class="simple">
@@ -593,11 +590,11 @@ a dense FSA for each of them</p></li>
 FSA for each output in the batch</p></li>
 </ul>
 </div></blockquote>
-<p>Please refer to the constructor of <a class="reference internal" href="../python_api/api.html#k2.DenseFsaVec.__init__" title="k2.DenseFsaVec.__init__"><code class="xref py py-func docutils literal notranslate"><span class="pre">k2.DenseFsaVec.__init__()</span></code></a>
+<p>Please refer to the constructor of <code class="xref py py-func docutils literal notranslate"><span class="pre">k2.DenseFsaVec.__init__()</span></code>
 to gain more insight.</p>
 </section>
 <section id="ragged-arrays">
-<h2>Ragged arrays<a class="headerlink" href="#ragged-arrays" title="Permalink to this headline"></a></h2>
+<h2>Ragged arrays<a class="headerlink" href="#ragged-arrays" title="Link to this heading"></a></h2>
 <p>Ragged arrays are the <strong>core</strong> data structures in k2 designed
 by us <cite>independently</cite>. We were later told that TensorFlow
 was using the same ideas
@@ -720,8 +717,9 @@ general matrix:</p>
 <p>In k2, <cite>row_indexes</cite> is called <cite>row_splits</cite>, compatible with TensorFlow’s <cite>RaggedTensor</cite>.</p>
 <p>For the following FSA:</p>
 <figure class="align-center" id="id15" style="width: 600px">
-<span id="ragged1"></span><img alt="A simple FSA" src="../_images/ragged.svg" /><figcaption>
-<p><span class="caption-number">Fig. 8 </span><span class="caption-text">An example FSA.</span><a class="headerlink" href="#id15" title="Permalink to this image"></a></p>
+<span id="ragged1"></span><img alt="A simple FSA" src="../_images/ragged.svg" />
+<figcaption>
+<p><span class="caption-number">Fig. 8 </span><span class="caption-text">An example FSA.</span><a class="headerlink" href="#id15" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <p>It is represented in k2 by two arrays:</p>
@@ -771,8 +769,9 @@ time. For arc <cite>i</cite>, <cite>row_ids[i]</cite> tells the state number to 
 the FsaVec contains two FSAs, one given in <a class="reference internal" href="#ragged1"><span class="std std-numref">Fig. 8</span></a> and the other is shown
 in <a class="reference internal" href="#ragged2"><span class="std std-numref">Fig. 9</span></a>:</p>
 <figure class="align-center" id="id16" style="width: 600px">
-<span id="ragged2"></span><img alt="A simple FSA" src="../_images/ragged2.svg" /><figcaption>
-<p><span class="caption-number">Fig. 9 </span><span class="caption-text">The second FSA in the FsaVec.</span><a class="headerlink" href="#id16" title="Permalink to this image"></a></p>
+<span id="ragged2"></span><img alt="A simple FSA" src="../_images/ragged2.svg" />
+<figcaption>
+<p><span class="caption-number">Fig. 9 </span><span class="caption-text">The second FSA in the FsaVec.</span><a class="headerlink" href="#id16" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <p>The <cite>values</cite> array is: <cite>[arc0, arc1, arc2, arc3, arc4, arc5, arc6, arc7, arc8, arc9, arc10]</cite>.</p>
@@ -834,19 +833,23 @@ information with no loops:</p>
 </dl>
 </section>
 <section id="references">
-<h2>References<a class="headerlink" href="#references" title="Permalink to this headline"></a></h2>
-<p id="id4"><dl class="citation">
-<dt class="label" id="id5"><span class="brackets"><a class="fn-backref" href="#id1">Moh97</a></span></dt>
-<dd><p>Mehryar Mohri. Finite-state transducers in language and speech processing. <em>Computational linguistics</em>, 23(2):269–311, 1997. URL: <a class="reference external" href="https://cs.nyu.edu/~mohri/pub/cl1.pdf">https://cs.nyu.edu/~mohri/pub/cl1.pdf</a>.</p>
-</dd>
-<dt class="label" id="id6"><span class="brackets"><a class="fn-backref" href="#id2">MPR02</a></span></dt>
-<dd><p>Mehryar Mohri, Fernando Pereira, and Michael Riley. Weighted finite-state transducers in speech recognition. <em>Computer Speech &amp; Language</em>, 16(1):69–88, 2002. URL: <a class="reference external" href="https://cs.nyu.edu/~mohri/postscript/csl01.pdf">https://cs.nyu.edu/~mohri/postscript/csl01.pdf</a>.</p>
-</dd>
-<dt class="label" id="id7"><span class="brackets"><a class="fn-backref" href="#id3">MPR08</a></span></dt>
-<dd><p>Mehryar Mohri, Fernando Pereira, and Michael Riley. Speech recognition with weighted finite-state transducers. In <em>Springer Handbook of Speech Processing</em>, pages 559–584. Springer, 2008. URL: <a class="reference external" href="https://wiki.eecs.yorku.ca/course_archive/2011-12/W/6328/_media/wfst-lvcsr.pdf">https://wiki.eecs.yorku.ca/course_archive/2011-12/W/6328/_media/wfst-lvcsr.pdf</a>.</p>
-</dd>
-</dl>
-</p>
+<h2>References<a class="headerlink" href="#references" title="Link to this heading"></a></h2>
+<div class="docutils container" id="id4">
+<div role="list" class="citation-list">
+<div class="citation" id="id5" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">Moh97</a><span class="fn-bracket">]</span></span>
+<p>Mehryar Mohri. Finite-state transducers in language and speech processing. <em>Computational linguistics</em>, 23(2):269–311, 1997. URL: <a class="reference external" href="https://cs.nyu.edu/~mohri/pub/cl1.pdf">https://cs.nyu.edu/~mohri/pub/cl1.pdf</a>.</p>
+</div>
+<div class="citation" id="id6" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">MPR02</a><span class="fn-bracket">]</span></span>
+<p>Mehryar Mohri, Fernando Pereira, and Michael Riley. Weighted finite-state transducers in speech recognition. <em>Computer Speech &amp; Language</em>, 16(1):69–88, 2002. URL: <a class="reference external" href="https://cs.nyu.edu/~mohri/postscript/csl01.pdf">https://cs.nyu.edu/~mohri/postscript/csl01.pdf</a>.</p>
+</div>
+<div class="citation" id="id7" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">MPR08</a><span class="fn-bracket">]</span></span>
+<p>Mehryar Mohri, Fernando Pereira, and Michael Riley. Speech recognition with weighted finite-state transducers. In <em>Springer Handbook of Speech Processing</em>, pages 559–584. Springer, 2008. URL: <a class="reference external" href="https://wiki.eecs.yorku.ca/course_archive/2011-12/W/6328/_media/wfst-lvcsr.pdf">https://wiki.eecs.yorku.ca/course_archive/2011-12/W/6328/_media/wfst-lvcsr.pdf</a>.</p>
+</div>
+</div>
+</div>
 </section>
 </section>
 

@@ -1,22 +1,23 @@
 <!-- see https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="../">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>From pre-compiled wheels (recommended) &mdash; k2 1.24.4 documentation</title>
-      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=c976b32c" />
+
   
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-        <script src="../_static/jquery.js"></script>
-        <script src="../_static/underscore.js"></script>
-        <script src="../_static/doctools.js"></script>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=ca3bc075"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -29,14 +30,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> k2
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            k2
           </a>
-              <div class="version">
-                1.24.4
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -83,9 +85,9 @@
         <div class="rst-content style-external-links">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="index.html">Installation</a> &raquo;</li>
-      <li>From pre-compiled wheels (recommended)</li>
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Installation</a></li>
+      <li class="breadcrumb-item active">From pre-compiled wheels (recommended)</li>
       <li class="wy-breadcrumbs-aside">
               <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/installation/from_wheels.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
@@ -96,7 +98,7 @@
            <div itemprop="articleBody">
              
   <section id="from-pre-compiled-wheels-recommended">
-<h1>From pre-compiled wheels (recommended)<a class="headerlink" href="#from-pre-compiled-wheels-recommended" title="Permalink to this headline"></a></h1>
+<h1>From pre-compiled wheels (recommended)<a class="headerlink" href="#from-pre-compiled-wheels-recommended" title="Link to this heading"></a></h1>
 <p>We provide pre-compiled wheels for the following platforms:</p>
 <div class="toctree-wrapper compound">
 <ul>
@@ -111,10 +113,10 @@
 <p>Please always install the latest version of <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a>.</p>
 </div>
 <section id="installation-examples">
-<h2>Installation examples<a class="headerlink" href="#installation-examples" title="Permalink to this headline"></a></h2>
+<h2>Installation examples<a class="headerlink" href="#installation-examples" title="Link to this heading"></a></h2>
 <p>We provide several examples below to show you how to install <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a></p>
 <section id="linux-cpu-example">
-<h3>Linux (CPU) example<a class="headerlink" href="#linux-cpu-example" title="Permalink to this headline"></a></h3>
+<h3>Linux (CPU) example<a class="headerlink" href="#linux-cpu-example" title="Link to this heading"></a></h3>
 <p>Suppose that we want to install the following wheel</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">cpu</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230719</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">manylinux_2_17_x86_64</span><span class="o">.</span><span class="n">manylinux2014_x86_64</span><span class="o">.</span><span class="n">whl</span>
 </pre></div>
@@ -143,7 +145,7 @@ pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.3.dev2023071
 </div>
 </section>
 <section id="macos-cpu-example">
-<h3>macOS (CPU) example<a class="headerlink" href="#macos-cpu-example" title="Permalink to this headline"></a></h3>
+<h3>macOS (CPU) example<a class="headerlink" href="#macos-cpu-example" title="Link to this heading"></a></h3>
 <p>Suppose we want to use the following wheel:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">macos</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230720</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">macosx_10_9_x86_64</span><span class="o">.</span><span class="n">whl</span>
 </pre></div>
@@ -171,7 +173,7 @@ pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.3.dev2023072
 </div>
 </section>
 <section id="windows-cpu-example">
-<h3>Windows (CPU) example<a class="headerlink" href="#windows-cpu-example" title="Permalink to this headline"></a></h3>
+<h3>Windows (CPU) example<a class="headerlink" href="#windows-cpu-example" title="Link to this heading"></a></h3>
 <p>Suppose we want to install the following wheel</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">huggingface</span><span class="o">.</span><span class="n">co</span><span class="o">/</span><span class="n">csukuangfj</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">resolve</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">windows</span><span class="o">-</span><span class="n">cpu</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="mf">1.24.3</span><span class="o">.</span><span class="n">dev20230726</span><span class="o">+</span><span class="n">cpu</span><span class="o">.</span><span class="n">torch2</span><span class="mf">.0.1</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">cp38</span><span class="o">-</span><span class="n">win_amd64</span><span class="o">.</span><span class="n">whl</span>
 </pre></div>
@@ -204,7 +206,7 @@ pip<span class="w"> </span>install<span class="w"> </span>k2-1.24.3.dev20230726+
 </div>
 </section>
 <section id="linux-cuda-example">
-<h3>Linux (CUDA) example<a class="headerlink" href="#linux-cuda-example" title="Permalink to this headline"></a></h3>
+<h3>Linux (CUDA) example<a class="headerlink" href="#linux-cuda-example" title="Link to this heading"></a></h3>
 <p>Suppose we want to install</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>https://huggingface.co/csukuangfj/k2/resolve/main/cuda/k2-1.24.3.dev20230718+cuda11.7.torch2.0.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 </pre></div>

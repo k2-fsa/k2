@@ -1,22 +1,23 @@
 <!-- see https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="../../">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>How to debug _k2 &mdash; k2 1.24.4 documentation</title>
-      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="../../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=c976b32c" />
+
   
-        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-        <script src="../../_static/jquery.js"></script>
-        <script src="../../_static/underscore.js"></script>
-        <script src="../../_static/doctools.js"></script>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=ca3bc075"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -29,14 +30,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../index.html" class="icon icon-home"> k2
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            k2
           </a>
-              <div class="version">
-                1.24.4
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -78,10 +80,10 @@
         <div class="rst-content style-external-links">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="../index.html">Python tutorials</a> &raquo;</li>
-          <li><a href="index.html">_k2</a> &raquo;</li>
-      <li>How to debug _k2</li>
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Python tutorials</a></li>
+          <li class="breadcrumb-item"><a href="index.html">_k2</a></li>
+      <li class="breadcrumb-item active">How to debug _k2</li>
       <li class="wy-breadcrumbs-aside">
               <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/python_tutorials/_k2/how-to-debug.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
@@ -92,13 +94,13 @@
            <div itemprop="articleBody">
              
   <section id="how-to-debug-k2">
-<h1>How to debug _k2<a class="headerlink" href="#how-to-debug-k2" title="Permalink to this headline"></a></h1>
+<h1>How to debug _k2<a class="headerlink" href="#how-to-debug-k2" title="Link to this heading"></a></h1>
 <p>This section introduces how to debug <code class="docutils literal notranslate"><span class="pre">_k2</span></code>.</p>
 <section id="code-with-bugs">
-<h2>Code with bugs<a class="headerlink" href="#code-with-bugs" title="Permalink to this headline"></a></h2>
+<h2>Code with bugs<a class="headerlink" href="#code-with-bugs" title="Link to this heading"></a></h2>
 <p>Suppose you have the following <code class="docutils literal notranslate"><span class="pre">buggy</span></code> code,</p>
 <div class="literal-block-wrapper docutils container" id="id1">
-<div class="code-block-caption"><span class="caption-number">Listing 13 </span><span class="caption-text">Code with bugs</span><a class="headerlink" href="#id1" title="Permalink to this code"></a></div>
+<div class="code-block-caption"><span class="caption-number">Listing 13 </span><span class="caption-text">Code with bugs</span><a class="headerlink" href="#id1" title="Link to this code"></a></div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
@@ -110,10 +112,10 @@
 </div>
 </section>
 <section id="error-logs-of-the-buggy-code">
-<h2>Error logs of the buggy code<a class="headerlink" href="#error-logs-of-the-buggy-code" title="Permalink to this headline"></a></h2>
+<h2>Error logs of the buggy code<a class="headerlink" href="#error-logs-of-the-buggy-code" title="Link to this heading"></a></h2>
 <p>After running it, you would get the following error logs:</p>
 <div class="literal-block-wrapper docutils container" id="id2">
-<div class="code-block-caption"><span class="caption-number">Listing 14 </span><span class="caption-text">Error logs of the buggy code</span><a class="headerlink" href="#id2" title="Permalink to this code"></a></div>
+<div class="code-block-caption"><span class="caption-number">Listing 14 </span><span class="caption-text">Error logs of the buggy code</span><a class="headerlink" href="#id2" title="Link to this code"></a></div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[F] /root/fangjun/open-source/k2/k2/csrc/array.h:178:k2::Array1&lt;T&gt; k2::Array1&lt;T&gt;::Arange(int32_t, int32_t) const [with T = int; int32_t = int] Check failed: end &gt;= start (0 vs. 3) 
 
 
@@ -165,7 +167,7 @@ RuntimeError:
 </div>
 </section>
 <section id="ways-to-debug">
-<h2>Ways to debug<a class="headerlink" href="#ways-to-debug" title="Permalink to this headline"></a></h2>
+<h2>Ways to debug<a class="headerlink" href="#ways-to-debug" title="Link to this heading"></a></h2>
 <p>In order debug it, please first follow <a class="reference internal" href="../../installation/for_developers.html#build-a-debug-version"><span class="std std-ref">Build a debug version</span></a> to build
 a debug version of <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a> so that you can use <code class="docutils literal notranslate"><span class="pre">gdb</span></code> to debug the code.</p>
 <div class="admonition note">
@@ -178,32 +180,32 @@ to debug it, even if you are using Python.</p>
 </pre></div>
 </div>
 <p>You will see the following output:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>GNU gdb (Ubuntu 8.1-0ubuntu3.2) 8.1.0.20180409-git
-Copyright (C) 2018 Free Software Foundation, Inc.
-License GPLv3+: GNU GPL version 3 or later &lt;http://gnu.org/licenses/gpl.html&gt;
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.  Type &quot;show copying&quot;
-and &quot;show warranty&quot; for details.
-This GDB was configured as &quot;x86_64-linux-gnu&quot;.
-Type &quot;show configuration&quot; for configuration details.
-For bug reporting instructions, please see:
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>GNU<span class="w"> </span>gdb<span class="w"> </span><span class="o">(</span>Ubuntu<span class="w"> </span><span class="m">8</span>.1-0ubuntu3.2<span class="o">)</span><span class="w"> </span><span class="m">8</span>.1.0.20180409-git
+Copyright<span class="w"> </span><span class="o">(</span>C<span class="o">)</span><span class="w"> </span><span class="m">2018</span><span class="w"> </span>Free<span class="w"> </span>Software<span class="w"> </span>Foundation,<span class="w"> </span>Inc.
+License<span class="w"> </span>GPLv3+:<span class="w"> </span>GNU<span class="w"> </span>GPL<span class="w"> </span>version<span class="w"> </span><span class="m">3</span><span class="w"> </span>or<span class="w"> </span>later<span class="w"> </span>&lt;http://gnu.org/licenses/gpl.html&gt;
+This<span class="w"> </span>is<span class="w"> </span>free<span class="w"> </span>software:<span class="w"> </span>you<span class="w"> </span>are<span class="w"> </span>free<span class="w"> </span>to<span class="w"> </span>change<span class="w"> </span>and<span class="w"> </span>redistribute<span class="w"> </span>it.
+There<span class="w"> </span>is<span class="w"> </span>NO<span class="w"> </span>WARRANTY,<span class="w"> </span>to<span class="w"> </span>the<span class="w"> </span>extent<span class="w"> </span>permitted<span class="w"> </span>by<span class="w"> </span>law.<span class="w">  </span>Type<span class="w"> </span><span class="s2">&quot;show copying&quot;</span>
+and<span class="w"> </span><span class="s2">&quot;show warranty&quot;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>details.
+This<span class="w"> </span>GDB<span class="w"> </span>was<span class="w"> </span>configured<span class="w"> </span>as<span class="w"> </span><span class="s2">&quot;x86_64-linux-gnu&quot;</span>.
+Type<span class="w"> </span><span class="s2">&quot;show configuration&quot;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>configuration<span class="w"> </span>details.
+For<span class="w"> </span>bug<span class="w"> </span>reporting<span class="w"> </span>instructions,<span class="w"> </span>please<span class="w"> </span>see:
 &lt;http://www.gnu.org/software/gdb/bugs/&gt;.
-Find the GDB manual and other documentation resources online at:
+Find<span class="w"> </span>the<span class="w"> </span>GDB<span class="w"> </span>manual<span class="w"> </span>and<span class="w"> </span>other<span class="w"> </span>documentation<span class="w"> </span>resources<span class="w"> </span>online<span class="w"> </span>at:
 &lt;http://www.gnu.org/software/gdb/documentation/&gt;.
-For help, type &quot;help&quot;.
-Type &quot;apropos word&quot; to search for commands related to &quot;word&quot;...
-Reading symbols from python3...done.
-warning: File &quot;/star-fj/fangjun/open-source/pyenv/versions/3.8.0/bin/python3.8-gdb.py&quot; auto-loading has been declined by your `auto-load safe-path&#39; set to &quot;$debugdir:$datadir/auto-load&quot;.
-To enable execution of this file add
-        add-auto-load-safe-path /star-fj/fangjun/open-source/pyenv/versions/3.8.0/bin/python3.8-gdb.py
-line to your configuration file &quot;/root/fangjun/.gdbinit&quot;.
-To completely disable this security protection add
-        set auto-load safe-path /
-line to your configuration file &quot;/root/fangjun/.gdbinit&quot;.
-For more information about this security protection see the
-&quot;Auto-loading safe path&quot; section in the GDB manual.  E.g., run from the shell:
-        info &quot;(gdb)Auto-loading safe path&quot;
-(gdb)
+For<span class="w"> </span>help,<span class="w"> </span><span class="nb">type</span><span class="w"> </span><span class="s2">&quot;help&quot;</span>.
+Type<span class="w"> </span><span class="s2">&quot;apropos word&quot;</span><span class="w"> </span>to<span class="w"> </span>search<span class="w"> </span><span class="k">for</span><span class="w"> </span>commands<span class="w"> </span>related<span class="w"> </span>to<span class="w"> </span><span class="s2">&quot;word&quot;</span>...
+Reading<span class="w"> </span>symbols<span class="w"> </span>from<span class="w"> </span>python3...done.
+warning:<span class="w"> </span>File<span class="w"> </span><span class="s2">&quot;/star-fj/fangjun/open-source/pyenv/versions/3.8.0/bin/python3.8-gdb.py&quot;</span><span class="w"> </span>auto-loading<span class="w"> </span>has<span class="w"> </span>been<span class="w"> </span>declined<span class="w"> </span>by<span class="w"> </span>your<span class="w"> </span><span class="sb">`</span>auto-load<span class="w"> </span>safe-path<span class="err">&#39;</span><span class="w"> </span><span class="nb">set</span><span class="w"> </span>to<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$debugdir</span><span class="s2">:</span><span class="nv">$datadir</span><span class="s2">/auto-load&quot;</span>.
+To<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>execution<span class="w"> </span>of<span class="w"> </span>this<span class="w"> </span>file<span class="w"> </span>add
+<span class="w">        </span>add-auto-load-safe-path<span class="w"> </span>/star-fj/fangjun/open-source/pyenv/versions/3.8.0/bin/python3.8-gdb.py
+line<span class="w"> </span>to<span class="w"> </span>your<span class="w"> </span>configuration<span class="w"> </span>file<span class="w"> </span><span class="s2">&quot;/root/fangjun/.gdbinit&quot;</span>.
+To<span class="w"> </span>completely<span class="w"> </span>disable<span class="w"> </span>this<span class="w"> </span>security<span class="w"> </span>protection<span class="w"> </span>add
+<span class="w">        </span><span class="nb">set</span><span class="w"> </span>auto-load<span class="w"> </span>safe-path<span class="w"> </span>/
+line<span class="w"> </span>to<span class="w"> </span>your<span class="w"> </span>configuration<span class="w"> </span>file<span class="w"> </span><span class="s2">&quot;/root/fangjun/.gdbinit&quot;</span>.
+For<span class="w"> </span>more<span class="w"> </span>information<span class="w"> </span>about<span class="w"> </span>this<span class="w"> </span>security<span class="w"> </span>protection<span class="w"> </span>see<span class="w"> </span>the
+<span class="s2">&quot;Auto-loading safe path&quot;</span><span class="w"> </span>section<span class="w"> </span><span class="k">in</span><span class="w"> </span>the<span class="w"> </span>GDB<span class="w"> </span>manual.<span class="w">  </span>E.g.,<span class="w"> </span>run<span class="w"> </span>from<span class="w"> </span>the<span class="w"> </span>shell:
+<span class="w">        </span>info<span class="w"> </span><span class="s2">&quot;(gdb)Auto-loading safe path&quot;</span>
+<span class="o">(</span>gdb<span class="o">)</span>
 </pre></div>
 </div>
 <p>Next, enter <code class="docutils literal notranslate"><span class="pre">catch</span> <span class="pre">throw</span></code> so that it stops the process on exception:</p>
@@ -263,7 +265,7 @@ k2::PybindRaggedAny<span class="o">(</span>pybind11::module<span class="p">&amp;
 <p>The remaining steps are the same for debugging a C/C++ program with <code class="docutils literal notranslate"><span class="pre">gdb</span></code>.</p>
 </section>
 <section id="summary">
-<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline"></a></h2>
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h2>
 <p>The most important parts of the debugging process are:</p>
 <blockquote>
 <div><ul class="simple">
