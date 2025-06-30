@@ -1,9 +1,8 @@
-dataclasses==0.6
-graphviz==0.19.1
-recommonmark==0.7.1
-sphinx==4.3.2
-sphinx-autodoc-typehints==1.12.0
-sphinx_rtd_theme==1.0.0
-sphinxcontrib-bibtex==2.4.1
-sphinxcontrib-youtube==1.1.0
-torch>=1.6.0
+dataclasses
+graphviz
+recommonmark
+sphinx
+sphinx-autodoc-typehints
+sphinx_rtd_theme
+sphinxcontrib-bibtex
+sphinxcontrib-youtube

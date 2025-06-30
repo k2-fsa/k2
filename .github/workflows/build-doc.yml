@@ -21,6 +21,7 @@ name: Generate doc
 on:
   push:
     branches:
+      - to-delete
       - master
       - doc
       - doc-test
@@ -49,16 +50,16 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        torch: ["1.13.1"]
-        python-version: ["3.8"]
+        torch: ["2.0.0"]
+        python-version: ["3.10"]
     steps:
       # refer to https://github.com/actions/checkout
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -74,9 +75,12 @@ jobs:
           python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
           python3 -m pip install -qq graphviz
 
+          python3 -m pip install -qq k2==1.24.4.dev20250425+cpu.torch${{ matrix.torch }} -f https://k2-fsa.github.io/k2/cpu.html
+
           python3 -c "import torch; print('torch version:', torch.__version__)"
 
       - name: Configure CMake
+        if: false
         shell: bash
         run: |
           pwd
@@ -87,6 +91,7 @@ jobs:
           cat k2/csrc/version.h
 
       - name: Build k2
+        if: false
         shell: bash
         run: |
           cd build
@@ -112,12 +117,12 @@ jobs:
       - name: Build doc
         shell: bash
         run: |
-          python3 -m pip install numpy
-          export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
-          echo "PYTHONPATH: $PYTHONPATH"
+          # export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
+          # echo "PYTHONPATH: $PYTHONPATH"
           git status
           cd docs
           python3 -m pip install -r ./requirements.txt
+          python3 -m pip install "numpy<2"
           make html
           cp -v source/cpu.html ./build/html/
           cp -v source/cuda.html ./build/html/
