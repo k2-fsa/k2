@@ -49,6 +49,7 @@ set(py_test_files
   intersect_test.py
   invert_test.py
   levenshtein_alignment_test.py
+  levenshtein_distance_test.py
   levenshtein_graph_test.py
   linear_fsa_test.py
   linear_fsa_with_self_loops_test.py
