@@ -1721,7 +1721,7 @@ Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs);
     @return  Returns the corresponding regular array (Array2).
  */
 template <typename T>
-Array2<T> PadRagged(Ragged<T> &src, const std::string &mode, T padding_value);
+Array2<T> PadRagged(Ragged<T> &src, const std::string &mode, T padding_value, bool pad_left = false);
 
 }  // namespace k2
 
