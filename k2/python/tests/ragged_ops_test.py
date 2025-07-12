@@ -94,6 +94,7 @@ class TestRaggedOps(unittest.TestCase):
         for device in self.devices:
             src = k2.RaggedTensor(s).to(device)
             value = random.randint(0, 1000)
+
             ans = src.pad('constant', value)
             expected = torch.tensor(
                 [[1, 2, value, value],
@@ -101,8 +102,17 @@ class TestRaggedOps(unittest.TestCase):
                  [value, value, value, value],
                  [4, 5, 6, value],
                  [7, 8, 9, 10]], dtype=torch.int32, device=device)
-
             assert torch.all(torch.eq(ans, expected))
+
+            ans = src.pad('constant', value, pad_left=True)
+            expected = torch.tensor(
+                [[value, value, 1, 2],
+                 [value, value, value, 3],
+                 [value, value, value, value],
+                 [value, 4, 5, 6],
+                 [7, 8, 9, 10]], dtype=torch.int32, device=device)
+            assert torch.all(torch.eq(ans, expected))
+
 
     def test_pad_empty(self):
         s = '''
@@ -111,7 +121,12 @@ class TestRaggedOps(unittest.TestCase):
         for device in self.devices:
             src = k2.RaggedTensor(s).to(device)
             value = random.randint(0, 1000)
+
             ans = src.pad('constant', value)
+            assert ans.numel() == 0
+            assert ans.size() == (3, 0)
+
+            ans = src.pad('constant', value, pad_left=True)
             assert ans.numel() == 0
             assert ans.size() == (3, 0)
 
@@ -122,12 +137,22 @@ class TestRaggedOps(unittest.TestCase):
         for device in self.devices:
             src = k2.RaggedTensor(s).to(device)
             value = random.random() * 10
+
             ans = src.pad('constant', value)
             expected = torch.tensor(
                 [[1.0, 2.0, value, value],
                  [3.0, value, value, value],
                  [value, value, value, value],
                  [4.0, 5.0, 6.0, value],
+                 [7.0, 8.0, 9.0, 10.0]], dtype=torch.float32, device=device)
+            assert torch.allclose(ans, expected)
+
+            ans = src.pad('constant', value, pad_left=True)
+            expected = torch.tensor(
+                [[value, value, 1.0, 2.0],
+                 [value, value, value, 3.0],
+                 [value, value, value, value],
+                 [value, 4.0, 5.0, 6.0],
                  [7.0, 8.0, 9.0, 10.0]], dtype=torch.float32, device=device)
             assert torch.allclose(ans, expected)
 
@@ -139,10 +164,21 @@ class TestRaggedOps(unittest.TestCase):
             for dtype in self.dtypes:
                 value = random.randint(0, 1000)
                 src = k2.RaggedTensor(s, dtype).to(device)
+
                 padded = src.pad('replicate', value)
                 expected = torch.tensor(
-                    [[1, 2, 2, 2], [10, 10, 10, 10],
-                     [value, value, value, value], [3, 5, 8, 9]],).to(padded)
+                    [[1, 2, 2, 2],
+                     [10, 10, 10, 10],
+                     [value, value, value, value],
+                     [3, 5, 8, 9]]).to(padded)
+                assert torch.allclose(padded, expected)
+
+                padded = src.pad('replicate', value, pad_left=True)
+                expected = torch.tensor(
+                    [[1, 1, 1, 2],
+                     [10, 10, 10, 10],
+                     [value, value, value, value],
+                     [3, 5, 8, 9]]).to(padded)
                 assert torch.allclose(padded, expected)
 
     def test_remove_values_leq(self):
