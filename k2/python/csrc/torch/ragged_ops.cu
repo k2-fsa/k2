@@ -128,7 +128,8 @@ static void PybindPadRaggedToTensor(py::module &m) {
         Array2<T> res = PadRagged(src, mode, padding_value, pad_left);
         return ToTorch(res);
       },
-      py::arg("src"), py::arg("mode"), py::arg("padding_value"), py::arg("pad_left") = false);
+      py::arg("src"), py::arg("mode"), py::arg("padding_value"),
+      py::arg("pad_left") = false);
 }
 
 template <typename T>

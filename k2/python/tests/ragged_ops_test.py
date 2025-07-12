@@ -113,7 +113,6 @@ class TestRaggedOps(unittest.TestCase):
                  [7, 8, 9, 10]], dtype=torch.int32, device=device)
             assert torch.all(torch.eq(ans, expected))
 
-
     def test_pad_empty(self):
         s = '''
             [ [ ] [ ] [ ] ]
