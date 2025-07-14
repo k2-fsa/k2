@@ -795,7 +795,7 @@ Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs) {
 
 template <typename T>
 Array2<T> PadRagged(Ragged<T> &src, const std::string &mode, T padding_value,
-                    bool pad_left) {
+                    bool pad_left /* = false */) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 2);
 
