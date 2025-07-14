@@ -794,7 +794,8 @@ Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs) {
 }
 
 template <typename T>
-Array2<T> PadRagged(Ragged<T> &src, const std::string &mode, T padding_value) {
+Array2<T> PadRagged(Ragged<T> &src, const std::string &mode, T padding_value,
+                    bool pad_left /* = false */) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 2);
 
@@ -820,29 +821,45 @@ Array2<T> PadRagged(Ragged<T> &src, const std::string &mode, T padding_value) {
         c, res.Dim0(), res.Dim1(), lambda, (int32_t i, int32_t j)->void {
           int32_t idx0x = src_row_splits1_data[i],
                   idx0x_next = src_row_splits1_data[i + 1],
-                  len = idx0x_next - idx0x;
-          if (j >= len)
-            res_acc(i, j) = padding_value;
-          else
-            res_acc(i, j) = src_values_data[idx0x + j];
+                  len = idx0x_next - idx0x,
+                  extra = col_num - len;
+          if (pad_left) {
+            if (j < extra)
+              res_acc(i, j) = padding_value;
+            else
+              res_acc(i, j) = src_values_data[idx0x + j - extra];
+          } else {
+            if (j >= len)
+              res_acc(i, j) = padding_value;
+            else
+              res_acc(i, j) = src_values_data[idx0x + j];
+          }
         });
   } else {
     K2_EVAL2(
         c, res.Dim0(), res.Dim1(), lambda, (int32_t i, int32_t j)->void {
           int32_t idx0x = src_row_splits1_data[i],
                   idx0x_next = src_row_splits1_data[i + 1],
-                  len = idx0x_next - idx0x;
+                  len = idx0x_next - idx0x,
+                  extra = col_num - len;
 
           if (len == 0) {
             res_acc(i, j) = padding_value;
             return;
           }
 
-          if (j >= len)
-            // replicate the last element in this list
-            res_acc(i, j) = src_values_data[idx0x_next - 1];
-          else
-            res_acc(i, j) = src_values_data[idx0x + j];
+          if (pad_left) {
+            if (j < extra)
+              res_acc(i, j) = src_values_data[idx0x];
+            else
+              res_acc(i, j) = src_values_data[idx0x + j - extra];
+          } else {
+            if (j >= len)
+              // replicate the last element in this list
+              res_acc(i, j) = src_values_data[idx0x_next - 1];
+            else
+              res_acc(i, j) = src_values_data[idx0x + j];
+          }
         });
   }
   return res;

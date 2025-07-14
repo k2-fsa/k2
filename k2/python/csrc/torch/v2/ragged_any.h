@@ -271,7 +271,8 @@ struct RaggedAny {
 
   /// Wrapper for k2::PadRagged
   torch::Tensor Pad(const std::string &mode,
-                    py::object padding_value) /*const*/;
+                    py::object padding_value,
+                    bool pad_left = false) /*const*/;
 
   /// Convert a ragged tensor to a list of lists [of lists ...]
   /// Note: You can use the return list to construct a ragged tensor.

@@ -624,7 +624,8 @@ RaggedAny RaggedAny::Add(torch::Tensor value, py::object alpha) /*const*/ {
 }
 
 torch::Tensor RaggedAny::Pad(const std::string &mode,
-                             py::object padding_value) /*const*/ {
+                             py::object padding_value,
+                             bool pad_left) /*const*/ {
   K2_CHECK((bool)padding_value);
   K2_CHECK(!padding_value.is_none());
 
@@ -632,7 +633,7 @@ torch::Tensor RaggedAny::Pad(const std::string &mode,
   Dtype t = any.GetDtype();
   FOR_REAL_AND_INT32_TYPES(t, T, {
     Array2<T> arr =
-        PadRagged(any.Specialize<T>(), mode, padding_value.cast<T>());
+        PadRagged(any.Specialize<T>(), mode, padding_value.cast<T>(), pad_left);
     return ToTorch(arr);
   });
   // Unreachable code

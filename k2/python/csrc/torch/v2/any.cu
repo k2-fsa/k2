@@ -360,7 +360,7 @@ void PybindRaggedAny(py::module &m) {
           kRaggedAnyAddDoc);
 
   any.def("pad", &RaggedAny::Pad, py::arg("mode"), py::arg("padding_value"),
-          kRaggedAnyPadDoc);
+          py::arg("pad_left") = false, kRaggedAnyPadDoc);
 
   any.def("tolist", &RaggedAny::ToList, kRaggedAnyToListDoc);
 

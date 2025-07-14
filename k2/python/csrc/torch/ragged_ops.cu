@@ -123,12 +123,13 @@ static void PybindPadRaggedToTensor(py::module &m) {
   m.def(
       "pad_ragged",
       [](Ragged<T> &src, const std::string &mode,
-         T padding_value) -> torch::Tensor {
+         T padding_value, bool pad_left) -> torch::Tensor {
         DeviceGuard guard(src.Context());
-        Array2<T> res = PadRagged(src, mode, padding_value);
+        Array2<T> res = PadRagged(src, mode, padding_value, pad_left);
         return ToTorch(res);
       },
-      py::arg("src"), py::arg("mode"), py::arg("padding_value"));
+      py::arg("src"), py::arg("mode"), py::arg("padding_value"),
+      py::arg("pad_left") = false);
 }
 
 template <typename T>
