@@ -26,14 +26,19 @@ python3 -m pip install bs4 requests tqdm auditwheel
 
 echo "Installing torch $TORCH_VERSION"
 
-if [[ $TORCH_VERSION == "2.8.0" ]]; then
-  python3 -m pip install -qq torch==2.8.0.dev20250424+cpu -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton
-else
-  python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch_stable.html || \
-  python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch/ || \
-  python3 -m pip install -qq torch==$TORCH_VERSION -f https://download.pytorch.org/whl/torch/ || \
-  python3 -m pip install -qq torch==$TORCH_VERSION
-fi
+# if [[ $TORCH_VERSION == "2.8.0" ]]; then
+#   python3 -m pip install -qq torch==2.8.0.dev20250424+cpu -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton
+# else
+#   python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch_stable.html || \
+#   python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch/ || \
+#   python3 -m pip install -qq torch==$TORCH_VERSION -f https://download.pytorch.org/whl/torch/ || \
+#   python3 -m pip install -qq torch==$TORCH_VERSION
+# fi
+
+python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch_stable.html || \
+python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch.org/whl/torch/ || \
+python3 -m pip install -qq torch==$TORCH_VERSION -f https://download.pytorch.org/whl/torch/ || \
+python3 -m pip install -qq torch==$TORCH_VERSION
 
 python3 -c "import torch; print(torch.__file__)"
 python3 -m torch.utils.collect_env
