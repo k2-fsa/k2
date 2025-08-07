@@ -284,15 +284,32 @@ case ${torch} in
   2.8.*)
     case ${cuda} in
       12.6)
-        package="torch==2.8.0.dev20250424+cu126 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/"
-        url=
+        package="torch==${torch}+cu126"
+        # https://download.pytorch.org/whl/nightly/torch/
+        url=https://download.pytorch.org/whl/torch/
         ;;
       12.8)
-        package="torch==2.8.0.dev20250424+cu128 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/"
-        url=
+        package="torch==${torch}+cu128"
+        url=https://download.pytorch.org/whl/torch/
+        ;;
+      12.9)
+        package="torch==${torch}+cu129"
+        url=https://download.pytorch.org/whl/torch/
         ;;
     esac
     ;;
+  # 2.8.*)
+  #   case ${cuda} in
+  #     12.6)
+  #       package="torch==2.8.0.dev20250424+cu126 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/"
+  #       url=
+  #       ;;
+  #     12.8)
+  #       package="torch==2.8.0.dev20250424+cu128 -f https://download.pytorch.org/whl/nightly/torch/ -f https://download.pytorch.org/whl/nightly/pytorch-triton/"
+  #       url=
+  #       ;;
+  #   esac
+  #   ;;
   *)
     echo "Unsupported PyTorch version: ${torch}"
     exit 1

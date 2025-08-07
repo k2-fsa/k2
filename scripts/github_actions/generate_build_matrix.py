@@ -322,10 +322,18 @@ def generate_build_matrix(
                 else ["11.8.0", "12.6.2", "12.8.1"]
             ),
         },
+        "2.8.0": {
+            "python-version": ["3.9", "3.10", "3.11", "3.12", "3.13"],
+            "cuda": (
+                ["12.6", "12.8", "12.9"]  # default 12.8
+                if not for_windows
+                else ["12.6.2", "12.8.1", "12.9.1"]
+            ),
+        },
         # https://github.com/Jimver/cuda-toolkit/blob/master/src/links/windows-links.ts
     }
     if test_only_latest_torch:
-        latest = "2.7.1"
+        latest = "2.8.0"
         matrix = {latest: matrix[latest]}
 
     if for_windows or for_macos:
