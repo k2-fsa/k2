@@ -1,0 +1,14 @@
+torch 2.9.0
+===========
+
+
+- `k2-1.24.4.dev20251029+cpu.torch2.9.0-cp314-cp314-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20251029+cpu.torch2.9.0-cp314-cp314-win_amd64.whl>`_
+- `k2-1.24.4.dev20251029+cpu.torch2.9.0-cp313-cp313-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20251029+cpu.torch2.9.0-cp313-cp313-win_amd64.whl>`_
+- `k2-1.24.4.dev20251029+cpu.torch2.9.0-cp312-cp312-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20251029+cpu.torch2.9.0-cp312-cp312-win_amd64.whl>`_
+- `k2-1.24.4.dev20251029+cpu.torch2.9.0-cp311-cp311-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20251029+cpu.torch2.9.0-cp311-cp311-win_amd64.whl>`_
+- `k2-1.24.4.dev20251029+cpu.torch2.9.0-cp310-cp310-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20251029+cpu.torch2.9.0-cp310-cp310-win_amd64.whl>`_
+- `k2-1.24.4.dev20251028+cpu.torch2.9.0-cp314-cp314-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20251028+cpu.torch2.9.0-cp314-cp314-win_amd64.whl>`_
+- `k2-1.24.4.dev20251028+cpu.torch2.9.0-cp313-cp313-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20251028+cpu.torch2.9.0-cp313-cp313-win_amd64.whl>`_
+- `k2-1.24.4.dev20251028+cpu.torch2.9.0-cp312-cp312-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20251028+cpu.torch2.9.0-cp312-cp312-win_amd64.whl>`_
+- `k2-1.24.4.dev20251028+cpu.torch2.9.0-cp311-cp311-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20251028+cpu.torch2.9.0-cp311-cp311-win_amd64.whl>`_
+- `k2-1.24.4.dev20251028+cpu.torch2.9.0-cp310-cp310-win_amd64.whl <https://huggingface.co/csukuangfj/k2/resolve/main/windows-cpu/k2-1.24.4.dev20251028+cpu.torch2.9.0-cp310-cp310-win_amd64.whl>`_
