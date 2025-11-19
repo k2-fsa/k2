@@ -7,7 +7,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pre-compiled CUDA wheels (Linux) &mdash; k2 1.24.4 documentation</title>
+  <title>torch 2.9.1 &mdash; k2 1.24.4 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=c976b32c" />
@@ -21,8 +21,8 @@
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="torch 2.9.1" href="2.9.1.html" />
-    <link rel="prev" title="From pre-compiled wheels (recommended)" href="../from_wheels.html" /> 
+    <link rel="next" title="torch 2.9.0" href="2.9.0.html" />
+    <link rel="prev" title="Pre-compiled CPU wheels (macOS)" href="index.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -48,8 +48,9 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Installation</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="../from_wheels.html">From pre-compiled wheels (recommended)</a><ul class="current">
-<li class="toctree-l3 current"><a class="current reference internal" href="#">Pre-compiled CUDA wheels (Linux)</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="2.9.1.html">torch 2.9.1</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pre-compiled-cuda-wheels-linux/index.html">Pre-compiled CUDA wheels (Linux)</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="index.html">Pre-compiled CPU wheels (macOS)</a><ul class="current">
+<li class="toctree-l4 current"><a class="current reference internal" href="#">torch 2.9.1</a></li>
 <li class="toctree-l4"><a class="reference internal" href="2.9.0.html">torch 2.9.0</a></li>
 <li class="toctree-l4"><a class="reference internal" href="2.8.0.html">torch 2.8.0</a></li>
 <li class="toctree-l4"><a class="reference internal" href="2.7.1.html">torch 2.7.1</a></li>
@@ -86,7 +87,6 @@
 <li class="toctree-l4"><a class="reference internal" href="1.6.0.html">torch 1.6.0</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="../pre-compiled-cpu-wheels-macos/index.html">Pre-compiled CPU wheels (macOS)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../pre-compiled-cpu-wheels-windows/index.html">Pre-compiled CPU wheels (Windows)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../from_wheels.html#installation-examples">Installation examples</a></li>
 </ul>
@@ -119,9 +119,10 @@
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../index.html">Installation</a></li>
           <li class="breadcrumb-item"><a href="../from_wheels.html">From pre-compiled wheels (recommended)</a></li>
-      <li class="breadcrumb-item active">Pre-compiled CUDA wheels (Linux)</li>
+          <li class="breadcrumb-item"><a href="index.html">Pre-compiled CPU wheels (macOS)</a></li>
+      <li class="breadcrumb-item active">torch 2.9.1</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/installation/pre-compiled-cuda-wheels-linux/index.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/k2-fsa/k2/blob/master/docs/source/installation/pre-compiled-cpu-wheels-macos/2.9.1.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
   </ul>
   <hr/>
@@ -129,56 +130,23 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="pre-compiled-cuda-wheels-linux">
-<h1>Pre-compiled CUDA wheels (Linux)<a class="headerlink" href="#pre-compiled-cuda-wheels-linux" title="Link to this heading"></a></h1>
-<p>This page describes pre-compiled <code class="docutils literal notranslate"><span class="pre">CUDA</span></code> wheels for <a class="reference external" href="https://github.com/k2-fsa/k2">k2</a> on Linux.</p>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="2.9.1.html">torch 2.9.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.9.0.html">torch 2.9.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.8.0.html">torch 2.8.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.7.1.html">torch 2.7.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.7.0.html">torch 2.7.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.6.0.html">torch 2.6.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.5.1.html">torch 2.5.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.5.0.html">torch 2.5.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.4.1.html">torch 2.4.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.4.0.html">torch 2.4.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.3.1.html">torch 2.3.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.3.0.html">torch 2.3.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.2.2.html">torch 2.2.2</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.2.1.html">torch 2.2.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.2.0.html">torch 2.2.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.1.2.html">torch 2.1.2</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.1.1.html">torch 2.1.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.1.0.html">torch 2.1.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.0.1.html">torch 2.0.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="2.0.0.html">torch 2.0.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.13.1.html">torch 1.13.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.13.0.html">torch 1.13.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.12.1.html">torch 1.12.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.12.0.html">torch 1.12.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.11.0.html">torch 1.11.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.10.2.html">torch 1.10.2</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.10.1.html">torch 1.10.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.10.0.html">torch 1.10.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.9.1.html">torch 1.9.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.9.0.html">torch 1.9.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.8.1.html">torch 1.8.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.8.0.html">torch 1.8.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.7.1.html">torch 1.7.1</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.7.0.html">torch 1.7.0</a></li>
-<li class="toctree-l1"><a class="reference internal" href="1.6.0.html">torch 1.6.0</a></li>
+  <section id="torch-2-9-1">
+<h1>torch 2.9.1<a class="headerlink" href="#torch-2-9-1" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20251118+cpu.torch2.9.1-cp314-cp314-macosx_11_0_arm64.whl">k2-1.24.4.dev20251118+cpu.torch2.9.1-cp314-cp314-macosx_11_0_arm64.whl</a></p></li>
+<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20251118+cpu.torch2.9.1-cp313-cp313-macosx_11_0_arm64.whl">k2-1.24.4.dev20251118+cpu.torch2.9.1-cp313-cp313-macosx_11_0_arm64.whl</a></p></li>
+<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20251118+cpu.torch2.9.1-cp312-cp312-macosx_11_0_arm64.whl">k2-1.24.4.dev20251118+cpu.torch2.9.1-cp312-cp312-macosx_11_0_arm64.whl</a></p></li>
+<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20251118+cpu.torch2.9.1-cp311-cp311-macosx_11_0_arm64.whl">k2-1.24.4.dev20251118+cpu.torch2.9.1-cp311-cp311-macosx_11_0_arm64.whl</a></p></li>
+<li><p><a class="reference external" href="https://huggingface.co/csukuangfj/k2/resolve/main/macos/k2-1.24.4.dev20251118+cpu.torch2.9.1-cp310-cp310-macosx_11_0_arm64.whl">k2-1.24.4.dev20251118+cpu.torch2.9.1-cp310-cp310-macosx_11_0_arm64.whl</a></p></li>
 </ul>
-</div>
 </section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../from_wheels.html" class="btn btn-neutral float-left" title="From pre-compiled wheels (recommended)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="2.9.1.html" class="btn btn-neutral float-right" title="torch 2.9.1" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Pre-compiled CPU wheels (macOS)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="2.9.0.html" class="btn btn-neutral float-right" title="torch 2.9.0" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
