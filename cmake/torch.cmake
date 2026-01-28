@@ -85,13 +85,20 @@ if(K2_WITH_CUDA)
 #
 # It contains only some -Wno-* flags, so it is OK
 # to set them to empty
-  set_property(TARGET torch_cuda
-    PROPERTY
-      INTERFACE_COMPILE_OPTIONS ""
-  )
-  set_property(TARGET torch_cpu
-    PROPERTY
-      INTERFACE_COMPILE_OPTIONS ""
-  )
+  if(TARGET torch_cuda)
+    set_property(TARGET torch_cuda
+      PROPERTY
+        INTERFACE_COMPILE_OPTIONS ""
+    )
+  else()
+    message(WARNING "torch_cuda target not found; skipping INTERFACE_COMPILE_OPTIONS reset")
+  endif()
+  if(TARGET torch_cpu)
+    set_property(TARGET torch_cpu
+      PROPERTY
+        INTERFACE_COMPILE_OPTIONS ""
+    )
+  else()
+    message(WARNING "torch_cpu target not found; skipping INTERFACE_COMPILE_OPTIONS reset")
+  endif()
 endif()
-

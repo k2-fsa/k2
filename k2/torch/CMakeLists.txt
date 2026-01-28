@@ -1,3 +1,5 @@
 add_subdirectory(csrc)
 
-add_subdirectory(bin)
+if(K2_BUILD_TORCH_BIN)
+  add_subdirectory(bin)
+endif()

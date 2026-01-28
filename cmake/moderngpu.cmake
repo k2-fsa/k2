@@ -56,6 +56,32 @@ function(download_moderngpu)
     FetchContent_Populate(moderngpu)
   endif()
   message(STATUS "moderngpu is downloaded to ${moderngpu_SOURCE_DIR}")
+
+  # Patch moderngpu for CUDA 13 where cudaDeviceProp no longer has clockRate/memoryClockRate.
+  set(mgpu_context_path "${moderngpu_SOURCE_DIR}/src/moderngpu/context.hxx")
+  if(EXISTS "${mgpu_context_path}")
+    file(READ "${mgpu_context_path}" mgpu_context_contents)
+    if(mgpu_context_contents MATCHES "memoryClockRate" AND NOT mgpu_context_contents MATCHES "cudaDeviceGetAttribute")
+      string(REPLACE "#include <exception>"
+                     "#include <exception>\n#include <cuda_runtime_api.h>"
+                     mgpu_context_contents "${mgpu_context_contents}")
+      string(REPLACE
+        "  double memBandwidth = (prop.memoryClockRate * 1000.0) *\n    (prop.memoryBusWidth / 8 * 2) / 1.0e9;\n"
+        "  int clock_khz = 0;\n  int mem_clock_khz = 0;\n#if defined(CUDART_VERSION) && CUDART_VERSION >= 13000\n  cudaDeviceGetAttribute(&clock_khz, cudaDevAttrClockRate, ordinal);\n  cudaDeviceGetAttribute(&mem_clock_khz, cudaDevAttrMemoryClockRate, ordinal);\n#else\n  clock_khz = prop.clockRate;\n  mem_clock_khz = prop.memoryClockRate;\n#endif\n\n  double memBandwidth = (mem_clock_khz * 1000.0) *\n    (prop.memoryBusWidth / 8 * 2) / 1.0e9;\n"
+        mgpu_context_contents "${mgpu_context_contents}")
+      string(REPLACE
+        "    prop.name, prop.clockRate / 1000.0, ordinal,\n"
+        "    prop.name, clock_khz / 1000.0, ordinal,\n"
+        mgpu_context_contents "${mgpu_context_contents}")
+      string(REPLACE
+        "    prop.memoryClockRate / 1000.0, prop.memoryBusWidth, memBandwidth,\n"
+        "    mem_clock_khz / 1000.0, prop.memoryBusWidth, memBandwidth,\n"
+        mgpu_context_contents "${mgpu_context_contents}")
+      file(WRITE "${mgpu_context_path}" "${mgpu_context_contents}")
+      message(STATUS "Patched moderngpu context.hxx for CUDA 13 clock attributes")
+    endif()
+  endif()
+
   add_library(moderngpu INTERFACE)
   target_include_directories(moderngpu INTERFACE ${moderngpu_SOURCE_DIR}/src)
 endfunction()

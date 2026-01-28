@@ -83,6 +83,7 @@ option(K2_ENABLE_BENCHMARK "Whether to enable benchmark" ON)
 option(K2_WITH_CUDA "Whether to build k2 with CUDA" ${_K2_WITH_CUDA})
 option(K2_ENABLE_NVTX "Whether to build k2 with the NVTX library" ON)
 option(K2_ENABLE_TESTS "Whether to build tests" ON)
+option(K2_BUILD_TORCH_BIN "Whether to build k2/torch/bin executables" ON)
 
 # You have to enable this option if you will run k2 on a machine different from
 # the one you used to build k2 and the two machines have different types of GPUs
@@ -260,6 +261,10 @@ if(K2_WITH_CUDA)
     # https://docs.nvidia.com/cuda/archive/12.0.0/pdf/CUDA_Toolkit_Release_Notes.pdf
     # support for 35, 37 compute capabilities removed in CUDA 12.0
     list(REMOVE_ITEM K2_COMPUTE_ARCH_CANDIDATES 35 37)
+  endif()
+
+  if(CUDA_VERSION VERSION_GREATER_EQUAL "13.0")
+    list(APPEND K2_COMPUTE_ARCH_CANDIDATES 121)
   endif()
 
   if(CUDA_VERSION VERSION_GREATER_EQUAL "12.6")
