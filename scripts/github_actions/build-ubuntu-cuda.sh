@@ -111,11 +111,13 @@ auditwheel --verbose repair \
   --exclude libcublas.so \
   --exclude libcublas.so.11 \
   --exclude libcublas.so.12 \
+  --exclude libcublas.so.13 \
   --exclude libcublasLt.so \
   --exclude libcublasLt.so.11 \
   --exclude libcublasLt.so.12 \
   --exclude libcudart.so.11.0 \
   --exclude libcudart.so.12 \
+  --exclude libcudart.so.13 \
   --exclude libcudnn.so.8 \
   --exclude libcufft.so \
   --exclude libcufft.so.11 \
@@ -132,6 +134,7 @@ auditwheel --verbose repair \
   --exclude libnvrtc.so \
   --exclude libnvrtc.so.11.2 \
   --exclude libnvrtc.so.12 \
+  --exclude libnvrtc.so.13 \
   --exclude libshm.so \
   --exclude libtorch_cuda_cpp.so \
   --exclude libtorch_cuda_cu.so \

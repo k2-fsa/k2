@@ -9,9 +9,9 @@ on:
       - '*'
   workflow_dispatch:
 
-concurrency:
-  group: build-wheels-cuda-ubuntu-${{ github.ref }}
-  cancel-in-progress: true
+# concurrency:
+#   group: build-wheels-cuda-ubuntu-${{ github.ref }}
+#   cancel-in-progress: true
 
 jobs:
   generate_build_matrix:
