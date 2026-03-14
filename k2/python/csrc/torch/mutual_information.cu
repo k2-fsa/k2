@@ -67,7 +67,8 @@ void PybindMutualInformation(py::module &m) {
         k2::DeviceGuard guard(k2::GetContext(px));
         auto orig_device = px.device();
         if (px.device().is_cpu()) {
-          return k2::MutualInformationBackwardCpu(px, py, boundary, p, ans_grad);
+          return k2::MutualInformationBackwardCpu(px, py, boundary, p,
+                                                   ans_grad);
         } else if (px.device().type() == torch::kMPS) {
 #ifdef K2_WITH_MPS
           if (px.scalar_type() == torch::kFloat) {
