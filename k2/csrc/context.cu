@@ -66,7 +66,7 @@ ParallelRunnerActive::ParallelRunnerActive(ContextPtr c) : c_(c) {
 cudaStream_t ParallelRunnerActive::NewStream(
     std::size_t num_work_items /*=0*/) {
   DeviceType d = c_->GetDeviceType();
-  if (d == kCpu) {
+  if (d == kCpu || d == kMps) {
     return kCudaStreamInvalid;
   } else {
     K2_CHECK_EQ(d, kCuda);

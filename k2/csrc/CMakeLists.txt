@@ -145,6 +145,14 @@ if(K2_USE_PYTORCH)
   if(DEFINED ENV{CONDA_PREFIX} AND APPLE)
     target_link_libraries(context PUBLIC "-L $ENV{CONDA_PREFIX}/lib")
   endif()
+
+  if(APPLE)
+    # On macOS with venv-style PyTorch installs, libtorch_python.dylib
+    # (which provides autograd metadata symbols) is loaded at Python runtime,
+    # not at link time. Allow undefined symbols so intermediate shared
+    # libraries (libk2context.dylib etc.) link successfully.
+    target_link_libraries(context PUBLIC "-undefined dynamic_lookup")
+  endif()
 endif()
 
 target_include_directories(context PUBLIC ${PYTHON_INCLUDE_DIRS})

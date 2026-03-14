@@ -374,7 +374,8 @@ ToType(int64_t, Long)
     K2_CHECK_LT(i, Dim());
     const T *data = Data() + i;
     DeviceType type = Context()->GetDeviceType();
-    if (type == kCpu) {
+    if (type == kCpu || type == kMps) {
+      // MPS (Apple Silicon) uses unified memory; raw pointer is CPU-accessible.
       return *data;
     } else {
       K2_CHECK_EQ(type, kCuda);

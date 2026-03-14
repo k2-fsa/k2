@@ -46,4 +46,5 @@ void PybindVersion(py::module &m) {
   version.attr("enable_nvtx") = k2::kEnableNvtx;
   version.attr("disable_debug") = k2::internal::kDisableDebug;
   version.attr("with_cuda") = k2::kWithCuda;
+  version.attr("with_mps") = k2::kWithMps;
 }

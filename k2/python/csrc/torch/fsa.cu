@@ -37,6 +37,9 @@
 #include "k2/csrc/torch_util.h"
 #include "k2/python/csrc/torch/fsa.h"
 #include "k2/python/csrc/torch/v2/ragged_any.h"
+#ifdef K2_WITH_MPS
+#include "k2/python/csrc/torch/mps_fsa_scores.h"
+#endif
 
 namespace k2 {
 
@@ -276,9 +279,9 @@ static void PybindGetForwardScores(py::module &m, const char *name) {
         DeviceGuard guard(fsas.Context());
         Array1<int32_t> entering_arcs;
         Array1<T> scores = GetForwardScores<T>(
-            fsas, state_batches.any.Specialize<int32_t>(),
-            entering_arc_batches.any.Specialize<int32_t>(), log_semiring,
-            log_semiring ? nullptr : &entering_arcs);
+              fsas, state_batches.any.Specialize<int32_t>(),
+              entering_arc_batches.any.Specialize<int32_t>(), log_semiring,
+              log_semiring ? nullptr : &entering_arcs);
 
         torch::optional<torch::Tensor> entering_arcs_tensor;
         if (!log_semiring) entering_arcs_tensor = ToTorch(entering_arcs);
@@ -288,6 +291,70 @@ static void PybindGetForwardScores(py::module &m, const char *name) {
       py::arg("fsas"), py::arg("state_batches"),
       py::arg("entering_arc_batches"), py::arg("log_semiring"));
 }
+
+#ifdef K2_WITH_MPS
+// PybindGetForwardScoresMps: MPS-native forward scores via native Metal kernel.
+//
+// Called from Python when fsas is on MPS.  The caller computes
+// entering_arc_batches on a CPU copy of the FSA and passes it here;
+// this function copies the arc IDs to MPS and dispatches Metal compute
+// kernels for each BFS batch.
+static void PybindGetForwardScoresMps(py::module &m) {
+  m.def(
+      "get_forward_scores_mps",
+      [](FsaVec &fsas, RaggedAny &entering_arc_batches_cpu,
+         bool log_semiring) -> torch::Tensor {
+        DeviceGuard guard(fsas.Context());
+        Array1<float> scores = mps_ops::GetForwardScoresMps(
+            fsas, entering_arc_batches_cpu.any.Specialize<int32_t>(),
+            log_semiring);
+        return ToTorch(scores);
+      },
+      py::arg("fsas"), py::arg("entering_arc_batches_cpu"),
+      py::arg("log_semiring"));
+}
+
+// PybindGetForwardScoresMpsNative: zero-copy MPS-native forward scores.
+//
+// Called from Python when fsas is on MPS.  The caller supplies arc indices
+// already sorted by BFS level (sorted_arc_ids, MPS int32 tensor) and a
+// Python list of per-level arc counts (batch_sizes).  This avoids the full
+// FSA CPU copy required by get_forward_scores_mps.
+static void PybindGetForwardScoresMpsNative(py::module &m) {
+  m.def(
+      "get_forward_scores_mps_native",
+      [](FsaVec &fsas, torch::Tensor sorted_arc_ids,
+         std::vector<int32_t> batch_sizes,
+         bool log_semiring) -> torch::Tensor {
+        DeviceGuard guard(fsas.Context());
+        Array1<float> scores = mps_ops::GetForwardScoresMpsNative(
+            fsas, sorted_arc_ids, batch_sizes, log_semiring);
+        return ToTorch(scores);
+      },
+      py::arg("fsas"), py::arg("sorted_arc_ids"), py::arg("batch_sizes"),
+      py::arg("log_semiring"));
+}
+
+// PybindGetForwardScoresMpsAssocScan: O(log N) associative-scan forward scores.
+//
+// Uses a Hillis-Steele inclusive prefix scan over per-state transition matrices
+// (tropical semiring).  Falls back internally to the native sequential path
+// when conditions (single FSA, 4 ≤ N ≤ 128, tropical semiring) are not met.
+static void PybindGetForwardScoresMpsAssocScan(py::module &m) {
+  m.def(
+      "get_forward_scores_mps_assoc_scan",
+      [](FsaVec &fsas, torch::Tensor sorted_arc_ids,
+         std::vector<int32_t> batch_sizes,
+         bool log_semiring) -> torch::Tensor {
+        DeviceGuard guard(fsas.Context());
+        Array1<float> scores = mps_ops::GetForwardScoresMpsAssocScan(
+            fsas, sorted_arc_ids, batch_sizes, log_semiring);
+        return ToTorch(scores);
+      },
+      py::arg("fsas"), py::arg("sorted_arc_ids"), py::arg("batch_sizes"),
+      py::arg("log_semiring"));
+}
+#endif  // K2_WITH_MPS
 
 template <typename T>
 static void PybindBackpropGetForwardScores(py::module &m, const char *name) {
@@ -687,6 +754,11 @@ void PybindFsa(py::module &m) {
   k2::PybindFsaBasicProperties(m);
   k2::PybindGetForwardScores<float>(m, "get_forward_scores_float");
   k2::PybindGetForwardScores<double>(m, "get_forward_scores_double");
+#ifdef K2_WITH_MPS
+  k2::PybindGetForwardScoresMps(m);
+  k2::PybindGetForwardScoresMpsNative(m);
+  k2::PybindGetForwardScoresMpsAssocScan(m);
+#endif
   k2::PybindBackpropGetForwardScores<float>(
       m, "backprop_get_forward_scores_float");
   k2::PybindBackpropGetForwardScores<double>(

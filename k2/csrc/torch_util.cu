@@ -30,6 +30,10 @@ torch::DeviceType ToTorchDeviceType(DeviceType type) {
       return torch::kCUDA;
     case kCpu:
       return torch::kCPU;
+#ifdef K2_WITH_MPS
+    case kMps:
+      return torch::kMPS;
+#endif
     case kUnk:  // fall-through
     default:
       K2_LOG(FATAL) << "kUnk is not supported!";
@@ -43,9 +47,18 @@ DeviceType FromTorchDeviceType(const torch::DeviceType &type) {
       return kCuda;
     case torch::kCPU:
       return kCpu;
+#ifdef K2_WITH_MPS
+    case torch::kMPS:
+      return kMps;
+#endif
     default:
       K2_LOG(FATAL) << "Unsupported device type: " << type
+#ifdef K2_WITH_MPS
+                    << ". Only torch::kCUDA, torch::kCPU, and torch::kMPS "
+                       "are supported";
+#else
                     << ". Only torch::kCUDA and torch::kCPU are supported";
+#endif
       return kUnk;  // unreachable code
   }
 }
@@ -96,6 +109,24 @@ torch::Tensor ToTorch(Array1<Arc> &array) {
   std::vector<int64_t> strides = {4, 1};          // in number of elements
   auto options = torch::device(device).dtype(scalar_type);
   if (array.Dim() == 0) return torch::empty({0, 4}, options);
+
+#ifdef K2_WITH_MPS
+  if (device_type == torch::kMPS) {
+    // Use a proper view of ManagedTensor rather than from_blob (see comment
+    // in the Array1<T> specialization in torch_util.h for details).
+    auto region = array.GetRegion();
+    K2_CHECK(region && region->deleter_context != nullptr)
+        << "MPS Array1<Arc> region has no ManagedTensor";
+    auto *mt = reinterpret_cast<ManagedTensor *>(region->deleter_context);
+    const torch::Tensor &base = mt->tensor();
+    ptrdiff_t byte_off = reinterpret_cast<const char *>(array.Data()) -
+                         reinterpret_cast<const char *>(region->data);
+    auto int32_base = base.view(scalar_type);  // [bytes/4] kInt32
+    int64_t elem_off = static_cast<int64_t>(byte_off) / sizeof(int32_t);
+    // Narrow to [elem_off .. elem_off + dim*4], then reshape to [dim, 4].
+    return int32_base.narrow(0, elem_off, array.Dim() * 4).view(sizes);
+  }
+#endif
 
   // NOTE: we keep a copy of `Region` inside the lambda
   // so that the returned tensor outlives the input array.
@@ -156,6 +187,9 @@ torch::Tensor ToTorch(Tensor &tensor) {
 
 ContextPtr GetContext(torch::Device device) {
   if (device.type() == torch::kCPU) return GetCpuContext();
+#ifdef K2_WITH_MPS
+  if (device.type() == torch::kMPS) return GetMpsContext();
+#endif
 
   K2_CHECK_EQ(device.type(), torch::kCUDA);
   return GetCudaContext(device.index());

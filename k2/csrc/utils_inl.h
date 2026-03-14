@@ -24,6 +24,9 @@
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/cub.h"
+#ifdef K2_WITH_MPS
+#include "k2/csrc/mps_utils.h"
+#endif
 
 namespace k2 {
 template <typename SrcPtr, typename DestPtr>
@@ -31,6 +34,29 @@ void ExclusiveSum(ContextPtr c, int32_t n, const SrcPtr src, DestPtr dest) {
   K2_CHECK_GE(n, 0);
   DeviceType d = c->GetDeviceType();
   using SumType = typename std::decay<decltype(dest[0])>::type;
+#ifdef K2_WITH_MPS
+  if (d == kMps) {
+    // Dispatch to Metal-safe ATen cumsum. Only int32_t raw pointers are
+    // supported on MPS (all k2 row_splits / row_ids use int32_t).
+    using RawSrc = std::decay_t<SrcPtr>;
+    using RawDest = std::decay_t<DestPtr>;
+    if constexpr (std::is_pointer_v<RawSrc> && std::is_pointer_v<RawDest> &&
+                  std::is_same_v<
+                      std::remove_cv_t<std::remove_pointer_t<RawSrc>>,
+                      int32_t> &&
+                  std::is_same_v<
+                      std::remove_cv_t<std::remove_pointer_t<RawDest>>,
+                      int32_t>) {
+      mps_ops::ExclusiveSumMps(n,
+                               reinterpret_cast<const int32_t *>(src),
+                               reinterpret_cast<int32_t *>(dest));
+    } else {
+      K2_LOG(FATAL)
+          << "ExclusiveSum on MPS only supports int32_t raw pointers";
+    }
+    return;
+  }
+#endif
   if (d == kCpu) {
     SumType sum = 0;
     for (int32_t i = 0; i != n; ++i) {
@@ -65,6 +91,27 @@ void InclusiveSum(ContextPtr c, int32_t n, const SrcPtr src, DestPtr dest) {
   K2_CHECK_GE(n, 0);
   DeviceType d = c->GetDeviceType();
   using SumType = typename std::decay<decltype(dest[0])>::type;
+#ifdef K2_WITH_MPS
+  if (d == kMps) {
+    using RawSrc = std::decay_t<SrcPtr>;
+    using RawDest = std::decay_t<DestPtr>;
+    if constexpr (std::is_pointer_v<RawSrc> && std::is_pointer_v<RawDest> &&
+                  std::is_same_v<
+                      std::remove_cv_t<std::remove_pointer_t<RawSrc>>,
+                      int32_t> &&
+                  std::is_same_v<
+                      std::remove_cv_t<std::remove_pointer_t<RawDest>>,
+                      int32_t>) {
+      mps_ops::InclusiveSumMps(n,
+                               reinterpret_cast<const int32_t *>(src),
+                               reinterpret_cast<int32_t *>(dest));
+    } else {
+      K2_LOG(FATAL)
+          << "InclusiveSum on MPS only supports int32_t raw pointers";
+    }
+    return;
+  }
+#endif
   if (d == kCpu) {
     SumType sum = 0;
     for (int32_t i = 0; i != n; ++i) {
@@ -89,6 +136,20 @@ void InclusiveSum(ContextPtr c, int32_t n, const SrcPtr src, DestPtr dest) {
 template <typename T>
 T MaxValue(ContextPtr c, int32_t nelems, const T *t) {
   DeviceType d = c->GetDeviceType();
+#ifdef K2_WITH_MPS
+  if (d == kMps) {
+    // Use ATen reduction for Metal-safe access. In k2, MaxValue on MPS is
+    // always called with int32_t (row_splits); other types are not supported.
+    if constexpr (std::is_same_v<T, int32_t>) {
+      return static_cast<T>(
+          mps_ops::AsMpsTensor(t, static_cast<int64_t>(nelems))
+              .max().template item<int32_t>());
+    } else {
+      K2_LOG(FATAL) << "MaxValue on MPS only supports int32_t";
+      return T(0);  // unreachable
+    }
+  }
+#endif
   if (d == kCpu) {
     // note the return value is initialized with T(0)
     T result = T(0);

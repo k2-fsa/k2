@@ -119,6 +119,7 @@ from .utils import to_tensor
 from .utils import random_fsa
 from .utils import random_fsa_vec
 from _k2.version import with_cuda
+from _k2.version import with_mps
 from _k2 import pruned_ranges_to_lattice
 
 from .decode import get_aux_labels
@@ -127,3 +128,4 @@ from .decode import one_best_decoding
 
 cmake_prefix_path = _Path(__file__).parent / "share" / "cmake"
 del _Path
+__dev_version__ = '1.24.4.dev20260314+cpu.torch2.10.0'

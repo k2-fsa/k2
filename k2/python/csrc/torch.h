@@ -96,18 +96,31 @@ namespace k2 {
 template <typename PyClass>
 PyClass To(PyClass &pyclass, py::object device) {
   std::string device_type = static_cast<py::str>(device.attr("type"));
+#ifdef K2_WITH_MPS
+  K2_CHECK(device_type == "cpu" || device_type == "cuda" ||
+           device_type == "mps")
+      << "Unsupported device type: " << device_type;
+#else
   K2_CHECK(device_type == "cpu" || device_type == "cuda")
       << "Unsupported device type: " << device_type;
+#endif
 
   ContextPtr &context = pyclass.Context();
   if (device_type == "cpu") {
     // CPU to CPU
     if (context->GetDeviceType() == kCpu) return pyclass;
 
-    // CUDA to CPU
+    // CUDA/MPS to CPU
     DeviceGuard guard(context);
     return pyclass.To(GetCpuContext());
   }
+
+#ifdef K2_WITH_MPS
+  if (device_type == "mps") {
+    if (context->GetDeviceType() == kMps) return pyclass;
+    return pyclass.To(GetMpsContext());
+  }
+#endif
 
   auto index_attr = static_cast<py::object>(device.attr("index"));
   int32_t device_index = 0;
@@ -118,7 +131,7 @@ PyClass To(PyClass &pyclass, py::object device) {
     // CUDA to CUDA
     return pyclass;
 
-  // CPU to CUDA
+  // CPU/MPS to CUDA
   DeviceGuard guard(device_index);
   return pyclass.To(GetCudaContext(device_index));
 }

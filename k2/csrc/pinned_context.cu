@@ -360,6 +360,10 @@ ContextPtr GetContextForTransfer(DeviceType device_type) {
       return GetCpuContext();
     case kCuda:
       return GetPinnedContext();
+    case kMps:
+      // MPS uses unified memory on Apple Silicon; plain CPU context suffices
+      // for staging transfers.
+      return GetCpuContext();
     default:
       K2_LOG(FATAL) << "Unsupported device type: " << device_type;
       return nullptr;

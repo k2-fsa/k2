@@ -25,6 +25,9 @@
 #include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/utils.h"
+#ifdef K2_WITH_MPS
+#include "k2/csrc/mps_utils.h"
+#endif
 
 namespace k2 {
 
@@ -78,6 +81,12 @@ void RowSplitsToRowIds(ContextPtr c, int32_t num_rows,
   NVTX_RANGE(K2_FUNC);
   if (num_rows <= 0 || num_elems <= 0) return;
   DeviceType d = c->GetDeviceType();
+#ifdef K2_WITH_MPS
+  if (d == kMps) {
+    mps_ops::RowSplitsToRowIdsMps(num_rows, row_splits, num_elems, row_ids);
+    return;
+  }
+#endif
   if (d == kCpu) {
     int32_t cur_row_start = row_splits[0];
     K2_CHECK_EQ(cur_row_start, 0);
@@ -168,6 +177,12 @@ void RowIdsToRowSplits(ContextPtr c, int32_t num_elems, const int32_t *row_ids,
     return;
   }
   DeviceType d = c->GetDeviceType();
+#ifdef K2_WITH_MPS
+  if (d == kMps) {
+    mps_ops::RowIdsToRowSplitsMps(num_elems, row_ids, num_rows, row_splits);
+    return;
+  }
+#endif
   if (d == kCpu) {
     int32_t cur_row = -1;
     for (int32_t i = 0; i < num_elems; i++) {

@@ -1,0 +1,130 @@
+# Copyright      2024  k2 contributors
+
+# See ../../LICENSE for clarification regarding multiple authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: build-mps-macos
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/build-mps-macos.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+  pull_request:
+    types: [labeled]
+    paths:
+      - '.github/workflows/build-mps-macos.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'k2/csrc/**'
+      - 'k2/python/**'
+  workflow_dispatch:
+
+concurrency:
+  group: build-mps-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-mps-macos:
+    if: github.event.label.name == 'ready' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    name: Build (macOS, CPU+MPS)
+    runs-on: macos-14  # Apple Silicon M1/M2 — MPS is available
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Display clang version
+        run: clang --version
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Install PyTorch (macOS arm64 with MPS)
+        shell: bash
+        run: |
+          python3 -m pip install -qq --upgrade pip
+          python3 -m pip install -qq wheel twine
+          python3 -m pip install -qq torch --index-url https://download.pytorch.org/whl/cpu
+          python3 -c "import torch; print('torch version:', torch.__version__); print('MPS available:', torch.backends.mps.is_available())"
+
+      - name: Build wheel
+        shell: bash
+        run: |
+          export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF -DK2_WITH_MPS=ON"
+          export K2_MAKE_ARGS="-j3"
+          python3 setup.py bdist_wheel
+          ls -lh dist/
+          ls -lh build/*
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: k2-macos14-mps-python3.11
+          path: dist/*.whl
+
+      - name: Install wheel and verify MPS support
+        shell: bash
+        run: |
+          pip install dist/*.whl
+          python3 -m k2.version
+          python3 -c "
+          import k2
+          assert k2.with_mps, 'k2 was not built with MPS support'
+          print('k2.with_cuda:', k2.with_cuda)
+          print('k2.with_mps:', k2.with_mps)
+          print('MPS build verified.')
+          "
+
+      - name: Run MPS tests
+        shell: bash
+        env:
+          PYTORCH_ENABLE_MPS_FALLBACK: "1"
+        run: |
+          pip install pytest
+          python3 -m pytest k2/python/tests/test_mps.py -v --tb=short
+
+      - name: Run CPU tests (sanity check)
+        shell: bash
+        run: |
+          python3 -m pytest k2/python/tests/ -v --ignore=k2/python/tests/test_mps.py -x --tb=short -q
+
+      - name: Build k2 (cmake + C++ tests)
+        shell: bash
+        run: |
+          mkdir -p build_cmake
+          cd build_cmake
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF -DK2_WITH_MPS=ON ..
+          cat k2/csrc/version.h
+          make VERBOSE=1 -j3
+
+      - name: Run C++ tests (ctest)
+        shell: bash
+        run: |
+          cd build_cmake
+          ctest --output-on-failure

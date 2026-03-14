@@ -547,6 +547,41 @@ class Fsa(object):
                                                 self._get_dest_states())
         return cache[name]
 
+    def _compute_bfs_arc_batches_mps(self):
+        '''Compute entering-arc BFS batches for MPS without a full CPU copy.
+
+        Exploits the k2 invariant that FSAs are topologically sorted
+        (arc.src_state_local < arc.dest_state_local), so the local dest-state
+        index is a valid BFS-level assignment.  Only the dest_state column
+        (4 bytes × num_arcs) crosses the MPS/CPU boundary, versus 16 bytes ×
+        num_arcs + all tensor attributes for a full self.to("cpu") copy.
+
+        Returns:
+          sorted_arc_ids_mps: int32 MPS tensor of arc indices sorted by
+            dest_state_local (ascending, stable).
+          batch_sizes: list[int] — number of arcs per BFS level (index 0 is
+            always 0 for valid FSAs since no arc enters the start state).
+        '''
+        arcs_vals = self.arcs.values()   # [num_arcs, 4] int32 MPS
+        num_arcs = arcs_vals.shape[0]
+        if num_arcs == 0:
+            return (torch.zeros(0, dtype=torch.int32, device='mps'), [])
+
+        # Transfer only the dest_state column to CPU — 4 bytes × num_arcs.
+        arc_dst_local = arcs_vals[:, 1].contiguous().cpu()  # [num_arcs] int32
+
+        # Sort arc indices by dest_state_local on CPU (fast); move to MPS.
+        sorted_arc_ids = torch.argsort(
+            arc_dst_local.to(torch.int64), stable=True).to(torch.int32)
+        sorted_arc_ids_mps = sorted_arc_ids.to('mps')
+
+        # Count arcs per BFS level (= per dest_state_local value).
+        num_levels = int(arc_dst_local.max().item()) + 1
+        batch_sizes = torch.bincount(
+            arc_dst_local, minlength=num_levels).tolist()
+
+        return sorted_arc_ids_mps, batch_sizes
+
     def _get_entering_arc_batches(self) -> k2.RaggedTensor:
         '''Get (and compute if necessary) cached property
         `self.entering_arc_batches`.
@@ -610,17 +645,36 @@ class Fsa(object):
                ('log' if log_semiring else 'tropical')
         cache = self._cache
         if name not in cache:
-            if use_double_scores:
-                func = _k2.get_forward_scores_double
+            if self.scores.device.type == 'mps' and not use_double_scores:
+                # Zero-copy MPS path: transfer only dest_state column to CPU
+                # for sorting; move sorted arc indices back to MPS.  Avoids
+                # the full self.to('cpu') arc-data copy of Priority 3.
+                #
+                # Priority 6 (assoc scan): for single-FSA tropical semiring
+                # with 4 ≤ N ≤ 128, use a Hillis-Steele prefix scan over
+                # per-state transition matrices, reducing encoder calls from
+                # N to ⌈log₂N⌉.  Falls back to native sequential internally.
+                sorted_arc_ids, batch_sizes = \
+                    self._compute_bfs_arc_batches_mps()
+                cache[name] = _k2.get_forward_scores_mps_assoc_scan(
+                    self.arcs, sorted_arc_ids, batch_sizes, log_semiring)
+            elif self.scores.device.type == 'mps' and use_double_scores:
+                raise NotImplementedError(
+                    '_get_forward_scores with use_double_scores=True is not '
+                    'supported on MPS. Use the differentiable get_forward_scores '
+                    'or move the FSA to CPU first with fsa.to("cpu").')
             else:
-                func = _k2.get_forward_scores_float
-            cache[name], entering_arcs = func(
-                self.arcs,
-                state_batches=self._get_state_batches(),
-                entering_arc_batches=self._get_entering_arc_batches(),
-                log_semiring=log_semiring)
-            if not log_semiring:
-                cache['entering_arcs'] = entering_arcs
+                if use_double_scores:
+                    func = _k2.get_forward_scores_double
+                else:
+                    func = _k2.get_forward_scores_float
+                cache[name], entering_arcs = func(
+                    self.arcs,
+                    state_batches=self._get_state_batches(),
+                    entering_arc_batches=self._get_entering_arc_batches(),
+                    log_semiring=log_semiring)
+                if not log_semiring:
+                    cache['entering_arcs'] = entering_arcs
         return cache[name]
 
     def get_forward_scores(self, use_double_scores: bool,
@@ -663,6 +717,11 @@ class Fsa(object):
                ('log' if log_semiring else 'tropical')
         cache = self._cache
         if name not in cache:
+            if self.scores.device.type == 'mps':
+                raise NotImplementedError(
+                    '_get_tot_scores is not supported on MPS. '
+                    'Use the differentiable get_tot_scores or move '
+                    'the FSA to CPU first with fsa.to("cpu").')
             if use_double_scores is True:
                 func = _k2.get_tot_scores_double
             else:
@@ -688,6 +747,24 @@ class Fsa(object):
             True to use log semiring (log-sum), false to use tropical (i.e. max
             on scores).
         '''
+        if self.scores.device.type == 'mps':
+            # k2's C++ algorithms access raw data pointers and only work on
+            # CPU (or CUDA). Run on CPU and bridge the gradient back to MPS.
+            cpu_fsa = self.to('cpu')
+            # _MpsScoresBridge keeps MPS→CPU in forward and CPU→MPS in
+            # backward, so that mps_fsa.scores.grad ends up on MPS.
+            # cpu_scores is passed as `unused_scores` to _GetTotScoresFunction
+            # solely to anchor the backward gradient path; the actual forward
+            # computation uses cpu_fsa.scores internally.
+            cpu_scores = k2.autograd._MpsScoresBridge.apply(self.scores)
+            cpu_tot = k2.autograd._GetTotScoresFunction.apply(
+                cpu_fsa, log_semiring, use_double_scores, cpu_scores)
+            # cpu_tot.to() is gradient-safe here: the backward flows entirely
+            # through cpu_scores (the unused_scores arg above), not through
+            # cpu_tot itself, so this device transfer does not detach the grad.
+            # MPS doesn't support float64; downcast to float32 before moving.
+            result = cpu_tot.float() if cpu_tot.dtype == torch.float64 else cpu_tot
+            return result.to(self.scores.device)
         tot_scores = k2.autograd._GetTotScoresFunction.apply(
             self, log_semiring, use_double_scores, self.scores)
         return tot_scores
@@ -717,6 +794,11 @@ class Fsa(object):
                ('log' if log_semiring else 'tropical')
         cache = self._cache
         if name not in cache:
+            if self.scores.device.type == 'mps':
+                raise NotImplementedError(
+                    '_get_backward_scores is not supported on MPS. '
+                    'Use the differentiable get_backward_scores or move '
+                    'the FSA to CPU first with fsa.to("cpu").')
             if use_double_scores:
                 func = _k2.get_backward_scores_double
             else:
@@ -1093,8 +1175,8 @@ class Fsa(object):
         Args:
           device:
             An instance of `torch.device` or a string that can be used to
-            construct a `torch.device`, e.g., 'cpu', 'cuda:0'.
-            It supports only cpu and cuda devices.
+            construct a `torch.device`, e.g., 'cpu', 'cuda:0', 'mps'.
+            Supports cpu, cuda, and mps devices.
 
         Returns:
           Returns a new Fsa which is this object copied to the given device
@@ -1104,7 +1186,7 @@ class Fsa(object):
         if isinstance(device, str):
             device = torch.device(device)
 
-        assert device.type in ('cpu', 'cuda')
+        assert device.type in ('cpu', 'cuda', 'mps')
         if device == self.scores.device:
             return self
 
