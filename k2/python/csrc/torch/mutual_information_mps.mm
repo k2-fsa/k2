@@ -413,8 +413,10 @@ kernel void mi_backward(
 namespace {
 
 struct MIPipelineCache {
-    id<MTLComputePipelineState> fwd = nil;
-    id<MTLComputePipelineState> bwd = nil;
+    // __unsafe_unretained: skip ARC release on exit so we don't send messages
+    // to Metal objects after PyTorch has torn down the MPS device.
+    __unsafe_unretained id<MTLComputePipelineState> fwd = nil;
+    __unsafe_unretained id<MTLComputePipelineState> bwd = nil;
 };
 
 // Struct layouts must exactly match MSL structs above.

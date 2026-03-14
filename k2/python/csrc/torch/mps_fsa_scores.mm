@@ -280,12 +280,14 @@ kernel void assoc_scan_extract(
 // Pipeline cache
 // ---------------------------------------------------------------------------
 struct FsaPipelines {
-    id<MTLComputePipelineState> log_fwd           = nil;
-    id<MTLComputePipelineState> tropical_fwd      = nil;
-    id<MTLComputePipelineState> assoc_init        = nil;
-    id<MTLComputePipelineState> assoc_build_level = nil;
-    id<MTLComputePipelineState> assoc_prefix_step = nil;
-    id<MTLComputePipelineState> assoc_extract     = nil;
+    // __unsafe_unretained: skip ARC release on static destructor so we don't
+    // send messages to Metal objects after PyTorch has torn down the device.
+    __unsafe_unretained id<MTLComputePipelineState> log_fwd           = nil;
+    __unsafe_unretained id<MTLComputePipelineState> tropical_fwd      = nil;
+    __unsafe_unretained id<MTLComputePipelineState> assoc_init        = nil;
+    __unsafe_unretained id<MTLComputePipelineState> assoc_build_level = nil;
+    __unsafe_unretained id<MTLComputePipelineState> assoc_prefix_step = nil;
+    __unsafe_unretained id<MTLComputePipelineState> assoc_extract     = nil;
 };
 
 static FsaPipelines GetOrBuildFsaPipelines(id<MTLDevice> device) {
