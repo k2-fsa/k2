@@ -34,7 +34,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/ragged.h"
-#include <torch/extension.h>
+#include <torch/extension.h>  // NOLINT(build/include_order)
 
 namespace k2 {
 namespace mps_ops {
