@@ -20,6 +20,7 @@
 #ifndef K2_CSRC_UTILS_INL_H_
 #define K2_CSRC_UTILS_INL_H_
 
+#include <functional>
 #include <type_traits>
 
 #include "k2/csrc/array.h"
