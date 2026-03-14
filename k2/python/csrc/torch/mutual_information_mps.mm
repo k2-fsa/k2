@@ -1,5 +1,5 @@
 /**
- * Copyright      2024  k2-fsa Authors
+ * Copyright      2026  k2-fsa Authors
  *
  * See LICENSE for clarification regarding multiple authors
  *

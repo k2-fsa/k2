@@ -345,7 +345,11 @@ Array1<T> Cat(ContextPtr c, int32_t num_arrays, const Array1<T> **src) {
   T *ans_data = ans.Data();
   if (c->GetDeviceType() == kCpu || c->GetDeviceType() == kMps) {
     // a simple loop is faster, although the other branches should still work on
-    // CPU.  MPS (Apple Silicon unified memory) is also CPU-accessible.
+    // CPU.  MPS uses MTLStorageModeShared so data_ptr() is CPU-accessible, but
+    // pending Metal writes must be flushed first via synchronize().
+#ifdef K2_WITH_MPS
+    if (c->GetDeviceType() == kMps) torch::mps::synchronize();
+#endif
     int64_t elem_size = src[0]->ElementSize();
     for (int32_t i = 0; i < num_arrays; ++i) {
       int32_t this_dim = src[i]->Dim();
@@ -741,6 +745,9 @@ void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
   T *dest_data = dest->Data();
 
   if (c->GetDeviceType() == kCpu || c->GetDeviceType() == kMps) {
+#ifdef K2_WITH_MPS
+    if (c->GetDeviceType() == kMps) torch::mps::synchronize();
+#endif
     S min_value = std::numeric_limits<S>::max();
     for (int32_t i = dim - 1; i >= 0; --i) {
       min_value = std::min(src_data[i], min_value);
@@ -780,6 +787,9 @@ void MonotonicDecreasingUpperBound(const Array1<S> &src, Array1<T> *dest) {
   T *dest_data = dest->Data();
 
   if (c->GetDeviceType() == kCpu || c->GetDeviceType() == kMps) {
+#ifdef K2_WITH_MPS
+    if (c->GetDeviceType() == kMps) torch::mps::synchronize();
+#endif
     S max_value = std::numeric_limits<S>::min();
     for (int32_t i = dim - 1; i >= 0; --i) {
       max_value = std::max(src_data[i], max_value);
@@ -1038,8 +1048,12 @@ T Sum(ContextPtr c, const T *src, int32_t dim) {
   NVTX_RANGE(K2_FUNC);
   if (dim == 0) return 0;
 
-  if (c->GetDeviceType() == kCpu || c->GetDeviceType() == kMps)
+  if (c->GetDeviceType() == kCpu || c->GetDeviceType() == kMps) {
+#ifdef K2_WITH_MPS
+    if (c->GetDeviceType() == kMps) torch::mps::synchronize();
+#endif
     return std::accumulate(src, src + dim, T(0));
+  }
 
   K2_CHECK_EQ(c->GetDeviceType(), kCuda);
 

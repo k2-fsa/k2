@@ -39,10 +39,14 @@ class TestMpsContext:
         mps_fsa = fsa.to('mps')
         sorted_mps = k2.arc_sort(mps_fsa)
         assert sorted_mps.device.type == 'mps'
-        assert (sorted_cpu.arcs.values() == sorted_mps.to('cpu').arcs.values()).all()
+        assert (
+            sorted_cpu.arcs.values()
+            == sorted_mps.to('cpu').arcs.values()
+        ).all()
 
     def test_ragged_to_mps(self):
-        # Includes a single-element row to exercise ExclusiveSum/InclusiveSum n=1.
+        # Includes a single-element row to exercise ExclusiveSum/InclusiveSum
+        # n=1.
         ragged = k2.RaggedTensor([[1, 2, 3], [4, 5], [6]])
         mps_ragged = ragged.to(device='mps')
         cpu_back = mps_ragged.to(device='cpu')
@@ -102,7 +106,7 @@ class TestMpsTraining:
         assert torch.allclose(mi_cpu, mi_mps.cpu(), atol=1e-4)
 
     def test_mps_scores_bridge(self):
-        """_MpsScoresBridge: forward→CPU, backward→MPS with correct gradient values."""
+        """_MpsScoresBridge: forward→CPU, backward→MPS with correct grads."""
         mps_t = torch.randn(4, device='mps', requires_grad=True)
         cpu_t = k2.autograd._MpsScoresBridge.apply(mps_t)
         assert cpu_t.device.type == 'cpu'
@@ -113,7 +117,7 @@ class TestMpsTraining:
         assert torch.allclose(mps_t.grad.cpu(), torch.ones(4))
 
     def test_tot_scores_log_backward_mps(self):
-        """log-semiring get_tot_scores backward: grads land on MPS, values match CPU."""
+        """log-semiring get_tot_scores backward: grads on MPS, match CPU."""
         fsa_a = k2.linear_fsa([1, 2])
         fsa_b = k2.linear_fsa([3])
         fsa_vec = k2.create_fsa_vec([fsa_a, fsa_b])
@@ -161,7 +165,7 @@ class TestMpsTraining:
                                mps_fsa.scores.grad.cpu(), atol=1e-5)
 
     def test_tot_scores_double_mps(self):
-        """use_double_scores=True on MPS: result on MPS as float32 (MPS has no float64)."""
+        """use_double_scores=True on MPS: result as float32 (no float64)."""
         fsa = k2.linear_fsa([1, 2])
         fsa_vec = k2.create_fsa_vec([fsa])
 
@@ -184,7 +188,7 @@ class TestMpsTraining:
         assert mps_fsa.scores.grad.device.type == 'mps'
 
     def test_tot_scores_nonunit_gradient_mps(self):
-        """Non-unit incoming gradient must scale score grads correctly on MPS."""
+        """Non-unit incoming gradient scales score grads correctly on MPS."""
         fsa_a = k2.linear_fsa([1, 2])
         fsa_b = k2.linear_fsa([3])
         fsa_vec = k2.create_fsa_vec([fsa_a, fsa_b])
@@ -302,7 +306,7 @@ class TestMpsForwardScores:
 
 @mps_available
 class TestMpsIntersectDense:
-    """Tests for intersect_dense and intersect_dense_pruned on MPS (Priority 5)."""
+    """Tests for intersect_dense and intersect_dense_pruned on MPS."""
 
     # Simple decoding graph shared across tests.
     _FSA_STR = '''
@@ -529,13 +533,13 @@ class TestMpsAssocScan:
         assert torch.allclose(tot_mps.cpu(), tot_cpu, atol=1e-5)
 
     def test_assoc_scan_large_fallback(self):
-        """FSA with >128 states falls back to native sequential path silently."""
-        # Build a long linear chain with 200 states: exceeds assoc-scan N_MAX=128.
+        """FSA with >128 states falls back to native sequential path."""
+        # Build a long linear chain with 200 states: exceeds N_MAX=128.
         # The last arc must use label -1 (final/epsilon in k2 convention).
         arcs = []
         for i in range(198):
-            arcs.append(f'{i} {i+1} {i % 100 + 1} 0.01')
-        arcs.append(f'198 199 -1 0.01')
+            arcs.append(f'{i} {i + 1} {i % 100 + 1} 0.01')
+        arcs.append('198 199 -1 0.01')
         arcs.append('199')
         fsa_str = '\n'.join(arcs)
         fsa_cpu = self._make_fsa(fsa_str)
@@ -555,7 +559,7 @@ class TestMpsNumericalParity:
     """Verify MPS results match CPU within tolerance."""
 
     def test_linear_fsa_scores_parity(self):
-        """Round-tripping non-trivial scores through MPS must preserve values."""
+        """Round-tripping non-trivial scores through MPS preserves values."""
         fsa = k2.linear_fsa([1, 2, 3])
         fsa_vec = k2.create_fsa_vec([fsa])
         # Assign non-trivial scores so a no-op copy would be detected.
@@ -581,6 +585,7 @@ class TestMpsNumericalParity:
 # PR Audit — Extended Test Suite
 # =============================================================================
 
+
 def _make_fsa_vec(fsa_str, device='cpu'):
     """Helper: build FsaVec from multi-line FSA string, move to device."""
     fsa = k2.Fsa.from_str(fsa_str.strip())
@@ -592,7 +597,7 @@ class TestMpsEdgeCases:
     """Edge-case tests: empty FSA, unreachable states, guard paths."""
 
     def test_empty_arcs_forward_scores(self):
-        """FSA with only start and accept state (0 arcs) returns correct scores."""
+        """FSA with only start/accept state (0 arcs) returns correct scores."""
         # A single-arc FSA with just a final arc to the accept state.
         # This has 2 states: state 0 (start) and state 1 (accept).
         fsa_str = '0 1 -1 0.0\n1'
@@ -629,29 +634,32 @@ class TestMpsEdgeCases:
         assert torch.allclose(fwd_mps.cpu(), fwd_cpu, atol=1e-5)
 
     def test_forward_scores_double_mps_raises(self):
-        """_get_forward_scores with use_double_scores=True on MPS raises NotImplementedError."""
+        """_get_forward_scores with use_double_scores=True raises error."""
         fsa_mps = _make_fsa_vec('0 1 -1 1.0\n1', 'mps')
         with pytest.raises(NotImplementedError, match='use_double_scores'):
-            fsa_mps._get_forward_scores(use_double_scores=True, log_semiring=False)
+            fsa_mps._get_forward_scores(
+                use_double_scores=True, log_semiring=False)
 
     def test_backward_scores_mps_raises(self):
         """_get_backward_scores on MPS raises NotImplementedError."""
         fsa_mps = _make_fsa_vec('0 1 -1 1.0\n1', 'mps')
         with pytest.raises(NotImplementedError, match='_get_backward_scores'):
-            fsa_mps._get_backward_scores(use_double_scores=False, log_semiring=False)
+            fsa_mps._get_backward_scores(
+                use_double_scores=False, log_semiring=False)
 
     def test_single_path_forward_scores(self):
         """Single-path chain: MPS forward scores equal manual computation."""
         # 0→1 (w=1.0) → 2 (w=2.0) → 3 (w=3.0, final)
         fsa_str = '0 1 1 1.0\n1 2 2 2.0\n2 3 -1 3.0\n3'
         fsa_mps = _make_fsa_vec(fsa_str, 'mps')
-        fwd = fsa_mps._get_forward_scores(use_double_scores=False, log_semiring=False)
+        fwd = fsa_mps._get_forward_scores(
+            use_double_scores=False, log_semiring=False)
         # Expected: state 0=0, state 1=1, state 2=3, state 3=6
         expected = torch.tensor([0.0, 1.0, 3.0, 6.0])
         assert torch.allclose(fwd.cpu(), expected, atol=1e-5)
 
     def test_parallel_arcs_max_score(self):
-        """Multiple arcs with same src→dst: tropical forward takes the maximum."""
+        """Parallel arcs same src→dst: tropical forward takes maximum."""
         # Two arcs from 0→1: weights 3.0 and 5.0. Max wins.
         fsa_str = '0 1 1 3.0\n0 1 2 5.0\n1 2 -1 1.0\n2'
         fsa_cpu = _make_fsa_vec(fsa_str)
@@ -688,15 +696,18 @@ class TestMpsAssocScanBoundaries:
 
     def _chain_fsa(self, n_states, device='cpu'):
         """Build a linear-chain FsaVec with n_states states."""
-        arcs = [f'{i} {i+1} {i+1} {float(i+1) * 0.1:.1f}'
+        arcs = [f'{i} {i + 1} {i + 1} {float(i + 1) * 0.1:.1f}'
                 for i in range(n_states - 2)]
-        arcs.append(f'{n_states-2} {n_states-1} -1 {float(n_states-1) * 0.1:.1f}')
+        arcs.append(
+            f'{n_states - 2} {n_states - 1} -1 '
+            f'{float(n_states - 1) * 0.1:.1f}'
+        )
         arcs.append(str(n_states - 1))
         fsa = k2.Fsa.from_str('\n'.join(arcs).strip())
         return k2.create_fsa_vec([fsa]).to(device)
 
     def _parity(self, n_states):
-        """Assert MPS tropical forward scores match CPU for n_states-state chain."""
+        """Assert MPS tropical forward scores match CPU for chain FSA."""
         fsa_cpu = self._chain_fsa(n_states)
         fsa_mps = self._chain_fsa(n_states, 'mps')
         fwd_cpu = fsa_cpu._get_forward_scores(
@@ -754,7 +765,7 @@ class TestMpsAssocScanBoundaries:
 
     def test_multi_arc_single_dest_assoc_scan(self):
         """Multiple arcs into same destination in assoc scan build_level."""
-        # State 2 has three entering arcs: from 0 (w=1.0), 1a (w=3.0), 1b (w=2.0).
+        # State 2: arcs from 0 (w=1.0), 1a (w=3.0), 1b (w=2.0).
         # The build_level kernel's atomic-max must keep 3.0.
         fsa_str = '''
             0 1 1 1.0
@@ -808,8 +819,10 @@ class TestMpsArcPost:
         fsa_cpu = self._make()
         fsa_mps = self._make('mps')
 
-        post_cpu = fsa_cpu.get_arc_post(use_double_scores=False, log_semiring=False)
-        post_mps = fsa_mps.get_arc_post(use_double_scores=False, log_semiring=False)
+        post_cpu = fsa_cpu.get_arc_post(
+            use_double_scores=False, log_semiring=False)
+        post_mps = fsa_mps.get_arc_post(
+            use_double_scores=False, log_semiring=False)
 
         assert post_mps.device.type == 'mps'
         assert torch.allclose(post_mps.cpu(), post_cpu, atol=1e-5)
@@ -819,8 +832,10 @@ class TestMpsArcPost:
         fsa_cpu = self._make()
         fsa_mps = self._make('mps')
 
-        post_cpu = fsa_cpu.get_arc_post(use_double_scores=False, log_semiring=True)
-        post_mps = fsa_mps.get_arc_post(use_double_scores=False, log_semiring=True)
+        post_cpu = fsa_cpu.get_arc_post(
+            use_double_scores=False, log_semiring=True)
+        post_mps = fsa_mps.get_arc_post(
+            use_double_scores=False, log_semiring=True)
 
         assert post_mps.device.type == 'mps'
         assert torch.allclose(post_mps.cpu(), post_cpu, atol=1e-5)
@@ -830,8 +845,10 @@ class TestMpsArcPost:
         fsa_cpu = self._make()
         fsa_mps = self._make('mps')
 
-        post_cpu = fsa_cpu.get_arc_post(use_double_scores=False, log_semiring=False)
-        post_mps = fsa_mps.get_arc_post(use_double_scores=False, log_semiring=False)
+        post_cpu = fsa_cpu.get_arc_post(
+            use_double_scores=False, log_semiring=False)
+        post_mps = fsa_mps.get_arc_post(
+            use_double_scores=False, log_semiring=False)
 
         post_cpu.sum().backward()
         post_mps.sum().backward()
@@ -846,8 +863,10 @@ class TestMpsArcPost:
         fsa_cpu = self._make()
         fsa_mps = self._make('mps')
 
-        post_cpu = fsa_cpu.get_arc_post(use_double_scores=False, log_semiring=True)
-        post_mps = fsa_mps.get_arc_post(use_double_scores=False, log_semiring=True)
+        post_cpu = fsa_cpu.get_arc_post(
+            use_double_scores=False, log_semiring=True)
+        post_mps = fsa_mps.get_arc_post(
+            use_double_scores=False, log_semiring=True)
 
         post_cpu.sum().backward()
         post_mps.sum().backward()
@@ -895,7 +914,7 @@ class TestMpsGetForwardScoresDifferentiable:
             fsa_mps.scores.grad.cpu(), fsa_cpu.scores.grad, atol=1e-5)
 
     def test_get_forward_scores_log_gradient(self):
-        """Differentiable log-semiring forward scores: grad on MPS matches CPU."""
+        """Differentiable log-semiring forward scores: MPS grad matches CPU."""
         fsa_cpu = self._make()
         fsa_mps = self._make('mps')
 
@@ -980,7 +999,8 @@ class TestMpsIntersectDenseExtended:
             min_active_states=30, max_active_states=10000)
 
         assert result_mps.scores.device.type == 'mps'
-        assert torch.allclose(result_mps.scores.cpu(), result_cpu.scores, atol=1e-5)
+        assert torch.allclose(
+            result_mps.scores.cpu(), result_cpu.scores, atol=1e-5)
 
     def test_intersect_dense_pruned_backward_2utterances(self):
         """IntersectDensePruned 2-utterance backward: grads on MPS match CPU."""
@@ -1040,7 +1060,8 @@ class TestMpsIntersectDenseExtended:
             seqframe_idx_name='seqframe_idx',
             frame_idx_name='frame_idx')
 
-        assert torch.equal(result_mps.seqframe_idx.cpu(), result_cpu.seqframe_idx)
+        assert torch.equal(
+            result_mps.seqframe_idx.cpu(), result_cpu.seqframe_idx)
         assert torch.equal(result_mps.frame_idx.cpu(), result_cpu.frame_idx)
 
     def test_intersect_dense_function_parity(self):
@@ -1053,7 +1074,8 @@ class TestMpsIntersectDenseExtended:
         result_cpu = k2.intersect_dense(fsa_cpu, dense_cpu, output_beam=100.0)
         result_mps = k2.intersect_dense(fsa_mps, dense_mps, output_beam=100.0)
 
-        assert torch.allclose(result_mps.scores.cpu(), result_cpu.scores, atol=1e-5)
+        assert torch.allclose(
+            result_mps.scores.cpu(), result_cpu.scores, atol=1e-5)
 
         result_cpu.scores.sum().backward()
         result_mps.scores.sum().backward()
@@ -1079,8 +1101,10 @@ class TestMpsMutualInformationExtended:
             mi_cpu = k2.mutual_information_recursion(px, py)
             mi_mps = k2.mutual_information_recursion(px_mps, py_mps)
 
-            assert torch.allclose(mi_mps.cpu(), mi_cpu, atol=1e-4), \
-                f"Failed at S={S}, T={T}: MPS={mi_mps.item():.4f} CPU={mi_cpu.item():.4f}"
+            assert torch.allclose(mi_mps.cpu(), mi_cpu, atol=1e-4), (
+                f"Failed at S={S}, T={T}: "
+                f"MPS={mi_mps.item():.4f} CPU={mi_cpu.item():.4f}"
+            )
 
     def test_mutual_information_gradient_varied_sizes(self):
         """mutual_information backward is correct for several (S, T) sizes."""
@@ -1189,8 +1213,10 @@ class TestMpsForwardScoresNumericalStress:
         fsa_cpu.scores.requires_grad_(True)
         fsa_mps.scores.requires_grad_(True)
 
-        tot_cpu = fsa_cpu.get_tot_scores(use_double_scores=False, log_semiring=True)
-        tot_mps = fsa_mps.get_tot_scores(use_double_scores=False, log_semiring=True)
+        tot_cpu = fsa_cpu.get_tot_scores(
+            use_double_scores=False, log_semiring=True)
+        tot_mps = fsa_mps.get_tot_scores(
+            use_double_scores=False, log_semiring=True)
 
         tot_cpu.backward()
         tot_mps.backward()

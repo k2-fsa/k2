@@ -321,7 +321,8 @@ class _GetBackwardScoresFunction(torch.autograd.Function):
                                      state_batches=state_batches,
                                      entering_arc_batches=entering_arc_batches,
                                      log_semiring=log_semiring,
-                                     backward_scores=backward_scores.contiguous(),
+                                     backward_scores=(
+                                         backward_scores.contiguous()),
                                      backward_scores_deriv=backward_scores_grad
                                      .expand_as(backward_scores).contiguous())
 
@@ -584,8 +585,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
         if ctx.on_mps:
             # arc_map_a/b are on CPU; move grad to CPU, scatter, move back.
-            # Use out_fsa_grad.dtype (not fsa_grad_cpu.dtype) as the authoritative
-            # dtype to match the non-MPS branch and support fp16/bf16 correctly.
+            # Use out_fsa_grad.dtype (not fsa_grad_cpu.dtype) as the
+            # authoritative dtype: matches non-MPS branch, supports fp16/bf16.
             fsa_grad_cpu = out_fsa_grad.cpu()
             grad_a = torch.zeros(a_scores.size(0),
                                  dtype=out_fsa_grad.dtype,

@@ -661,8 +661,8 @@ class Fsa(object):
             elif self.scores.device.type == 'mps' and use_double_scores:
                 raise NotImplementedError(
                     '_get_forward_scores with use_double_scores=True is not '
-                    'supported on MPS. Use the differentiable get_forward_scores '
-                    'or move the FSA to CPU first with fsa.to("cpu").')
+                    'supported on MPS. Use get_forward_scores (differentiable)'
+                    ' or move the FSA to CPU first with fsa.to("cpu").')
             else:
                 if use_double_scores:
                     func = _k2.get_forward_scores_double
@@ -763,7 +763,8 @@ class Fsa(object):
             # through cpu_scores (the unused_scores arg above), not through
             # cpu_tot itself, so this device transfer does not detach the grad.
             # MPS doesn't support float64; downcast to float32 before moving.
-            result = cpu_tot.float() if cpu_tot.dtype == torch.float64 else cpu_tot
+            result = (cpu_tot.float()
+                      if cpu_tot.dtype == torch.float64 else cpu_tot)
             return result.to(self.scores.device)
         tot_scores = k2.autograd._GetTotScoresFunction.apply(
             self, log_semiring, use_double_scores, self.scores)
@@ -1556,7 +1557,7 @@ def get_aux_label_info(acceptor: Optional[bool], num_aux_labels: Optional[int],
         if num_aux_labels != 0:
             aux_label_names.append('aux_labels')
         for i in range(1, num_aux_labels):
-            aux_label_names.append(f'aux_labels{i+1}')
+            aux_label_names.append(f'aux_labels{i + 1}')
         return num_aux_labels, aux_label_names
     else:
         return (0, [])
