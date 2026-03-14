@@ -12,7 +12,7 @@ Install from source
 
 .. hint::
 
-    It supports Linux (CPU + CUDA), macOS (CPU), and Windows (CPU + CUDA).
+    It supports Linux (CPU + CUDA), macOS (CPU + MPS), and Windows (CPU + CUDA).
 
 .. hint::
 
@@ -50,6 +50,37 @@ After setting up the environment, we are ready to build k2:
   python3 setup.py install
 
 That is all you need to run.
+
+.. _install k2 with mps:
+
+Building with Apple Silicon (MPS) support
+------------------------------------------
+
+On macOS with an M-series chip, you can enable the Metal Performance Shaders
+backend by passing ``-DK2_WITH_MPS=ON`` to CMake:
+
+.. code-block:: bash
+
+  git clone https://github.com/k2-fsa/k2.git
+  cd k2
+  export K2_CMAKE_ARGS="-DK2_WITH_MPS=ON"
+  export K2_MAKE_ARGS="-j6"
+  python3 setup.py install
+
+To verify that MPS support is active:
+
+.. code-block:: python
+
+  import k2
+  print(k2.with_mps)   # True on Apple Silicon with MPS build
+
+.. hint::
+
+  PyTorch >= 2.2 is required for MPS support. Float64 operations and a small
+  number of non-differentiable internal functions are not available on MPS;
+  the differentiable public API (``get_forward_scores``, ``get_tot_scores``,
+  ``get_arc_post``, ``intersect_dense``, ``mutual_information_recursion``)
+  works fully on MPS.
 
 .. hint::
 
