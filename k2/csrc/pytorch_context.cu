@@ -231,7 +231,8 @@ class PytorchCudaContext : public Context {
     // so it is fine to invoke lazyInitCUDA() multiple times.
     // The call will be inlined since it is defined in the header
     // aten/src/ATen/Context.h
-#if  K2_TORCH_VERSION_MAJOR > 2 || (K2_TORCH_VERSION_MAJOR == 2 && K2_TORCH_VERSION_MINOR >= 6)
+#if K2_TORCH_VERSION_MAJOR > 2 || \
+    (K2_TORCH_VERSION_MAJOR == 2 && K2_TORCH_VERSION_MINOR >= 6)
     at::globalContext().lazyInitDevice(torch::kCUDA);
 #else
     at::globalContext().lazyInitCUDA();
