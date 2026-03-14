@@ -25,7 +25,8 @@
 //   • ExclusiveSumMps no longer allocates a zeroed intermediate tensor;
 //     it uses constant_pad_nd to prepend the leading 0 in one fused Metal op.
 //   • InclusiveSumMps reduced from 3 ATen ops to 1 (direct int32 cumsum).
-//   • RowSplitsToRowIdsMps diff cast removed; repeat_interleave uses int32 counts.
+//   • RowSplitsToRowIdsMps diff cast removed; repeat_interleave uses int32
+//     counts.
 //   • MaxSizeMps diff + max now operate in int32 throughout.
 #pragma once
 
@@ -81,7 +82,8 @@ inline void InclusiveSumMps(int32_t n, const int32_t *src, int32_t *dest) {
   dst_t.copy_(src_t.cumsum(0));
 }
 
-// RowSplitsToRowIdsMps: row_ids[i] = j  where row_splits[j] <= i < row_splits[j+1].
+// RowSplitsToRowIdsMps: row_ids[i] = j  where
+//   row_splits[j] <= i < row_splits[j+1].
 //
 // int32 diff and repeat_interleave(int32 counts) are both supported on MPS.
 inline void RowSplitsToRowIdsMps(int32_t num_rows, const int32_t *row_splits,
@@ -95,12 +97,14 @@ inline void RowSplitsToRowIdsMps(int32_t num_rows, const int32_t *row_splits,
   row_ids_t.copy_(torch::repeat_interleave(arange, counts));
 }
 
-// RowIdsToRowSplitsMps: row_splits[j] = number of elements strictly before row j.
+// RowIdsToRowSplitsMps: row_splits[j] = number of elements strictly before
+// row j.
 //
 // int32 searchsorted is supported on MPS.
 inline void RowIdsToRowSplitsMps(int32_t num_elems, const int32_t *row_ids,
                                    int32_t num_rows, int32_t *row_splits) {
-  auto mps_i32 = torch::TensorOptions().dtype(torch::kInt32).device(torch::kMPS);
+  auto mps_i32 = torch::TensorOptions()
+                     .dtype(torch::kInt32).device(torch::kMPS);
   auto row_ids_t    = AsMpsTensor(row_ids,    (int64_t)num_elems);
   auto row_splits_t = AsMpsTensor(row_splits, (int64_t)(num_rows + 1));
   auto boundaries = torch::arange((int64_t)num_rows, mps_i32);
@@ -110,7 +114,8 @@ inline void RowIdsToRowSplitsMps(int32_t num_elems, const int32_t *row_ids,
   row_splits_t.slice(0, num_rows).fill_(num_elems);
 }
 
-// MaxSizeMps: max over (row_splits[i+1] - row_splits[i]) for i in [0, num_rows).
+// MaxSizeMps: max over (row_splits[i+1] - row_splits[i])
+// for i in [0, num_rows).
 //
 // int32 diff + max avoids the previous int64 round-trip.
 inline int32_t MaxSizeMps(int32_t num_rows, const int32_t *row_splits) {
