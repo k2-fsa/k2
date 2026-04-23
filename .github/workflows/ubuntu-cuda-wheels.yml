@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - wheel
-      - torch-2.10.0
+      - torch-2.11.0
     tags:
       - '*'
   workflow_dispatch:
