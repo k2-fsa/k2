@@ -769,3 +769,234 @@ The output should look like the following:
   Built on Tue_Feb_27_16:19:38_PST_2024
   Cuda compilation tools, release 12.4, V12.4.99
   Build cuda_12.4.r12.4/compiler.33961263_0
+
+CUDA 12.6
+---------
+
+You can use the following commands to install CUDA 12.6. We install it
+into ``/star-fj/fangjun/software/cuda-12.6.0``. You can replace it
+if needed.
+
+.. code-block:: bash
+
+  wget https://developer.download.nvidia.com/compute/cuda/12.6.0/local_installers/cuda_12.6.0_560.28.03_linux.run
+
+  chmod +x cuda_12.6.0_560.28.03_linux.run
+
+  ./cuda_12.6.0_560.28.03_linux.run \
+    --silent \
+    --toolkit \
+    --installpath=/star-fj/fangjun/software/cuda-12.6.0 \
+    --no-opengl-libs \
+    --no-drm \
+    --no-man-page
+
+Install cuDNN9 for CUDA 12.6
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now, install ``cuDNN`` for CUDA 12.6.
+
+.. code-block:: bash
+
+  wget https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/cudnn-linux-x86_64-9.21.1.3_cuda12-archive.tar.xz
+
+  tar xvf cudnn-linux-x86_64-9.21.1.3_cuda12-archive.tar.xz --strip-components=1 -C /star-fj/fangjun/software/cuda-12.6.0
+
+Set environment variables for CUDA 12.6
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Note that we have to set the following environment variables after installing
+CUDA 11.8. You can save the following code to ``activate-cuda-12.6.sh``
+and use ``source activate-cuda-12.6.sh`` if you want to activate CUDA 12.6.
+
+.. code-block:: bash
+
+  export CUDA_HOME=/star-fj/fangjun/software/cuda-12.6.0
+  export PATH=$CUDA_HOME/bin:$PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/lib:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/extras/CUPTI/lib64:$LD_LIBRARY_PATH
+  export CUDAToolkit_ROOT_DIR=$CUDA_HOME
+  export CUDAToolkit_ROOT=$CUDA_HOME
+
+  export CUDA_TOOLKIT_ROOT_DIR=$CUDA_HOME
+  export CUDA_TOOLKIT_ROOT=$CUDA_HOME
+  export CUDA_BIN_PATH=$CUDA_HOME
+  export CUDA_PATH=$CUDA_HOME
+  export CUDA_INC_PATH=$CUDA_HOME/targets/x86_64-linux
+  export CFLAGS=-I$CUDA_HOME/targets/x86_64-linux/include:$CFLAGS
+  export CUDAToolkit_TARGET_DIR=$CUDA_HOME/targets/x86_64-linux
+
+To check that you have installed CUDA 12.6 successfully, please run:
+
+.. code-block:: bash
+
+  which nvcc
+
+  nvcc --version
+
+The output should look like the following:
+
+.. code-block:: bash
+
+  /star-fj/fangjun/software/cuda-12.6.0/bin/nvcc
+
+  nvcc: NVIDIA (R) Cuda compiler driver
+  Copyright (c) 2005-2024 NVIDIA Corporation
+  Built on Fri_Jun_14_16:34:21_PDT_2024
+  Cuda compilation tools, release 12.6, V12.6.20
+  Build cuda_12.6.r12.6/compiler.34431801_0
+
+CUDA 12.8
+---------
+
+You can use the following commands to install CUDA 12.8. We install it
+into ``/star-fj/fangjun/software/cuda-12.8.0``. You can replace it
+if needed.
+
+.. code-block:: bash
+
+  wget https://developer.download.nvidia.com/compute/cuda/12.8.0/local_installers/cuda_12.8.0_570.86.10_linux.run
+
+  chmod +x cuda_12.8.0_570.86.10_linux.run
+
+  ./cuda_12.8.0_570.86.10_linux.run \
+    --silent \
+    --toolkit \
+    --installpath=/star-fj/fangjun/software/cuda-12.8.0 \
+    --no-opengl-libs \
+    --no-drm \
+    --no-man-page
+
+Install cuDNN9 for CUDA 12.8
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now, install ``cuDNN`` for CUDA 12.8.
+
+.. code-block:: bash
+
+  wget https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/cudnn-linux-x86_64-9.21.1.3_cuda12-archive.tar.xz
+
+  tar xvf cudnn-linux-x86_64-9.21.1.3_cuda12-archive.tar.xz --strip-components=1 -C /star-fj/fangjun/software/cuda-12.8.0
+
+Set environment variables for CUDA 12.8
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Note that we have to set the following environment variables after installing
+CUDA 11.8. You can save the following code to ``activate-cuda-12.8.sh``
+and use ``source activate-cuda-12.8.sh`` if you want to activate CUDA 12.8.
+
+.. code-block:: bash
+
+  export CUDA_HOME=/star-fj/fangjun/software/cuda-12.8.0
+  export PATH=$CUDA_HOME/bin:$PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/lib:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/extras/CUPTI/lib64:$LD_LIBRARY_PATH
+  export CUDAToolkit_ROOT_DIR=$CUDA_HOME
+  export CUDAToolkit_ROOT=$CUDA_HOME
+
+  export CUDA_TOOLKIT_ROOT_DIR=$CUDA_HOME
+  export CUDA_TOOLKIT_ROOT=$CUDA_HOME
+  export CUDA_BIN_PATH=$CUDA_HOME
+  export CUDA_PATH=$CUDA_HOME
+  export CUDA_INC_PATH=$CUDA_HOME/targets/x86_64-linux
+  export CFLAGS=-I$CUDA_HOME/targets/x86_64-linux/include:$CFLAGS
+  export CUDAToolkit_TARGET_DIR=$CUDA_HOME/targets/x86_64-linux
+
+To check that you have installed CUDA 12.8 successfully, please run:
+
+.. code-block:: bash
+
+  which nvcc
+
+  nvcc --version
+
+The output should look like the following:
+
+.. code-block:: bash
+
+  /star-fj/fangjun/software/cuda-12.8.0/bin/nvcc
+
+  nvcc: NVIDIA (R) Cuda compiler driver
+  Copyright (c) 2005-2025 NVIDIA Corporation
+  Built on Wed_Jan_15_19:20:09_PST_2025
+  Cuda compilation tools, release 12.8, V12.8.61
+  Build cuda_12.8.r12.8/compiler.35404655_0
+
+CUDA 12.9
+---------
+
+You can use the following commands to install CUDA 12.9. We install it
+into ``/star-fj/fangjun/software/cuda-12.9.0``. You can replace it
+if needed.
+
+.. code-block:: bash
+
+  wget https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_575.51.03_linux.run
+
+  chmod +x cuda_12.9.0_575.51.03_linux.run
+
+  ./cuda_12.9.0_575.51.03_linux.run \
+    --silent \
+    --toolkit \
+    --installpath=/star-fj/fangjun/software/cuda-12.9.0 \
+    --no-opengl-libs \
+    --no-drm \
+    --no-man-page
+
+Install cuDNN9 for CUDA 12.9
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now, install ``cuDNN`` for CUDA 12.9.
+
+.. code-block:: bash
+
+  wget https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/cudnn-linux-x86_64-9.21.1.3_cuda12-archive.tar.xz
+
+  tar xvf cudnn-linux-x86_64-9.21.1.3_cuda12-archive.tar.xz --strip-components=1 -C /star-fj/fangjun/software/cuda-12.9.0
+
+Set environment variables for CUDA 12.9
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Note that we have to set the following environment variables after installing
+CUDA 11.8. You can save the following code to ``activate-cuda-12.9.sh``
+and use ``source activate-cuda-12.9.sh`` if you want to activate CUDA 12.9.
+
+.. code-block:: bash
+
+  export CUDA_HOME=/star-fj/fangjun/software/cuda-12.9.0
+  export PATH=$CUDA_HOME/bin:$PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/lib:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=$CUDA_HOME/extras/CUPTI/lib64:$LD_LIBRARY_PATH
+  export CUDAToolkit_ROOT_DIR=$CUDA_HOME
+  export CUDAToolkit_ROOT=$CUDA_HOME
+
+  export CUDA_TOOLKIT_ROOT_DIR=$CUDA_HOME
+  export CUDA_TOOLKIT_ROOT=$CUDA_HOME
+  export CUDA_BIN_PATH=$CUDA_HOME
+  export CUDA_PATH=$CUDA_HOME
+  export CUDA_INC_PATH=$CUDA_HOME/targets/x86_64-linux
+  export CFLAGS=-I$CUDA_HOME/targets/x86_64-linux/include:$CFLAGS
+  export CUDAToolkit_TARGET_DIR=$CUDA_HOME/targets/x86_64-linux
+
+To check that you have installed CUDA 12.9 successfully, please run:
+
+.. code-block:: bash
+
+  which nvcc
+
+  nvcc --version
+
+The output should look like the following:
+
+.. code-block:: bash
+
+  /star-fj/fangjun/software/cuda-12.9.0/bin/nvcc
+
+  nvcc: NVIDIA (R) Cuda compiler driver
+  Copyright (c) 2005-2025 NVIDIA Corporation
+  Built on Wed_Apr__9_19:24:57_PDT_2025
+  Cuda compilation tools, release 12.9, V12.9.41
+  Build cuda_12.9.r12.9/compiler.35813241_0

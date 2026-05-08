@@ -10,6 +10,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import datetime
 import os
 import re
 import sys
@@ -21,7 +22,8 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'k2'
-copyright = '2020-2022, k2 development team'
+year = datetime.date.today().year
+copyright = f'2020-{year}, k2 development team'
 author = 'k2 development team'
 
 
@@ -54,6 +56,7 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinxcontrib.bibtex',
     'sphinxcontrib.youtube',
+    "sphinx_copybutton",  # https://sphinx-copybutton.readthedocs.io/en/latest/
 ]
 bibtex_bibfiles = ['refs.bib']
 
