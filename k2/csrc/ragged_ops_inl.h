@@ -557,6 +557,10 @@ struct PairInputIterator {
   __device__ __forceinline__ PairInputIterator operator+(int32_t offset) {
     return PairInputIterator{t_, offset + offset_};
   }
+  __device__ __forceinline__ PairInputIterator &operator+=(int32_t offset) {
+    offset_ += offset;
+    return *this;
+  }
   const T *t_;
   int32_t offset_;
 };
@@ -591,6 +595,11 @@ struct PairOutputIterator {  // outputs just the index of the pair.
   __host__ __device__ __forceinline__ PairOutputIterator
   operator+(int32_t offset) {
     return PairOutputIterator{i_ + offset};
+  }
+  __host__ __device__ __forceinline__ PairOutputIterator &operator+=(
+      int32_t offset) {
+    i_ += offset;
+    return *this;
   }
   int32_t *i_;
 };

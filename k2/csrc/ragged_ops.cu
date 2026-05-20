@@ -2494,6 +2494,10 @@ struct HashInputIterator {
   __device__ __forceinline__ HashInputIterator operator+(int32_t offset) const {
     return HashInputIterator(i_ + offset);
   }
+  __device__ __forceinline__ HashInputIterator &operator+=(int32_t offset) {
+    i_ += offset;
+    return *this;
+  }
   const int32_t *i_;
 };
 
@@ -2528,6 +2532,11 @@ struct HashOutputIterator {  // outputs just the index of the pair.
   __host__ __device__ __forceinline__ HashOutputIterator
   operator+(size_t offset) {
     return HashOutputIterator{t_ + offset};
+  }
+  __host__ __device__ __forceinline__ HashOutputIterator &operator+=(
+      size_t offset) {
+    t_ += offset;
+    return *this;
   }
   T *t_;
 };
