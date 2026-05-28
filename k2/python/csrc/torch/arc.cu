@@ -80,9 +80,10 @@ static void PybindArcImpl(py::module &m) {
         if (tensor.numel() == 0)
           return torch::empty(tensor.sizes(),
                               tensor.options().dtype(scalar_type));
-        return torch::from_blob(
-            tensor.data_ptr(), tensor.sizes(), tensor.strides(),
-            [tensor](void *p) {}, tensor.options().dtype(scalar_type));
+        // Use view() rather than from_blob so the result is a proper tensor
+        // view that shares storage with the input.  from_blob with a custom
+        // no-op deleter breaks on MPS because Metal buffer metadata is lost.
+        return tensor.view(scalar_type);
       },
       py::arg("tensor"));
 
@@ -94,9 +95,7 @@ static void PybindArcImpl(py::module &m) {
         if (tensor.numel() == 0)
           return torch::empty(tensor.sizes(),
                               tensor.options().dtype(scalar_type));
-        return torch::from_blob(
-            tensor.data_ptr(), tensor.sizes(), tensor.strides(),
-            [tensor](void *p) {}, tensor.options().dtype(scalar_type));
+        return tensor.view(scalar_type);
       },
       py::arg("tensor"));
 }

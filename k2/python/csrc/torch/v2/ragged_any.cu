@@ -375,6 +375,13 @@ RaggedAny RaggedAny::To(torch::Device device) const {
     return RaggedAny(any.To(GetCpuContext()));
   }
 
+#ifdef K2_WITH_MPS
+  if (device.type() == torch::kMPS) {
+    if (context->GetDeviceType() == kMps) return *this;
+    return RaggedAny(any.To(GetMpsContext()));
+  }
+#endif
+
   K2_CHECK(device.is_cuda()) << device.str();
 
   int32_t device_index = device.index();

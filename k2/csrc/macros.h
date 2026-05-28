@@ -61,7 +61,8 @@ You can replace the above code with `K2_EVAL` by the following code:
 
 #define K2_EVAL(context, dim, lambda_name, ...)                        \
   do {                                                                 \
-    if (context->GetDeviceType() == kCpu) {                            \
+    if (context->GetDeviceType() == kCpu ||                            \
+        context->GetDeviceType() == kMps) {                            \
       auto lambda_name = [=] __VA_ARGS__;                              \
       int32_t lambda_name##_dim = dim;                                 \
       for (int32_t i = 0; i != lambda_name##_dim; ++i) lambda_name(i); \
@@ -110,7 +111,8 @@ You can replace the above code with `K2_EVAL2` by the following code:
  */
 #define K2_EVAL2(context, m, n, lambda_name, ...)                         \
   do {                                                                    \
-    if (context->GetDeviceType() == kCpu) {                               \
+    if (context->GetDeviceType() == kCpu ||                               \
+        context->GetDeviceType() == kMps) {                               \
       auto lambda_name = [=] __VA_ARGS__;                                 \
       int32_t lambda_name##_m = m;                                        \
       int32_t lambda_name##_n = n;                                        \
@@ -143,7 +145,8 @@ Here is an example:
  */
 #define K2_TRANS_EXCSUM(context, dim, ans_data, lambda_name, ...)              \
   do {                                                                         \
-    if (context->GetDeviceType() == kCpu) {                                    \
+    if (context->GetDeviceType() == kCpu ||                                    \
+        context->GetDeviceType() == kMps) {                                    \
       auto lambda_name = [=] __VA_ARGS__;                                      \
       int32_t lambda_name##_dim = dim;                                         \
       ans_data[0] = 0;                                                         \

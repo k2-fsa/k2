@@ -105,6 +105,18 @@ std::vector<torch::Tensor> MutualInformationBackwardCuda(
     torch::Tensor px, torch::Tensor py, torch::optional<torch::Tensor> boundary,
     torch::Tensor p, torch::Tensor ans_grad, bool overwrite_ans_grad);
 
+#ifdef K2_WITH_MPS
+torch::Tensor MutualInformationMps(
+    torch::Tensor px, torch::Tensor py,
+    torch::optional<torch::Tensor> boundary,
+    torch::Tensor p);
+
+std::vector<torch::Tensor> MutualInformationBackwardMps(
+    torch::Tensor px, torch::Tensor py,
+    torch::optional<torch::Tensor> boundary,
+    torch::Tensor p, torch::Tensor ans_grad, bool overwrite_ans_grad);
+#endif  // K2_WITH_MPS
+
 }  // namespace k2
 
 void PybindMutualInformation(py::module &m);

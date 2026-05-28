@@ -158,6 +158,31 @@ class SwooshFunction
       return torch::logaddexp(zero, x - kShift) - kCoeff * x - kOffset;
     }
 
+#ifdef K2_WITH_MPS
+    if (context->GetDeviceType() == kMps) {
+      // K2_EVAL reads raw tensor data via CPU pointers; on MPS this races
+      // against pending Metal writes. Use ATen ops that run natively on MPS.
+      // The 8-bit quantised gradient trick is skipped; standard autograd
+      // handles differentiation via the saved tensors below.
+      torch::Tensor zero = torch::zeros({1}, x.options());
+      torch::Tensor y = torch::logaddexp(zero, x - kShift)
+                        - kCoeff * x - kOffset;
+      torch::Tensor mask;
+      if (dropout_prob != 0.0f) {
+        mask = torch::bernoulli(torch::full_like(y, 1.0f - dropout_prob));
+        y = y * mask / (1.0f - dropout_prob);
+      }
+      ctx->saved_data["dropout_prob"] = static_cast<double>(dropout_prob);
+      ctx->saved_data["mps"] = true;
+      if (dropout_prob != 0.0f) {
+        ctx->save_for_backward({x, mask});
+      } else {
+        ctx->save_for_backward({x});
+      }
+      return y;
+    }
+#endif
+
     x = x.contiguous();
 
     torch::Tensor y = torch::empty_like(x).contiguous();
@@ -225,6 +250,25 @@ class SwooshFunction
   static torch::autograd::tensor_list backward(
       torch::autograd::AutogradContext *ctx,
       torch::autograd::tensor_list y_grad) {
+#ifdef K2_WITH_MPS
+    if (ctx->saved_data.count("mps") && ctx->saved_data["mps"].toBool()) {
+      float dropout_prob = ctx->saved_data["dropout_prob"].toDouble();
+      auto saved = ctx->get_saved_variables();
+      torch::Tensor x = saved[0];
+      torch::Tensor out_grad = y_grad[0].contiguous();
+      // swoosh'(x) = sigmoid(x - kShift) - kCoeff
+      torch::Tensor deriv = torch::sigmoid(x - kShift) - kCoeff;
+      torch::Tensor in_grad;
+      if (dropout_prob != 0.0f) {
+        torch::Tensor mask = saved[1];
+        in_grad = out_grad * deriv * mask / (1.0f - dropout_prob);
+      } else {
+        in_grad = out_grad * deriv;
+      }
+      return {in_grad, torch::Tensor()};
+    }
+#endif
+
     float dropout_prob = ctx->saved_data["dropout_prob"].toDouble();
     auto saved = ctx->get_saved_variables();
 
@@ -283,6 +327,16 @@ torch::Tensor SwooshForward(torch::Tensor x) {
   static constexpr float kOffset = SwooshConstants::kOffset;
 
   x = x.to(torch::kFloat32).contiguous();
+
+#ifdef K2_WITH_MPS
+  if (context->GetDeviceType() == kMps) {
+    // K2_EVAL reads raw MPS tensor pointers from CPU. Use numerically-stable
+    // ATen logaddexp which runs natively on MPS without raw pointer access.
+    torch::Tensor zero = torch::zeros({1}, x.options());
+    return torch::logaddexp(zero, x - kShift) - kCoeff * x - kOffset;
+  }
+#endif
+
   const float *x_data = x.data_ptr<float>();
 
   torch::Tensor y = torch::empty_like(x).contiguous();
@@ -327,6 +381,18 @@ std::pair<torch::Tensor, torch::Tensor> SwooshForwardAndDeriv(
   static constexpr float kOffset = SwooshConstants::kOffset;
 
   x = x.to(torch::kFloat32).contiguous();
+
+#ifdef K2_WITH_MPS
+  if (context->GetDeviceType() == kMps) {
+    // K2_EVAL reads raw MPS tensor pointers from CPU. Compute via ATen ops
+    // that run natively on MPS. sigmoid(x-shift) = 1 - 1/(1+exp(x-shift)).
+    torch::Tensor zero = torch::zeros({1}, x.options());
+    torch::Tensor y = torch::logaddexp(zero, x - kShift) - kCoeff * x - kOffset;
+    torch::Tensor deriv = torch::sigmoid(x - kShift) - kCoeff;
+    return {y, deriv};
+  }
+#endif
+
   const float *x_data = x.data_ptr<float>();
 
   torch::Tensor y = torch::empty_like(x).contiguous();

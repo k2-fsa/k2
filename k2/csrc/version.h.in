@@ -76,6 +76,16 @@ static constexpr const char *kTorchCudaVersion = "@TORCH_CUDA_VERSION@";
   static constexpr bool kWithCuda = false;
 #endif
 
+#ifndef K2_WITH_MPS
+#cmakedefine K2_WITH_MPS
+#endif
+
+#ifdef K2_WITH_MPS
+  static constexpr bool kWithMps = true;
+#else
+  static constexpr bool kWithMps = false;
+#endif
+
 // Indicate whether NVTX is enabled or not
 #ifndef K2_ENABLE_NVTX
 #cmakedefine K2_ENABLE_NVTX

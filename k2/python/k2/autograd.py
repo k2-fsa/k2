@@ -27,6 +27,22 @@ from .fsa import Fsa
 from .dense_fsa_vec import DenseFsaVec
 
 
+class _MpsScoresBridge(torch.autograd.Function):
+    """Move scores MPS→CPU in forward; CPU→MPS in backward.
+
+    This lets k2's CPU-only C++ algorithms operate on the scores while keeping
+    the gradient connected so that ``fsa.scores.grad`` ends up on MPS.
+    """
+
+    @staticmethod
+    def forward(ctx, mps_scores: torch.Tensor) -> torch.Tensor:
+        return mps_scores.to('cpu')
+
+    @staticmethod
+    def backward(ctx, cpu_grad: torch.Tensor) -> torch.Tensor:
+        return cpu_grad.to('mps')
+
+
 class _GetTotScoresFunction(torch.autograd.Function):
 
     @staticmethod
@@ -94,6 +110,7 @@ class _GetTotScoresFunction(torch.autograd.Function):
         use_double_scores = ctx.use_double_scores
         scores, = ctx.saved_tensors
 
+        target_device = fsas.scores.device
         if log_semiring is False:
             entering_arcs = fsas._get_entering_arcs(use_double_scores)
             _, ragged_int = _k2.shortest_path(fsas.arcs, entering_arcs)
@@ -106,7 +123,7 @@ class _GetTotScoresFunction(torch.autograd.Function):
             # We return four values since the `forward` method accepts four
             # arguments (excluding ctx).
             #      fsas, log_semiring, use_double_scores, unused_scores
-            return None, None, None, scores_grad
+            return None, None, None, scores_grad.to(target_device)
         else:
             arc_post = fsas._get_arc_post(use_double_scores, log_semiring)
             if use_double_scores:
@@ -114,7 +131,7 @@ class _GetTotScoresFunction(torch.autograd.Function):
             else:
                 bprop_func = _k2.get_tot_scores_float_log_backward
             scores_grad = bprop_func(fsas.arcs, arc_post, tot_scores_grad)
-            return None, None, None, scores_grad
+            return None, None, None, scores_grad.to(target_device)
 
 
 class _GetForwardScoresFunction(torch.autograd.Function):
@@ -169,30 +186,55 @@ class _GetForwardScoresFunction(torch.autograd.Function):
         use_double_scores = ctx.use_double_scores
         forward_scores, = ctx.saved_tensors
 
-        if log_semiring:
-            entering_arcs = None
-        else:
-            entering_arcs = fsas._get_entering_arcs(use_double_scores)
-        state_batches = fsas._get_state_batches()
-        leaving_arc_batches = fsas._get_leaving_arc_batches()
-
         bprop_func = (_k2.backprop_get_forward_scores_double
                       if use_double_scores else
                       _k2.backprop_get_forward_scores_float)
 
-        scores_grad = bprop_func(fsas.arcs,
-                                 state_batches=state_batches,
-                                 leaving_arc_batches=leaving_arc_batches,
-                                 log_semiring=log_semiring,
-                                 entering_arcs=entering_arcs,
-                                 forward_scores=forward_scores,
-                                 forward_scores_deriv=forward_scores_grad)
+        if fsas.scores.device.type == 'mps':
+            # C++ batch-traversal ops use K2_EVAL which reads raw pointers
+            # and crashes on MPS.  Run backward on CPU; the final .to()
+            # moves the gradient back to MPS for the upstream graph.
+            cpu_fsas = fsas.to('cpu')
+            cpu_forward_scores = forward_scores.cpu().contiguous()
+            # .expand_as ensures we have a true 1D tensor (not an expanded
+            # scalar with stride 0) when the upstream passes ones_like(fwd).
+            cpu_fwd_grad = (forward_scores_grad
+                            .expand_as(forward_scores)
+                            .cpu()
+                            .contiguous())
+            if log_semiring:
+                cpu_entering_arcs = None
+            else:
+                cpu_entering_arcs = cpu_fsas._get_entering_arcs(
+                    use_double_scores)
+            scores_grad = bprop_func(
+                cpu_fsas.arcs,
+                state_batches=cpu_fsas._get_state_batches(),
+                leaving_arc_batches=cpu_fsas._get_leaving_arc_batches(),
+                log_semiring=log_semiring,
+                entering_arcs=cpu_entering_arcs,
+                forward_scores=cpu_forward_scores,
+                forward_scores_deriv=cpu_fwd_grad)
+        else:
+            if log_semiring:
+                entering_arcs = None
+            else:
+                entering_arcs = fsas._get_entering_arcs(use_double_scores)
+            scores_grad = bprop_func(
+                fsas.arcs,
+                state_batches=fsas._get_state_batches(),
+                leaving_arc_batches=fsas._get_leaving_arc_batches(),
+                log_semiring=log_semiring,
+                entering_arcs=entering_arcs,
+                forward_scores=forward_scores.contiguous(),
+                forward_scores_deriv=forward_scores_grad.expand_as(
+                    forward_scores).contiguous())
 
         return (
             None,  # fsas
             None,  # log_semiring
             None,  # use_double_scores
-            scores_grad  # unused_scores
+            scores_grad.to(fsas.scores.device)  # unused_scores
         )
 
 
@@ -224,9 +266,17 @@ class _GetBackwardScoresFunction(torch.autograd.Function):
         # that, the backward_fn of backward_scores, which is cached in `fsas`,
         # would be set to this object, giving `fsas` a reference to this object,
         # which also has a reference to `fsas`.
-        backward_scores = fsas._get_backward_scores(
-            use_double_scores=use_double_scores,
-            log_semiring=log_semiring).detach()
+        if fsas.scores.device.type == 'mps':
+            # C++ batch-traversal ops use K2_EVAL which reads raw pointers
+            # and crashes on MPS.  Run forward on CPU; move result to MPS.
+            cpu_fsas = fsas.to('cpu')
+            backward_scores = cpu_fsas._get_backward_scores(
+                use_double_scores=use_double_scores,
+                log_semiring=log_semiring).detach().to(fsas.scores.device)
+        else:
+            backward_scores = fsas._get_backward_scores(
+                use_double_scores=use_double_scores,
+                log_semiring=log_semiring).detach()
 
         # NOTE: since `fsas`, `log_semiring` and `use_double_scores` are
         # not tensors, they are saved as attributes of `ctx`.
@@ -245,25 +295,42 @@ class _GetBackwardScoresFunction(torch.autograd.Function):
         use_double_scores = ctx.use_double_scores
         backward_scores, = ctx.saved_tensors
 
-        state_batches = fsas._get_state_batches()
-        entering_arc_batches = fsas._get_entering_arc_batches()
-
         bprop_func = (_k2.backprop_get_backward_scores_double
                       if use_double_scores else
                       _k2.backprop_get_backward_scores_float)
 
-        scores_grad = bprop_func(fsas.arcs,
-                                 state_batches=state_batches,
-                                 entering_arc_batches=entering_arc_batches,
-                                 log_semiring=log_semiring,
-                                 backward_scores=backward_scores,
-                                 backward_scores_deriv=backward_scores_grad)
+        if fsas.scores.device.type == 'mps':
+            cpu_fsas = fsas.to('cpu')
+            cpu_backward_scores = backward_scores.cpu().contiguous()
+            cpu_bwd_grad = (backward_scores_grad
+                            .expand_as(backward_scores)
+                            .cpu()
+                            .contiguous())
+            state_batches = cpu_fsas._get_state_batches()
+            entering_arc_batches = cpu_fsas._get_entering_arc_batches()
+            scores_grad = bprop_func(cpu_fsas.arcs,
+                                     state_batches=state_batches,
+                                     entering_arc_batches=entering_arc_batches,
+                                     log_semiring=log_semiring,
+                                     backward_scores=cpu_backward_scores,
+                                     backward_scores_deriv=cpu_bwd_grad)
+        else:
+            state_batches = fsas._get_state_batches()
+            entering_arc_batches = fsas._get_entering_arc_batches()
+            scores_grad = bprop_func(fsas.arcs,
+                                     state_batches=state_batches,
+                                     entering_arc_batches=entering_arc_batches,
+                                     log_semiring=log_semiring,
+                                     backward_scores=(
+                                         backward_scores.contiguous()),
+                                     backward_scores_deriv=backward_scores_grad
+                                     .expand_as(backward_scores).contiguous())
 
         return (
             None,  # fsas
             None,  # log_semiring
             None,  # use_double_scores
-            scores_grad  # unused_scores
+            scores_grad.to(fsas.scores.device)  # unused_scores
         )
 
 
@@ -308,8 +375,15 @@ class _GetArcPostFunction(torch.autograd.Function):
         # if we didn't do that, the backward_fn of the arc_post, which is cached
         # in `fsas`, would be set to this object, giving `fsas` a reference to
         # this object, which also has a reference to `fsas`.
-        arc_post = fsas._get_arc_post(use_double_scores=use_double_scores,
-                                      log_semiring=log_semiring).detach()
+        if fsas.scores.device.type == 'mps':
+            # C++ batch-traversal ops (K2_EVAL) crash on MPS; bridge to CPU.
+            cpu_fsas = fsas.to('cpu')
+            arc_post = cpu_fsas._get_arc_post(
+                use_double_scores=use_double_scores,
+                log_semiring=log_semiring).detach().to(fsas.scores.device)
+        else:
+            arc_post = fsas._get_arc_post(use_double_scores=use_double_scores,
+                                          log_semiring=log_semiring).detach()
 
         # NOTE: since `fsas`, `log_semiring` and `use_double_scores` are
         # not tensors, they are saved as attributes of `ctx`.
@@ -331,6 +405,22 @@ class _GetArcPostFunction(torch.autograd.Function):
         bprop_func = (_k2.backprop_get_arc_post_double if use_double_scores
                       else _k2.backprop_get_arc_post_float)
 
+        target_device = fsas.scores.device
+        if target_device.type == 'mps':
+            cpu_fsas = fsas.to('cpu')
+            cpu_arc_scores_grad = arc_post_grad.detach().cpu().clone()
+            incoming_arcs = cpu_fsas._get_incoming_arcs()
+            forward_scores_grad, backward_scores_grad = bprop_func(
+                cpu_fsas.arcs, incoming_arcs, cpu_arc_scores_grad)
+            return (
+                None,  # fsas
+                None,  # log_semiring
+                None,  # use_double_scores
+                cpu_arc_scores_grad.to(target_device),      # unused_scores
+                forward_scores_grad.to(target_device),      # forward_scores
+                backward_scores_grad.to(target_device)      # backward_scores
+            )
+
         incoming_arcs = fsas._get_incoming_arcs()
 
         arc_scores_grad = arc_post_grad.detach().clone()
@@ -341,9 +431,9 @@ class _GetArcPostFunction(torch.autograd.Function):
             None,  # fsas
             None,  # log_semiring
             None,  # use_double_scores
-            arc_scores_grad,  # unused_scores
-            forward_scores_grad,  # forward_scores
-            backward_scores_grad  # backward_scores
+            arc_scores_grad.to(target_device),      # unused_scores
+            forward_scores_grad.to(target_device),  # forward_scores
+            backward_scores_grad.to(target_device)  # backward_scores
         )
 
 
@@ -418,9 +508,19 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         '''
         assert len(out_fsa) == 1
 
+        # MPS bridge: _k2.intersect_dense_pruned uses K2_EVAL (CPU-only loops)
+        # and _k2.index_select / index_add are not MPS-safe.  Run the entire
+        # forward on CPU copies and move the result back to MPS at the end.
+        on_mps = a_fsas.scores.device.type == 'mps'
+        if on_mps:
+            a_fsas_fwd = a_fsas.to('cpu')
+            b_fsas_fwd = b_fsas.to('cpu')
+        else:
+            a_fsas_fwd, b_fsas_fwd = a_fsas, b_fsas
+
         ragged_arc, arc_map_a, arc_map_b = _k2.intersect_dense_pruned(
-            a_fsas=a_fsas.arcs,
-            b_fsas=b_fsas.dense_fsa_vec,
+            a_fsas=a_fsas_fwd.arcs,
+            b_fsas=b_fsas_fwd.dense_fsa_vec,
             search_beam=search_beam,
             output_beam=output_beam,
             min_active_states=min_active_states,
@@ -429,7 +529,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
         out_fsa[0] = Fsa(ragged_arc)
 
-        for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
+        for name, a_value in a_fsas_fwd.named_tensor_attr(include_scores=False):
             if isinstance(a_value, torch.Tensor):
                 value = _k2.index_select(a_value, arc_map_a)
             else:
@@ -442,19 +542,21 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
             setattr(out_fsa[0], name, value)
 
-        for name, a_value in a_fsas.named_non_tensor_attr():
+        for name, a_value in a_fsas_fwd.named_non_tensor_attr():
             setattr(out_fsa[0], name, a_value)
 
+        # arc_map_a/b stay on CPU — _k2.index_add is not MPS-safe.
         ctx.arc_map_a = arc_map_a
         ctx.arc_map_b = arc_map_b
+        ctx.on_mps = on_mps
 
         ctx.save_for_backward(unused_scores_a, unused_scores_b)
 
         seqframe_idx = None
         if frame_idx_name is not None:
-            num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+            num_cols = b_fsas_fwd.dense_fsa_vec.scores_dim1()
             seqframe_idx = arc_map_b // num_cols
-            shape = b_fsas.dense_fsa_vec.shape()
+            shape = b_fsas_fwd.dense_fsa_vec.shape()
             fsa_idx0 = _k2.index_select(shape.row_ids(1), seqframe_idx)
             frame_idx = seqframe_idx - _k2.index_select(
                 shape.row_splits(1), fsa_idx0)
@@ -463,11 +565,14 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
         if seqframe_idx_name is not None:
             if seqframe_idx is None:
-                num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+                num_cols = b_fsas_fwd.dense_fsa_vec.scores_dim1()
                 seqframe_idx = arc_map_b // num_cols
 
             assert not hasattr(out_fsa[0], seqframe_idx_name)
             setattr(out_fsa[0], seqframe_idx_name, seqframe_idx)
+
+        if on_mps:
+            out_fsa[0] = out_fsa[0].to('mps')
 
         return out_fsa[0].scores
 
@@ -478,19 +583,36 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         arc_map_a = ctx.arc_map_a
         arc_map_b = ctx.arc_map_b
 
-        grad_a = torch.zeros(a_scores.size(0),
-                             dtype=out_fsa_grad.dtype,
-                             device=a_scores.device,
-                             requires_grad=False)
-
-        grad_b = torch.zeros(
-            *b_scores.shape,
-            dtype=out_fsa_grad.dtype,
-            device=b_scores.device,
-            requires_grad=False).contiguous()  # will use its `view()` later
-
-        _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
-        _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
+        if ctx.on_mps:
+            # arc_map_a/b are on CPU; move grad to CPU, scatter, move back.
+            # Use out_fsa_grad.dtype (not fsa_grad_cpu.dtype) as the
+            # authoritative dtype: matches non-MPS branch, supports fp16/bf16.
+            fsa_grad_cpu = out_fsa_grad.cpu()
+            grad_a = torch.zeros(a_scores.size(0),
+                                 dtype=out_fsa_grad.dtype,
+                                 device='cpu',
+                                 requires_grad=False)
+            grad_b = torch.zeros(
+                *b_scores.shape,
+                dtype=out_fsa_grad.dtype,
+                device='cpu',
+                requires_grad=False).contiguous()
+            _k2.index_add(arc_map_a, fsa_grad_cpu, grad_a)
+            _k2.index_add(arc_map_b, fsa_grad_cpu, grad_b.view(-1))
+            grad_a = grad_a.to('mps')
+            grad_b = grad_b.to('mps')
+        else:
+            grad_a = torch.zeros(a_scores.size(0),
+                                 dtype=out_fsa_grad.dtype,
+                                 device=a_scores.device,
+                                 requires_grad=False)
+            grad_b = torch.zeros(
+                *b_scores.shape,
+                dtype=out_fsa_grad.dtype,
+                device=b_scores.device,
+                requires_grad=False).contiguous()  # will use its `view()` later
+            _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
+            _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
 
         return (
             None,  # a_fass
@@ -567,17 +689,28 @@ class _IntersectDenseFunction(torch.autograd.Function):
         '''
         assert len(out_fsa) == 1
 
+        # MPS bridge: same as _IntersectDensePrunedFunction — run on CPU.
+        on_mps = a_fsas.scores.device.type == 'mps'
+        if on_mps:
+            a_fsas_fwd = a_fsas.to('cpu')
+            b_fsas_fwd = b_fsas.to('cpu')
+            a_to_b_map_fwd = (a_to_b_map.cpu()
+                               if a_to_b_map is not None else None)
+        else:
+            a_fsas_fwd, b_fsas_fwd = a_fsas, b_fsas
+            a_to_b_map_fwd = a_to_b_map
+
         ragged_arc, arc_map_a, arc_map_b = _k2.intersect_dense(
-            a_fsas=a_fsas.arcs,
-            b_fsas=b_fsas.dense_fsa_vec,
-            a_to_b_map=a_to_b_map,
+            a_fsas=a_fsas_fwd.arcs,
+            b_fsas=b_fsas_fwd.dense_fsa_vec,
+            a_to_b_map=a_to_b_map_fwd,
             output_beam=output_beam,
             max_states=max_states,
             max_arcs=max_arcs)
 
         out_fsa[0] = Fsa(ragged_arc)
 
-        for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
+        for name, a_value in a_fsas_fwd.named_tensor_attr(include_scores=False):
             if isinstance(a_value, torch.Tensor):
                 value = _k2.index_select(a_value, arc_map_a)
             else:
@@ -589,24 +722,25 @@ class _IntersectDenseFunction(torch.autograd.Function):
 
             setattr(out_fsa[0], name, value)
 
-        for name, a_value in a_fsas.named_non_tensor_attr():
+        for name, a_value in a_fsas_fwd.named_non_tensor_attr():
             setattr(out_fsa[0], name, a_value)
 
         ctx.arc_map_a = arc_map_a
         ctx.arc_map_b = arc_map_b
+        ctx.on_mps = on_mps
 
         ctx.save_for_backward(unused_scores_a, unused_scores_b)
 
         seqframe_idx = None
         if frame_idx_name is not None:
-            num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+            num_cols = b_fsas_fwd.dense_fsa_vec.scores_dim1()
             if tuple(map(int, torch.__version__.split(".")[:2])) < (1, 8):
                 seqframe_idx = arc_map_b // num_cols
             else:
                 seqframe_idx = torch.div(
                     arc_map_b, num_cols, rounding_mode="floor"
                 )
-            shape = b_fsas.dense_fsa_vec.shape()
+            shape = b_fsas_fwd.dense_fsa_vec.shape()
             fsa_idx0 = _k2.index_select(shape.row_ids(1), seqframe_idx)
             frame_idx = seqframe_idx - _k2.index_select(
                 shape.row_splits(1), fsa_idx0)
@@ -615,7 +749,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
 
         if seqframe_idx_name is not None:
             if seqframe_idx is None:
-                num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+                num_cols = b_fsas_fwd.dense_fsa_vec.scores_dim1()
                 if tuple(map(int, torch.__version__.split(".")[:2])) < (1, 8):
                     seqframe_idx = arc_map_b // num_cols
                 else:
@@ -626,6 +760,9 @@ class _IntersectDenseFunction(torch.autograd.Function):
             assert not hasattr(out_fsa[0], seqframe_idx_name)
             setattr(out_fsa[0], seqframe_idx_name, seqframe_idx)
 
+        if on_mps:
+            out_fsa[0] = out_fsa[0].to('mps')
+
         return out_fsa[0].scores
 
     @staticmethod
@@ -635,19 +772,33 @@ class _IntersectDenseFunction(torch.autograd.Function):
         arc_map_a = ctx.arc_map_a
         arc_map_b = ctx.arc_map_b
 
-        grad_a = torch.zeros(a_scores.size(0),
-                             dtype=torch.float32,
-                             device=a_scores.device,
-                             requires_grad=False)
-
-        grad_b = torch.zeros(
-            *b_scores.shape,
-            dtype=torch.float32,
-            device=b_scores.device,
-            requires_grad=False).contiguous()  # will use its `view()` later
-
-        _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
-        _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
+        if ctx.on_mps:
+            fsa_grad_cpu = out_fsa_grad.cpu()
+            grad_a = torch.zeros(a_scores.size(0),
+                                 dtype=out_fsa_grad.dtype,
+                                 device='cpu',
+                                 requires_grad=False)
+            grad_b = torch.zeros(
+                *b_scores.shape,
+                dtype=out_fsa_grad.dtype,
+                device='cpu',
+                requires_grad=False).contiguous()
+            _k2.index_add(arc_map_a, fsa_grad_cpu, grad_a)
+            _k2.index_add(arc_map_b, fsa_grad_cpu, grad_b.view(-1))
+            grad_a = grad_a.to('mps')
+            grad_b = grad_b.to('mps')
+        else:
+            grad_a = torch.zeros(a_scores.size(0),
+                                 dtype=out_fsa_grad.dtype,
+                                 device=a_scores.device,
+                                 requires_grad=False)
+            grad_b = torch.zeros(
+                *b_scores.shape,
+                dtype=out_fsa_grad.dtype,
+                device=b_scores.device,
+                requires_grad=False).contiguous()  # will use its `view()` later
+            _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
+            _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
 
         return (
             None,  # a_fsas

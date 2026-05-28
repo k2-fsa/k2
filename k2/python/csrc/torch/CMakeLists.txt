@@ -25,6 +25,11 @@ if (K2_WITH_CUDA)
   list(APPEND torch_srcs mutual_information_cuda.cu)
 endif()
 
+if (K2_WITH_MPS)
+  list(APPEND torch_srcs mutual_information_mps.mm)
+  list(APPEND torch_srcs mps_fsa_scores.mm)
+endif()
+
 set(torch_srcs_with_prefix)
 foreach(src IN LISTS torch_srcs)
   list(APPEND torch_srcs_with_prefix "torch/${src}")

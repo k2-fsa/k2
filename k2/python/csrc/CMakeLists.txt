@@ -17,7 +17,19 @@ else()
 endif()
 
 if(NOT K2_WITH_CUDA)
-  transform(OUTPUT_VARIABLE k2_srcs SRCS ${k2_srcs})
+  # Separate .mm (Objective-C++) files before transform() so they are not
+  # renamed to .cc (which would cause Objective-C syntax errors).
+  set(_mm_srcs)
+  set(_non_mm_srcs)
+  foreach(_src IN LISTS k2_srcs)
+    if(_src MATCHES "\\.mm$")
+      list(APPEND _mm_srcs ${_src})
+    else()
+      list(APPEND _non_mm_srcs ${_src})
+    endif()
+  endforeach()
+  transform(OUTPUT_VARIABLE _non_mm_srcs SRCS ${_non_mm_srcs})
+  set(k2_srcs ${_non_mm_srcs} ${_mm_srcs})
 endif()
 
 if(WIN32)
@@ -32,6 +44,10 @@ endif()
 pybind11_add_module(_k2 ${k2_srcs})
 target_link_libraries(_k2 PRIVATE context)
 target_link_libraries(_k2 PRIVATE fsa)
+
+if(APPLE AND K2_WITH_MPS)
+  target_link_libraries(_k2 PRIVATE "-framework Metal" "-framework Foundation")
+endif()
 
 if(APPLE)
   # To fix the following error:

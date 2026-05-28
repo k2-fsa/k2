@@ -35,7 +35,7 @@ class DeviceGuard {
       new_device_ = c->GetDeviceId();
       if (old_device_ != new_device_) SetDevice(new_device_);
     }
-    // else do nothing
+    // else do nothing (CPU and MPS contexts have no CUDA device to guard)
   }
 
   explicit DeviceGuard(int32_t new_device) : new_device_(new_device) {

@@ -28,6 +28,29 @@ LF-MMI training.  This won't give a direct advantage in terms of Word Error Rate
 compared with existing technology; but the point is to do this in a much more
 general and extensible framework to allow further development of ASR technology.
 
+## Apple Silicon (MPS)
+
+k2 supports Apple Silicon (M-series) via PyTorch's Metal Performance Shaders
+(MPS) backend. To build with MPS enabled:
+
+```bash
+git clone https://github.com/k2-fsa/k2.git
+cd k2
+export K2_CMAKE_ARGS="-DK2_WITH_MPS=ON"
+python3 setup.py install
+```
+
+You can verify MPS support is active with:
+
+```python
+import k2
+print(k2.with_mps)  # True
+```
+
+Hot paths (mutual information recursion, forward scores, associative scan) use
+native Metal kernels. Topology-dependent operations run on CPU and return
+MPS-resident tensors with a gradient-connected result.
+
 ## Implementation
 
  A few key points on our implementation strategy.

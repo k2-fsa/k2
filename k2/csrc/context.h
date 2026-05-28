@@ -55,11 +55,13 @@ enum class DeviceType {
   kUnk,
   kCuda,
   kCpu,
+  kMps,
 };
 
 constexpr DeviceType kUnk = DeviceType::kUnk;
 constexpr DeviceType kCuda = DeviceType::kCuda;
 constexpr DeviceType kCpu = DeviceType::kCpu;
+constexpr DeviceType kMps = DeviceType::kMps;
 
 // Intended for use in debugging
 inline std::ostream &operator<<(std::ostream &stream, const DeviceType type) {
@@ -72,6 +74,9 @@ inline std::ostream &operator<<(std::ostream &stream, const DeviceType type) {
       break;
     case kCpu:
       stream << "kCpu";
+      break;
+    case kMps:
+      stream << "kMps";
       break;
     default:
       K2_LOG(FATAL) << "Unreachable code!";
@@ -335,6 +340,11 @@ ContextPtr GetCpuContext();
 //
 // CAUTION: If there are no CUDA capable GPUs, it returns a CPU context!
 ContextPtr GetCudaContext(int32_t gpu_id = -1);
+
+// Return a Context object suitable for work with MPS (Metal Performance
+// Shaders) on Apple Silicon.
+// CAUTION: If MPS is not available, it returns a CPU context!
+ContextPtr GetMpsContext();
 
 /* Returns a (CPU) context that will allocate pinned memory.  (This is CPU
    memory that's pinned for faster GPU memory transfers).  May or may not

@@ -82,9 +82,15 @@ FsaVec PrunedRangesToLattice(
       context = GetCpuContext();
     } else if (ranges.is_cuda()) {
       context = GetCudaContext(ranges.device().index());
+#ifdef K2_WITH_MPS
+    } else if (ranges.device().type() == torch::kMPS) {
+      // MPS: K2_EVAL routes to CPU sequential loop; tensor accessors work via
+      // unified memory on Apple Silicon.
+      context = GetMpsContext();
+#endif
     } else {
       K2_LOG(FATAL) << "Unsupported device: " << ranges.device()
-                    << "\nOnly CPU and CUDA are verified";
+                    << "\nOnly CPU and CUDA are supported";
     }
 
     // "_a" is short for accessor.

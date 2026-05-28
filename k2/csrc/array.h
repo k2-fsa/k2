@@ -374,7 +374,9 @@ ToType(int64_t, Long)
     K2_CHECK_LT(i, Dim());
     const T *data = Data() + i;
     DeviceType type = Context()->GetDeviceType();
-    if (type == kCpu) {
+    if (type == kCpu || type == kMps) {
+      // MPS uses MTLStorageModeShared so data_ptr() is CPU-dereferenceable,
+      // but callers must ensure pending Metal writes are flushed (synchronize).
       return *data;
     } else {
       K2_CHECK_EQ(type, kCuda);

@@ -19,8 +19,8 @@ k2
 k2 is able to seamlessly integrate Finite State
 Automaton (FSA) and Finite State Transducer (FST) algorithms into
 autograd-based machine learning toolkits like PyTorch [#f1]_.
-k2 supports CPU as well as CUDA. It can process a batch of FSTs
-at the same time.
+k2 supports CPU, CUDA, and Apple Silicon via Metal Performance Shaders (MPS).
+It can process a batch of FSTs at the same time.
 
 .. [#f1] Support for TensorFlow will be added in the future.
 

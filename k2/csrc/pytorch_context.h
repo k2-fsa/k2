@@ -31,6 +31,10 @@ class ManagedTensor {
  public:
   explicit ManagedTensor(torch::Tensor tensor) : handle_(tensor) {}
 
+  // Return the underlying tensor.  Used by ToTorch() for MPS arrays to
+  // create a proper MPS tensor view rather than an unsafe from_blob().
+  const torch::Tensor &tensor() const { return handle_; }
+
  private:
   torch::Tensor handle_;  // retain a copy of the tensor passed from Python
 };
@@ -40,6 +44,21 @@ class ManagedTensor {
 // The resulting region shares the underlying memory with
 // the given tensor.
 RegionPtr NewRegion(torch::Tensor tensor);
+
+// Returns a context for the MPS (Metal Performance Shaders) device.
+// On non-Apple platforms or when MPS is unavailable, falls back to CPU.
+ContextPtr GetMpsContext();
+
+#ifdef K2_WITH_MPS
+// Finds the k2-allocated MPS base tensor whose byte range contains `ptr`
+// and returns a Metal-safe view of `n` elements of type `dtype`.
+// The returned tensor is a proper PyTorch MPS view (not from_blob), so
+// ATen ops dispatched on it correctly use the Metal command queue.
+// Aborts if `ptr` is not found in the registry (i.e. was not allocated
+// by PytorchMpsContext::Allocate).
+torch::Tensor MpsRegistryView(const void *ptr, int64_t n,
+                               torch::ScalarType dtype);
+#endif  // K2_WITH_MPS
 
 }  // namespace k2
 

@@ -73,6 +73,12 @@ void PybindRaggedShape(py::module &m) {
 
         if (device.type() == torch::kCPU) return self.To(GetCpuContext());
 
+#ifdef K2_WITH_MPS
+        if (device.type() == torch::kMPS) {
+          return self.To(GetMpsContext());
+        }
+#endif
+
         K2_CHECK(device.is_cuda());
         {
           DeviceGuard g(GetContext(device));

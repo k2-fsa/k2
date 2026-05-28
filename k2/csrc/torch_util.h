@@ -88,13 +88,27 @@ torch::Tensor ToTorch(Array1<T> &array) {
   auto device = torch::Device(device_type, device_id);
   auto scalar_type = ToScalarType<T>::value;
   auto options = torch::device(device).dtype(scalar_type);
-  // We will call torch::from_blob below. However, if we
-  // call it with an empty Array1, we'll get error:
-  // RuntimeError: CUDA error: invalid argument Exception raised from
-  // getDeviceFromPtr at /pytorch/aten/src/ATen/cuda/CUDADevice.h
-  // Definitely we need look into this, but let's just return an empty tensor
-  // when the input Array1 is empty for now.
   if (array.Dim() == 0) return torch::empty(0, options);
+
+#ifdef K2_WITH_MPS
+  if (device_type == torch::kMPS) {
+    // torch::from_blob() with a custom deleter bypasses PyTorch's MPS Metal
+    // buffer tracking, causing crashes on subsequent MPS→CPU transfers.
+    // Return a proper view of the ManagedTensor instead.
+    auto region = array.GetRegion();
+    K2_CHECK(region && region->deleter_context != nullptr)
+        << "MPS Array1 region has no ManagedTensor — cannot create safe view";
+    auto *mt = reinterpret_cast<ManagedTensor *>(region->deleter_context);
+    const torch::Tensor &base = mt->tensor();
+    // Byte offset from the region base to the first array element.
+    ptrdiff_t byte_off = reinterpret_cast<const char *>(array.Data()) -
+                         reinterpret_cast<const char *>(region->data);
+    // Reinterpret the base tensor as scalar_type and narrow to the slice.
+    auto t_view = base.view(scalar_type);
+    int64_t elem_off = static_cast<int64_t>(byte_off) / sizeof(T);
+    return t_view.narrow(0, elem_off, array.Dim());
+  }
+#endif
 
   // NOTE: we keep a copy of `Region` inside the lambda
   // so that `torch::Tensor` always accesses valid memory.

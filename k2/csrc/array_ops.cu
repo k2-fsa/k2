@@ -23,6 +23,9 @@
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
+#ifdef K2_WITH_MPS
+#include "k2/csrc/mps_utils.h"
+#endif
 
 namespace k2 {
 
@@ -69,7 +72,11 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
   ExclusiveSumDeref(last_elems_ptrs, &data_offsets);
   int32_t *data_offsets_data = data_offsets.Data();
 
-  if (c->GetDeviceType() == kCpu) {
+  if (c->GetDeviceType() == kCpu || c->GetDeviceType() == kMps) {
+#ifdef K2_WITH_MPS
+    // Synchronize Metal command queue so the CPU loop reads committed data.
+    if (c->GetDeviceType() == kMps) torch::mps::synchronize();
+#endif
     // a simple loop is faster, although the other branches should still work on
     // CPU.
     for (int32_t i = 0; i < num_arrays; i++) {
@@ -128,7 +135,11 @@ Array1<int32_t> CatWithOffsets(const Array1<int32_t> &offsets,
 
   int32_t *ans_data = ans.Data();
   const int32_t *offsets_data = offsets.Data();
-  if (c->GetDeviceType() == kCpu) {
+  if (c->GetDeviceType() == kCpu || c->GetDeviceType() == kMps) {
+#ifdef K2_WITH_MPS
+    // Synchronize Metal command queue so the CPU loop reads committed data.
+    if (c->GetDeviceType() == kMps) torch::mps::synchronize();
+#endif
     for (int32_t i = 0; i != num_arrays; ++i) {
       int32_t this_dim = src[i]->Dim();
       const int32_t *this_src_data = src[i]->Data();
@@ -305,6 +316,12 @@ Array1<int32_t> GetCounts(ContextPtr c, const int32_t *src_data,
   }
 
   DeviceType d = c->GetDeviceType();
+#ifdef K2_WITH_MPS
+  if (d == kMps) {
+    mps_ops::GetCountsMps(src_data, src_dim, ans_data, n);
+    return ans;
+  }
+#endif
   if (d == kCpu) {
     for (int32_t i = 0; i < src_dim; ++i) {
       ++ans_data[src_data[i]];
@@ -465,7 +482,11 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c,
   if (tot_size == 0) return ans;
   uint32_t *ans_data = ans.Data();
 
-  if (c->GetDeviceType() == kCpu) {
+  if (c->GetDeviceType() == kCpu || c->GetDeviceType() == kMps) {
+#ifdef K2_WITH_MPS
+    // Synchronize Metal command queue before writing directly to the buffer.
+    if (c->GetDeviceType() == kMps) torch::mps::synchronize();
+#endif
     int32_t cur = 0;
     for (int32_t src = 0; src != num_srcs; ++src) {
       int32_t begin = cur,  // i.e. the previous end.

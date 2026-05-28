@@ -209,8 +209,8 @@ class DenseFsaVec(object):
         Args:
           device:
             An instance of `torch.device` or a string that can be used to
-            construct a `torch.device`, e.g., 'cpu', 'cuda:0'.
-            It supports only cpu and cuda devices.
+            construct a `torch.device`, e.g., 'cpu', 'cuda:0', 'mps'.
+            Supports cpu, cuda, and mps devices.
 
         Returns:
           Returns a new DenseFsaVec which is this object copied to the given
@@ -219,7 +219,7 @@ class DenseFsaVec(object):
         if isinstance(device, str):
             device = torch.device(device)
 
-        assert device.type in ('cpu', 'cuda')
+        assert device.type in ('cpu', 'cuda', 'mps')
         if device == self.scores.device:
             return self
 

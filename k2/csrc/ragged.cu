@@ -23,6 +23,9 @@
 #include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
+#ifdef K2_WITH_MPS
+#include "k2/csrc/mps_utils.h"
+#endif
 
 namespace {
 
@@ -142,6 +145,11 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
   if (num_rows == 0) return 0;
   const int32_t *row_splits_data = row_splits.Data();
   ContextPtr c = Context();
+#ifdef K2_WITH_MPS
+  if (c->GetDeviceType() == kMps) {
+    return mps_ops::MaxSizeMps(num_rows, row_splits_data);
+  }
+#endif
   if (c->GetDeviceType() == kCpu) {
     int32_t max_value = 0;
     for (int32_t i = 0; i < num_rows; ++i) {

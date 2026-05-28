@@ -45,6 +45,34 @@ if(APPLE OR (DEFINED K2_WITH_CUDA AND NOT K2_WITH_CUDA))
   endif()
 endif()
 
+# Propagate PYTHON_EXECUTABLE → Python3_EXECUTABLE so all find_package(Python3)
+# calls use the same interpreter (e.g. the active venv) rather than the system
+# Python located by CMake's automatic search.
+if(DEFINED PYTHON_EXECUTABLE AND NOT DEFINED Python3_EXECUTABLE)
+  set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}" CACHE FILEPATH
+      "Path to the Python 3 interpreter" FORCE)
+endif()
+
+# Detect MPS (Metal Performance Shaders) availability on macOS
+set(_K2_WITH_MPS OFF)
+if(APPLE)
+  find_package(Python3 QUIET COMPONENTS Interpreter)
+  if(Python3_FOUND)
+    execute_process(
+      COMMAND ${Python3_EXECUTABLE} -c
+        "import torch; print(torch.backends.mps.is_available())"
+      OUTPUT_VARIABLE _K2_MPS_AVAILABLE
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET)
+    if(_K2_MPS_AVAILABLE STREQUAL "True")
+      message(STATUS "MPS is available -- enabling K2_WITH_MPS")
+      set(_K2_WITH_MPS ON)
+    else()
+      message(STATUS "MPS is NOT available on this machine")
+    endif()
+  endif()
+endif()
+
 if(_K2_WITH_CUDA)
   set(languages ${languages} CUDA)
 endif()
@@ -81,6 +109,7 @@ option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
 option(K2_USE_PYTORCH "Whether to build with PyTorch" ON)
 option(K2_ENABLE_BENCHMARK "Whether to enable benchmark" ON)
 option(K2_WITH_CUDA "Whether to build k2 with CUDA" ${_K2_WITH_CUDA})
+option(K2_WITH_MPS "Whether to build k2 with MPS (Apple Metal)" ${_K2_WITH_MPS})
 option(K2_ENABLE_NVTX "Whether to build k2 with the NVTX library" ON)
 option(K2_ENABLE_TESTS "Whether to build tests" ON)
 
@@ -334,6 +363,11 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
+# Ensure Python3 Development component is found before pybind11, so that
+# python3_add_library is available (required by pybind11 NewTools with CMake 4+).
+if(NOT Python3_Development_FOUND AND NOT Python3_Development.Module_FOUND)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+endif()
 
 include(pybind11)
 if(K2_USE_PYTORCH)
@@ -348,6 +382,10 @@ endif()
 
 if(K2_WITH_CUDA)
   add_definitions(-DK2_WITH_CUDA)
+endif()
+
+if(K2_WITH_MPS)
+  add_definitions(-DK2_WITH_MPS)
 endif()
 
 if(WIN32)
