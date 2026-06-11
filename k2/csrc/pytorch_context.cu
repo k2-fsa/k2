@@ -1,5 +1,6 @@
 /**
  * Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ * Copyright (c) 2026  Advanced Micro Devices, Inc. (authors: Jeff Daily <jeff.daily@amd.com>)
  *
  * See LICENSE for clarification regarding multiple authors
  *
@@ -19,7 +20,17 @@
 #include <memory>
 #include <mutex>  // NOLINT
 
-#ifdef K2_WITH_CUDA
+#if defined(K2_WITH_HIP)
+// On a ROCm torch the c10/cuda/* headers include a generated cuda_cmake_macros.h
+// that only exists as the hip variant, so they do not compile; the c10/hip/*
+// headers are correct on every torch hipify generation.  They define the device
+// APIs under c10::hip (hipify v1 rename) AND under c10::cuda (hipify v2
+// masquerading); the call sites pick the right namespace via TORCH_HIPIFY_V2.
+#include "c10/hip/HIPCachingAllocator.h"
+#include "c10/hip/HIPFunctions.h"
+#include "c10/hip/HIPStream.h"
+#include "torch/cuda.h"
+#elif defined(K2_WITH_CUDA)
 #include "c10/cuda/CUDACachingAllocator.h"
 #include "c10/cuda/CUDAFunctions.h"
 #include "torch/cuda.h"
@@ -145,9 +156,15 @@ class PytorchCudaContext : public Context {
   explicit PytorchCudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
 #ifdef K2_WITH_CUDA
     K2_CHECK_GE(gpu_id, 0);
+#if defined(K2_WITH_HIP) && !defined(TORCH_HIPIFY_V2)
+    // torch hipify v1 renamed the device classes: c10::hip is the only spelling.
+    K2_CHECK_LT(gpu_id, c10::hip::device_count());
+    c10::hip::set_device(static_cast<c10::DeviceIndex>(gpu_id));
+#else
+    // hipify v2 keeps the CUDA spelling as the masquerading API; pure CUDA too.
     K2_CHECK_LT(gpu_id, c10::cuda::device_count());
-
     c10::cuda::set_device(gpu_id);
+#endif
 
     // The internals of `lazyInitCUDA` are executed only once
     // so it is fine to invoke lazyInitCUDA() multiple times.
@@ -159,7 +176,13 @@ class PytorchCudaContext : public Context {
     at::globalContext().lazyInitCUDA();
 #endif
 
+#if defined(K2_WITH_HIP) && !defined(TORCH_HIPIFY_V2)
+    // torch hipify v1 rename: c10::hip::HIPCachingAllocator.
+    allocator_ = c10::hip::HIPCachingAllocator::get();
+#else
+    // hipify v2 masquerading or pure CUDA: c10::cuda::CUDACachingAllocator.
     allocator_ = c10::cuda::CUDACachingAllocator::get();
+#endif
     K2_CHECK(allocator_->raw_deleter() != nullptr);
 #else
     K2_LOG(FATAL) << "Unreachable code.";
@@ -172,8 +195,15 @@ class PytorchCudaContext : public Context {
 
   cudaStream_t GetCudaStream() const override {
 #ifdef K2_WITH_CUDA
+#if defined(K2_WITH_HIP) && !defined(TORCH_HIPIFY_V2)
+    // torch hipify v1 rename: c10::hip::getCurrentHIPStream.
+    return g_stream_override.OverrideStream(
+        c10::hip::getCurrentHIPStream(static_cast<c10::DeviceIndex>(gpu_id_)));
+#else
+    // hipify v2 masquerading or pure CUDA: c10::cuda::getCurrentCUDAStream.
     return g_stream_override.OverrideStream(
         c10::cuda::getCurrentCUDAStream(gpu_id_));
+#endif
 #else
     return cudaStream_t{};
 #endif
@@ -256,7 +286,14 @@ ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
 
   if (has_cuda) {
 #ifdef K2_WITH_CUDA
+#if defined(K2_WITH_HIP) && !defined(TORCH_HIPIFY_V2)
+    // torch hipify v1 rename: c10::hip::current_device.
+    if (gpu_id < 0)
+      gpu_id = static_cast<int32_t>(c10::hip::current_device());
+#else
+    // hipify v2 masquerading or pure CUDA: c10::cuda::current_device.
     if (gpu_id < 0) gpu_id = c10::cuda::current_device();
+#endif
     DeviceGuard guard(gpu_id);
     return std::make_shared<PytorchCudaContext>(gpu_id);
 #else

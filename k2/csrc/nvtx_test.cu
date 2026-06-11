@@ -47,7 +47,8 @@
  *
  */
 
-#include <thread>  // NOLINT
+#include <chrono>   // NOLINT
+#include <thread>   // NOLINT
 
 #include "gtest/gtest.h"
 #include "k2/csrc/nvtx.h"

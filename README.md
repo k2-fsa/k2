@@ -55,6 +55,11 @@ general and extensible framework to allow further development of ASR technology.
  done via the cub library, parts of which we wrap with our own convenient
  interface.
 
+ The same code also builds for AMD GPUs with ROCm/HIP, where the GPU primitives
+ are provided by hipCUB and rocThrust. See the
+ [installation docs](https://k2-fsa.github.io/k2/installation/from_source.html)
+ for how to build the ROCm backend.
+
  The Finite State Automaton object is then implemented as a Ragged tensor templated
  on a specific data type (a struct representing an arc in the automaton).
 

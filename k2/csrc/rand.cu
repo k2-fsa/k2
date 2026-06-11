@@ -20,7 +20,9 @@
 #include <random>
 #include <type_traits>
 
-#ifdef K2_WITH_CUDA
+#if defined(K2_WITH_HIP)
+#include <hiprand/hiprand_kernel.h>  // NOLINT
+#elif defined(K2_WITH_CUDA)
 #include "curand.h"         // NOLINT
 #include "curand_kernel.h"  // NOLINT
 #endif

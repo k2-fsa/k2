@@ -18,8 +18,15 @@
  * limitations under the License.
  */
 
+#if defined(K2_WITH_HIP)
+// c10/cuda/* does not compile on a ROCm torch (generated cuda_cmake_macros.h is
+// hip-only); the c10/hip/* stream header is correct on every hipify generation.
+#include <c10/hip/HIPStream.h>
+#include <hip/hip_cooperative_groups.h>
+#else
 #include <c10/cuda/CUDAStream.h>  // for getCurrentCUDAStream()
 #include <cooperative_groups.h>
+#endif
 
 #include "k2/csrc/utils.h"  // for LogAdd
 #include "k2/python/csrc/torch/mutual_information.h"

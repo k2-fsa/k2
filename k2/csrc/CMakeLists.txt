@@ -91,7 +91,13 @@ else()
   list(APPEND context_srcs default_context.cu)
 endif()
 
-if(NOT K2_WITH_CUDA)
+if(K2_WITH_HIP)
+  # moderngpu and the warp-synchronous CUDPP segmented scan are not portable to
+  # ROCm; drop them and add the hipCUB/rocThrust-backed replacements (same API).
+  list(REMOVE_ITEM context_srcs moderngpu_allocator.cu)
+  list(APPEND context_srcs moderngpu_allocator_hip.cu)
+  list(APPEND context_srcs cudpp/cudpp_hip.cu)
+elseif(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE context_srcs SRCS ${context_srcs})
 else()
   list(APPEND context_srcs cudpp/cudpp.cu)
@@ -110,6 +116,21 @@ target_compile_definitions(context PUBLIC THRUST_NS_QUALIFIER=thrust)
 set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(context PROPERTIES OUTPUT_NAME "k2context")
 
+if(K2_WITH_HIP)
+  # Compile the .cu translation units as HIP and turn on relocatable device code
+  # (k2 declares __device__ symbols in headers and defines them across .cu TUs).
+  set_source_files_properties(${context_srcs} PROPERTIES LANGUAGE HIP)
+  set_target_properties(context PROPERTIES
+    HIP_ARCHITECTURES "${CMAKE_HIP_ARCHITECTURES}"
+    HIP_SEPARABLE_COMPILATION ON)
+  # Select the c10 device namespace by the detected torch hipify generation, not
+  # by OS.  PUBLIC so the consumers that select the same namespace (the gtest
+  # suite, the _k2 module's mutual_information TU) inherit the define.
+  if(K2_TORCH_HIPIFY_V2)
+    target_compile_definitions(context PUBLIC TORCH_HIPIFY_V2)
+  endif()
+endif()
+
 # lib deps
 if(K2_WITH_CUDA AND CUDA_VERSION VERSION_LESS 11.0)
   target_link_libraries(context PUBLIC cub)
@@ -117,6 +138,13 @@ endif()
 
 if(K2_WITH_CUDA)
   target_link_libraries(context PUBLIC moderngpu)
+endif()
+
+if(K2_WITH_HIP)
+  # Link hip::host (NOT hip::device, whose --offload-arch propagation interferes
+  # with the per-target HIP_ARCHITECTURES). hipcub is an INTERFACE (header-only)
+  # target; hiprand provides the device RNG used by rand.cu.
+  target_link_libraries(context PUBLIC hip::host hip::hipcub hip::hiprand)
 endif()
 
 target_link_libraries(context PUBLIC fsa)
@@ -128,16 +156,13 @@ if(K2_USE_PYTORCH)
   if(NOT WIN32)
     target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
   else()
-    # see https://discuss.pytorch.org/t/nvcc-fatal-a-single-input-file-is-required-for-a-non-link-phase-when-an-outputfile-is-specified/142843/6
-    # Depending on ${TORCH_LIBRARIES} will introduce a compile time option "/bigobj",
-    # which causes the error in the above link.
-    #
-    # It would be ideal to remove /bigobj so that we can use ${TORCH_LIBRARIES}.
-    # To make life simpler, we use the following approach.
-    #
+    # On Windows (both MSVC+CUDA and clang+HIP), CMake imported shared-library
+    # targets are not reliably expanded to their import .lib paths in the HIP or
+    # Ninja link rules. Use file(GLOB) over ${TORCH_DIR}/lib/*.lib instead; this
+    # mirrors what the original MSVC+CUDA path already did for the same reason.
     message(STATUS "TORCH_DIR: ${TORCH_DIR}") # TORCH_DIR is defined in cmake/torch.cmake
-    # target_link_libraries(context PUBLIC D:/software/anaconda3/envs/py38/Lib/site-packages/torch/lib/*.lib)
-    target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/*.lib)
+    file(GLOB _torch_libs "${TORCH_DIR}/lib/*.lib")
+    target_link_libraries(context PUBLIC ${_torch_libs})
     target_include_directories(context PUBLIC ${TORCH_DIR}/include)
     target_include_directories(context PUBLIC ${TORCH_DIR}/include/torch/csrc/api/include)
   endif()
@@ -151,11 +176,17 @@ target_include_directories(context PUBLIC ${PYTHON_INCLUDE_DIRS})
 
 if(K2_ENABLE_TESTS OR K2_ENABLE_BENCHMARK)
   set(test_utils_srcs test_utils.cu)
-  if(NOT K2_WITH_CUDA)
+  if(NOT K2_WITH_CUDA AND NOT K2_WITH_HIP)
     transform(OUTPUT_VARIABLE test_utils_srcs SRCS ${test_utils_srcs})
   endif()
 
   add_library(test_utils ${test_utils_srcs})
+  if(K2_WITH_HIP)
+    set_source_files_properties(${test_utils_srcs} PROPERTIES LANGUAGE HIP)
+    set_target_properties(test_utils PROPERTIES
+      HIP_ARCHITECTURES "${CMAKE_HIP_ARCHITECTURES}"
+      HIP_SEPARABLE_COMPILATION ON)
+  endif()
   target_link_libraries(test_utils PUBLIC context gtest)
 endif()
 
@@ -194,7 +225,7 @@ if(K2_ENABLE_TESTS)
     top_sort_test.cu
     utils_test.cu
   )
-  if(NOT K2_WITH_CUDA)
+  if(NOT K2_WITH_CUDA AND NOT K2_WITH_HIP)
     transform(OUTPUT_VARIABLE cuda_test_srcs SRCS ${cuda_test_srcs})
   endif()
 
@@ -206,6 +237,14 @@ if(K2_ENABLE_TESTS)
     set(target_name "cu_${name}")
     add_executable(${target_name} "${source}")
     set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    if(K2_WITH_HIP)
+      # Mark the test .cu LANGUAGE HIP and turn on RDC, else CMake drops them from
+      # the device link (RXMesh lesson: tests would link zero device objects).
+      set_source_files_properties("${source}" PROPERTIES LANGUAGE HIP)
+      set_target_properties(${target_name} PROPERTIES
+        HIP_ARCHITECTURES "${CMAKE_HIP_ARCHITECTURES}"
+        HIP_SEPARABLE_COMPILATION ON)
+    endif()
     target_link_libraries(${target_name}
       PRIVATE
       context

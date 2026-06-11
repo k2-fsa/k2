@@ -19,7 +19,11 @@
 #ifndef K2_CSRC_MODERNGPU_H_
 #define K2_CSRC_MODERNGPU_H_
 
-#ifdef K2_WITH_CUDA
+#if defined(K2_WITH_HIP)
+// moderngpu is not portable to ROCm; use the HIP replacement that exposes the
+// same mgpu:: API (see moderngpu_shim.h).
+#include "k2/csrc/moderngpu_shim.h"
+#elif defined(K2_WITH_CUDA)
 #include "moderngpu/context.hxx"
 #include "moderngpu/kernel_load_balance.hxx"
 #include "moderngpu/kernel_mergesort.hxx"

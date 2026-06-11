@@ -50,7 +50,8 @@ int32_t HighestBitSet(int64_t i) {
   K2_CHECK_GE(i, 0);
 #if defined(__clang__) || defined (__GNUC__)
   if (i == 0) return -1;
-  return 63 - static_cast<int32_t>(__builtin_clzl(i));
+  // Use __builtin_clzll (always 64-bit) not __builtin_clzl (32-bit on Windows)
+  return 63 - static_cast<int32_t>(__builtin_clzll(static_cast<uint64_t>(i)));
 #else
   for (int64_t j = 0; j < 64; ++j) {
     if (i < ((int64_t)1 << j)) {

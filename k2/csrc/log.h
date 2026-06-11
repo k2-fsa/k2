@@ -43,7 +43,17 @@
 
 #include "k2/csrc/macros.h"
 
-#ifdef __CUDA_ARCH__
+#if defined(__HIPCC__)
+// Under clang/HIP a __host__ __device__ function is preprocessed once (host
+// pass) where __CUDA_ARCH__ is absent, so gating the decorator on __CUDA_ARCH__
+// would make it host-only and break device callers. Make it unconditional when
+// the HIP compiler is in use (cudaKDTree __both__ lesson); HIP's
+// __host__ __device__ is valid in both passes. Per-pass dispatch INSIDE these
+// functions uses K2_DEVICE_CODE. Keyed on __HIPCC__ (not the K2_WITH_HIP build
+// flag) so the plain-C++ TUs (e.g. the k2_log .cc built by g++, and k2/csrc/host)
+// that include this header do NOT see the HIP-only attributes.
+#define K2_CUDA_HOSTDEV __host__ __device__
+#elif defined(__CUDA_ARCH__)
 #define K2_CUDA_HOSTDEV __host__ __device__
 #else
 #define K2_CUDA_HOSTDEV
@@ -156,7 +166,7 @@ class Logger {
 
     if (cur_level_ <= level_) {
       printf("%s:%u:%s ", filename, line_num, func_name);
-#if defined(__CUDA_ARCH__)
+#if K2_DEVICE_CODE
       printf("block:[%u,%u,%u], thread: [%u,%u,%u] ", blockIdx.x, blockIdx.y,
              blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z);
 #endif
@@ -179,7 +189,7 @@ class Logger {
     )";
     printf("\n");
     if (level_ == FATAL) {
-#if defined(__CUDA_ARCH__)
+#if K2_DEVICE_CODE
       // this is usually caused by one of the K2_CHECK macros and the detailed
       // error messages should have already been printed by the macro, so we
       // use an arbitrary string here.
@@ -322,7 +332,7 @@ inline int64_t MaxCpuMemAllocate() {
 }
 
 inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
-#if defined(__CUDA_ARCH__)
+#if K2_DEVICE_CODE
   return DEBUG;
 #else
   static LogLevel log_level = INFO;

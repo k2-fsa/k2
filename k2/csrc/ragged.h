@@ -39,13 +39,14 @@ namespace k2 {
 // Note: row_splits is of size num_rows + 1 and row_ids is of size
 // num_elements.
 struct RaggedShapeLayer {
-  RaggedShapeLayer() = default;
-
-  RaggedShapeLayer(const RaggedShapeLayer &) = default;
-  RaggedShapeLayer& operator=(const RaggedShapeLayer &) = default;
-
-  RaggedShapeLayer(RaggedShapeLayer &&) = default;
-  RaggedShapeLayer& operator=(RaggedShapeLayer &&) = default;
+  // NOTE: deliberately no user-declared constructors/assignment. k2
+  // brace-initializes this as an aggregate, e.g. RaggedShapeLayer{splits, ids,
+  // tot}. In C++20 a user-DECLARED (even = default) constructor disqualifies a
+  // type from aggregate initialization (the rule tightened from "user-provided"
+  // in C++17), and the ROCm torch 2.13 headers force a C++20 build, so the
+  // previously-defaulted copy/move/default members are left implicit (which are
+  // identical here -- all members are trivially copyable). The CUDA build is
+  // unaffected: the implicit members match the removed defaulted ones.
 
   // Search for "row_splits concept" in utils.h for explanation.  row_splits
   // is required; it must always be nonempty for a RaggedShapeLayer to be valid.

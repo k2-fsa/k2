@@ -338,7 +338,7 @@ __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
    is an error if it becomes less than zero).
 */
 __host__ __device__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
-#ifdef __CUDA_ARCH__
+#if K2_DEVICE_CODE
   int32_t old = atomicAdd(i, -1);
   K2_CHECK_GT(old, 0);
   return old == 1;
@@ -362,7 +362,7 @@ __host__ __device__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
  */
 template <typename T>
 __host__ __device__ __forceinline__ void AtomicAdd(T *address, T value) {
-#ifdef __CUDA_ARCH__
+#if K2_DEVICE_CODE
   atomicAdd(address, value);
 #else
   // For host code, we assume single-threaded for now).
@@ -376,7 +376,15 @@ __host__ __device__ __forceinline__ void AtomicAdd(T *address, T value) {
 // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomic-functions
 __host__ __device__ __forceinline__ void AtomicAdd(double *address,
                                                      double value) {
-#if __CUDA_ARCH__ >= 600
+#if defined(K2_WITH_HIP)
+#if K2_DEVICE_CODE
+  // gfx9 (CDNA) has native fp64 atomicAdd.
+  atomicAdd(address, value);
+#else
+  // For host code, we assume single-threaded for now.
+  *address += value;
+#endif
+#elif __CUDA_ARCH__ >= 600
   atomicAdd(address, value);
 #elif defined(__CUDA_ARCH__)
   // clang-format off
@@ -418,7 +426,7 @@ __host__ __device__ __forceinline__ float OrderedIntToFloat(int32_t i) {
  */
 __host__ __device__ __forceinline__ int32_t AtomicMax(int32_t *address,
                                                       int32_t val) {
-#if defined(__CUDA_ARCH__)
+#if K2_DEVICE_CODE
   return atomicMax(address, val);
 #else
   int32_t old = *address;

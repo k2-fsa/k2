@@ -21,7 +21,7 @@ set(torch_srcs
   v2/ragged_shape.cu
 )
 
-if (K2_WITH_CUDA)
+if (K2_WITH_CUDA OR K2_WITH_HIP)
   list(APPEND torch_srcs mutual_information_cuda.cu)
 endif()
 

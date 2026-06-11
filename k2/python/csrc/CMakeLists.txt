@@ -16,7 +16,7 @@ else()
   message(FATAL_ERROR "Please select a framework.")
 endif()
 
-if(NOT K2_WITH_CUDA)
+if(NOT K2_WITH_CUDA AND NOT K2_WITH_HIP)
   transform(OUTPUT_VARIABLE k2_srcs SRCS ${k2_srcs})
 endif()
 
@@ -29,7 +29,19 @@ if(WIN32)
   set_property(TARGET pybind11::windows_extras PROPERTY INTERFACE_COMPILE_OPTIONS "")
 endif()
 
-pybind11_add_module(_k2 ${k2_srcs})
+if(K2_WITH_HIP)
+  # NO_EXTRAS disables pybind11's LTO/-flto: under the HIP toolchain LTO leaves the
+  # module as slim bitcode with no PyInit__k2 (ImportError), since the HIP link does
+  # not finalize LTO (gpuRIR lesson).
+  pybind11_add_module(_k2 NO_EXTRAS ${k2_srcs})
+  set_source_files_properties(${k2_srcs} PROPERTIES LANGUAGE HIP)
+  set_target_properties(_k2 PROPERTIES
+    HIP_ARCHITECTURES "${CMAKE_HIP_ARCHITECTURES}"
+    HIP_SEPARABLE_COMPILATION ON
+    INTERPROCEDURAL_OPTIMIZATION OFF)
+else()
+  pybind11_add_module(_k2 ${k2_srcs})
+endif()
 target_link_libraries(_k2 PRIVATE context)
 target_link_libraries(_k2 PRIVATE fsa)
 

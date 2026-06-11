@@ -60,6 +60,15 @@ struct PtrPtr {
     tmp.data += n;
     return tmp;
   }
+#if defined(USE_HIP)
+  // rocPRIM's scan dereferences `input - 1` on its offset path, so it needs
+  // operator-(int) on the iterator; NVIDIA cub does not call it.
+  __host__ __device__ __forceinline__ PtrPtr operator-(int32_t n) const {
+    PtrPtr tmp(*this);
+    tmp.data -= n;
+    return tmp;
+  }
+#endif
   __host__ __device__ __forceinline__ const T &operator*() const {
     return **data;
   }
@@ -86,6 +95,14 @@ struct ConstReversedPtr {
     tmp.data -= n;
     return tmp;
   }
+#if defined(USE_HIP)
+  __host__ __device__ __forceinline__ ConstReversedPtr
+  operator-(int32_t n) const {
+    ConstReversedPtr tmp(*this);
+    tmp.data += n;  // reversed: subtracting an offset moves forward in memory
+    return tmp;
+  }
+#endif
   __host__ __device__ __forceinline__ const T &operator*() const {
     return *data;
   }
@@ -108,6 +125,13 @@ struct ReversedPtr {
     tmp.data -= n;
     return tmp;
   }
+#if defined(USE_HIP)
+  __host__ __device__ __forceinline__ ReversedPtr operator-(int32_t n) const {
+    ReversedPtr tmp(*this);
+    tmp.data += n;  // reversed: subtracting an offset moves forward in memory
+    return tmp;
+  }
+#endif
   __host__ __device__ __forceinline__ T &operator*() { return *data; }
 };
 

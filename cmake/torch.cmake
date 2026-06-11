@@ -71,6 +71,27 @@ execute_process(
 
 message(STATUS "PyTorch version: ${TORCH_VERSION}")
 
+if(K2_WITH_HIP)
+  # torch's source hipify (torch/utils/hipify) has two generations that disagree
+  # on the c10 device namespace.  Generation 1 RENAMED the device classes, so the
+  # hip-spelled symbols (c10::hip::*) are the only public ones.  Generation 2
+  # (pytorch#174087, version.py bumped 1.0.0 -> 2.0.0) STOPPED renaming: the CUDA
+  # spellings stay public as the masquerading API (c10::cuda::* on a ROCm build)
+  # while c10::hip::* survive only as thin wrappers.  k2 drives the .cu through
+  # CMake/USE_HIP and never runs torch source-hipify, so it must detect the
+  # generation itself and select the matching namespace.
+  execute_process(
+    COMMAND "${PYTHON_EXECUTABLE}" -c "from packaging.version import Version; import torch.utils.hipify as h; print(1 if Version(getattr(h, '__version__', '1.0.0')) >= Version('2.0.0') else 0)"
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    OUTPUT_VARIABLE K2_TORCH_HIPIFY_V2
+    RESULT_VARIABLE _k2_hipify_probe_rc
+  )
+  if(NOT _k2_hipify_probe_rc EQUAL 0)
+    set(K2_TORCH_HIPIFY_V2 0)
+  endif()
+  message(STATUS "torch hipify generation v2 (masquerading c10::cuda): ${K2_TORCH_HIPIFY_V2}")
+endif()
+
 if(K2_WITH_CUDA)
   execute_process(
     COMMAND "${PYTHON_EXECUTABLE}" -c "import torch; print(torch.version.cuda)"
@@ -103,5 +124,15 @@ if(K2_WITH_CUDA)
     PROPERTY
       INTERFACE_COMPILE_OPTIONS ""
   )
+endif()
+
+if(K2_WITH_HIP)
+  # On a ROCm torch the GPU target is torch_hip; clear its (and torch_cpu's)
+  # interface compile options for the same reason as the CUDA path above.
+  foreach(_t torch_hip torch_cpu)
+    if(TARGET ${_t})
+      set_property(TARGET ${_t} PROPERTY INTERFACE_COMPILE_OPTIONS "")
+    endif()
+  endforeach()
 endif()
 

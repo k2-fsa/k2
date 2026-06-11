@@ -2530,8 +2530,12 @@ struct HashOutputIterator {  // outputs just the index of the pair.
     return HashOutputIteratorDeref<T>(t_);
   }
   __host__ __device__ __forceinline__ HashOutputIterator
-  operator+(size_t offset) {
+  operator+(size_t offset) const {
     return HashOutputIterator{t_ + offset};
+  }
+  __host__ __device__ __forceinline__ HashOutputIterator
+  operator-(size_t offset) const {
+    return HashOutputIterator{t_ - offset};
   }
   __host__ __device__ __forceinline__ HashOutputIterator &operator+=(
       size_t offset) {

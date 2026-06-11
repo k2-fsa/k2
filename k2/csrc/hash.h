@@ -41,7 +41,7 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
     unsigned long long int* address,
     unsigned long long int compare,
     unsigned long long int val) {
-#ifdef __CUDA_ARCH__
+#if K2_DEVICE_CODE
   return atomicCAS(address, compare, val);
 #else
   // For host code, we assume single-threaded for now).

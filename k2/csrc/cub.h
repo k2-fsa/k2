@@ -20,7 +20,17 @@
 #ifndef K2_CSRC_CUB_H_
 #define K2_CSRC_CUB_H_
 
-#ifdef K2_WITH_CUDA
+#if defined(K2_WITH_HIP)
+
+// cuda_to_hip.h (force-included) already aliases `cub` -> `hipcub`. <cuda/std/*>
+// is provided by the vendored ROCm/libhipcxx on the include path, so the
+// cuda::std::plus uses in utils_inl.h resolve unchanged. nvToolsExt has no ROCm
+// equivalent and NVTX is disabled on HIP, so it is not included here.
+#include <cuda/std/functional>
+
+#include <hipcub/hipcub.hpp>
+
+#elif defined(K2_WITH_CUDA)
 
 #include <cuda/std/functional>
 

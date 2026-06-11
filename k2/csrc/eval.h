@@ -28,7 +28,9 @@
 #include <type_traits>
 #include <vector>
 
-#ifdef K2_WITH_CUDA
+#if defined(K2_WITH_HIP)
+#include <hip/hip_cooperative_groups.h>
+#elif defined(K2_WITH_CUDA)
 #include <cooperative_groups.h>
 #endif
 

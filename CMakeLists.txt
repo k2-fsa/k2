@@ -29,19 +29,30 @@ endif()
 
 set(CMAKE_DISABLE_FIND_PACKAGE_MKL TRUE)
 
+# Build with HIP for AMD GPUs (ROCm). When ON, the CUDA toolchain is not used;
+# the .cu sources are compiled as HIP (see the K2_WITH_HIP blocks below) and the
+# two non-portable third-party deps (moderngpu, the vendored CUDPP segmented
+# scan) are replaced by hipCUB/rocThrust. See k2/csrc/cuda_to_hip.h.
+option(K2_WITH_HIP "Build k2 with HIP for AMD GPUs" OFF)
+
 set(languages CXX)
 set(_K2_WITH_CUDA ON)
 
-find_program(K2_HAS_NVCC nvcc)
-if(NOT K2_HAS_NVCC AND "$ENV{CUDACXX}" STREQUAL "")
-  message(STATUS "No NVCC detected. Disable CUDA support")
+if(K2_WITH_HIP)
+  # On the HIP build the CUDA toolchain is irrelevant.
   set(_K2_WITH_CUDA OFF)
-endif()
-
-if(APPLE OR (DEFINED K2_WITH_CUDA AND NOT K2_WITH_CUDA))
-  if(_K2_WITH_CUDA)
-    message(STATUS "Disable CUDA support")
+else()
+  find_program(K2_HAS_NVCC nvcc)
+  if(NOT K2_HAS_NVCC AND "$ENV{CUDACXX}" STREQUAL "")
+    message(STATUS "No NVCC detected. Disable CUDA support")
     set(_K2_WITH_CUDA OFF)
+  endif()
+
+  if(APPLE OR (DEFINED K2_WITH_CUDA AND NOT K2_WITH_CUDA))
+    if(_K2_WITH_CUDA)
+      message(STATUS "Disable CUDA support")
+      set(_K2_WITH_CUDA OFF)
+    endif()
   endif()
 endif()
 
@@ -49,9 +60,41 @@ if(_K2_WITH_CUDA)
   set(languages ${languages} CUDA)
 endif()
 
+if(K2_WITH_HIP)
+  # Do not hardcode a GPU arch here: a literal would override a user-supplied
+  # -DCMAKE_HIP_ARCHITECTURES. Honor the user's value and default to gfx90a only
+  # when it is unset. Set it BEFORE project()/enable HIP so the toolchain probe
+  # uses it.
+  if(NOT DEFINED CMAKE_HIP_ARCHITECTURES OR CMAKE_HIP_ARCHITECTURES STREQUAL "")
+    set(CMAKE_HIP_ARCHITECTURES "gfx90a" CACHE STRING "" FORCE)
+  endif()
+  # Add HIP to the project() language list (mirrors how CUDA is added) so the
+  # compiler is enabled in the initial project() call; enabling it afterwards via
+  # enable_language() forces a mid-configure re-run that drops cache values.
+  set(languages ${languages} HIP)
+endif()
+
 message(STATUS "Enabled languages: ${languages}")
 
 project(k2 ${languages})
+
+if(K2_WITH_HIP)
+  message(STATUS "CMAKE_HIP_ARCHITECTURES: ${CMAKE_HIP_ARCHITECTURES}")
+  find_package(hip REQUIRED)
+  find_package(hipcub REQUIRED)
+  find_package(rocprim REQUIRED)
+  find_package(hiprand REQUIRED)
+  # These must be found before find_package(Torch) so that Caffe2Targets.cmake
+  # can resolve all ROCm interface targets it imports (hiprtc::hiprtc, roc::hipblas, etc.).
+  find_package(hiprtc QUIET)
+  find_package(hipblas QUIET)
+  find_package(hipblaslt QUIET)
+  find_package(hipsolver QUIET)
+  find_package(hipsparse QUIET)
+  find_package(rocblas QUIET)
+  find_package(rocsolver QUIET)
+  find_package(hipfft QUIET)
+endif()
 
 set(K2_VERSION "1.24.4")
 
@@ -107,7 +150,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-if(BUILD_SHARED_LIBS AND MSVC)
+if(BUILD_SHARED_LIBS AND (MSVC OR (WIN32 AND K2_WITH_HIP)))
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
@@ -350,6 +393,35 @@ if(K2_WITH_CUDA)
   add_definitions(-DK2_WITH_CUDA)
 endif()
 
+if(K2_WITH_HIP)
+  # K2_WITH_HIP/USE_HIP gate the genuinely divergent code; K2_WITH_CUDA is ALSO
+  # defined as a compile macro so the many `#ifdef K2_WITH_CUDA` blocks that hold
+  # shared GPU/driver/torch code (c10::cuda bridge, cub.h, rand.cu, eval.h CG)
+  # compile -- cuda_to_hip.h retargets the cuda*/curand*/cub spellings to HIP.
+  # The CMake OPTION K2_WITH_CUDA stays OFF (no nvcc arch gencode, no moderngpu
+  # fetch, NVTX auto-off). (AutoDock-GPU lesson.)
+  add_definitions(-DK2_WITH_HIP)
+  add_definitions(-DUSE_HIP)
+  add_definitions(-DK2_WITH_CUDA)
+
+  # Force-include the single compat header on every HIP TU so its aliases
+  # precede all other includes regardless of per-file include order.
+  string(APPEND CMAKE_HIP_FLAGS
+    " -include ${CMAKE_SOURCE_DIR}/k2/csrc/cuda_to_hip.h")
+
+  # Vendored ROCm/libhipcxx supplies <cuda/std/*> (ROCm ships no cuda/std), used
+  # by cub.h and utils_inl.h (cuda::std::plus). Point at it if present.
+  if(DEFINED K2_LIBHIPCXX_INCLUDE_DIR AND
+     EXISTS "${K2_LIBHIPCXX_INCLUDE_DIR}/cuda/std/functional")
+    message(STATUS "libhipcxx include dir: ${K2_LIBHIPCXX_INCLUDE_DIR}")
+    include_directories(SYSTEM ${K2_LIBHIPCXX_INCLUDE_DIR})
+  else()
+    message(FATAL_ERROR
+      "K2_WITH_HIP=ON requires ROCm/libhipcxx (provides <cuda/std/*>). Pass "
+      "-DK2_LIBHIPCXX_INCLUDE_DIR=/path/to/libhipcxx/include")
+  endif()
+endif()
+
 if(WIN32)
   add_definitions(-DNOMINMAX) # Otherwise, std::max() and std::min() won't work
 endif()
@@ -376,14 +448,22 @@ if(K2_WITH_CUDA AND NOT WIN32)
   message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 endif()
 
+if(K2_WITH_HIP)
+  # hipcc is clang; these are clang flags (no nvcc --compiler-options wrapper).
+  string(APPEND CMAKE_HIP_FLAGS " -Wno-strict-overflow ")
+  string(APPEND CMAKE_HIP_FLAGS " -Wno-unknown-pragmas ")
+  string(APPEND CMAKE_HIP_FLAGS " -Wno-unused-variable ")
+  message(STATUS "CMAKE_HIP_FLAGS: ${CMAKE_HIP_FLAGS}")
+endif()
+
 
 if(NOT WIN32)
   string(APPEND CMAKE_CXX_FLAGS " -Wno-unused-variable ")
   string(APPEND CMAKE_CXX_FLAGS " -Wno-strict-overflow ")
 endif()
 
-if(WIN32)
-  # disable various warnings for MSVC
+if(WIN32 AND NOT K2_WITH_HIP)
+  # disable various warnings for MSVC (not applicable to the clang HIP build)
   # NOTE: Most of the warnings are from PyTorch C++ APIs
   # 4005: macro redefinition
   # 4018: signed/unsigned mismatch

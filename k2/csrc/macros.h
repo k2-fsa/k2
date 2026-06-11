@@ -29,6 +29,21 @@
 #define K2_FUNC __func__
 #endif
 
+// K2_DEVICE_CODE is 1 when compiling the device path of a __host__ __device__
+// function and 0 for the host path. On CUDA that is __CUDA_ARCH__; under the HIP
+// compiler it is __HIP_DEVICE_COMPILE__ (clang/HIP does NOT define
+// __CUDA_ARCH__). Use this for device-intrinsic-vs-host-fallback dispatch
+// instead of a bare `#ifdef __CUDA_ARCH__`, which silently takes the host path
+// in HIP device code. Keyed on __HIPCC__ (the compiler), not the K2_WITH_HIP
+// build flag, so plain-C++ TUs that include this header evaluate to 0 cleanly.
+#if defined(__HIPCC__)
+#define K2_DEVICE_CODE __HIP_DEVICE_COMPILE__
+#elif defined(__CUDA_ARCH__)
+#define K2_DEVICE_CODE 1
+#else
+#define K2_DEVICE_CODE 0
+#endif
+
 /*
 `K2_EVAL` simplifies the task of writing lambdas
 for CUDA as well as for CPU.
