@@ -73,9 +73,6 @@ namespace k2 {
                `ans` represents the mutual information between each pair of
                sequences (i.e. x[b] and y[b], although the sequences are not
                supplied directly to this function).
-
-   The block-dim and grid-dim must both be 1-dimensional, and the block-dim must
-   be at least 128.
 */
 torch::Tensor MutualInformationCpu(
     torch::Tensor px,                         // [B][S][T+1]

@@ -47,7 +47,7 @@ namespace k2 {
              generating the next x in the sequence, i.e.
              xy[b][s][t] is the log of
                 p(x_s | x_0..x_{s-1}, y_0..y_{s-1}) / p(x_s),
-             i.e. the log-prob of generating x_s given subsequences of lengths
+             i.e. the log-prob of generating x_s given sub-sequences of lengths
              (s, t), divided by the prior probability of generating x_s.  (See
              mutual_information.py for more info).
       py:     The log-odds ratio of generating the next y in the sequence.
@@ -67,7 +67,7 @@ namespace k2 {
                                   p[b,s,t-1] + py[b,s,t-1])          (eq. 0)
 
              treating values with any -1 index as -infinity.
-              .. if `boundary` is set, we start fom p[b,s_begin,t_begin]=0.0.
+              .. if `boundary` is set, we start from p[b,s_begin,t_begin]=0.0.
    boundary:  If set, a tensor of shape [B][4] of type int64_t, which
               contains, where for each batch element b, boundary[b] equals
               [s_begin, t_begin, s_end, t_end]
@@ -81,7 +81,7 @@ namespace k2 {
             and (boundary[b][2], boundary[b][3]) otherwise.
             `ans` represents the mutual information between each pair of
             sequences (i.e. x[b] and y[b], although the sequences are not
-            supplied directy to this function).
+            supplied directly to this function).
 
    The block-dim and grid-dim must both be 1-dimensional, and the block-dim must
    be at least 128.
