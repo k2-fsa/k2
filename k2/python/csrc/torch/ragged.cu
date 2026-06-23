@@ -164,8 +164,9 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   pyclass.def(py::pickle(
       [](const PyClass &obj) -> py::tuple {
         // Explicit return type: clang/C++20 deduces a lambda's return type from
-        // all return statements and rejects the two py::make_tuple() calls below
-        // (different arities) as "different" deduced types; nvcc/gcc accept it.
+        // all return statements and rejects the two py::make_tuple() calls
+        // below (different arities) as "different" deduced types; nvcc/gcc
+        // accept it.
         DeviceGuard guard(obj.Context());
         K2_CHECK(obj.NumAxes() == 2 || obj.NumAxes() == 3)
             << "Only support Ragged with NumAxes() == 2 or 3 for now, given "

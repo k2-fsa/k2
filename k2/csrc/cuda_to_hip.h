@@ -35,16 +35,17 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <hip/hip_runtime.h>
+#include <hip/hip_runtime.h>  // NOLINT(build/include_order)
 
 // Note on device-vs-host dispatch under clang/HIP: k2 keys two different things
 // on __CUDA_ARCH__: (a) the host/device DECORATOR K2_CUDA_HOSTDEV, and (b)
-// intra-function `#ifdef __CUDA_ARCH__` device-intrinsic-vs-host dispatch. Under
-// clang/HIP a __host__ __device__ function is preprocessed ONCE in the host pass
-// (where __CUDA_ARCH__ is absent and a `#define` of it does not take), so we
-// canNOT emulate (a) by defining __CUDA_ARCH__ (cudaKDTree lesson). Instead the
-// decorator is unconditionally __host__ __device__ on HIP (log.h) and the (b)
-// dispatch sites use K2_DEVICE_CODE (defined in macros.h), which keys on
+// intra-function `#ifdef __CUDA_ARCH__` device-intrinsic-vs-host dispatch.
+// Under clang/HIP a __host__ __device__ function is preprocessed ONCE in the
+// host pass (where __CUDA_ARCH__ is absent and a `#define` of it does not
+// take), so we canNOT emulate (a) by defining __CUDA_ARCH__ (cudaKDTree
+// lesson). Instead the decorator is unconditionally __host__ __device__ on
+// HIP (log.h) and the (b) dispatch sites use K2_DEVICE_CODE (defined in
+// macros.h), which keys on
 // __HIP_DEVICE_COMPILE__ -- correct per-pass inside a __host__ __device__ body.
 
 // ---------------------------------------------------------------------------

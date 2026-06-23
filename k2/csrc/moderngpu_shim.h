@@ -28,8 +28,8 @@
 //  - mergesort / segmented_sort* are STABLE (moderngpu's are, and k2's CPU
 //    reference uses std::stable_sort; index maps must be reproducible);
 //  - the comparators k2 passes are arbitrary device callables (Arc/ArcComparer,
-//    device lambdas, LessThan/GreaterThan), which rocThrust handles directly and
-//    a radix sort could not.
+//    device lambdas, LessThan/GreaterThan), which rocThrust handles directly
+//    and a radix sort could not.
 
 #ifndef K2_CSRC_MODERNGPU_SHIM_H_
 #define K2_CSRC_MODERNGPU_SHIM_H_
@@ -40,14 +40,16 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include <hipcub/hipcub.hpp>
-#include <thrust/binary_search.h>
-#include <thrust/execution_policy.h>
-#include <thrust/iterator/counting_iterator.h>
-#include <thrust/sequence.h>
-#include <thrust/sort.h>
+#include <thrust/binary_search.h>  // NOLINT(build/include_order)
+#include <thrust/execution_policy.h>  // NOLINT(build/include_order)
+#include <thrust/iterator/counting_iterator.h>  // NOLINT(build/include_order)
+#include <thrust/sequence.h>  // NOLINT(build/include_order)
+#include <thrust/sort.h>  // NOLINT(build/include_order)
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
@@ -62,8 +64,8 @@ struct context_t {
   context_t() = default;
   explicit context_t(k2::ContextPtr c) : k2_context(std::move(c)) {}
 
-  // Re-query each time so a CudaStreamOverride in effect is honored (matches how
-  // the CUDA build reads the stream).
+  // Re-query each time so a CudaStreamOverride in effect is honored (matches
+  // how the CUDA build reads the stream).
   hipStream_t stream() const { return k2_context->GetCudaStream(); }
 };
 
@@ -85,8 +87,8 @@ struct tuple<T> {
 };
 
 template <typename T>
-__host__ __device__ __forceinline__ const T &get_impl(const tuple<T> &t,
-                                                       std::integral_constant<int, 0>) {
+__host__ __device__ __forceinline__ const T &get_impl(
+    const tuple<T> &t, std::integral_constant<int, 0>) {
   return t.v0;
 }
 
@@ -126,17 +128,19 @@ inline thrust::device_ptr<T> dptr(T *p) {
 }
 
 // row_ids[i] = segment of element i = upper_bound(row_splits[1..nsegs], i),
-// i.e. the moderngpu load-balance-search result. row_splits has nsegs+1 entries.
+// i.e. the moderngpu load-balance-search result. row_splits has nsegs+1
+// entries.
 inline void ComputeRowIds(context_t &ctx, int32_t count,
                           const int32_t *row_splits, int32_t num_segments,
                           int32_t *row_ids) {
   if (count <= 0) return;
   auto policy = thrust::hip::par.on(ctx.stream());
   // ends = row_splits + 1 (the per-segment end offsets).
-  thrust::upper_bound(policy, dptr(const_cast<int32_t *>(row_splits)) + 1,
-                      dptr(const_cast<int32_t *>(row_splits)) + 1 + num_segments,
-                      thrust::counting_iterator<int32_t>(0),
-                      thrust::counting_iterator<int32_t>(count), dptr(row_ids));
+  thrust::upper_bound(
+      policy, dptr(const_cast<int32_t *>(row_splits)) + 1,
+      dptr(const_cast<int32_t *>(row_splits)) + 1 + num_segments,
+      thrust::counting_iterator<int32_t>(0),
+      thrust::counting_iterator<int32_t>(count), dptr(row_ids));
 }
 
 // Grid-stride kernel that invokes the user lambda f(index, seg, rank) for the
@@ -155,8 +159,8 @@ __global__ void TransformLbsKernel(int32_t count, const int32_t *row_ids,
 // Same, with a per-segment cached tuple passed as the 4th lambda argument.
 template <typename Lambda, typename PtrTuple>
 __global__ void TransformLbsTupleKernel(int32_t count, const int32_t *row_ids,
-                                        const int32_t *row_splits, PtrTuple cached,
-                                        Lambda f) {
+                                        const int32_t *row_splits,
+                                        PtrTuple cached, Lambda f) {
   for (int32_t index = blockIdx.x * blockDim.x + threadIdx.x; index < count;
        index += gridDim.x * blockDim.x) {
     int32_t seg = row_ids[index];
@@ -210,8 +214,8 @@ void transform_lbs(Lambda f, int32_t count, const int32_t *row_splits,
   int32_t grid = (count + shim_internal::kBlockSize - 1) /
                  shim_internal::kBlockSize;
   shim_internal::TransformLbsKernel<<<grid, shim_internal::kBlockSize, 0,
-                                      ctx.stream()>>>(count, row_ids, row_splits,
-                                                      f);
+                                      ctx.stream()>>>(count, row_ids,
+                                                      row_splits, f);
 }
 
 template <typename Lambda, typename... Ts>
@@ -278,8 +282,8 @@ void segmented_sort_indices(Key *keys, Index *indices, int32_t count,
   if (count <= 0) return;
   // moderngpu's segmented_sort_indices fills `indices` with the GLOBAL identity
   // permutation (0..count-1) and then stable-sorts each segment's slice
-  // alongside the keys, so afterwards indices[p] is the original global index of
-  // the element now at p. k2 relies on this (it does NOT pre-seed `indices`,
+  // alongside the keys, so afterwards indices[p] is the original global index
+  // of the element now at p. k2 relies on this (it does NOT pre-seed `indices`,
   // unlike mergesort which seeds with Range()): PruneRaggedAxis1 reads
   // order_map[idx01] as a global original index. Seed the identity here.
   auto policy = thrust::hip::par.on(ctx.stream());
@@ -342,7 +346,8 @@ void transform_scan(Lambda f, int32_t count, T *output, Op /*op*/,
                   hipSuccess);
     return;
   }
-  // values: count+1 transformed inputs (index `count` is a readable don't-care).
+  // values: count+1 transformed inputs (index `count` is a readable
+  // don't-care).
   shim_internal::DeviceScratch values_buf(ctx.k2_context,
                                           (count + 1) * sizeof(T));
   T *values = values_buf.as<T>();
@@ -357,12 +362,12 @@ void transform_scan(Lambda f, int32_t count, T *output, Op /*op*/,
               hipSuccess);
   shim_internal::DeviceScratch temp_buf(ctx.k2_context, temp_bytes);
   K2_CHECK_EQ(
-      hipcub::DeviceScan::ExclusiveSum(temp_buf.data, temp_bytes, values, output,
-                                       count + 1, ctx.stream()),
+      hipcub::DeviceScan::ExclusiveSum(temp_buf.data, temp_bytes, values,
+                                       output, count + 1, ctx.stream()),
       hipSuccess);
   // output[count] now holds the total; reduction_out is output + count for k2's
-  // K2_TRANS_EXCSUM, so it is already populated, but write it explicitly in case
-  // reduction_out aliases elsewhere.
+  // K2_TRANS_EXCSUM, so it is already populated, but write it explicitly in
+  // case reduction_out aliases elsewhere.
   if (reduction_out != output + count)
     K2_CHECK_EQ(hipMemcpyAsync(reduction_out, output + count, sizeof(T),
                                hipMemcpyDeviceToDevice, ctx.stream()),

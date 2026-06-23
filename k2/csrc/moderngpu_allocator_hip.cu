@@ -16,10 +16,10 @@
  * limitations under the License.
  */
 
-// HIP replacement for moderngpu_allocator.cu. The HIP mgpu shim (moderngpu_shim.h)
-// allocates and launches directly through the k2 Context, so the moderngpu
-// allocator subclass is unnecessary; GetModernGpuAllocator just hands back a
-// per-device shim context_t wrapping the k2 ContextPtr.
+// HIP replacement for moderngpu_allocator.cu. The HIP mgpu shim
+// (moderngpu_shim.h) allocates and launches directly through the k2 Context, so
+// the moderngpu allocator subclass is unnecessary; GetModernGpuAllocator just
+// hands back a per-device shim context_t wrapping the k2 ContextPtr.
 
 #include <mutex>  // NOLINT
 #include <utility>
@@ -47,7 +47,8 @@ mgpu::context_t *GetModernGpuAllocator(ContextPtr context) {
   K2_CHECK_GE(device_index, 0);
   K2_CHECK_LT(device_index, kMaxNumGpus);
 
-  std::call_once(mgpu_once_flags[device_index], InitModernGpuAllocator, context);
+  std::call_once(mgpu_once_flags[device_index], InitModernGpuAllocator,
+                 context);
 
   return mgpu_contexts[device_index];
 }

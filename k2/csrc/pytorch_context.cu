@@ -21,11 +21,12 @@
 #include <mutex>  // NOLINT
 
 #if defined(K2_WITH_HIP)
-// On a ROCm torch the c10/cuda/* headers include a generated cuda_cmake_macros.h
-// that only exists as the hip variant, so they do not compile; the c10/hip/*
-// headers are correct on every torch hipify generation.  They define the device
-// APIs under c10::hip (hipify v1 rename) AND under c10::cuda (hipify v2
-// masquerading); the call sites pick the right namespace via TORCH_HIPIFY_V2.
+// On a ROCm torch the c10/cuda/* headers include a generated
+// cuda_cmake_macros.h that only exists as the hip variant, so they do not
+// compile; the c10/hip/* headers are correct on every torch hipify generation.
+// They define the device APIs under c10::hip (hipify v1 rename) AND under
+// c10::cuda (hipify v2 masquerading); the call sites pick the right namespace
+// via TORCH_HIPIFY_V2.
 #include "c10/hip/HIPCachingAllocator.h"
 #include "c10/hip/HIPFunctions.h"
 #include "c10/hip/HIPStream.h"
@@ -157,7 +158,8 @@ class PytorchCudaContext : public Context {
 #ifdef K2_WITH_CUDA
     K2_CHECK_GE(gpu_id, 0);
 #if defined(K2_WITH_HIP) && !defined(TORCH_HIPIFY_V2)
-    // torch hipify v1 renamed the device classes: c10::hip is the only spelling.
+    // torch hipify v1 renamed the device classes: c10::hip is the only
+    // spelling.
     K2_CHECK_LT(gpu_id, c10::hip::device_count());
     c10::hip::set_device(static_cast<c10::DeviceIndex>(gpu_id));
 #else
@@ -170,7 +172,8 @@ class PytorchCudaContext : public Context {
     // so it is fine to invoke lazyInitCUDA() multiple times.
     // The call will be inlined since it is defined in the header
     // aten/src/ATen/Context.h
-#if  K2_TORCH_VERSION_MAJOR > 2 || (K2_TORCH_VERSION_MAJOR == 2 && K2_TORCH_VERSION_MINOR >= 6)
+#if K2_TORCH_VERSION_MAJOR > 2 || \
+    (K2_TORCH_VERSION_MAJOR == 2 && K2_TORCH_VERSION_MINOR >= 6)
     at::globalContext().lazyInitDevice(torch::kCUDA);
 #else
     at::globalContext().lazyInitCUDA();

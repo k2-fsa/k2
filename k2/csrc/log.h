@@ -50,8 +50,8 @@
 // the HIP compiler is in use (cudaKDTree __both__ lesson); HIP's
 // __host__ __device__ is valid in both passes. Per-pass dispatch INSIDE these
 // functions uses K2_DEVICE_CODE. Keyed on __HIPCC__ (not the K2_WITH_HIP build
-// flag) so the plain-C++ TUs (e.g. the k2_log .cc built by g++, and k2/csrc/host)
-// that include this header do NOT see the HIP-only attributes.
+// flag) so the plain-C++ TUs (e.g. the k2_log .cc built by g++, and
+// k2/csrc/host) that include this header do NOT see the HIP-only attributes.
 #define K2_CUDA_HOSTDEV __host__ __device__
 #elif defined(__CUDA_ARCH__)
 #define K2_CUDA_HOSTDEV __host__ __device__

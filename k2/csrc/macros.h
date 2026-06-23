@@ -30,8 +30,8 @@
 #endif
 
 // K2_DEVICE_CODE is 1 when compiling the device path of a __host__ __device__
-// function and 0 for the host path. On CUDA that is __CUDA_ARCH__; under the HIP
-// compiler it is __HIP_DEVICE_COMPILE__ (clang/HIP does NOT define
+// function and 0 for the host path. On CUDA that is __CUDA_ARCH__; under the
+// HIP compiler it is __HIP_DEVICE_COMPILE__ (clang/HIP does NOT define
 // __CUDA_ARCH__). Use this for device-intrinsic-vs-host-fallback dispatch
 // instead of a bare `#ifdef __CUDA_ARCH__`, which silently takes the host path
 // in HIP device code. Keyed on __HIPCC__ (the compiler), not the K2_WITH_HIP
