@@ -61,16 +61,11 @@ if(_K2_WITH_CUDA)
 endif()
 
 if(K2_WITH_HIP)
-  # Do not hardcode a GPU arch here: a literal would override a user-supplied
-  # -DCMAKE_HIP_ARCHITECTURES. Honor the user's value and default to gfx90a only
-  # when it is unset. Set it BEFORE project()/enable HIP so the toolchain probe
-  # uses it.
-  if(NOT DEFINED CMAKE_HIP_ARCHITECTURES OR CMAKE_HIP_ARCHITECTURES STREQUAL "")
-    set(CMAKE_HIP_ARCHITECTURES "gfx90a" CACHE STRING "" FORCE)
-  endif()
   # Add HIP to the project() language list (mirrors how CUDA is added) so the
   # compiler is enabled in the initial project() call; enabling it afterwards via
-  # enable_language() forces a mid-configure re-run that drops cache values.
+  # enable_language() forces a mid-configure re-run that drops cache values. The
+  # project() probe then honors a user-supplied -DCMAKE_HIP_ARCHITECTURES or, when
+  # unset, auto-detects the host GPU; it is not pinned to any specific arch.
   set(languages ${languages} HIP)
 endif()
 
