@@ -17,7 +17,8 @@ fi
 
 python3 -m pip install -U pip cmake "numpy<=1.26.4"
 python3 -m pip install -U wheel twine typing_extensions
-python3 -m pip install -U bs4 requests tqdm auditwheel setuptools
+python3 -m pip install -U bs4 requests tqdm auditwheel setuptools patchelf
+patchelf --version
 
 echo "Installing torch $TORCH_VERSION"
 
@@ -98,3 +99,24 @@ auditwheel --verbose repair \
   dist/*.whl
 
 ls -lh  /var/www/wheelhouse
+
+# Use patchelf to add nvidia rpath entries to the _k2 shared library
+pushd /var/www/wheelhouse
+whl=$(ls *.whl)
+mkdir -p _tmp_whl
+pushd _tmp_whl
+unzip -o ../$whl
+so_file=$(ls _k2.cpython-*.so)
+echo "Patching rpath for $so_file"
+current_rpath=$(patchelf --print-rpath "$so_file")
+echo "Current rpath: $current_rpath"
+new_rpath="\$ORIGIN/nvidia/nvtx/lib:\$ORIGIN/nvidia/cuda_runtime/lib:\$ORIGIN/nvidia/cuda_nvrtc/lib:${current_rpath}"
+echo "New rpath: $new_rpath"
+patchelf --set-rpath "$new_rpath" "$so_file"
+echo "Verified rpath:"
+patchelf --print-rpath "$so_file"
+readelf -d "$so_file" | grep -i rpath
+zip -r ../$whl .
+popd
+rm -rf _tmp_whl
+popd

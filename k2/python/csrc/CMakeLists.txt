@@ -48,10 +48,6 @@ set_target_properties(_k2 PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 if(NOT WIN32)
   target_link_libraries(_k2 PRIVATE "-Wl,-rpath,${k2_rpath_origin}/k2/${CMAKE_INSTALL_LIBDIR}")
   # From PyTorch _C.cpython-310-x86_64-linux-gnu.so
-  # [$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nvshmem/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/cusparselt/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../cusparselt/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../../nvidia/cufile/lib:$ORIGIN:$ORIGIN/lib
-  target_link_libraries(_k2 PRIVATE "-Wl,-rpath,${k2_rpath_origin}/nvidia/nvtx/lib")
-  target_link_libraries(_k2 PRIVATE "-Wl,-rpath,${k2_rpath_origin}/nvidia/cuda_runtime/lib")
-  target_link_libraries(_k2 PRIVATE "-Wl,-rpath,${k2_rpath_origin}/nvidia/cuda_nvrtc/lib")
 endif()
 
 if(UNIX AND NOT APPLE)
