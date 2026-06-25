@@ -6,7 +6,9 @@ This page describes pre-compiled ``CPU`` wheels for `k2`_ on macOS.
 .. toctree::
    :maxdepth: 2
 
+   ./2.12.1.rst
    ./2.12.0.rst
+   ./2.11.0.rst
    ./2.10.0.rst
    ./2.9.1.rst
    ./2.9.0.rst
