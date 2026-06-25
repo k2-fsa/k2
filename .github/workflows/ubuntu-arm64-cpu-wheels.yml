@@ -155,7 +155,7 @@ jobs:
             cd huggingface
             git pull
 
-            d=cpu/1.24.4.dev20250307/linux-arm64
+            d=cpu/1.24.4.dev20260625/linux-arm64
             mkdir -p $d
             cp -v ../wheelhouse/*.whl $d
             git status

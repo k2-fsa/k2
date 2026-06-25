@@ -98,8 +98,9 @@ jobs:
             cd huggingface
             git pull
 
-            mkdir -p windows-cpu
-            cp -v ../wheelhouse/*.whl ./windows-cpu
+            d=windows-cpu/1.24.4.dev20260625/
+            mkdir -p $d
+            cp -v ../wheelhouse/*.whl $d
             git status
             git lfs track "*.whl"
             git add .

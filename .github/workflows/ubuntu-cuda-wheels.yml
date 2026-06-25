@@ -192,8 +192,9 @@ jobs:
             cd huggingface
             git pull
 
-            mkdir -p ubuntu-cuda
-            cp -v ../wheelhouse/*.whl ./ubuntu-cuda
+            d=ubuntu-cuda/1.24.4.dev20260625/
+            mkdir -p $d
+            cp -v ../wheelhouse/*.whl $d
             git status
             git lfs track "*.whl"
             git add .
