@@ -401,7 +401,7 @@ def generate_build_matrix(
 
     enabled_torch_versions = ["1.10.0"]
     enabled_torch_versions += ["1.13.0", "1.13.1"]
-    min_torch_version = "2.6.0"
+    min_torch_version = "2.0.0"
 
     if for_macos_m1:
         matrix = dict()
