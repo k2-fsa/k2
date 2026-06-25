@@ -22,7 +22,13 @@ ls -lh $PYTHON_INSTALL_DIR/lib/
 # python3 -m pip install scikit-build
 python3 -m pip install -U pip cmake "numpy<=1.26.4"
 python3 -m pip install wheel twine typing_extensions
-python3 -m pip install -U bs4 requests tqdm auditwheel setuptools patchelf
+python3 -m pip install -U bs4 requests tqdm auditwheel patchelf
+# torch < 2.0 uses `from pkg_resources import packaging` which was removed in setuptools >= 72
+if [[ "${TORCH_VERSION%%.*}" -lt 2 ]]; then
+  python3 -m pip install -U "setuptools<72"
+else
+  python3 -m pip install -U setuptools
+fi
 patchelf --version
 
 echo "Installing torch $TORCH_VERSION"
@@ -118,8 +124,14 @@ echo "New rpath: $new_rpath"
 patchelf --set-rpath "$new_rpath" "$so_file"
 echo "Verified rpath:"
 patchelf --print-rpath "$so_file"
-readelf -d "$so_file" | grep -i rpath
-zip -r ../$whl .
+python3 -c "
+import zipfile, os
+with zipfile.ZipFile(os.path.join('..', '$whl'), 'w', zipfile.ZIP_DEFLATED) as zf:
+    for root, dirs, files in os.walk('.'):
+        for f in files:
+            path = os.path.join(root, f)
+            zf.write(path, path[2:])
+"
 popd
 rm -rf _tmp_whl
 popd
