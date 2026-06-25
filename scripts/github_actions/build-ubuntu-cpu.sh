@@ -16,7 +16,7 @@ if [ -z $TORCH_VERSION ]; then
 fi
 
 python3 -m pip install -U pip cmake "numpy<=1.26.4"
-python3 -m pip install wheel twine typing_extensions
+python3 -m pip install -U wheel twine typing_extensions
 python3 -m pip install -U bs4 requests tqdm auditwheel setuptools
 
 echo "Installing torch $TORCH_VERSION"
@@ -51,6 +51,8 @@ cd /var/www
 export CMAKE_CUDA_COMPILER_LAUNCHER=
 export K2_CMAKE_ARGS=" -DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
 export K2_MAKE_ARGS=" -j2 "
+
+python3 -m pip install --upgrade setuptools wheel
 
 python3 setup.py bdist_wheel
 if [[ x"$IS_2_28" == x"1" ]]; then
