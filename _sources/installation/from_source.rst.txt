@@ -12,7 +12,9 @@ Install from source
 
 .. hint::
 
-    It supports Linux (CPU + CUDA), macOS (CPU), and Windows (CPU + CUDA).
+    It supports Linux (CPU + CUDA + ROCm), macOS (CPU), and Windows (CPU + CUDA
+    + ROCm). For AMD GPUs via ROCm, see the "Building with ROCm (AMD GPUs)"
+    section below.
 
 .. hint::
 
@@ -80,6 +82,63 @@ That is all you need to run.
       int, int>; cudaStream_t = CUstream_st*; int32_t = int] Check failed:
       e == cudaSuccess (98 vs. 0)  Error: invalid device function.
 
+
+Building with ROCm (AMD GPUs)
+-----------------------------
+
+k2 can also be built for AMD GPUs with ROCm/HIP. The ``.cu`` sources are
+compiled as HIP and the GPU primitives are provided by hipCUB and rocThrust.
+
+.. hint::
+
+  This builds the Python ``_k2`` extension module and the C++ gtest suite (the
+  FSA core that `icefall <https://github.com/k2-fsa/icefall>`_ and
+  `sherpa <https://github.com/k2-fsa/sherpa>`_ consume). The standalone
+  ``k2/torch`` C++ decoder layer is not yet built on the ROCm path.
+
+Before compiling, prepare the environment:
+
+  - Install ROCm (7.2 or newer) including hipCUB, rocPRIM, hipRAND and rocThrust.
+  - Install a ROCm build of PyTorch.
+  - libcu++ is not shipped by ROCm; vendor the ROCm fork
+    (``git clone --branch amd-develop https://github.com/ROCm/libhipcxx``) and
+    point ``K2_LIBHIPCXX_INCLUDE_DIR`` at its ``include`` directory.
+
+Then configure and build, selecting your GPU architecture(s) with
+``CMAKE_HIP_ARCHITECTURES`` (e.g. ``gfx90a`` for MI200, ``gfx1100`` for RDNA3;
+pass a semicolon-separated list to target several). When unset it defaults to
+``gfx90a``.
+
+.. code-block:: bash
+
+  git clone https://github.com/k2-fsa/k2.git
+  cd k2
+  mkdir build_rocm
+  cd build_rocm
+  cmake -DCMAKE_BUILD_TYPE=Release \
+        -DK2_WITH_HIP=ON -DK2_WITH_CUDA=OFF \
+        -DCMAKE_HIP_ARCHITECTURES=gfx90a \
+        -DCMAKE_CXX_STANDARD=20 \
+        -DK2_LIBHIPCXX_INCLUDE_DIR=/path/to/libhipcxx/include \
+        -DK2_ENABLE_TESTS=ON \
+        ..
+  make -j
+
+.. hint::
+
+  To build and install the Python package with ROCm, pass the same options
+  through ``K2_CMAKE_ARGS``:
+
+  .. code-block:: bash
+
+    export K2_CMAKE_ARGS="-DK2_WITH_HIP=ON -DK2_WITH_CUDA=OFF -DCMAKE_HIP_ARCHITECTURES=gfx90a"
+    python3 setup.py install
+
+.. hint::
+
+  Run the GPU tests on a single device, serially, by setting
+  ``HIP_VISIBLE_DEVICES`` to one GPU and running the ``cu_*_test`` executables
+  (or ``ctest``) from the build directory.
 
 To test that k2 is installed successfully, you can run:
 
