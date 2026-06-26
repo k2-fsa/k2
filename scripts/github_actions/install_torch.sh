@@ -26,21 +26,27 @@ if [ x"$TORCH_VERSION" != x"" ] && [ x"$ROCM_VERSION" != x"" ]; then
     rocm=$ROCM_VERSION
 fi
 
-# Handle ROCm PyTorch installations separately
+# Handle ROCm PyTorch installations separately.
+# pip cannot match local version specifiers like +rocm7.1 with -f, so we
+# download the wheel directly and install from the local file.
 if [ x"${rocm}" != x"" ]; then
-  package="torch==${torch}+rocm${rocm}"
   url=https://download.pytorch.org/whl/rocm${rocm}
-  echo "Installing ROCm PyTorch: $package from $url"
+  echo "Installing ROCm PyTorch: torch==${torch}+rocm${rocm} from $url"
 
   function retry() {
     $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
   }
 
-  if [ x"${url}" == "x" ]; then
-    retry python3 -m pip install --no-cache-dir -q $package
-  else
-    retry python3 -m pip install --no-cache-dir -q $package -f $url
-  fi
+  # Get the cpXY tag from the running Python version
+  cp_tag="cp$(python3 -c 'import sys; print(f"{sys.version_info.major}{sys.version_info.minor}")')"
+  wheel_name="torch-${torch}+rocm${rocm}-${cp_tag}-${cp_tag}-manylinux_2_28_x86_64.whl"
+  # URL-encode the + sign in the wheel name
+  wheel_url="${url}/torch-${torch}%2Brocm${rocm}-${cp_tag}-${cp_tag}-manylinux_2_28_x86_64.whl"
+
+  echo "Downloading $wheel_url"
+  retry curl -L -o "/tmp/${wheel_name}" "${wheel_url}"
+  retry python3 -m pip install --no-cache-dir -q "/tmp/${wheel_name}"
+  rm -f "/tmp/${wheel_name}"
 
   rm -rf ~/.cache/pip
   exit 0
