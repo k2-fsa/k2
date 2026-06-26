@@ -126,9 +126,12 @@ export K2_MAKE_ARGS=" -j2 "
 
 # Free more disk space before the build
 yum clean all >/dev/null 2>&1
-rm -rf ~/.cache /tmp/libhipcxx
+rm -rf ~/.cache
 
 python3 setup.py bdist_wheel
+
+# libhipcxx no longer needed after build
+rm -rf /tmp/libhipcxx
 
 plat=manylinux_2_28_x86_64
 
