@@ -21,6 +21,31 @@ if [ x"$TORCH_VERSION" != x"" ] && [ x"$CUDA_VERSION" != x"" ]; then
     cuda=$CUDA_VERSION
 fi
 
+if [ x"$TORCH_VERSION" != x"" ] && [ x"$ROCM_VERSION" != x"" ]; then
+    torch=$TORCH_VERSION
+    rocm=$ROCM_VERSION
+fi
+
+# Handle ROCm PyTorch installations separately
+if [ x"${rocm}" != x"" ]; then
+  package="torch==${torch}+rocm${rocm}"
+  url=https://download.pytorch.org/whl/rocm${rocm}
+  echo "Installing ROCm PyTorch: $package from $url"
+
+  function retry() {
+    $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
+  }
+
+  if [ x"${url}" == "x" ]; then
+    retry python3 -m pip install --no-cache-dir -q $package
+  else
+    retry python3 -m pip install --no-cache-dir -q $package -f $url
+  fi
+
+  rm -rf ~/.cache/pip
+  exit 0
+fi
+
 case ${torch} in
   1.5.*)
     case ${cuda} in

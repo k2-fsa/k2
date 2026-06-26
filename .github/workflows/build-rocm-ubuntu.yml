@@ -1,0 +1,167 @@
+name: build-wheels-rocm-ubuntu
+
+on:
+  push:
+    branches:
+      - wheel
+      - ci-rocm
+    tags:
+      - '*'
+  workflow_dispatch:
+
+concurrency:
+  group: build-wheels-rocm-ubuntu-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate_build_matrix:
+    if: github.repository_owner == 'csukuangfj' || github.repository_owner == 'k2-fsa' || github.repository_owner == 'csu-fangjun'
+    # see https://github.com/pytorch/pytorch/pull/50633
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Generating build matrix
+        id: set-matrix
+        run: |
+          # outputting for debugging purposes
+          python ./scripts/github_actions/generate_build_matrix.py --enable-rocm --test-only-latest-torch
+          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --enable-rocm --test-only-latest-torch)
+
+          echo "::set-output name=matrix::${MATRIX}"
+
+  build-manylinux-wheels:
+    needs: generate_build_matrix
+    name: ${{ matrix.torch }} ${{ matrix.python-version }} rocm${{ matrix.rocm }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ${{ fromJson(needs.generate_build_matrix.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Free space
+        shell: bash
+        run: |
+          df -h
+          rm -rf /opt/hostedtoolcache
+          df -h
+          echo "pwd: $PWD"
+          echo "github.workspace ${{ github.workspace }}"
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+
+      - name: Run the build process with Docker
+        uses: addnab/docker-run-action@v3
+        with:
+            image: ${{ matrix.image }}
+            options: -v ${{ github.workspace }}:/var/www -e IS_2_28=${{ matrix.is_2_28 }} -e PYTHON_VERSION=${{ matrix.python-version }} -e TORCH_VERSION=${{ matrix.torch }} -e ROCM_VERSION=${{ matrix.rocm }}
+            run: |
+              echo "pwd: $PWD"
+              uname -a
+              id
+              cat /etc/*release
+              gcc --version
+              python3 --version
+              which python3
+
+              ls -lh /opt/python/
+
+              echo "---"
+
+              ls -lh /opt/python/cp*
+
+              ls -lh /opt/python/*/bin
+
+              echo "---"
+              find /opt/python/cp* -name "libpython*"
+              echo "-----"
+              find /opt/_internal/cp* -name "libpython*"
+
+              echo "-----"
+              find / -name "libpython*"
+
+              if [[ $PYTHON_VERSION == "3.10" ]]; then
+                python_dir=/opt/python/cp310-cp310
+                export PYTHONPATH=/opt/python/cp310-cp310/lib/python3.10/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.11" ]]; then
+                python_dir=/opt/python/cp311-cp311
+                export PYTHONPATH=/opt/python/cp311-cp311/lib/python3.11/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.12" ]]; then
+                python_dir=/opt/python/cp312-cp312
+                export PYTHONPATH=/opt/python/cp312-cp312/lib/python3.12/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.13" ]]; then
+                python_dir=/opt/python/cp313-cp313
+                export PYTHONPATH=/opt/python/cp313-cp313/lib/python3.13/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.14" ]]; then
+                python_dir=/opt/python/cp314-cp314
+                export PYTHONPATH=/opt/python/cp314-cp314/lib/python3.14/site-packages:$PYTHONPATH
+              else
+                echo "Unsupported Python version $PYTHON_VERSION"
+                exit 1
+              fi
+
+              export PYTHON_INSTALL_DIR=$python_dir
+              export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
+
+              python3 --version
+              which python3
+
+              # Verify ROCm is available in the container
+              ls /opt/rocm/lib/libhiprtc* || true
+              hipcc --version || true
+
+              cp /var/www/scripts/github_actions/install_torch.sh .
+              chmod +x install_torch.sh
+
+              /var/www/scripts/github_actions/build-ubuntu-rocm.sh
+
+      - name: Display wheels
+        shell: bash
+        run: |
+          ls -lh ./wheelhouse/
+
+      - name: Upload Wheel
+        if: false
+        uses: actions/upload-artifact@v4
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-ubuntu-latest-rocm-is_2_28-${{ matrix.is_2_28 }}
+          path: wheelhouse/*.whl
+
+      # https://huggingface.co/docs/hub/spaces-github-actions
+      - name: Publish to huggingface
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 20
+          timeout_seconds: 200
+          shell: bash
+          command: |
+            git config --global user.email "csukuangfj@gmail.com"
+            git config --global user.name "Fangjun Kuang"
+
+            rm -rf huggingface
+            export GIT_LFS_SKIP_SMUDGE=1
+
+            git clone https://huggingface.co/csukuangfj2/k2 huggingface
+            cd huggingface
+            git pull
+
+            d=linux-x64-rocm/1.24.4.dev20260626/
+            mkdir -p $d
+            cp -v ../wheelhouse/*.whl $d
+            git status
+            git lfs track "*.whl"
+            git add .
+            git commit -m "upload ubuntu-rocm wheel for torch ${{ matrix.torch }} python ${{ matrix.python-version }} rocm ${{ matrix.rocm }}"
+            git push https://csukuangfj2:$HF_TOKEN@huggingface.co/csukuangfj2/k2 main

@@ -61,6 +61,13 @@ def get_args():
         help="""If True, we test only the latest PyTroch
         to reduce CI running time.""",
     )
+
+    parser.add_argument(
+        "--enable-rocm",
+        action="store_true",
+        default=False,
+        help="True to enable ROCm (AMD GPU)",
+    )
     return parser.parse_args()
 
 
@@ -71,6 +78,7 @@ def generate_build_matrix(
     for_macos_m1,
     for_arm64,
     test_only_latest_torch,
+    enable_rocm=False,
 ):
     matrix = {
         # 1.5.x is removed because there are compilation errors.
@@ -463,6 +471,36 @@ def generate_build_matrix(
                             "is_2_28": "0",
                         }
                     )
+        elif enable_rocm:
+            # Mapping of PyTorch versions to available ROCm versions.
+            # Source: https://download.pytorch.org/whl/rocm{ver}/torch/
+            rocm_versions_map = {
+                "2.7.0": ["6.3"],
+                "2.7.1": ["6.3"],
+                "2.8.0": ["6.3", "6.4"],
+                "2.9.0": ["6.3", "6.4"],
+                "2.9.1": ["6.3", "6.4"],
+                "2.10.0": ["7.0", "7.1"],
+                "2.11.0": ["7.1", "7.2"],
+                "2.12.0": ["7.1", "7.2"],
+                "2.12.1": ["7.1", "7.2"],
+            }
+            if torch in rocm_versions_map:
+                rocm_list = rocm_versions_map[torch]
+                for p in python_versions:
+                    if p in excluded_python_versions:
+                        continue
+
+                    for r in rocm_list:
+                        ans.append(
+                            {
+                                "torch": torch,
+                                "python-version": p,
+                                "rocm": r,
+                                "image": f"pytorch/manylinux2_28-builder:rocm{r}",
+                                "is_2_28": "1",
+                            }
+                        )
         else:
             for p in python_versions:
                 if p in excluded_python_versions:
@@ -541,6 +579,7 @@ def main():
         for_macos_m1=args.for_macos_m1,
         for_arm64=args.for_arm64,
         test_only_latest_torch=args.test_only_latest_torch,
+        enable_rocm=args.enable_rocm,
     )
 
 
