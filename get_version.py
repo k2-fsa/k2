@@ -96,6 +96,8 @@ def get_package_version():
 
     if is_rocm():
         rocm_version = get_rocm_version()
+        # Keep only major.minor (e.g., 7.1.52802 -> 7.1)
+        rocm_version = '.'.join(rocm_version.split('.')[:2])
         pytorch_version = get_pytorch_version()
         local_version = f'+rocm{rocm_version}.torch{pytorch_version}'
     elif with_cuda():
