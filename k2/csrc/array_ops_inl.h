@@ -857,7 +857,7 @@ Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
   DeviceType d = c->GetDeviceType();
   if (allow_minus_one) {
     if (d == kCpu) {
-#pragma unroll(4)
+#pragma unroll 4
       for (int32_t i = 0; i < ans_dim; i++) {
         int32_t index = index_data[i];
         T value = (index < 0 ? default_value : src_data[index]);
@@ -873,7 +873,7 @@ Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
     }
   } else {
     if (d == kCpu) {
-#pragma unroll(4)
+#pragma unroll 4
       for (int32_t i = 0; i < ans_dim; i++)
         ans_data[i] = src_data[index_data[i]];
     } else {
@@ -903,10 +903,10 @@ Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
       for (int32_t i = 0; i < ans_dim0; i++) {
         int32_t index = index_data[i];
         if (index < 0) {
-#pragma unroll(4)
+#pragma unroll 4
           for (int32_t j = 0; j < dim1; j++) ans_acc(i, j) = T(0);
         } else {
-#pragma unroll(4)
+#pragma unroll 4
           for (int32_t j = 0; j < dim1; j++) ans_acc(i, j) = src_acc(index, j);
         }
       }
@@ -921,7 +921,7 @@ Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
     if (d == kCpu) {
       for (int32_t i = 0; i < ans_dim0; i++) {
         int32_t index = index_data[i];
-#pragma unroll(4)
+#pragma unroll 4
         for (int32_t j = 0; j < dim1; j++) ans_acc(i, j) = src_acc(index, j);
       }
     } else {

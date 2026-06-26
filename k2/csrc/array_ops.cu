@@ -441,7 +441,7 @@ __global__ void SizesToMergeMapKernel(int32_t num_rows, int32_t threads_per_row,
           next_row_split = row_splits[row + 1],
           row_length = next_row_split - this_row_split;
 
-#pragma unroll(4)
+#pragma unroll 4
   for (; thread_this_row < row_length; thread_this_row += threads_per_row)
     merge_map[this_row_split + thread_this_row] =
         uint32_t(row) + uint32_t(num_rows) * uint32_t(thread_this_row);
