@@ -43,7 +43,10 @@ void PybindVersion(py::module &m) {
   version.attr("cmake_cxx_flags") = std::string(k2::kCMakeCxxFlags);
   version.attr("torch_version") = std::string(k2::kTorchVersion);
   version.attr("torch_cuda_version") = std::string(k2::kTorchCudaVersion);
+  version.attr("torch_hip_version") = std::string(k2::kTorchHipVersion);
+  version.attr("rocm_version") = std::string(k2::kRocmVersion);
   version.attr("enable_nvtx") = k2::kEnableNvtx;
   version.attr("disable_debug") = k2::internal::kDisableDebug;
   version.attr("with_cuda") = k2::kWithCuda;
+  version.attr("with_hip") = k2::kWithHip;
 }

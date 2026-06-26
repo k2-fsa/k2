@@ -53,8 +53,11 @@ def main():
     cmake_cxx_flags = _k2.version.cmake_cxx_flags
     torch_version = _k2.version.torch_version
     torch_cuda_version = _k2.version.torch_cuda_version
+    torch_hip_version = _k2.version.torch_hip_version
+    rocm_version = _k2.version.rocm_version
     enable_nvtx = _k2.version.enable_nvtx
     with_cuda = _k2.version.with_cuda
+    with_hip = _k2.version.with_hip
     disable_debug = _k2.version.disable_debug
     sync_kernels = os.getenv('K2_SYNC_KERNELS', None) is not None
     disable_checks = os.getenv('K2_DISABLE_CHECKS', None) is not None
@@ -68,6 +71,7 @@ Git SHA1: {git_sha1}
 Git date: {git_date}
 Cuda used to build k2: {cuda_version}
 cuDNN used to build k2: {cudnn_version}
+ROCm used to build k2: {rocm_version}
 Python version used to build k2: {python_version}
 OS used to build k2: {os_type}
 CMake version: {cmake_version}
@@ -76,8 +80,10 @@ CMAKE_CUDA_FLAGS: {cmake_cuda_flags}
 CMAKE_CXX_FLAGS: {cmake_cxx_flags}
 PyTorch version used to build k2: {torch_version}
 PyTorch is using Cuda: {torch_cuda_version}
+PyTorch is using HIP: {torch_hip_version}
 NVTX enabled: {enable_nvtx}
 With CUDA: {with_cuda}
+With HIP: {with_hip}
 Disable debug: {disable_debug}
 Sync kernels : {sync_kernels}
 Disable checks: {disable_checks}
