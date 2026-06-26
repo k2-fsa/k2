@@ -48,6 +48,29 @@ def get_cuda_version():
     return cuda_version
 
 
+def get_rocm_version():
+    """Return the ROCm version string, or None if not a ROCm build."""
+    # When PyTorch is built with ROCm, torch.version.hip is set.
+    hip_version = getattr(torch.version, "hip", None)
+    if hip_version is not None:
+        return hip_version
+    # Fallback: check environment variable (set in CI Docker containers)
+    rocm_env = os.environ.get("ROCM_VERSION", "")
+    if rocm_env:
+        return rocm_env
+    return None
+
+
+def is_rocm():
+    """Return True if this is a ROCm/HIP build."""
+    if get_rocm_version() is not None:
+        return True
+    cmake_args = os.environ.get('K2_CMAKE_ARGS', '')
+    if 'K2_WITH_HIP=ON' in cmake_args:
+        return True
+    return False
+
+
 def is_for_pypi():
     ans = os.environ.get('K2_IS_FOR_PYPI', None)
     return ans is not None
@@ -71,7 +94,11 @@ def get_package_version():
     #
     default_cuda_version = '10.1'  # CUDA 10.1
 
-    if with_cuda():
+    if is_rocm():
+        rocm_version = get_rocm_version()
+        pytorch_version = get_pytorch_version()
+        local_version = f'+rocm{rocm_version}.torch{pytorch_version}'
+    elif with_cuda():
         cuda_version = get_cuda_version()
         if is_for_pypi() and default_cuda_version == cuda_version:
             cuda_version = ''
