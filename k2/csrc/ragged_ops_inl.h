@@ -551,13 +551,13 @@ struct PairInputIterator {
   explicit PairInputIterator(const T *t) : t_(t), offset_(0) {}
   __device__ __forceinline__ PairInputIterator(const T *t, int32_t offset)
       : t_(t), offset_(offset) {}
-  __device__ __forceinline__ Pair<T> operator[](int32_t idx) const {
+  K2_CUDA_HOSTDEV Pair<T> operator[](int32_t idx) const {
     return Pair<T>{t_[idx + offset_], idx + offset_};
   }
-  __device__ __forceinline__ PairInputIterator operator+(int32_t offset) {
+  K2_CUDA_HOSTDEV PairInputIterator operator+(int32_t offset) {
     return PairInputIterator{t_, offset + offset_};
   }
-  __device__ __forceinline__ PairInputIterator &operator+=(int32_t offset) {
+  K2_CUDA_HOSTDEV PairInputIterator &operator+=(int32_t offset) {
     offset_ += offset;
     return *this;
   }

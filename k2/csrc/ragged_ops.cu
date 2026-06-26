@@ -2488,13 +2488,13 @@ template <typename T>
 struct HashInputIterator {
   explicit __host__ __device__ __forceinline__ HashInputIterator(const int32_t *i)  // NOLINT
       : i_(i) {}
-  __device__ __forceinline__ Hash<T> operator[](int32_t idx) const {
+  K2_CUDA_HOSTDEV Hash<T> operator[](int32_t idx) const {
     return Hash<T>{i_[idx], i_[idx], 31, 167};
   }
-  __device__ __forceinline__ HashInputIterator operator+(int32_t offset) const {
+  K2_CUDA_HOSTDEV HashInputIterator operator+(int32_t offset) const {
     return HashInputIterator(i_ + offset);
   }
-  __device__ __forceinline__ HashInputIterator &operator+=(int32_t offset) {
+  K2_CUDA_HOSTDEV HashInputIterator &operator+=(int32_t offset) {
     i_ += offset;
     return *this;
   }
@@ -2547,8 +2547,8 @@ struct HashOutputIterator {  // outputs just the index of the pair.
 
 template <typename T>
 struct HashCombineOp {
-  __device__ __forceinline__ Hash<T> operator()(const Hash<T> &a,
-                                                const Hash<T> &b) const {
+  K2_CUDA_HOSTDEV Hash<T> operator()(const Hash<T> &a,
+                                     const Hash<T> &b) const {
     return Hash<T>{a.hash1 * b.product1 + b.hash1,
                    a.hash2 * b.product2 + b.hash2,
                    a.product1 * b.product1,
