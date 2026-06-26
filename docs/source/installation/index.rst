@@ -13,6 +13,8 @@ is appropriate for you.
    for_developers
    cuda-cudnn.rst
    faqs
+   pre-compiled-cuda-wheels-linux/index
+   pre-compiled-rocm-wheels-linux/index
 
 Reporting issues
 ----------------
