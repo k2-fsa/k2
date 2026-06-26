@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - wheel
-      - ci-rocm
+      - ci-rocm-2
     tags:
       - '*'
   workflow_dispatch:
