@@ -245,24 +245,24 @@ pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.3.dev2023071
 <section id="linux-rocm-example">
 <h3>Linux (ROCm) example<a class="headerlink" href="#linux-rocm-example" title="Link to this heading"></a></h3>
 <p>Suppose we want to install</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>https://huggingface.co/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.53211.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>https://huggingface.co/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 </pre></div>
 </div>
 <p>we can use the following methods:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># method 1</span>
 pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.12.1+rocm7.2<span class="w"> </span>-f<span class="w"> </span>https://download.pytorch.org/whl/torch/
-pip<span class="w"> </span>install<span class="w"> </span><span class="nv">k2</span><span class="o">==</span><span class="m">1</span>.24.4.dev20260626+rocm7.2.53211.torch2.12.1<span class="w"> </span>-f<span class="w"> </span>https://k2-fsa.github.io/k2/rocm.html
+pip<span class="w"> </span>install<span class="w"> </span><span class="nv">k2</span><span class="o">==</span><span class="m">1</span>.24.4.dev20260626+rocm7.2.torch2.12.1<span class="w"> </span>-f<span class="w"> </span>https://k2-fsa.github.io/k2/rocm.html
 
 <span class="c1"># method 2</span>
 pip<span class="w"> </span>install<span class="w"> </span><span class="nv">torch</span><span class="o">==</span><span class="m">2</span>.12.1+rocm7.2<span class="w"> </span>-f<span class="w"> </span>https://download.pytorch.org/whl/torch/
 
-wget<span class="w"> </span>https://huggingface.co/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.53211.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+wget<span class="w"> </span>https://huggingface.co/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 
 <span class="c1"># For users from China</span>
 <span class="c1"># 中国国内用户，如果访问不了 huggingface, 请使用</span>
-<span class="c1"># wget https://hf-mirror.com/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.53211.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl</span>
+<span class="c1"># wget https://hf-mirror.com/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl</span>
 
-pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.4.dev20260626+rocm7.2.53211.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+pip<span class="w"> </span>install<span class="w"> </span>./k2-1.24.4.dev20260626+rocm7.2.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 </pre></div>
 </div>
 <div class="admonition hint">
