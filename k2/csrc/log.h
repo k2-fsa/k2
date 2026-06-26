@@ -436,7 +436,7 @@ inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
 #ifdef K2_WITH_CUDA
 #define K2_CUDA_SAFE_CALL(...)                                         \
   do {                                                                 \
-    __VA_ARGS__;                                                       \
+    (void)(__VA_ARGS__);                                               \
     if (k2::internal::EnableCudaDeviceSync())                          \
       (void)cudaDeviceSynchronize();                                   \
     cudaError_t e = cudaGetLastError();                                \
