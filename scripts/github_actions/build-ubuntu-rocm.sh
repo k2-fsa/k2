@@ -4,9 +4,10 @@
 # This is the ROCm counterpart of build-ubuntu-cuda.sh.
 #
 # Required environment variables:
-#   PYTHON_VERSION  - e.g. "3.10"
-#   TORCH_VERSION   - e.g. "2.12.1"
-#   ROCM_VERSION    - e.g. "7.1"
+#   PYTHON_VERSION    - e.g. "3.10"
+#   TORCH_VERSION     - e.g. "2.12.1"
+#   ROCM_VERSION      - e.g. "7.1"
+#   PYTHON_INSTALL_DIR - path to the container's Python, e.g. /opt/python/cp310-cp310
 #
 set -ex
 
@@ -28,7 +29,15 @@ if [ -z "$ROCM_VERSION" ]; then
   exit 1
 fi
 
-# python3 -m pip install scikit-build
+if [ -z "$PYTHON_INSTALL_DIR" ]; then
+  echo "Please set the environment variable PYTHON_INSTALL_DIR"
+  echo "Example: export PYTHON_INSTALL_DIR=/opt/python/cp310-cp310"
+  exit 1
+fi
+
+export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
+export LD_LIBRARY_PATH=$PYTHON_INSTALL_DIR/lib:$LD_LIBRARY_PATH
+
 python3 -m pip install --no-cache-dir -U pip cmake "numpy<=1.26.4"
 python3 -m pip install --no-cache-dir wheel twine typing_extensions
 python3 -m pip install --no-cache-dir bs4 requests tqdm auditwheel patchelf
@@ -39,34 +48,9 @@ echo "Installing torch (ROCm ${ROCM_VERSION})"
 
 python3 -c "import torch; print(torch.__file__)"
 
-yum -y install zlib-devel bzip2-devel libffi-devel xz-devel wget
-
-INSTALLED_PYTHON_VERSION=${PYTHON_VERSION}.2
-if [[ $PYTHON_VERSION == "3.13" || $PYTHON_VERSION == "3.14" ]]; then
-  INSTALLED_PYTHON_VERSION=${PYTHON_VERSION}.0
-fi
-echo "Installing $INSTALLED_PYTHON_VERSION"
-
-curl -O https://www.python.org/ftp/python/$INSTALLED_PYTHON_VERSION/Python-$INSTALLED_PYTHON_VERSION.tgz
-tar xf Python-$INSTALLED_PYTHON_VERSION.tgz
-pushd Python-$INSTALLED_PYTHON_VERSION
-
-PYTHON_INSTALL_DIR=$PWD/py-${PYTHON_VERSION}
-
-./configure --enable-shared --prefix=$PYTHON_INSTALL_DIR >/dev/null
-make install >/dev/null
-
-popd
-
-export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
-export LD_LIBRARY_PATH=$PYTHON_INSTALL_DIR/lib:$LD_LIBRARY_PATH
-ls -lh $PYTHON_INSTALL_DIR/lib/
-
-python3 --version
-which python3
-
-rm -rf ~/.cache/pip >/dev/null 2>&1
-yum clean all >/dev/null 2>&1
+# Free disk space — the ROCm torch wheel is ~5.8 GB
+pip cache purge || true
+rm -rf ~/.cache/pip /tmp/torch-*.whl
 
 cd /var/www
 
@@ -108,8 +92,6 @@ ROCM_MAJOR=${ROCM_VERSION%%.*}
 #
 # Users can override via HIP_ARCH env var.
 
-# Derive default arch list from ROCM_VERSION
-ROCM_MAJOR=${ROCM_VERSION%%.*}
 ROCM_MINOR=${ROCM_VERSION#*.}
 ROCM_MINOR=${ROCM_MINOR%%.*}
 
@@ -133,18 +115,22 @@ if [[ -z "$HIP_ARCH" ]]; then
   fi
 fi
 
+# Escape semicolons in HIP_ARCH so the shell doesn't treat them as command
+# separators when the string is expanded inside setup.py's os.system() call.
+HIP_ARCH_ESCAPED="${HIP_ARCH//;/\\;}"
 export K2_CMAKE_ARGS="-DK2_WITH_HIP=ON"
 export K2_CMAKE_ARGS="$K2_CMAKE_ARGS -DK2_LIBHIPCXX_INCLUDE_DIR=$LIBHIPCXX_INCLUDE_DIR"
-export K2_CMAKE_ARGS="$K2_CMAKE_ARGS -DCMAKE_HIP_ARCHITECTURES=$HIP_ARCH"
+export K2_CMAKE_ARGS="$K2_CMAKE_ARGS -DCMAKE_HIP_ARCHITECTURES=$HIP_ARCH_ESCAPED"
 export K2_CMAKE_ARGS="$K2_CMAKE_ARGS -DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3"
 export K2_MAKE_ARGS=" -j2 "
+
+# Free more disk space before the build
+yum clean all >/dev/null 2>&1
+rm -rf ~/.cache /tmp/libhipcxx
 
 python3 setup.py bdist_wheel
 
 plat=manylinux_2_28_x86_64
-export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
-python3 --version
-which python3
 
 auditwheel --verbose repair \
   --exclude libc10.so \
