@@ -171,7 +171,7 @@ Suppose we want to install
 
 .. code-block:: bash
 
-    https://huggingface.co/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.53211.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+    https://huggingface.co/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 
 we can use the following methods:
 
@@ -179,18 +179,18 @@ we can use the following methods:
 
    # method 1
    pip install torch==2.12.1+rocm7.2 -f https://download.pytorch.org/whl/torch/
-   pip install k2==1.24.4.dev20260626+rocm7.2.53211.torch2.12.1 -f https://k2-fsa.github.io/k2/rocm.html
+   pip install k2==1.24.4.dev20260626+rocm7.2.torch2.12.1 -f https://k2-fsa.github.io/k2/rocm.html
 
    # method 2
    pip install torch==2.12.1+rocm7.2 -f https://download.pytorch.org/whl/torch/
 
-   wget https://huggingface.co/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.53211.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+   wget https://huggingface.co/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 
    # For users from China
    # 中国国内用户，如果访问不了 huggingface, 请使用
-   # wget https://hf-mirror.com/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.53211.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+   # wget https://hf-mirror.com/csukuangfj2/k2/resolve/main/linux-x64-rocm/1.24.4.dev20260626/k2-1.24.4.dev20260626+rocm7.2.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 
-   pip install ./k2-1.24.4.dev20260626+rocm7.2.53211.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+   pip install ./k2-1.24.4.dev20260626+rocm7.2.torch2.12.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 
 .. hint::
 
