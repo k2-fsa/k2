@@ -134,5 +134,12 @@ if(K2_WITH_HIP)
       set_property(TARGET ${_t} PROPERTY INTERFACE_COMPILE_OPTIONS "")
     endif()
   endforeach()
+
+  execute_process(
+    COMMAND "${PYTHON_EXECUTABLE}" -c "import torch; print(torch.version.hip)"
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    OUTPUT_VARIABLE TORCH_HIP_VERSION
+  )
+  message(STATUS "PyTorch HIP version: ${TORCH_HIP_VERSION}")
 endif()
 
