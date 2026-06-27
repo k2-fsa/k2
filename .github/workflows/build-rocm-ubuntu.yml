@@ -28,8 +28,11 @@ jobs:
         id: set-matrix
         run: |
           # outputting for debugging purposes
-          python ./scripts/github_actions/generate_build_matrix.py --enable-rocm --test-only-latest-torch
-          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --enable-rocm --test-only-latest-torch)
+          # python ./scripts/github_actions/generate_build_matrix.py --enable-rocm --test-only-latest-torch
+          # MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --enable-rocm --test-only-latest-torch)
+          #
+          python ./scripts/github_actions/generate_build_matrix.py --enable-rocm
+          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --enable-rocm)
 
           echo "::set-output name=matrix::${MATRIX}"
 
