@@ -28,11 +28,11 @@ jobs:
         id: set-matrix
         run: |
           # outputting for debugging purposes
-          # python ./scripts/github_actions/generate_build_matrix.py --enable-rocm --test-only-latest-torch
-          # MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --enable-rocm --test-only-latest-torch)
-          #
-          python ./scripts/github_actions/generate_build_matrix.py --enable-rocm
-          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --enable-rocm)
+          python ./scripts/github_actions/generate_build_matrix.py --enable-rocm --test-only-latest-torch
+          MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --enable-rocm --test-only-latest-torch)
+
+          # python ./scripts/github_actions/generate_build_matrix.py --enable-rocm
+          # MATRIX=$(python ./scripts/github_actions/generate_build_matrix.py --enable-rocm)
 
           echo "::set-output name=matrix::${MATRIX}"
 
@@ -93,7 +93,13 @@ jobs:
               echo "-----"
               find / -name "libpython*"
 
-              if [[ $PYTHON_VERSION == "3.10" ]]; then
+              if [[ $PYTHON_VERSION == "3.8" ]]; then
+                python_dir=/opt/python/cp38-cp38
+                export PYTHONPATH=/opt/python/cp310-cp310/lib/python3.10/site-packages:$PYTHONPATH
+              if [[ $PYTHON_VERSION == "3.9" ]]; then
+                python_dir=/opt/python/cp39-cp39
+                export PYTHONPATH=/opt/python/cp310-cp310/lib/python3.10/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.10" ]]; then
                 python_dir=/opt/python/cp310-cp310
                 export PYTHONPATH=/opt/python/cp310-cp310/lib/python3.10/site-packages:$PYTHONPATH
               elif [[ $PYTHON_VERSION == "3.11" ]]; then
