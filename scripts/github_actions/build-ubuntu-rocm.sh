@@ -62,6 +62,13 @@ LIBHIPCXX_INCLUDE_DIR=/tmp/libhipcxx/include
 # ROCm major version for auditwheel library suffixes
 ROCM_MAJOR=${ROCM_VERSION%%.*}
 
+# Target GPU architectures.
+# Try deriving from the installed torch wheel first; fall back to a
+# hardcoded list per ROCm version.  Users can override via HIP_ARCH env var.
+if [[ -z "$HIP_ARCH" ]]; then
+  HIP_ARCH=$(python3 -c "import torch; print(';'.join(a for a in torch.cuda.get_arch_list() if a.startswith('gfx')))" 2>/dev/null || true)
+fi
+
 # Target GPU architectures per ROCm version.
 # See https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html
 #
@@ -89,13 +96,12 @@ ROCM_MAJOR=${ROCM_VERSION%%.*}
 #
 # ROCm 7.2+ drops:
 #   gfx900, gfx906 (old Vega, no longer supported)
-#
-# Users can override via HIP_ARCH env var.
-
-ROCM_MINOR=${ROCM_VERSION#*.}
-ROCM_MINOR=${ROCM_MINOR%%.*}
 
 if [[ -z "$HIP_ARCH" ]]; then
+  echo "Warning: could not derive HIP_ARCH from torch, falling back to ROCm version list"
+  ROCM_MINOR=${ROCM_VERSION#*.}
+  ROCM_MINOR=${ROCM_MINOR%%.*}
+
   # Base architectures supported by ROCm 6.3+
   HIP_ARCH="gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1103"
 
@@ -114,6 +120,8 @@ if [[ -z "$HIP_ARCH" ]]; then
     HIP_ARCH="${HIP_ARCH};gfx950;gfx1150;gfx1151"
   fi
 fi
+
+echo "HIP_ARCH: $HIP_ARCH"
 
 # Escape semicolons in HIP_ARCH so the shell doesn't treat them as command
 # separators when the string is expanded inside setup.py's os.system() call.
