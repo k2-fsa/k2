@@ -15,6 +15,12 @@ if [ -z $TORCH_VERSION ]; then
   exit 1
 fi
 
+if [ -z "$PYTHON_INSTALL_DIR" ]; then
+  echo "Please set the environment variable PYTHON_INSTALL_DIR"
+  echo "Example: export PYTHON_INSTALL_DIR=/opt/python/cp310-cp310"
+  exit 1
+fi
+
 export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
 export LD_LIBRARY_PATH=$PYTHON_INSTALL_DIR/lib:$LD_LIBRARY_PATH
 ls -lh $PYTHON_INSTALL_DIR/lib/
@@ -50,11 +56,6 @@ python3 -m pip install -qq torch==$TORCH_VERSION
 python3 -c "import torch; print(torch.__file__)"
 python3 -m torch.utils.collect_env
 
-export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
-
-python3 --version
-which python3
-
 rm -rf ~/.cache/pip >/dev/null 2>&1
 yum clean all >/dev/null 2>&1
 
@@ -68,10 +69,6 @@ export CMAKE_CUDA_COMPILER_LAUNCHER=
 export K2_CMAKE_ARGS=" -DPYTHON_EXECUTABLE=$PYTHON_INSTALL_DIR/bin/python3 "
 export K2_MAKE_ARGS=" -j2 "
 
-nvcc --version || true
-rm -rf /usr/local/cuda*
-nvcc --version || true
-
 python3 setup.py bdist_wheel
 
 if [[ x"$IS_2_28" == x"1" ]]; then
@@ -79,9 +76,6 @@ if [[ x"$IS_2_28" == x"1" ]]; then
 else
   plat=manylinux_2_17_aarch64
 fi
-export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
-python3 --version
-which python3
 
 auditwheel --verbose repair \
   --exclude libc10.so \

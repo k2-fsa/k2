@@ -15,6 +15,15 @@ if [ -z $TORCH_VERSION ]; then
   exit 1
 fi
 
+if [ -z "$PYTHON_INSTALL_DIR" ]; then
+  echo "Please set the environment variable PYTHON_INSTALL_DIR"
+  echo "Example: export PYTHON_INSTALL_DIR=/opt/python/cp310-cp310"
+  exit 1
+fi
+
+export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
+export LD_LIBRARY_PATH=$PYTHON_INSTALL_DIR/lib:$LD_LIBRARY_PATH
+
 python3 -m pip install -U pip cmake "numpy<=1.26.4"
 python3 -m pip install -U wheel twine typing_extensions
 python3 -m pip install -U bs4 requests tqdm auditwheel patchelf
@@ -40,11 +49,6 @@ python3 -m pip install -qq torch==$TORCH_VERSION+cpu -f https://download.pytorch
 
 python3 -c "import torch; print(torch.__file__)"
 python3 -m torch.utils.collect_env
-
-export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
-
-python3 --version
-which python3
 
 rm -rf ~/.cache/pip >/dev/null 2>&1
 yum clean all >/dev/null 2>&1
@@ -73,9 +77,6 @@ if [[ x"$IS_2_28" == x"1" ]]; then
 else
   plat=manylinux_2_17_x86_64
 fi
-export PATH=$PYTHON_INSTALL_DIR/bin:$PATH
-python3 --version
-which python3
 
 pushd dist
 unzip *.whl
