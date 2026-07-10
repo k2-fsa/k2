@@ -413,6 +413,9 @@ def generate_build_matrix(
         if "1.13.1" in matrix:
             matrix["1.13.1"]["python-version"].remove("3.11")
 
+        if "2.13.0" in matrix:
+            matrix["2.13.0"]["python-version"].remove("3.15")
+
     excluded_python_versions = ["3.6", "3.7"]
 
     enabled_torch_versions = ["1.10.0"]
