@@ -107,6 +107,8 @@ jobs:
               # cp312-cp312
               # cp313-cp313
               # cp313-cp313t  (no gil)
+              # cp314-cp314
+              # cp315-cp315
               if [[ $PYTHON_VERSION == "3.6" ]]; then
                 python_dir=/opt/python/cp36-cp36m
                 export PYTHONPATH=/opt/python/cp36-cp36m/lib/python3.6/site-packages:$PYTHONPATH
@@ -134,6 +136,9 @@ jobs:
               elif [[ $PYTHON_VERSION == "3.14" ]]; then
                 python_dir=/opt/python/cp314-cp314
                 export PYTHONPATH=/opt/python/cp314-cp314/lib/python3.14/site-packages:$PYTHONPATH
+              elif [[ $PYTHON_VERSION == "3.15" ]]; then
+                python_dir=/opt/python/cp315-cp315
+                export PYTHONPATH=/opt/python/cp315-cp315/lib/python3.15/site-packages:$PYTHONPATH
               else
                 echo "Unsupported Python version $PYTHON_VERSION"
                 exit 1

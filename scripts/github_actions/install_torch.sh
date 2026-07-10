@@ -404,6 +404,25 @@ case ${torch} in
         ;;
     esac
     ;;
+  2.13.*)
+    case ${cuda} in
+      12.6)
+        package="torch==${torch}+cu126"
+        # https://download.pytorch.org/whl/nightly/torch/
+        url=https://download.pytorch.org/whl/torch/
+        ;;
+      13.0)
+        # default 13.0
+        package="torch==${torch}+cu130"
+        url=https://download.pytorch.org/whl/torch/
+        ;;
+      13.2)
+        # default 13.0
+        package="torch==${torch}+cu132"
+        url=https://download.pytorch.org/whl/torch/
+        ;;
+    esac
+    ;;
   # 2.8.*)
   #   case ${cuda} in
   #     12.6)
