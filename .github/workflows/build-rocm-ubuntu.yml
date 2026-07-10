@@ -96,7 +96,7 @@ jobs:
               if [[ $PYTHON_VERSION == "3.8" ]]; then
                 python_dir=/opt/python/cp38-cp38
                 export PYTHONPATH=/opt/python/cp310-cp310/lib/python3.10/site-packages:$PYTHONPATH
-              if [[ $PYTHON_VERSION == "3.9" ]]; then
+              elif [[ $PYTHON_VERSION == "3.9" ]]; then
                 python_dir=/opt/python/cp39-cp39
                 export PYTHONPATH=/opt/python/cp310-cp310/lib/python3.10/site-packages:$PYTHONPATH
               elif [[ $PYTHON_VERSION == "3.10" ]]; then
