@@ -155,6 +155,7 @@ endif()
 if(K2_USE_PYTORCH)
   if(NOT WIN32)
     target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
+    target_link_libraries(context PUBLIC ${PYTHON_LIBRARY})
   else()
     # On Windows (both MSVC+CUDA and clang+HIP), CMake imported shared-library
     # targets are not reliably expanded to their import .lib paths in the HIP or
