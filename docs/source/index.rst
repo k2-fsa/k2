@@ -35,7 +35,7 @@ We hope k2 will have many other applications as well.
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
    installation/index
