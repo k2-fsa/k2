@@ -52,13 +52,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        torch: ["2.4.1"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        torch: ["2.15.0"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
         build_type: ["Release", "Debug"]
 
     steps:
       # refer to https://github.com/actions/checkout
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Display GCC version
         run: |
@@ -70,7 +70,7 @@ jobs:
           clang --version
 
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -83,7 +83,7 @@ jobs:
         run: |
           python3 -m pip install -qq --upgrade pip
           python3 -m pip install -qq wheel twine typing_extensions
-          python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch
           python3 -m pip install -qq dataclasses graphviz
           sudo apt-get -qq install graphviz
 

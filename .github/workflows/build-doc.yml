@@ -72,7 +72,7 @@ jobs:
           sudo apt-get -qq install graphviz
           python3 -m pip install -qq --upgrade pip
           python3 -m pip install -qq wheel twine typing_extensions
-          python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch
           python3 -m pip install -qq graphviz
 
           python3 -m pip install -qq k2==1.24.4.dev20261112+cpu.torch${{ matrix.torch }} -f https://k2-fsa.github.io/k2/cpu.html
