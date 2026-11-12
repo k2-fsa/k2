@@ -154,7 +154,7 @@ jobs:
           ls -lh build/*
 
       - name: Upload Wheel
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: cuda-${{ matrix.cuda }}-torch-${{ matrix.torch }}-python-${{ matrix.python-version }}
           path: dist/*.whl
