@@ -156,12 +156,12 @@ make<span class="w"> </span>-j
 <span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span><span class="w"> </span><span class="c1"># for `import _k2`</span>
 
 <span class="c1"># To test that your build is successful, run</span>
-python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import k2; print(k2.__file__)&quot;</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import k2; print(k2.__file__)"</span>
 <span class="c1"># It should print /some/path/k2/k2/python/k2/__init.py</span>
 
-python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import torch; import _k2; print(_k2.__file__)"</span>
 <span class="c1"># It should print /some/path/k2/build_release/lib/_k2.cpython-38-x86_64-linux-gnu.so</span>
-<span class="c1"># (I assume that you&#39;re using Python 3.8, so there is a string 38 above)</span>
+<span class="c1"># (I assume that you're using Python 3.8, so there is a string 38 above)</span>
 
 <span class="c1"># If you are going to install https://github.com/k2-fsa/sherpa after installing</span>
 <span class="c1"># k2, please run</span>
@@ -195,12 +195,12 @@ make<span class="w"> </span>-j
 <span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PWD</span>/lib:<span class="nv">$PYTHONPATH</span><span class="w"> </span><span class="c1"># for `import _k2`</span>
 
 <span class="c1"># To test that your build is successful, run</span>
-python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import k2; print(k2.__file__)&quot;</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import k2; print(k2.__file__)"</span>
 <span class="c1"># It should print /some/path/k2/k2/python/k2/__init.py</span>
 
-python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import torch; import _k2; print(_k2.__file__)"</span>
 <span class="c1"># It should print /some/path/k2/build_debug/lib/_k2.cpython-38-x86_64-linux-gnu.so</span>
-<span class="c1"># (I assume that you&#39;re using Python 3.8, so there is a string 38 above)</span>
+<span class="c1"># (I assume that you're using Python 3.8, so there is a string 38 above)</span>
 
 <span class="c1"># If you are going to install https://github.com/k2-fsa/sherpa after installing</span>
 <span class="c1"># k2, please run</span>
@@ -266,7 +266,7 @@ make<span class="w"> </span>cu_ragged_test
 <span class="c1"># TEST(RaggedShapeOpsTest, CatMoreAxes) {</span>
 <span class="c1">#</span>
 <span class="c1"># To run the above test case only, use</span>
-./cu_ragged_test<span class="w"> </span>--gtest_filter<span class="o">=</span><span class="s2">&quot;RaggedShapeOpsTest.CatMoreAxes&quot;</span>
+./cu_ragged_test<span class="w"> </span>--gtest_filter<span class="o">=</span><span class="s2">"RaggedShapeOpsTest.CatMoreAxes"</span>
 <span class="c1">#</span>
 <span class="c1"># The option `--gtest_filter` supports regular expressions.</span>
 <span class="c1">#</span>
@@ -324,7 +324,7 @@ e.g., <code class="docutils literal notranslate"><span class="pre">activate_k2_d
 </div></blockquote>
 <p>To check whether you are using a release version or a debug version, run:</p>
 <blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&quot;</span>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import torch; import _k2; print(_k2.__file__)"</span>
 </pre></div>
 </div>
 </div></blockquote>

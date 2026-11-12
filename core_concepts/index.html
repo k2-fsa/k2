@@ -126,13 +126,13 @@ the final state 2 with label -1 and score 0.2.</p></li>
 </div>
 <p>The above FSA is created with the following code:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
-<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">'''</span>
 <span class="s1">0 1 10 0.1</span>
 <span class="s1">1 2 -1 0.2</span>
 <span class="s1">2</span>
-<span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">'''</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
-<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;simple_fsa.svg&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">'simple_fsa.svg'</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We summarize the <strong>unique</strong> features of FSA in k2 in below:</p>
@@ -184,14 +184,14 @@ with <code class="docutils literal notranslate"><span class="pre">autograd</span
 <p>The following code converts the above simple acceptor to a transducer:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">'''</span>
 <span class="s1">0 1 10 0.1</span>
 <span class="s1">1 2 -1 0.2</span>
 <span class="s1">2</span>
-<span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">'''</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
-<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;simple_fst.svg&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">'simple_fst.svg'</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The resulting FST is visualized in <a class="reference internal" href="#a-simple-fst"><span class="std std-numref">Fig. 2</span></a>.</p>
@@ -256,15 +256,15 @@ such as the Gallic semiring.</p>
 this FSA is <code class="docutils literal notranslate"><span class="pre">max(0.1,</span> <span class="pre">0.2)</span> <span class="pre">==</span> <span class="pre">0.2</span></code>.</p>
 <p>In k2, you would use the following code to compute it:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
-<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">'''</span>
 <span class="s1">0 1 10 0.1</span>
 <span class="s1">0 2 20 0.2</span>
 <span class="s1">1 3 -1 0</span>
 <span class="s1">2 3 -1 0</span>
 <span class="s1">3</span>
-<span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">'''</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
-<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa2.svg&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">'fsa2.svg'</span><span class="p">)</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
 <span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">total_scores</span><span class="p">)</span>
@@ -288,13 +288,13 @@ total score is <code class="docutils literal notranslate"><span class="pre">log(
 <code class="docutils literal notranslate"><span class="pre">log(exp(0.1)</span> <span class="pre">+</span> <span class="pre">exp(0.2))</span> <span class="pre">=</span> <span class="pre">0.8444</span></code>.</p>
 <p>The code in k2 looks like:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">k2</span>
-<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">'''</span>
 <span class="s1">0 1 10 0.1</span>
 <span class="s1">0 2 20 0.2</span>
 <span class="s1">1 3 -1 0</span>
 <span class="s1">2 3 -1 0</span>
 <span class="s1">3</span>
-<span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">'''</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
 <span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -362,16 +362,16 @@ the FSA given in <a class="reference internal" href="#autograd-example"><span cl
 <span class="n">nnet_output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 <span class="c1"># assume nnet_output is the output of some neural network</span>
 <span class="n">nnet_output</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">'''</span>
 <span class="s1">0 1 10 0</span>
 <span class="s1">0 2 20 0</span>
 <span class="s1">1 3 -1 0</span>
 <span class="s1">2 3 -1 0</span>
 <span class="s1">3</span>
-<span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">'''</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">scores</span> <span class="o">=</span> <span class="n">nnet_output</span>
-<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;autograd_tropical.svg&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">'autograd_tropical.svg'</span><span class="p">)</span>
 <span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
 <span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa_vec</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
@@ -424,16 +424,16 @@ of the <cite>best score</cite> <code class="docutils literal notranslate"><span 
 <span class="n">nnet_output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 <span class="c1"># assume nnet_output is the output of some neural network</span>
 <span class="n">nnet_output</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">'''</span>
 <span class="s1">0 1 10 0</span>
 <span class="s1">0 2 20 0</span>
 <span class="s1">1 3 -1 0</span>
 <span class="s1">2 3 -1 0</span>
 <span class="s1">3</span>
-<span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">'''</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">scores</span> <span class="o">=</span> <span class="n">nnet_output</span>
-<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;autograd_log.svg&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">'autograd_log.svg'</span><span class="p">)</span>
 <span class="n">fsa_vec</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">create_fsa_vec</span><span class="p">([</span><span class="n">fsa</span><span class="p">])</span>
 <span class="n">total_scores</span> <span class="o">=</span> <span class="n">fsa_vec</span><span class="o">.</span><span class="n">get_tot_scores</span><span class="p">(</span><span class="n">log_semiring</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_double_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 

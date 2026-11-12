@@ -107,14 +107,14 @@
 <section id="a-single-fsa">
 <h2>A single FSA<a class="headerlink" href="#a-single-fsa" title="Link to this heading"></a></h2>
 <p>The following code shows how to create an FSA in k2:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'''</span>
 <span class="s1">  0 1 10 0.1</span>
 <span class="s1">  0 2 20 0.2</span>
 <span class="s1">  1 2 30 0.3</span>
 <span class="s1">  1 3 -1 0.4</span>
 <span class="s1">  2 3 -1 0.5</span>
 <span class="s1">  3</span>
-<span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">'''</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">Fsa</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -164,13 +164,13 @@ Its return value can also be displayed in a jupyter notebook. A screenshot of ru
 <section id="symbol-table">
 <h3>Symbol table<a class="headerlink" href="#symbol-table" title="Link to this heading"></a></h3>
 <p>You can also attach a symbol table to the above FSA:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sym_str</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sym_str</span> <span class="o">=</span> <span class="s1">'''</span>
 <span class="s1">  a 10</span>
 <span class="s1">  b 20</span>
 <span class="s1">  c 30</span>
-<span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">'''</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">labels_sym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">sym_str</span><span class="p">)</span>
-<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa_symbols.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;An FSA with symbol table&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">'fsa_symbols.svg'</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">'An FSA with symbol table'</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The visualization result is given in <a class="reference internal" href="#tutorial-fsa-symbols"><span class="std std-numref">Fig. 13</span></a>.</p>
@@ -189,7 +189,7 @@ to the <code class="docutils literal notranslate"><span class="pre">labels_sym</
 name is <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code>, the resulting FSA is viewed as an FST in k2.</p>
 <p>An example is given below.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
-<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa_aux.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;An FSA with aux_labels&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">'fsa_aux.svg'</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">'An FSA with aux_labels'</span><span class="p">)</span>
 </pre></div>
 </div>
 <figure class="align-center" style="width: 600px">
@@ -208,12 +208,12 @@ Also note that the <cite>aux_labels</cite> for arcs entering the final state are
 its <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code> is visualized with human readable strings instead of integer
 IDs (the same</p>
 <p>The following is an example.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">k2</span><span class="o">.</span><span class="n">SymbolTable</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">'''</span>
 <span class="s1">  A 10</span>
 <span class="s1">  B 30</span>
-<span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="s1">'''</span><span class="p">)</span>
 <span class="n">fsa</span><span class="o">.</span><span class="n">aux_labels_sym</span> <span class="o">=</span> <span class="n">aux_labels_sym</span>
-<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa_aux_symbols.svg&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;An FSA with aux_symbols&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">'fsa_aux_symbols.svg'</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">'An FSA with aux_symbols'</span><span class="p">)</span>
 </pre></div>
 </div>
 <figure class="align-center" style="width: 600px">
@@ -225,7 +225,7 @@ IDs (the same</p>
 <p><code class="docutils literal notranslate"><span class="pre">labels</span></code> and <code class="docutils literal notranslate"><span class="pre">aux_labels</span></code> can be swapped using <code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.invert()</span></code>
 or <code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.invert_()</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fsa</span><span class="o">.</span><span class="n">invert_</span><span class="p">()</span>
-<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">&#39;fsa_invert.svg&#39;</span><span class="p">)</span>
+<span class="n">fsa</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s1">'fsa_invert.svg'</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><cite>fsa_invert.svg</cite> is shown in <a class="reference internal" href="#tutorial-fsa-invert"><span class="std std-numref">Fig. 14</span></a>.</p>
@@ -273,16 +273,16 @@ of an FSA in a 1-D <cite>torch.Tensor</cite> with dtype <cite>torch.float32</cit
 <section id="to">
 <h3>to<a class="headerlink" href="#to" title="Link to this heading"></a></h3>
 <p>An FSA can be moved among different devices with <code class="xref py py-func docutils literal notranslate"><span class="pre">k2.Fsa.to()</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">'cpu'</span><span class="p">)</span>
 <span class="n">fsa</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 <span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">is_cpu</span><span class="p">()</span>
 
-<span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">device</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">device</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">'cpu'</span><span class="p">)</span>
 
-<span class="n">fsa</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;cuda:1&#39;</span><span class="p">)</span>
+<span class="n">fsa</span> <span class="o">=</span> <span class="n">fsa</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">'cuda:1'</span><span class="p">)</span>
 <span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">is_cuda</span><span class="p">()</span>
 
-<span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">device</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cuda&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">fsa</span><span class="o">.</span><span class="n">device</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">'cuda'</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Note that you can use <code class="xref py py-attr docutils literal notranslate"><span class="pre">k2.Fsa.device</span></code> to get the device on which

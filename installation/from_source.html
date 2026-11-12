@@ -137,7 +137,7 @@ Python from source.</p></li>
 <p>After setting up the environment, we are ready to build k2:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/k2-fsa/k2.git
 <span class="nb">cd</span><span class="w"> </span>k2
-<span class="nb">export</span><span class="w"> </span><span class="nv">K2_MAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-j6&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">K2_MAKE_ARGS</span><span class="o">=</span><span class="s2">"-j6"</span>
 python3<span class="w"> </span>setup.py<span class="w"> </span>install
 </pre></div>
 </div>
@@ -157,7 +157,7 @@ following commands to install k2.</p>
 <blockquote>
 <div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/k2-fsa/k2.git
 <span class="nb">cd</span><span class="w"> </span>k2
-<span class="nb">export</span><span class="w"> </span><span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-DK2_BUILD_FOR_ALL_ARCHS=ON&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">"-DK2_BUILD_FOR_ALL_ARCHS=ON"</span>
 python3<span class="w"> </span>setup.py<span class="w"> </span>install
 </pre></div>
 </div>
@@ -217,7 +217,7 @@ make<span class="w"> </span>-j
 <p class="admonition-title">Hint</p>
 <p>To build and install the Python package with ROCm, pass the same options
 through <code class="docutils literal notranslate"><span class="pre">K2_CMAKE_ARGS</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-DK2_WITH_HIP=ON -DK2_WITH_CUDA=OFF -DCMAKE_HIP_ARCHITECTURES=gfx90a&quot;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">"-DK2_WITH_HIP=ON -DK2_WITH_CUDA=OFF -DCMAKE_HIP_ARCHITECTURES=gfx90a"</span>
 python3<span class="w"> </span>setup.py<span class="w"> </span>install
 </pre></div>
 </div>
@@ -232,17 +232,17 @@ python3<span class="w"> </span>setup.py<span class="w"> </span>install
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python3
 Python 3.8.6 (default, Dec  2 2020, 15:56:31)
 [GCC 7.5.0] on linux
-Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+Type "help", "copyright", "credits" or "license" for more information.
 &gt;&gt;&gt; import k2
-&gt;&gt;&gt; s = &#39;&#39;&#39;
+&gt;&gt;&gt; s = '''
 ... 0 1 -1 0.1
 ... 1
-... &#39;&#39;&#39;
+... '''
 &gt;&gt;&gt; fsa = k2.Fsa.from_str(s)
 &gt;&gt;&gt; print(fsa)
 k2.Fsa: 0 1 -1 0.1
 1
-properties_str = &quot;Valid|Nonempty|TopSorted|TopSortedAndAcyclic|ArcSorted|ArcSortedAndDeterministic|EpsilonFree|MaybeAccessible|MaybeCoaccessible&quot;.
+properties_str = "Valid|Nonempty|TopSorted|TopSortedAndAcyclic|ArcSorted|ArcSortedAndDeterministic|EpsilonFree|MaybeAccessible|MaybeCoaccessible".
 </pre></div>
 </div>
 <p>To uninstall k2, run:</p>

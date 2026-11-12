@@ -123,17 +123,17 @@ wget<span class="w"> </span>https://github.com/pybind/pybind11/archive/v2.6.0.ta
 </pre></div>
 </div>
 <p>and then change <a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#L23">https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#L23</a>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># set(pybind11_URL  &quot;https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz&quot;)</span>
-<span class="nb">set</span><span class="p">(</span><span class="n">pybind11_URL</span>  <span class="s2">&quot;file:///tmp/v2.6.0.tar.gz&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># set(pybind11_URL  "https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz")</span>
+<span class="nb">set</span><span class="p">(</span><span class="n">pybind11_URL</span>  <span class="s2">"file:///tmp/v2.6.0.tar.gz"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
 <section id="mkl-related-issues-on-macos">
 <h2>MKL related issues on macOS<a class="headerlink" href="#mkl-related-issues-on-macos" title="Link to this heading"></a></h2>
 <p>If you have the following error while importing <code class="docutils literal notranslate"><span class="pre">k2</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import k2&quot;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import k2"</span>
 Traceback<span class="w"> </span><span class="o">(</span>most<span class="w"> </span>recent<span class="w"> </span>call<span class="w"> </span>last<span class="o">)</span>:
-<span class="w">  </span>File<span class="w"> </span><span class="s2">&quot;/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py&quot;</span>,<span class="w"> </span>line<span class="w"> </span><span class="m">24</span>,<span class="w"> </span><span class="k">in</span><span class="w"> </span>&lt;module&gt;
+<span class="w">  </span>File<span class="w"> </span><span class="s2">"/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py"</span>,<span class="w"> </span>line<span class="w"> </span><span class="m">24</span>,<span class="w"> </span><span class="k">in</span><span class="w"> </span>&lt;module&gt;
 <span class="w">    </span>from<span class="w"> </span>_k2<span class="w"> </span>import<span class="w"> </span>DeterminizeWeightPushingType
 ImportError:<span class="w"> </span>dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so,<span class="w"> </span><span class="m">2</span><span class="o">)</span>:<span class="w"> </span>Library<span class="w"> </span>not<span class="w"> </span>loaded:<span class="w"> </span>@rpath/libmkl_intel_ilp64.2.dylib
 <span class="w">  </span>Referenced<span class="w"> </span>from:<span class="w"> </span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
@@ -156,9 +156,9 @@ $<span class="w"> </span>ls<span class="w"> </span>-lh<span class="w"> </span>li
 </pre></div>
 </div>
 <p>After the above fix, you may get a different error like below:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import k2&quot;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import k2"</span>
 Traceback<span class="w"> </span><span class="o">(</span>most<span class="w"> </span>recent<span class="w"> </span>call<span class="w"> </span>last<span class="o">)</span>:
-<span class="w">  </span>File<span class="w"> </span><span class="s2">&quot;/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py&quot;</span>,<span class="w"> </span>line<span class="w"> </span><span class="m">24</span>,<span class="w"> </span><span class="k">in</span><span class="w"> </span>&lt;module&gt;
+<span class="w">  </span>File<span class="w"> </span><span class="s2">"/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py"</span>,<span class="w"> </span>line<span class="w"> </span><span class="m">24</span>,<span class="w"> </span><span class="k">in</span><span class="w"> </span>&lt;module&gt;
 <span class="w">    </span>from<span class="w"> </span>_k2<span class="w"> </span>import<span class="w"> </span>DeterminizeWeightPushingType
 ImportError:<span class="w"> </span>dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so,<span class="w"> </span><span class="m">2</span><span class="o">)</span>:<span class="w"> </span>Library<span class="w"> </span>not<span class="w"> </span>loaded:<span class="w"> </span>@rpath/libmkl_core.2.dylib
 <span class="w">  </span>Referenced<span class="w"> </span>from:<span class="w"> </span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
@@ -207,7 +207,7 @@ python3<span class="w"> </span>setup.py<span class="w"> </span>install
 <p>to</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/k2-fsa/k2.git
 <span class="nb">cd</span><span class="w"> </span>k2
-<span class="nb">export</span><span class="w"> </span><span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-DK2_BUILD_FOR_ALL_ARCHS=ON&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">"-DK2_BUILD_FOR_ALL_ARCHS=ON"</span>
 python3<span class="w"> </span>setup.py<span class="w"> </span>install
 </pre></div>
 </div>
