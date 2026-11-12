@@ -112,7 +112,7 @@ jobs:
           pip install ./dist/*.whl
 
       - name: Upload Wheel
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-windows-2019-cpu
           path: dist/*.whl

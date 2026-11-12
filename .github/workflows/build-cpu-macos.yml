@@ -116,7 +116,7 @@ jobs:
           ls -lh build/*
 
       - name: Upload Wheel
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-macos-latest-cpu
           path: dist/*.whl
