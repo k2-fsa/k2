@@ -415,6 +415,16 @@ duration
 DeterminizeWeightPushingType
 ----------------------------
 
+__eq__
+^^^^^^
+
+.. automethod:: k2.DeterminizeWeightPushingType.__eq__
+
+__ne__
+^^^^^^
+
+.. automethod:: k2.DeterminizeWeightPushingType.__ne__
+
 name
 ^^^^
 
@@ -1039,6 +1049,11 @@ terminate_and_flush_to_streams
 
 SymbolTable
 -----------
+
+__class_getitem__
+^^^^^^^^^^^^^^^^^
+
+.. automethod:: k2.SymbolTable.__class_getitem__
 
 add
 ^^^

@@ -10,6 +10,7 @@
   <title>k2 &mdash; k2 1.24.4 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/sphinx_autodoc_typehints.css?v=057ac668" />
       <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
       <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=c976b32c" />
 
@@ -17,8 +18,8 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=ca3bc075"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
-      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
       <script src="../_static/copybutton.js?v=f281be69"></script>
     <script src="../_static/js/theme.js"></script>
@@ -142,6 +143,8 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#determinizeweightpushingtype">DeterminizeWeightPushingType</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#eq">__eq__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ne">__ne__</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#name">name</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#value">value</a></li>
 </ul>
@@ -201,13 +204,13 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#raggedshape">RaggedShape</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#eq">__eq__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id14">__getitem__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id15">__init__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#ne">__ne__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">__eq__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id15">__getitem__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id16">__init__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id17">__ne__</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#repr">__repr__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id16">__str__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id17">compose</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id18">__str__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id19">compose</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#get-layer">get_layer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#index">index</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#max-size">max_size</a></li>
@@ -216,59 +219,59 @@
 <li class="toctree-l4"><a class="reference internal" href="#remove-axis">remove_axis</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#row-ids">row_ids</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#row-splits">row_splits</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id18">to</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id20">to</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#tot-size">tot_size</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#tot-sizes">tot_sizes</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id19">device</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id21">device</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dim0">dim0</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#num-axes">num_axes</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#raggedtensor">RaggedTensor</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id20">__eq__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id21">__getitem__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id22">__eq__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id23">__getitem__</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#getstate">__getstate__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id22">__init__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id23">__ne__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id24">__repr__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id24">__init__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id25">__ne__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id26">__repr__</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#setstate">__setstate__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id25">__str__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id27">__str__</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#add">add</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#arange">arange</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#argmax">argmax</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id26">cat</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id28">cat</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#clone">clone</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id27">index</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id29">index</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#logsumexp">logsumexp</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#max">max</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#min">min</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#normalize">normalize</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id28">numel</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id30">numel</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pad">pad</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id29">remove_axis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id31">remove_axis</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#remove-values-eq">remove_values_eq</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#remove-values-leq">remove_values_leq</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id30">requires_grad_</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id32">requires_grad_</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sort">sort_</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sum">sum</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id31">to</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id32">to_str_simple</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id33">to</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id34">to_str_simple</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#tolist">tolist</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id33">tot_size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id35">tot_size</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#unique">unique</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id34">device</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id35">dim0</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id36">device</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id37">dim0</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dtype">dtype</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id36">grad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id38">grad</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#is-cuda">is_cuda</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id37">num_axes</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id38">requires_grad</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id39">shape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id39">num_axes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id40">requires_grad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id41">shape</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#values">values</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#rnntdecodingconfig">RnntDecodingConfig</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id40">__init__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id42">__init__</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#beam">beam</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#decoder-history-len">decoder_history_len</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#max-contexts">max_contexts</a></li>
@@ -277,13 +280,13 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#rnntdecodingstream">RnntDecodingStream</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id41">__init__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id42">__str__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id43">__init__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id44">__str__</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#rnntdecodingstreams">RnntDecodingStreams</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id43">__init__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id44">__str__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id45">__init__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id46">__str__</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#advance">advance</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#format-output">format_output</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#get-contexts">get_contexts</a></li>
@@ -291,9 +294,10 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#symboltable">SymbolTable</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id45">add</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#class-getitem">__class_getitem__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id47">add</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#from-file">from_file</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id46">from_str</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id48">from_str</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#get">get</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#merge">merge</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#to-file">to_file</a></li>
@@ -304,78 +308,78 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#k2-ragged">k2.ragged</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id47">cat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id49">cat</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#create-ragged-shape2">create_ragged_shape2</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#create-ragged-tensor">create_ragged_tensor</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id48">index</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id50">index</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#index-and-sum">index_and_sum</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#random-ragged-shape">random_ragged_shape</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id49">regular_ragged_shape</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id50">RaggedShape</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id51">__eq__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id52">__getitem__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id53">__init__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id54">__ne__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id55">__repr__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id56">__str__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id57">compose</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id58">get_layer</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id59">index</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id60">max_size</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id61">numel</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id62">regular_ragged_shape</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id63">remove_axis</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id64">row_ids</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id65">row_splits</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id66">to</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id67">tot_size</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id68">tot_sizes</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id69">device</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id70">dim0</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id71">num_axes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id51">regular_ragged_shape</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id52">RaggedShape</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id53">__eq__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id54">__getitem__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id55">__init__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id56">__ne__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id57">__repr__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id58">__str__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id59">compose</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id60">get_layer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id61">index</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id62">max_size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id63">numel</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id64">regular_ragged_shape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id65">remove_axis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id66">row_ids</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id67">row_splits</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id68">to</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id69">tot_size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id70">tot_sizes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id71">device</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id72">dim0</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id73">num_axes</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#id72">RaggedTensor</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id73">__eq__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id74">__getitem__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id75">__getstate__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id76">__init__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id77">__ne__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id78">__repr__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id79">__setstate__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id80">__str__</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id81">add</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id82">arange</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id83">argmax</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id84">cat</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id85">clone</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id86">index</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id87">logsumexp</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id88">max</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id89">min</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id90">normalize</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id91">numel</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id92">pad</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id93">remove_axis</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id94">remove_values_eq</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id95">remove_values_leq</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id96">requires_grad_</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id97">sort_</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id98">sum</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id99">to</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id100">to_str_simple</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id101">tolist</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id102">tot_size</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id103">unique</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id104">device</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id105">dim0</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id106">dtype</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id107">grad</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id108">is_cuda</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id109">num_axes</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id110">requires_grad</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id111">shape</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id112">values</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id74">RaggedTensor</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id75">__eq__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id76">__getitem__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id77">__getstate__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id78">__init__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id79">__ne__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id80">__repr__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id81">__setstate__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id82">__str__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id83">add</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id84">arange</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id85">argmax</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id86">cat</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id87">clone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id88">index</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id89">logsumexp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id90">max</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id91">min</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id92">normalize</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id93">numel</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id94">pad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id95">remove_axis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id96">remove_values_eq</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id97">remove_values_leq</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id98">requires_grad_</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id99">sort_</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id100">sum</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id101">to</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id102">to_str_simple</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id103">tolist</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id104">tot_size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id105">unique</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id106">device</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id107">dim0</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id108">dtype</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id109">grad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id110">is_cuda</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id111">num_axes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id112">requires_grad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id113">shape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id114">values</a></li>
 </ul>
 </li>
 </ul>
@@ -662,6 +666,12 @@
 </section>
 <section id="determinizeweightpushingtype">
 <h2>DeterminizeWeightPushingType<a class="headerlink" href="#determinizeweightpushingtype" title="Link to this heading"></a></h2>
+<section id="eq">
+<h3>__eq__<a class="headerlink" href="#eq" title="Link to this heading"></a></h3>
+</section>
+<section id="ne">
+<h3>__ne__<a class="headerlink" href="#ne" title="Link to this heading"></a></h3>
+</section>
 <section id="name">
 <h3>name<a class="headerlink" href="#name" title="Link to this heading"></a></h3>
 </section>
@@ -738,13 +748,13 @@
 <h3>invert<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
 </section>
 <section id="id7">
-<h3><a href="#id114"><span class="problematic" id="id115">invert_</span></a><a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<h3><a href="#id116"><span class="problematic" id="id117">invert_</span></a><a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
 </section>
 <section id="rename-tensor-attribute">
 <h3><a class="reference internal" href="#rename-tensor-attribute">rename_tensor_attribute</a><a class="headerlink" href="#rename-tensor-attribute" title="Link to this heading"></a></h3>
 </section>
 <section id="requires-grad">
-<h3><a href="#id116"><span class="problematic" id="id117">requires_grad_</span></a><a class="headerlink" href="#requires-grad" title="Link to this heading"></a></h3>
+<h3><a href="#id118"><span class="problematic" id="id119">requires_grad_</span></a><a class="headerlink" href="#requires-grad" title="Link to this heading"></a></h3>
 </section>
 <section id="set-scores-stochastic">
 <h3><a class="reference internal" href="#set-scores-stochastic">set_scores_stochastic</a><a class="headerlink" href="#set-scores-stochastic" title="Link to this heading"></a></h3>
@@ -809,26 +819,26 @@
 </section>
 <section id="raggedshape">
 <h2>RaggedShape<a class="headerlink" href="#raggedshape" title="Link to this heading"></a></h2>
-<section id="eq">
-<h3>__eq__<a class="headerlink" href="#eq" title="Link to this heading"></a></h3>
-</section>
 <section id="id14">
-<h3>__getitem__<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<h3>__eq__<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
 </section>
 <section id="id15">
-<h3>__init__<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<h3>__getitem__<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
 </section>
-<section id="ne">
-<h3>__ne__<a class="headerlink" href="#ne" title="Link to this heading"></a></h3>
+<section id="id16">
+<h3>__init__<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+</section>
+<section id="id17">
+<h3>__ne__<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
 </section>
 <section id="repr">
 <h3>__repr__<a class="headerlink" href="#repr" title="Link to this heading"></a></h3>
 </section>
-<section id="id16">
-<h3>__str__<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<section id="id18">
+<h3>__str__<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
 </section>
-<section id="id17">
-<h3>compose<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<section id="id19">
+<h3>compose<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
 </section>
 <section id="get-layer">
 <h3>get_layer<a class="headerlink" href="#get-layer" title="Link to this heading"></a></h3>
@@ -854,8 +864,8 @@
 <section id="row-splits">
 <h3>row_splits<a class="headerlink" href="#row-splits" title="Link to this heading"></a></h3>
 </section>
-<section id="id18">
-<h3>to<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<section id="id20">
+<h3>to<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
 </section>
 <section id="tot-size">
 <h3>tot_size<a class="headerlink" href="#tot-size" title="Link to this heading"></a></h3>
@@ -863,8 +873,8 @@
 <section id="tot-sizes">
 <h3>tot_sizes<a class="headerlink" href="#tot-sizes" title="Link to this heading"></a></h3>
 </section>
-<section id="id19">
-<h3>device<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<section id="id21">
+<h3>device<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
 </section>
 <section id="dim0">
 <h3>dim0<a class="headerlink" href="#dim0" title="Link to this heading"></a></h3>
@@ -875,29 +885,29 @@
 </section>
 <section id="raggedtensor">
 <h2>RaggedTensor<a class="headerlink" href="#raggedtensor" title="Link to this heading"></a></h2>
-<section id="id20">
-<h3>__eq__<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<section id="id22">
+<h3>__eq__<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
 </section>
-<section id="id21">
-<h3>__getitem__<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<section id="id23">
+<h3>__getitem__<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
 </section>
 <section id="getstate">
 <h3>__getstate__<a class="headerlink" href="#getstate" title="Link to this heading"></a></h3>
 </section>
-<section id="id22">
-<h3>__init__<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
-</section>
-<section id="id23">
-<h3>__ne__<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
-</section>
 <section id="id24">
-<h3>__repr__<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<h3>__init__<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+</section>
+<section id="id25">
+<h3>__ne__<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+</section>
+<section id="id26">
+<h3>__repr__<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
 </section>
 <section id="setstate">
 <h3>__setstate__<a class="headerlink" href="#setstate" title="Link to this heading"></a></h3>
 </section>
-<section id="id25">
-<h3>__str__<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<section id="id27">
+<h3>__str__<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
 </section>
 <section id="add">
 <h3>add<a class="headerlink" href="#add" title="Link to this heading"></a></h3>
@@ -908,14 +918,14 @@
 <section id="argmax">
 <h3>argmax<a class="headerlink" href="#argmax" title="Link to this heading"></a></h3>
 </section>
-<section id="id26">
-<h3>cat<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<section id="id28">
+<h3>cat<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
 </section>
 <section id="clone">
 <h3>clone<a class="headerlink" href="#clone" title="Link to this heading"></a></h3>
 </section>
-<section id="id27">
-<h3>index<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<section id="id29">
+<h3>index<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
 </section>
 <section id="logsumexp">
 <h3>logsumexp<a class="headerlink" href="#logsumexp" title="Link to this heading"></a></h3>
@@ -929,14 +939,14 @@
 <section id="normalize">
 <h3>normalize<a class="headerlink" href="#normalize" title="Link to this heading"></a></h3>
 </section>
-<section id="id28">
-<h3>numel<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
+<section id="id30">
+<h3>numel<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
 </section>
 <section id="pad">
 <h3>pad<a class="headerlink" href="#pad" title="Link to this heading"></a></h3>
 </section>
-<section id="id29">
-<h3>remove_axis<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<section id="id31">
+<h3>remove_axis<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
 </section>
 <section id="remove-values-eq">
 <h3>remove_values_eq<a class="headerlink" href="#remove-values-eq" title="Link to this heading"></a></h3>
@@ -944,53 +954,53 @@
 <section id="remove-values-leq">
 <h3>remove_values_leq<a class="headerlink" href="#remove-values-leq" title="Link to this heading"></a></h3>
 </section>
-<section id="id30">
-<h3><a href="#id118"><span class="problematic" id="id119">requires_grad_</span></a><a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
+<section id="id32">
+<h3><a href="#id120"><span class="problematic" id="id121">requires_grad_</span></a><a class="headerlink" href="#id32" title="Link to this heading"></a></h3>
 </section>
 <section id="sort">
-<h3><a href="#id120"><span class="problematic" id="id121">sort_</span></a><a class="headerlink" href="#sort" title="Link to this heading"></a></h3>
+<h3><a href="#id122"><span class="problematic" id="id123">sort_</span></a><a class="headerlink" href="#sort" title="Link to this heading"></a></h3>
 </section>
 <section id="sum">
 <h3>sum<a class="headerlink" href="#sum" title="Link to this heading"></a></h3>
 </section>
-<section id="id31">
-<h3>to<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
+<section id="id33">
+<h3>to<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
 </section>
-<section id="id32">
-<h3>to_str_simple<a class="headerlink" href="#id32" title="Link to this heading"></a></h3>
+<section id="id34">
+<h3>to_str_simple<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
 </section>
 <section id="tolist">
 <h3>tolist<a class="headerlink" href="#tolist" title="Link to this heading"></a></h3>
 </section>
-<section id="id33">
-<h3>tot_size<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
+<section id="id35">
+<h3>tot_size<a class="headerlink" href="#id35" title="Link to this heading"></a></h3>
 </section>
 <section id="unique">
 <h3>unique<a class="headerlink" href="#unique" title="Link to this heading"></a></h3>
 </section>
-<section id="id34">
-<h3>device<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<section id="id36">
+<h3>device<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
 </section>
-<section id="id35">
-<h3>dim0<a class="headerlink" href="#id35" title="Link to this heading"></a></h3>
+<section id="id37">
+<h3>dim0<a class="headerlink" href="#id37" title="Link to this heading"></a></h3>
 </section>
 <section id="dtype">
 <h3>dtype<a class="headerlink" href="#dtype" title="Link to this heading"></a></h3>
 </section>
-<section id="id36">
-<h3>grad<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
+<section id="id38">
+<h3>grad<a class="headerlink" href="#id38" title="Link to this heading"></a></h3>
 </section>
 <section id="is-cuda">
 <h3>is_cuda<a class="headerlink" href="#is-cuda" title="Link to this heading"></a></h3>
 </section>
-<section id="id37">
-<h3>num_axes<a class="headerlink" href="#id37" title="Link to this heading"></a></h3>
-</section>
-<section id="id38">
-<h3>requires_grad<a class="headerlink" href="#id38" title="Link to this heading"></a></h3>
-</section>
 <section id="id39">
-<h3>shape<a class="headerlink" href="#id39" title="Link to this heading"></a></h3>
+<h3>num_axes<a class="headerlink" href="#id39" title="Link to this heading"></a></h3>
+</section>
+<section id="id40">
+<h3>requires_grad<a class="headerlink" href="#id40" title="Link to this heading"></a></h3>
+</section>
+<section id="id41">
+<h3>shape<a class="headerlink" href="#id41" title="Link to this heading"></a></h3>
 </section>
 <section id="values">
 <h3>values<a class="headerlink" href="#values" title="Link to this heading"></a></h3>
@@ -998,8 +1008,8 @@
 </section>
 <section id="rnntdecodingconfig">
 <h2>RnntDecodingConfig<a class="headerlink" href="#rnntdecodingconfig" title="Link to this heading"></a></h2>
-<section id="id40">
-<h3>__init__<a class="headerlink" href="#id40" title="Link to this heading"></a></h3>
+<section id="id42">
+<h3>__init__<a class="headerlink" href="#id42" title="Link to this heading"></a></h3>
 </section>
 <section id="beam">
 <h3>beam<a class="headerlink" href="#beam" title="Link to this heading"></a></h3>
@@ -1019,20 +1029,20 @@
 </section>
 <section id="rnntdecodingstream">
 <h2>RnntDecodingStream<a class="headerlink" href="#rnntdecodingstream" title="Link to this heading"></a></h2>
-<section id="id41">
-<h3>__init__<a class="headerlink" href="#id41" title="Link to this heading"></a></h3>
-</section>
-<section id="id42">
-<h3>__str__<a class="headerlink" href="#id42" title="Link to this heading"></a></h3>
-</section>
-</section>
-<section id="rnntdecodingstreams">
-<h2>RnntDecodingStreams<a class="headerlink" href="#rnntdecodingstreams" title="Link to this heading"></a></h2>
 <section id="id43">
 <h3>__init__<a class="headerlink" href="#id43" title="Link to this heading"></a></h3>
 </section>
 <section id="id44">
 <h3>__str__<a class="headerlink" href="#id44" title="Link to this heading"></a></h3>
+</section>
+</section>
+<section id="rnntdecodingstreams">
+<h2>RnntDecodingStreams<a class="headerlink" href="#rnntdecodingstreams" title="Link to this heading"></a></h2>
+<section id="id45">
+<h3>__init__<a class="headerlink" href="#id45" title="Link to this heading"></a></h3>
+</section>
+<section id="id46">
+<h3>__str__<a class="headerlink" href="#id46" title="Link to this heading"></a></h3>
 </section>
 <section id="advance">
 <h3>advance<a class="headerlink" href="#advance" title="Link to this heading"></a></h3>
@@ -1049,14 +1059,17 @@
 </section>
 <section id="symboltable">
 <h2>SymbolTable<a class="headerlink" href="#symboltable" title="Link to this heading"></a></h2>
-<section id="id45">
-<h3>add<a class="headerlink" href="#id45" title="Link to this heading"></a></h3>
+<section id="class-getitem">
+<h3>__class_getitem__<a class="headerlink" href="#class-getitem" title="Link to this heading"></a></h3>
+</section>
+<section id="id47">
+<h3>add<a class="headerlink" href="#id47" title="Link to this heading"></a></h3>
 </section>
 <section id="from-file">
 <h3>from_file<a class="headerlink" href="#from-file" title="Link to this heading"></a></h3>
 </section>
-<section id="id46">
-<h3>from_str<a class="headerlink" href="#id46" title="Link to this heading"></a></h3>
+<section id="id48">
+<h3>from_str<a class="headerlink" href="#id48" title="Link to this heading"></a></h3>
 </section>
 <section id="get">
 <h3>get<a class="headerlink" href="#get" title="Link to this heading"></a></h3>
@@ -1077,8 +1090,8 @@
 </section>
 <section id="k2-ragged">
 <h1>k2.ragged<a class="headerlink" href="#k2-ragged" title="Link to this heading"></a></h1>
-<section id="id47">
-<h2>cat<a class="headerlink" href="#id47" title="Link to this heading"></a></h2>
+<section id="id49">
+<h2>cat<a class="headerlink" href="#id49" title="Link to this heading"></a></h2>
 </section>
 <section id="create-ragged-shape2">
 <h2>create_ragged_shape2<a class="headerlink" href="#create-ragged-shape2" title="Link to this heading"></a></h2>
@@ -1086,8 +1099,8 @@
 <section id="create-ragged-tensor">
 <h2>create_ragged_tensor<a class="headerlink" href="#create-ragged-tensor" title="Link to this heading"></a></h2>
 </section>
-<section id="id48">
-<h2>index<a class="headerlink" href="#id48" title="Link to this heading"></a></h2>
+<section id="id50">
+<h2>index<a class="headerlink" href="#id50" title="Link to this heading"></a></h2>
 </section>
 <section id="index-and-sum">
 <h2>index_and_sum<a class="headerlink" href="#index-and-sum" title="Link to this heading"></a></h2>
@@ -1095,196 +1108,196 @@
 <section id="random-ragged-shape">
 <h2>random_ragged_shape<a class="headerlink" href="#random-ragged-shape" title="Link to this heading"></a></h2>
 </section>
-<section id="id49">
-<h2>regular_ragged_shape<a class="headerlink" href="#id49" title="Link to this heading"></a></h2>
-</section>
-<section id="id50">
-<h2>RaggedShape<a class="headerlink" href="#id50" title="Link to this heading"></a></h2>
 <section id="id51">
-<h3>__eq__<a class="headerlink" href="#id51" title="Link to this heading"></a></h3>
+<h2>regular_ragged_shape<a class="headerlink" href="#id51" title="Link to this heading"></a></h2>
 </section>
 <section id="id52">
-<h3>__getitem__<a class="headerlink" href="#id52" title="Link to this heading"></a></h3>
-</section>
+<h2>RaggedShape<a class="headerlink" href="#id52" title="Link to this heading"></a></h2>
 <section id="id53">
-<h3>__init__<a class="headerlink" href="#id53" title="Link to this heading"></a></h3>
+<h3>__eq__<a class="headerlink" href="#id53" title="Link to this heading"></a></h3>
 </section>
 <section id="id54">
-<h3>__ne__<a class="headerlink" href="#id54" title="Link to this heading"></a></h3>
+<h3>__getitem__<a class="headerlink" href="#id54" title="Link to this heading"></a></h3>
 </section>
 <section id="id55">
-<h3>__repr__<a class="headerlink" href="#id55" title="Link to this heading"></a></h3>
+<h3>__init__<a class="headerlink" href="#id55" title="Link to this heading"></a></h3>
 </section>
 <section id="id56">
-<h3>__str__<a class="headerlink" href="#id56" title="Link to this heading"></a></h3>
+<h3>__ne__<a class="headerlink" href="#id56" title="Link to this heading"></a></h3>
 </section>
 <section id="id57">
-<h3>compose<a class="headerlink" href="#id57" title="Link to this heading"></a></h3>
+<h3>__repr__<a class="headerlink" href="#id57" title="Link to this heading"></a></h3>
 </section>
 <section id="id58">
-<h3>get_layer<a class="headerlink" href="#id58" title="Link to this heading"></a></h3>
+<h3>__str__<a class="headerlink" href="#id58" title="Link to this heading"></a></h3>
 </section>
 <section id="id59">
-<h3>index<a class="headerlink" href="#id59" title="Link to this heading"></a></h3>
+<h3>compose<a class="headerlink" href="#id59" title="Link to this heading"></a></h3>
 </section>
 <section id="id60">
-<h3>max_size<a class="headerlink" href="#id60" title="Link to this heading"></a></h3>
+<h3>get_layer<a class="headerlink" href="#id60" title="Link to this heading"></a></h3>
 </section>
 <section id="id61">
-<h3>numel<a class="headerlink" href="#id61" title="Link to this heading"></a></h3>
+<h3>index<a class="headerlink" href="#id61" title="Link to this heading"></a></h3>
 </section>
 <section id="id62">
-<h3>regular_ragged_shape<a class="headerlink" href="#id62" title="Link to this heading"></a></h3>
+<h3>max_size<a class="headerlink" href="#id62" title="Link to this heading"></a></h3>
 </section>
 <section id="id63">
-<h3>remove_axis<a class="headerlink" href="#id63" title="Link to this heading"></a></h3>
+<h3>numel<a class="headerlink" href="#id63" title="Link to this heading"></a></h3>
 </section>
 <section id="id64">
-<h3>row_ids<a class="headerlink" href="#id64" title="Link to this heading"></a></h3>
+<h3>regular_ragged_shape<a class="headerlink" href="#id64" title="Link to this heading"></a></h3>
 </section>
 <section id="id65">
-<h3>row_splits<a class="headerlink" href="#id65" title="Link to this heading"></a></h3>
+<h3>remove_axis<a class="headerlink" href="#id65" title="Link to this heading"></a></h3>
 </section>
 <section id="id66">
-<h3>to<a class="headerlink" href="#id66" title="Link to this heading"></a></h3>
+<h3>row_ids<a class="headerlink" href="#id66" title="Link to this heading"></a></h3>
 </section>
 <section id="id67">
-<h3>tot_size<a class="headerlink" href="#id67" title="Link to this heading"></a></h3>
+<h3>row_splits<a class="headerlink" href="#id67" title="Link to this heading"></a></h3>
 </section>
 <section id="id68">
-<h3>tot_sizes<a class="headerlink" href="#id68" title="Link to this heading"></a></h3>
+<h3>to<a class="headerlink" href="#id68" title="Link to this heading"></a></h3>
 </section>
 <section id="id69">
-<h3>device<a class="headerlink" href="#id69" title="Link to this heading"></a></h3>
+<h3>tot_size<a class="headerlink" href="#id69" title="Link to this heading"></a></h3>
 </section>
 <section id="id70">
-<h3>dim0<a class="headerlink" href="#id70" title="Link to this heading"></a></h3>
+<h3>tot_sizes<a class="headerlink" href="#id70" title="Link to this heading"></a></h3>
 </section>
 <section id="id71">
-<h3>num_axes<a class="headerlink" href="#id71" title="Link to this heading"></a></h3>
-</section>
+<h3>device<a class="headerlink" href="#id71" title="Link to this heading"></a></h3>
 </section>
 <section id="id72">
-<h2>RaggedTensor<a class="headerlink" href="#id72" title="Link to this heading"></a></h2>
+<h3>dim0<a class="headerlink" href="#id72" title="Link to this heading"></a></h3>
+</section>
 <section id="id73">
-<h3>__eq__<a class="headerlink" href="#id73" title="Link to this heading"></a></h3>
+<h3>num_axes<a class="headerlink" href="#id73" title="Link to this heading"></a></h3>
+</section>
 </section>
 <section id="id74">
-<h3>__getitem__<a class="headerlink" href="#id74" title="Link to this heading"></a></h3>
-</section>
+<h2>RaggedTensor<a class="headerlink" href="#id74" title="Link to this heading"></a></h2>
 <section id="id75">
-<h3>__getstate__<a class="headerlink" href="#id75" title="Link to this heading"></a></h3>
+<h3>__eq__<a class="headerlink" href="#id75" title="Link to this heading"></a></h3>
 </section>
 <section id="id76">
-<h3>__init__<a class="headerlink" href="#id76" title="Link to this heading"></a></h3>
+<h3>__getitem__<a class="headerlink" href="#id76" title="Link to this heading"></a></h3>
 </section>
 <section id="id77">
-<h3>__ne__<a class="headerlink" href="#id77" title="Link to this heading"></a></h3>
+<h3>__getstate__<a class="headerlink" href="#id77" title="Link to this heading"></a></h3>
 </section>
 <section id="id78">
-<h3>__repr__<a class="headerlink" href="#id78" title="Link to this heading"></a></h3>
+<h3>__init__<a class="headerlink" href="#id78" title="Link to this heading"></a></h3>
 </section>
 <section id="id79">
-<h3>__setstate__<a class="headerlink" href="#id79" title="Link to this heading"></a></h3>
+<h3>__ne__<a class="headerlink" href="#id79" title="Link to this heading"></a></h3>
 </section>
 <section id="id80">
-<h3>__str__<a class="headerlink" href="#id80" title="Link to this heading"></a></h3>
+<h3>__repr__<a class="headerlink" href="#id80" title="Link to this heading"></a></h3>
 </section>
 <section id="id81">
-<h3>add<a class="headerlink" href="#id81" title="Link to this heading"></a></h3>
+<h3>__setstate__<a class="headerlink" href="#id81" title="Link to this heading"></a></h3>
 </section>
 <section id="id82">
-<h3>arange<a class="headerlink" href="#id82" title="Link to this heading"></a></h3>
+<h3>__str__<a class="headerlink" href="#id82" title="Link to this heading"></a></h3>
 </section>
 <section id="id83">
-<h3>argmax<a class="headerlink" href="#id83" title="Link to this heading"></a></h3>
+<h3>add<a class="headerlink" href="#id83" title="Link to this heading"></a></h3>
 </section>
 <section id="id84">
-<h3>cat<a class="headerlink" href="#id84" title="Link to this heading"></a></h3>
+<h3>arange<a class="headerlink" href="#id84" title="Link to this heading"></a></h3>
 </section>
 <section id="id85">
-<h3>clone<a class="headerlink" href="#id85" title="Link to this heading"></a></h3>
+<h3>argmax<a class="headerlink" href="#id85" title="Link to this heading"></a></h3>
 </section>
 <section id="id86">
-<h3>index<a class="headerlink" href="#id86" title="Link to this heading"></a></h3>
+<h3>cat<a class="headerlink" href="#id86" title="Link to this heading"></a></h3>
 </section>
 <section id="id87">
-<h3>logsumexp<a class="headerlink" href="#id87" title="Link to this heading"></a></h3>
+<h3>clone<a class="headerlink" href="#id87" title="Link to this heading"></a></h3>
 </section>
 <section id="id88">
-<h3>max<a class="headerlink" href="#id88" title="Link to this heading"></a></h3>
+<h3>index<a class="headerlink" href="#id88" title="Link to this heading"></a></h3>
 </section>
 <section id="id89">
-<h3>min<a class="headerlink" href="#id89" title="Link to this heading"></a></h3>
+<h3>logsumexp<a class="headerlink" href="#id89" title="Link to this heading"></a></h3>
 </section>
 <section id="id90">
-<h3>normalize<a class="headerlink" href="#id90" title="Link to this heading"></a></h3>
+<h3>max<a class="headerlink" href="#id90" title="Link to this heading"></a></h3>
 </section>
 <section id="id91">
-<h3>numel<a class="headerlink" href="#id91" title="Link to this heading"></a></h3>
+<h3>min<a class="headerlink" href="#id91" title="Link to this heading"></a></h3>
 </section>
 <section id="id92">
-<h3>pad<a class="headerlink" href="#id92" title="Link to this heading"></a></h3>
+<h3>normalize<a class="headerlink" href="#id92" title="Link to this heading"></a></h3>
 </section>
 <section id="id93">
-<h3>remove_axis<a class="headerlink" href="#id93" title="Link to this heading"></a></h3>
+<h3>numel<a class="headerlink" href="#id93" title="Link to this heading"></a></h3>
 </section>
 <section id="id94">
-<h3>remove_values_eq<a class="headerlink" href="#id94" title="Link to this heading"></a></h3>
+<h3>pad<a class="headerlink" href="#id94" title="Link to this heading"></a></h3>
 </section>
 <section id="id95">
-<h3>remove_values_leq<a class="headerlink" href="#id95" title="Link to this heading"></a></h3>
+<h3>remove_axis<a class="headerlink" href="#id95" title="Link to this heading"></a></h3>
 </section>
 <section id="id96">
-<h3><a href="#id122"><span class="problematic" id="id123">requires_grad_</span></a><a class="headerlink" href="#id96" title="Link to this heading"></a></h3>
+<h3>remove_values_eq<a class="headerlink" href="#id96" title="Link to this heading"></a></h3>
 </section>
 <section id="id97">
-<h3><a href="#id124"><span class="problematic" id="id125">sort_</span></a><a class="headerlink" href="#id97" title="Link to this heading"></a></h3>
+<h3>remove_values_leq<a class="headerlink" href="#id97" title="Link to this heading"></a></h3>
 </section>
 <section id="id98">
-<h3>sum<a class="headerlink" href="#id98" title="Link to this heading"></a></h3>
+<h3><a href="#id124"><span class="problematic" id="id125">requires_grad_</span></a><a class="headerlink" href="#id98" title="Link to this heading"></a></h3>
 </section>
 <section id="id99">
-<h3>to<a class="headerlink" href="#id99" title="Link to this heading"></a></h3>
+<h3><a href="#id126"><span class="problematic" id="id127">sort_</span></a><a class="headerlink" href="#id99" title="Link to this heading"></a></h3>
 </section>
 <section id="id100">
-<h3>to_str_simple<a class="headerlink" href="#id100" title="Link to this heading"></a></h3>
+<h3>sum<a class="headerlink" href="#id100" title="Link to this heading"></a></h3>
 </section>
 <section id="id101">
-<h3>tolist<a class="headerlink" href="#id101" title="Link to this heading"></a></h3>
+<h3>to<a class="headerlink" href="#id101" title="Link to this heading"></a></h3>
 </section>
 <section id="id102">
-<h3>tot_size<a class="headerlink" href="#id102" title="Link to this heading"></a></h3>
+<h3>to_str_simple<a class="headerlink" href="#id102" title="Link to this heading"></a></h3>
 </section>
 <section id="id103">
-<h3>unique<a class="headerlink" href="#id103" title="Link to this heading"></a></h3>
+<h3>tolist<a class="headerlink" href="#id103" title="Link to this heading"></a></h3>
 </section>
 <section id="id104">
-<h3>device<a class="headerlink" href="#id104" title="Link to this heading"></a></h3>
+<h3>tot_size<a class="headerlink" href="#id104" title="Link to this heading"></a></h3>
 </section>
 <section id="id105">
-<h3>dim0<a class="headerlink" href="#id105" title="Link to this heading"></a></h3>
+<h3>unique<a class="headerlink" href="#id105" title="Link to this heading"></a></h3>
 </section>
 <section id="id106">
-<h3>dtype<a class="headerlink" href="#id106" title="Link to this heading"></a></h3>
+<h3>device<a class="headerlink" href="#id106" title="Link to this heading"></a></h3>
 </section>
 <section id="id107">
-<h3>grad<a class="headerlink" href="#id107" title="Link to this heading"></a></h3>
+<h3>dim0<a class="headerlink" href="#id107" title="Link to this heading"></a></h3>
 </section>
 <section id="id108">
-<h3>is_cuda<a class="headerlink" href="#id108" title="Link to this heading"></a></h3>
+<h3>dtype<a class="headerlink" href="#id108" title="Link to this heading"></a></h3>
 </section>
 <section id="id109">
-<h3>num_axes<a class="headerlink" href="#id109" title="Link to this heading"></a></h3>
+<h3>grad<a class="headerlink" href="#id109" title="Link to this heading"></a></h3>
 </section>
 <section id="id110">
-<h3>requires_grad<a class="headerlink" href="#id110" title="Link to this heading"></a></h3>
+<h3>is_cuda<a class="headerlink" href="#id110" title="Link to this heading"></a></h3>
 </section>
 <section id="id111">
-<h3>shape<a class="headerlink" href="#id111" title="Link to this heading"></a></h3>
+<h3>num_axes<a class="headerlink" href="#id111" title="Link to this heading"></a></h3>
 </section>
 <section id="id112">
-<h3>values<a class="headerlink" href="#id112" title="Link to this heading"></a></h3>
+<h3>requires_grad<a class="headerlink" href="#id112" title="Link to this heading"></a></h3>
+</section>
+<section id="id113">
+<h3>shape<a class="headerlink" href="#id113" title="Link to this heading"></a></h3>
+</section>
+<section id="id114">
+<h3>values<a class="headerlink" href="#id114" title="Link to this heading"></a></h3>
 </section>
 </section>
 </section>
