@@ -34,7 +34,9 @@ If x.requires_grad is False, it returns ``swoosh_l(x)``.
 
 Args:
   x:
-    A Tensor.
+    A Tensor. If its dtype is float32, float16 or bfloat16, the returned
+    tensor and the gradient have the same dtype (computation is done in
+    float32); otherwise x is converted to float32 first.
   dropout_prob:
     A float number. The default value is 0.
 )doc";
@@ -49,7 +51,9 @@ If x.requires_grad is False, it returns ``swoosh_r(x)``.
 
 Args:
   x:
-    A Tensor.
+    A Tensor. If its dtype is float32, float16 or bfloat16, the returned
+    tensor and the gradient have the same dtype (computation is done in
+    float32); otherwise x is converted to float32 first.
   dropout_prob:
     A float number. The default value is 0.
 )doc";
@@ -59,7 +63,9 @@ Compute ``swoosh_l(x) = log(1 + exp(x-4)) - 0.08x - 0.035``.
 
 Args:
   x:
-    A Tensor.
+    A Tensor. If its dtype is float32, float16 or bfloat16, the returned
+    tensor(s) have the same dtype (computation is done in float32);
+    otherwise x is converted to float32 first.
 )doc";
 
 static constexpr const char *kSwooshRForwardDoc = R"doc(
@@ -67,7 +73,9 @@ Compute ``swoosh_r(x) = log(1 + exp(x-1)) - 0.08x - 0.313261687``.
 
 Args:
   x:
-    A Tensor.
+    A Tensor. If its dtype is float32, float16 or bfloat16, the returned
+    tensor(s) have the same dtype (computation is done in float32);
+    otherwise x is converted to float32 first.
 )doc";
 
 static constexpr const char *kSwooshLForwardAndDerivDoc = R"doc(
@@ -88,7 +96,9 @@ Note:
 
 Args:
   x:
-    A Tensor.
+    A Tensor. If its dtype is float32, float16 or bfloat16, the returned
+    tensor(s) have the same dtype (computation is done in float32);
+    otherwise x is converted to float32 first.
 )doc";
 
 static constexpr const char *kSwooshRForwardAndDerivDoc = R"doc(
@@ -109,7 +119,9 @@ Note:
 
 Args:
   x:
-    A Tensor.
+    A Tensor. If its dtype is float32, float16 or bfloat16, the returned
+    tensor(s) have the same dtype (computation is done in float32);
+    otherwise x is converted to float32 first.
 )doc";
 
 struct SwooshLConstants {
@@ -136,14 +148,166 @@ For swooshR:
   - kShift=1, kCoeff=0.08, kOffset=0.313261687
   swooshR(x) = log(1 + exp(x-1)) - 0.08x - 0.313261687
  */
+// Floating point types supported by the swoosh kernels.  The computation is
+// always done in float32 registers; inputs are read and outputs written in
+// their native dtype, so that half/bfloat16 training (autocast) does not need
+// extra cast kernels and float32 temporaries.
+static bool IsSwooshSupportedDtype(torch::ScalarType t) {
+  return t == torch::kFloat || t == torch::kHalf || t == torch::kBFloat16;
+}
+
+#define K2_SWOOSH_DISPATCH(scalar_type, T, ...)                          \
+  do {                                                                   \
+    switch (scalar_type) {                                               \
+      case torch::kFloat: {                                              \
+        using T = float;                                                 \
+        __VA_ARGS__;                                                     \
+        break;                                                           \
+      }                                                                  \
+      case torch::kHalf: {                                               \
+        using T = at::Half;                                              \
+        __VA_ARGS__;                                                     \
+        break;                                                           \
+      }                                                                  \
+      case torch::kBFloat16: {                                           \
+        using T = at::BFloat16;                                          \
+        __VA_ARGS__;                                                     \
+        break;                                                           \
+      }                                                                  \
+      default:                                                           \
+        K2_LOG(FATAL) << "Unsupported dtype for swoosh: " << scalar_type; \
+    }                                                                    \
+  } while (0)
+
+// Returns x if it has a supported floating point dtype, else x converted to
+// float32 (e.g. for float64 or integer inputs, which keep the old behavior of
+// returning float32).
+static torch::Tensor SwooshInput(torch::Tensor x) {
+  if (!IsSwooshSupportedDtype(x.scalar_type())) x = x.to(torch::kFloat32);
+  return x.contiguous();
+}
+
+template <typename SwooshConstants, typename T>
+static void SwooshForwardWithGradKernel(ContextPtr context, int32_t n,
+                                        const T *x_data, const float *r_data,
+                                        const float *r2_data,
+                                        float dropout_prob, T *y_data,
+                                        uint8_t *g_data) {
+  float shift = SwooshConstants::kShift;
+  float coeff = SwooshConstants::kCoeff;
+  float offset = SwooshConstants::kOffset;
+  K2_EVAL(
+      context, n, lambda_compute_swoosh_forward, (int32_t i)->void {
+        float xi = static_cast<float>(x_data[i]);
+        float yi = xi;  // will be the swoosh output
+        float gi = 1;   // will be the gradient of log(1+exp(x-kShift))
+        float xi_offset = xi - shift;
+        float e = expf(xi_offset);
+        gi = 1.0f - 1.0f / (1.0f + e);
+        float l = log1pf(e);
+        if (isinf(l)) {
+          l = xi_offset;
+        }
+        yi = l - coeff * xi - offset;
+        if (dropout_prob != 0.0f) {
+          float ri = r_data[i];
+          if (ri < dropout_prob) {
+            yi = 0;
+            //  gi currently represents swoosh'(x) + kCoeff, so
+            //  this value corresponds to swoosh'(x) = 0
+            gi = coeff;
+          } else {
+            yi *= 1.0f / (1.0f - dropout_prob);
+          }
+        }
+
+        y_data[i] = static_cast<T>(yi);
+        uint8_t g_int = (uint8_t)(gi * (255.0f / 1.005f) + r2_data[i]);
+        g_data[i] = g_int;
+      });
+}
+
+template <typename SwooshConstants, typename T>
+static void SwooshBackwardKernel(ContextPtr context, int32_t n,
+                                 const T *out_grad_data,
+                                 const uint8_t *g_data, float dropout_prob,
+                                 T *in_grad_data) {
+  float coeff = SwooshConstants::kCoeff;
+  K2_EVAL(
+      context, n, lambda_compute_swoosh_backward, (int32_t i)->void {
+        float oi = static_cast<float>(out_grad_data[i]);
+        float gi = g_data[i];  // cast uint8_t to float
+        // functional grad
+        float fi = ((gi * (1.005f / 255.0f)) - coeff) / (1.0f - dropout_prob);
+        in_grad_data[i] = static_cast<T>(oi * fi);
+      });
+}
+
+template <typename SwooshConstants, typename T>
+static void SwooshForwardKernel(ContextPtr context, int32_t n,
+                                const T *x_data, T *y_data) {
+  float shift = SwooshConstants::kShift;
+  float coeff = SwooshConstants::kCoeff;
+  float offset = SwooshConstants::kOffset;
+  K2_EVAL(
+      context, n, lambda_swoosh_forward, (int32_t i)->void {
+        float xi = static_cast<float>(x_data[i]);
+        float xi_offset = xi - shift;
+        float e = expf(xi_offset);
+        float log_sum = log1pf(e);
+        if (isinf(log_sum)) {
+          log_sum = xi_offset;
+        }
+        y_data[i] = static_cast<T>(log_sum - coeff * xi - offset);
+      });
+}
+
+template <typename SwooshConstants, typename T>
+static void SwooshForwardAndDerivKernel(ContextPtr context, int32_t n,
+                                        const T *x_data, T *y_data,
+                                        T *d_data) {
+  float shift = SwooshConstants::kShift;
+  float coeff = SwooshConstants::kCoeff;
+  float offset = SwooshConstants::kOffset;
+  K2_EVAL(
+      context, n, lambda_swoosh_forward_and_deriv, (int32_t i)->void {
+        float xi = static_cast<float>(x_data[i]);
+        float xi_offset = xi - shift;
+        float denom = 1.0f + expf(xi_offset);
+        float inv_denom = 1.0f / denom;
+        float di = (1.0f - coeff) - inv_denom;  // deriv
+        float log_denom = logf(denom);
+        if (isinf(log_denom)) {
+          log_denom = xi_offset;
+        }
+        y_data[i] = static_cast<T>(log_denom - coeff * xi - offset);
+        d_data[i] = static_cast<T>(di);
+      });
+}
+
+/**
+
+swoosh(x) = log(1 + exp(x - kShift)) - kCoeff * x - kOffset
+
+For swooshL:
+  - kShift=4, kCoeff=0.08, kOffset=0.035
+  swooshL(x) = log(1 + exp(x-4)) - 0.08x - 0.035
+
+For swooshR:
+  - kShift=1, kCoeff=0.08, kOffset=0.313261687
+  swooshR(x) = log(1 + exp(x-1)) - 0.08x - 0.313261687
+
+The output (and the gradient w.r.t. x) has the same dtype as x if x is
+float32, float16 or bfloat16 (computation is done in float32); other dtypes
+are converted to float32 first.
+ */
+template <typename SwooshConstants>
+torch::Tensor SwooshForward(torch::Tensor x);
+
 template <typename SwooshConstants>
 class SwooshFunction
     : public torch::autograd::Function<SwooshFunction<SwooshConstants>> {
  public:
-  static constexpr float kShift = SwooshConstants::kShift;
-  static constexpr float kCoeff = SwooshConstants::kCoeff;
-  static constexpr float kOffset = SwooshConstants::kOffset;
-
   static torch::Tensor forward(torch::autograd::AutogradContext *ctx,
                                torch::Tensor x, float dropout_prob) {
     auto context = GetContext(x);
@@ -151,72 +315,39 @@ class SwooshFunction
 
     bool requires_grad = x.requires_grad();
 
-    x = x.to(torch::kFloat32);
-
     if (!requires_grad) {
-      torch::Tensor zero = torch::zeros({1}, x.options());
-      return torch::logaddexp(zero, x - kShift) - kCoeff * x - kOffset;
+      return SwooshForward<SwooshConstants>(x);
     }
 
-    x = x.contiguous();
+    x = SwooshInput(x);
 
     torch::Tensor y = torch::empty_like(x).contiguous();
 
+    auto float_opts = x.options().dtype(torch::kFloat32);
     // for dropout
     torch::Tensor r;
     const float *r_data = nullptr;
     if (dropout_prob != 0.0f) {
-      r = torch::rand_like(x).contiguous();
+      r = torch::rand(x.sizes(), float_opts).contiguous();
       r_data = r.data_ptr<float>();
     }
 
     // for uint8 quantization
-    torch::Tensor r2 = torch::rand(x.numel(), x.options()).contiguous();
+    torch::Tensor r2 = torch::rand(x.numel(), float_opts).contiguous();
     const float *r2_data = r2.data_ptr<float>();
-
-    const float *x_data = x.data_ptr<float>();
 
     auto opts = torch::TensorOptions().dtype(torch::kByte).device(x.device());
     torch::Tensor g = torch::empty(x.sizes(), opts).contiguous();
-
-    float *y_data = y.data_ptr<float>();
     uint8_t *g_data = g.data_ptr<uint8_t>();
 
-    float shift = kShift;
-    float coeff = kCoeff;
-    float offset = kOffset;
-
-    K2_EVAL(
-        context, x.numel(), lambda_compute_swoosh_forward, (int32_t i)->void {
-          float xi = x_data[i];
-          float yi = xi;  // will be the swoosh output
-          float gi = 1;   // will be the gradient of log(1+exp(x-kShift))
-          float xi_offset = xi - shift;
-          float e = expf(xi_offset);
-          gi = 1.0f - 1.0f / (1.0f + e);
-          float l = log1pf(e);
-          if (isinf(l)) {
-            l = xi_offset;
-          }
-          yi = l - coeff * xi - offset;
-          if (dropout_prob != 0.0f) {
-            float ri = r_data[i];
-            if (ri < dropout_prob) {
-              yi = 0;
-              //  gi currently represents swoosh'(x) + kCoeff, so
-              //  this value corresponds to swoosh'(x) = 0
-              gi = coeff;
-            } else {
-              yi *= 1.0f / (1.0f - dropout_prob);
-            }
-          }
-
-          y_data[i] = yi;
-          uint8_t g_int = (uint8_t)(gi * (255.0f / 1.005f) + r2_data[i]);
-          g_data[i] = g_int;
-        });
+    int32_t n = x.numel();
+    K2_SWOOSH_DISPATCH(x.scalar_type(), T,
+                       SwooshForwardWithGradKernel<SwooshConstants, T>(
+                           context, n, x.data_ptr<T>(), r_data, r2_data,
+                           dropout_prob, y.data_ptr<T>(), g_data));
 
     ctx->saved_data["dropout_prob"] = dropout_prob;
+    ctx->saved_data["x_dtype"] = x.scalar_type();
     ctx->save_for_backward({g});
 
     return y;
@@ -226,37 +357,26 @@ class SwooshFunction
       torch::autograd::AutogradContext *ctx,
       torch::autograd::tensor_list y_grad) {
     float dropout_prob = ctx->saved_data["dropout_prob"].toDouble();
+    auto x_dtype = ctx->saved_data["x_dtype"].toScalarType();
     auto saved = ctx->get_saved_variables();
 
     torch::Tensor g = saved[0];
     const uint8_t *g_data = g.data_ptr<uint8_t>();
 
-    torch::Tensor out_grad = y_grad[0];
-    out_grad = out_grad.contiguous();
-
-    int32_t stride = out_grad.stride(-1);
-    const float *out_grad_data = out_grad.data_ptr<float>();
+    // The gradient is returned in the dtype of x (autograd would cast it to
+    // that dtype anyway).
+    torch::Tensor out_grad = y_grad[0].to(x_dtype).contiguous();
 
     auto context = GetContext(out_grad);
     DeviceGuard guard(context);
 
-    auto opts =
-        torch::TensorOptions().dtype(torch::kFloat32).device(g.device());
-    torch::Tensor in_grad = torch::empty(g.sizes(), opts).contiguous();
-    float *in_grad_data = in_grad.data_ptr<float>();
+    torch::Tensor in_grad = torch::empty(g.sizes(), out_grad.options());
 
-    float coeff = kCoeff;
-    K2_EVAL(
-        context, g.numel(), lambda_compute_swoosh_backward, (int32_t i)->void {
-          float oi = out_grad_data[i * stride];
-          float gi = g_data[i];  // cast uint8_t to float
-          float ii = 1;
-          float fi = 1;  // functional grad
-
-          fi = ((gi * (1.005f / 255.0f)) - coeff) / (1.0f - dropout_prob);
-          ii = oi * fi;
-          in_grad_data[i] = ii;
-        });
+    int32_t n = g.numel();
+    K2_SWOOSH_DISPATCH(x_dtype, T,
+                       SwooshBackwardKernel<SwooshConstants, T>(
+                           context, n, out_grad.data_ptr<T>(), g_data,
+                           dropout_prob, in_grad.data_ptr<T>()));
 
     return {
         in_grad,         // x
@@ -278,34 +398,13 @@ torch::Tensor SwooshForward(torch::Tensor x) {
   auto context = GetContext(x);
   DeviceGuard guard(context);
 
-  static constexpr float kShift = SwooshConstants::kShift;
-  static constexpr float kCoeff = SwooshConstants::kCoeff;
-  static constexpr float kOffset = SwooshConstants::kOffset;
-
-  x = x.to(torch::kFloat32).contiguous();
-  const float *x_data = x.data_ptr<float>();
-
+  x = SwooshInput(x);
   torch::Tensor y = torch::empty_like(x).contiguous();
-  float *y_data = y.data_ptr<float>();
 
-  float shift = kShift;
-  float coeff = kCoeff;
-  float offset = kOffset;
-
-  K2_EVAL(
-      context, x.numel(), lambda_swoosh_forward, (int32_t i)->void {
-        float xi = x_data[i];
-        float yi = xi;  // will be the swoosh output
-        float xi_offset = xi - shift;
-        float e = expf(xi_offset);
-        float log_sum = log1pf(e);
-        if (isinf(log_sum)) {
-          log_sum = xi_offset;
-        }
-        yi = log_sum - coeff * xi - offset;
-        y_data[i] = yi;
-      });
-
+  int32_t n = x.numel();
+  K2_SWOOSH_DISPATCH(x.scalar_type(), T,
+                     SwooshForwardKernel<SwooshConstants, T>(
+                         context, n, x.data_ptr<T>(), y.data_ptr<T>()));
   return y;
 }
 
@@ -322,39 +421,15 @@ std::pair<torch::Tensor, torch::Tensor> SwooshForwardAndDeriv(
   auto context = GetContext(x);
   DeviceGuard guard(context);
 
-  static constexpr float kShift = SwooshConstants::kShift;
-  static constexpr float kCoeff = SwooshConstants::kCoeff;
-  static constexpr float kOffset = SwooshConstants::kOffset;
-
-  x = x.to(torch::kFloat32).contiguous();
-  const float *x_data = x.data_ptr<float>();
-
+  x = SwooshInput(x);
   torch::Tensor y = torch::empty_like(x).contiguous();
-  float *y_data = y.data_ptr<float>();
-
   torch::Tensor deriv = torch::empty_like(x).contiguous();
-  float *d_data = deriv.data_ptr<float>();
 
-  float shift = kShift;
-  float coeff = kCoeff;
-  float offset = kOffset;
-
-  K2_EVAL(
-      context, x.numel(), lambda_swoosh_forward_and_deriv, (int32_t i)->void {
-        float xi = x_data[i];
-        float yi = xi;  // will be the swoosh output
-        float xi_offset = xi - shift;
-        float denom = 1.0f + expf(xi_offset);
-        float inv_denom = 1.0f / denom;
-        float di = 0.92f - inv_denom;  // deriv
-        float log_denom = logf(denom);
-        if (isinf(log_denom)) {
-          log_denom = xi_offset;
-        }
-        yi = log_denom - coeff * xi - offset;
-        y_data[i] = yi;
-        d_data[i] = di;
-      });
+  int32_t n = x.numel();
+  K2_SWOOSH_DISPATCH(
+      x.scalar_type(), T,
+      SwooshForwardAndDerivKernel<SwooshConstants, T>(
+          context, n, x.data_ptr<T>(), y.data_ptr<T>(), deriv.data_ptr<T>()));
 
   return {y, deriv};
 }
