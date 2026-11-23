@@ -778,7 +778,7 @@ class MultiGraphDenseIntersect {
   void DoStep(int32_t t) {
     NVTX_RANGE(K2_FUNC);
     Step &step = steps_[t], &prev_step = steps_[t - 1];
-    int32_t scores_num_cols = b_fsas_.scores.Dim1(); 
+    int32_t scores_num_cols = b_fsas_.scores.Dim1();
     const float minus_inf = -std::numeric_limits<float>::infinity();
 
     // Divide by two because each arc is repeated twice in arc_scores (once for
@@ -814,9 +814,10 @@ class MultiGraphDenseIntersect {
                 backward_dest_prob =
                     prev_state_scores_data[dest_state_scores_index_backward];
 
-          // Assign negative infinity (-inf) to both the forward and backward scores,
-          // if the label on the carc is out-of-range, i.e., the label in the decoding 
-          // graph (a_fsas) does not exist in the neural-net output (b_fsas).
+          // Assign negative infinity (-inf) to both the forward and backward
+          // scores, if the label on the carc is out-of-range, i.e., the label
+          // in the decoding graph (a_fsas) does not exist in the neural-net
+          // output (b_fsas).
           float b_score_forward;
           float b_score_backward;
           if (carc.label_plus_one <= scores_num_cols) {
