@@ -575,6 +575,14 @@ RaggedAny RaggedAny::Cat(const std::vector<RaggedAny> &srcs, int32_t axis) {
   return {};
 }
 
+RaggedAny RaggedAny::Unsqueeze(int32_t axis) {
+  DeviceGuard guard(any.Context());
+  Dtype t = any.GetDtype();
+  FOR_REAL_AND_INT32_TYPES(t, T, {
+    return RaggedAny(k2::Unsqueeze(any.Specialize<T>(), axis).Generic());
+  });
+}
+
 std::tuple<RaggedAny, torch::optional<RaggedAny>,
            torch::optional<torch::Tensor>>
 RaggedAny::Unique(bool need_num_repeats /*= false*/,
