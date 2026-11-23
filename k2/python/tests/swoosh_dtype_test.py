@@ -35,7 +35,8 @@ OFFSET = {"l": 0.035, "r": 0.313261687}
 
 def ref_forward(x: torch.Tensor, kind: str) -> torch.Tensor:
     x = x.double()
-    return torch.nn.functional.softplus(x - SHIFT[kind]) - 0.08 * x - OFFSET[kind]
+    softplus = torch.nn.functional.softplus(x - SHIFT[kind])
+    return softplus - 0.08 * x - OFFSET[kind]
 
 
 def ref_deriv(x: torch.Tensor, kind: str) -> torch.Tensor:
@@ -50,7 +51,11 @@ class TestSwooshDtype(unittest.TestCase):
             cls.devices.append(torch.device("cuda", 0))
 
     def _tol(self, dtype):
-        return {torch.float32: 1e-5, torch.float16: 2e-3, torch.bfloat16: 1.6e-2}[dtype]
+        return {
+            torch.float32: 1e-5,
+            torch.float16: 2e-3,
+            torch.bfloat16: 1.6e-2,
+        }[dtype]
 
     def test_forward(self):
         for device in self.devices:
@@ -71,8 +76,10 @@ class TestSwooshDtype(unittest.TestCase):
                     assert y2.dtype == dtype and d.dtype == dtype
                     # forward uses log1pf(e), forward_and_deriv logf(1 + e)
                     # (as upstream), so they agree only up to rounding.
-                    assert torch.allclose(y2.double(), y.double(), atol=tol * 4, rtol=tol), (
-                        device, kind, dtype, (y2.double() - y.double()).abs().max())
+                    diff = (y2.double() - y.double()).abs().max().item()
+                    assert torch.allclose(
+                        y2.double(), y.double(), atol=tol * 4, rtol=tol
+                    ), (device, kind, dtype, diff)
                     err = (d.double() - ref_deriv(x, kind)).abs().max().item()
                     assert err < tol, (device, kind, dtype, err)
 
@@ -91,7 +98,8 @@ class TestSwooshDtype(unittest.TestCase):
                     expected = g.double() * ref_deriv(x.detach(), kind)
                     # the derivative is stored in 8 bits.
                     err = (x_grad.double() - expected).abs().max().item()
-                    assert err < 0.01 + self._tol(dtype), (device, kind, dtype, err)
+                    tol = 0.01 + self._tol(dtype)
+                    assert err < tol, (device, kind, dtype, err)
 
                     # without requires_grad
                     y_nograd = func(x.detach())
@@ -103,7 +111,8 @@ class TestSwooshDtype(unittest.TestCase):
     def test_dropout(self):
         for device in self.devices:
             for dtype in (torch.float32, torch.bfloat16):
-                x = torch.randn(10000, device=device).to(dtype).requires_grad_(True)
+                x = torch.randn(10000, device=device).to(dtype)
+                x.requires_grad_(True)
                 y = k2.swoosh_l(x, dropout_prob=0.5)
                 assert y.dtype == dtype
                 frac_zero = (y == 0).double().mean().item()
