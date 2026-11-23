@@ -1079,7 +1079,9 @@ def get_hat_logprobs_pruned(
         rnnt_type != "modified" or T >= S
     ), f"Modified transducer requires T >= S, but got T={T} and S={S}"
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
-    assert termination_symbol == 0, f"Termination symbol must be 0, but got {termination_symbol}"
+    assert (
+        termination_symbol == 0
+    ), f"Termination symbol must be 0, but got {termination_symbol}"
 
     # For blank symbol, log-prob is log-sigmoid of the score
     logp_b = torch.nn.functional.logsigmoid(logits[..., 0])
@@ -1141,7 +1143,9 @@ def get_hat_logprobs_pruned(
         px = torch.cat(
             (
                 px,
-                torch.full((B, S, 1), float("-inf"), device=px.device, dtype=px.dtype),
+                torch.full(
+                    (B, S, 1), float("-inf"), device=px.device, dtype=px.dtype
+                ),
             ),
             dim=2,
         )  # now: [B][S][T+1], index [:,:,T] has -inf..
@@ -1184,6 +1188,7 @@ def get_rnnt_logprobs_pruned(
     termination_symbol: int,
     boundary: Tensor,
     rnnt_type: str = "regular",
+    fused_log_softmax: bool = True,
 ) -> Tuple[Tensor, Tensor]:
     """Construct px, py for mutual_information_recursion with pruned output.
 
@@ -1222,6 +1227,8 @@ def get_rnnt_logprobs_pruned(
                        *next* context on the *current* frame, e.g. if we emit
                        c given "a b" context, we are forced to emit "blank"
                        given "b c" context on the current frame.
+      fused_log_softmax:
+        If False, you should call log_softmax outside of loss. Default True.
     Returns:
       (px, py) (the names are quite arbitrary)::
 
@@ -1261,7 +1268,9 @@ def get_rnnt_logprobs_pruned(
     assert rnnt_type in ["regular", "modified", "constrained"], rnnt_type
     _validate_st_lengths(S, T, rnnt_type == "regular", boundary)
 
-    normalizers = torch.logsumexp(logits, dim=3)
+    normalizers = 0
+    if fused_log_softmax:
+        normalizers = torch.logsumexp(logits, dim=3)
 
     symbols_with_terminal = torch.cat(
         (
@@ -1358,6 +1367,7 @@ def rnnt_loss_pruned(
     delay_penalty: float = 0.0,
     reduction: Optional[str] = "mean",
     use_hat_loss: bool = False,
+    fused_log_softmax: bool = True,
 ) -> Tensor:
     """A RNN-T loss with pruning, which uses the output of a pruned 'joiner'
     network as input, i.e. a 4 dimensions tensor with shape (B, T, s_range, C),
@@ -1414,6 +1424,8 @@ def rnnt_loss_pruned(
         the blank distribution separately as a Bernoulli distribution, and the
         non-blanks are modeled as a multinomial. This formulation may be useful
         for performing internal LM estimation, as described in the paper.
+      fused_log_softmax:
+        If False, you should call log_softmax outside of loss. Default True.
     Returns:
       If reduction is `none`, returns a tensor of shape (B,), containing the
       total RNN-T loss values for each sequence of the batch, otherwise a scalar
@@ -1427,6 +1439,7 @@ def rnnt_loss_pruned(
             termination_symbol=termination_symbol,
             boundary=boundary,
             rnnt_type=rnnt_type,
+            fused_log_softmax=fused_log_softmax,
         )
     else:
         px, py = get_hat_logprobs_pruned(
