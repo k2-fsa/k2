@@ -38,7 +38,7 @@ namespace k2 {
 
   We keep the original numbering of the states.  We'll use capital letters for
   sets of arcs.  Note: epsilon self-loops can be discarded whenever they appear
-  if their score is <= 0; if there is scores is >0 we can abort the algorithm
+  if their score is <= 0; if self-loop scores are >0 we can abort the algorithm
   because it would imply that the FSA has some paths with infinite score but
   finite number of real symbols.
 
@@ -60,8 +60,13 @@ namespace k2 {
          uses of parentheses.
      P = set of arcs that arises from combination of arcs e in C_p with all arcs in N
          that enter the source-state of e, i.e. arc-combinations [n,e].
+         ** Note: unfortunately I have chosen the same letter P to mean this set of
+            arcs, and also paths.  You can figure out from the context which is meant. **
      Q = set of arcs that arises from combination of arcs e in C_p with all arcs in F
-         that enter the source-state of e.  i.e. from arc-combinations [f,e]
+         that enter the source-state of e.  i.e. from arc-combinations [f,e].  [Note,
+         we made a choice here, about how to generate these "second-order" arcs;
+         we could have let Q be the combination [e,p] of arcs
+         p in P with preceding arcs e in C_f].
 
   At the start of the algorithm we have the set of arcs
      N u E    (u means union).
@@ -83,23 +88,26 @@ namespace k2 {
                        weight and symbol
 
  The final stage is to remove C_f and C_p, leaving us with
-     U u F u P u Q
+     N u F u P u Q
  which is epsilon-free.  We need to demonstrate that we can remove C_f and C_p
  while preserving equivalence.  This is the not-quite-so-trivial part of the proof.
- Let A be the FSA containing arcs
+ Let A be the following FSA, as expressed as a set of arcs [treat start-state and
+ final-state as given].
 
-     N u C_f u C_p u F u P u Q
+  A =  N u C_f u C_p u F u P u Q
 
- and B be the FSA containing arcs
+ and B be the following FSA, again as a set of arcs:
 
-     U u F u P u Q.
+  B =  N u F u P u Q.
 
  We show that B and A are equivalent by showing that for any path in A that has
  at least one epsilon arc, there is a path in B with the same "real" symbol sequence
- (i.e. after removing epsilons) and a score that is at least as large.  We
+ (i.e. after removing epsilons) and a score that is at least as large [and, of course,
+ the same begin and end state].  We
  show this inductively by demonstrating that for any path P in A that has at
  least one epsilon, there is a path P' in A that satisfies the following properties:
 
+    - P' has the same begin and end state as P
     - The score of P' is >= the score of P
     - P' has the same real symbol-sequence as P (i.e. the same sequence after
       removing epsilons)
@@ -119,10 +127,11 @@ namespace k2 {
  mentioned above.
 
    (i) First imagine that P has two successive epsilon arcs, from states a->b and
-  b->c.  These arcs must both be in either C_f or C_p and hence in C.  But because C is the
+  b->c.  Each of these arcs must be in either C_f or C_p, and hence in C.  But because C is the
   result of epsilon closure there must be an epsilon from a->c with a score at
   least as great as the sum of the original two paths' scores; so we can reduce the
-  number of epsilons by one.
+  number of epsilons by one, i.e. we can find a path like P but with one fewer
+  epsilon.
 
   [[Note regarding epsilon-loops: if a and c are the same state, there are two
   choices: if the score is <=0 then we can remove the epsilon from our path
@@ -131,7 +140,9 @@ namespace k2 {
   which is equivalent to infinite score, which is invalid.]]
 
   We can use (i) as needed until there are no successive epsilons, so the following
-  arguments will consider only isolated epsilons.  Note on terminology: we use
+  arguments will consider paths that lack successive epsilons.
+
+  Note on terminology: we use
   letters a,b,c,d for epsilon arcs below.
 
    (ii) Consider an epsilon-arc a in C_f.  This must be followed by a non-epsilon
@@ -145,7 +156,9 @@ namespace k2 {
                            argument (i); this leaves us with [c,n], which is
                            case (b) above, i.e. the same number of epsilons
                            but one fewer implicit epsilon.
-        - following arc p is in P -> there was originally a pair [n,b] from which
+        - following arc p is in P [note, this refers to the set of arcs P, not the path
+                           P, sorry for confusion of letters] ->
+                           there was originally a pair [n,b] from which
                            p was constructed, where b is in C_p; and there is an
                            arc f in F to which [a,n] was expanded;
                            and an arc q in Q to which [f,b] was expanded; so
