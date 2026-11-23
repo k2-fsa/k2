@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright      2026  (authors: k2 contributors)
+# Copyright      2026  Uniphore  (authors: A Manickavela)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 #
